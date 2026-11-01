@@ -2234,8 +2234,8 @@ reads the code, with no form to fill in
   else. The invite expires after an hour.
 - **Send:** Ana picks how long the invite lasts, an hour, a day or a week, and
   sends the code. Dan taps **Enter code** and pastes it. His waiting screen
-  shows his confirmation number, a countdown to the next check, and **Check
-  now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
+  shows until when it waits, which is when the invite expires, his
+  confirmation number, a countdown to the next check, and **Check now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
   the same number, **Approve** and **Decline**. Ana asks Dan for his number and
   approves if it matches.
 
@@ -2273,10 +2273,16 @@ or it is gone, does bae show the sign-in it showed when he first joined, then
 go on checking. Cancelling that sign-in leaves the join under way for the next
 start. The waiting screen has no Cancel once his request is sent, since coven
 can't take a sent request back: the join ends when Ana approves, declines or
-cancels, or the invite expires. Before then, while Dan signs in to his
-provider, Cancel works, and the invite stays open for him to scan again. When the invite ends without letting him in,
-Dan's phone returns to the first screen and says it was declined, cancelled or
-expired: all three delete his request, so his phone can't tell which.
+cancels, the invite expires, or Ana's laptop is gone for good (removed,
+replaced by a restore, or its person's keys replaced elsewhere), whose
+requests the library's other admins end. Before then, while Dan signs in to
+his provider, Cancel works, and the invite stays open for him to scan again.
+Dan's phone sends no request once the invite has expired by its clock, and a
+request that arrives after the invite ended is turned away rather than left
+waiting. When the invite ends without letting him in, Dan's phone returns to
+the first screen and says it ended: it was declined or cancelled, it expired,
+or the device that made it is no longer in the library. Each ends his request
+the same way, so his phone can't tell which.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,

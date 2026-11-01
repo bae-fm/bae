@@ -229,8 +229,9 @@ private struct AttemptDetailsSection: View {
 }
 
 /// A join running: the library's name, what it waits on, and, while it waits
-/// for approval, a sent invite's confirmation number with when it checks next
-/// and Check Now. Cancel shows only until the request may have been sent.
+/// for approval, until when it waits and a sent invite's confirmation number
+/// with when it checks next and Check Now. Cancel shows only until the
+/// request may have been sent.
 private struct JoinWaitingView: View {
     let form: BootstrapCodeForm
     let invite: BridgeInviteInfo
@@ -240,6 +241,13 @@ private struct JoinWaitingView: View {
             Spacer()
             Text(verbatim: invite.libraryName)
                 .themeText(.title)
+            if case .waitingForApproval = form.status {
+                Text(
+                    "Waiting for approval until \(invite.expiresAt.formatted(date: .abbreviated, time: .shortened))"
+                )
+                .themeText(.body)
+                .foregroundStyle(.secondary)
+            }
             if let status = form.status {
                 BootstrapStatusView(status: status)
             }

@@ -52,12 +52,14 @@ class OnboardingProgressTest {
                     libraryName = "Household",
                     invitee = "Dan",
                     delivery = BridgeInviteDeliveryKind.SENT,
+                    expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
                 ),
             entry = CodeEntry.NewDevice,
         )
 
+    /** A sent invite's join, waiting, shows until when it waits: the invite's expiry. */
     @Test
-    fun aSentInvitesJoinShowsTheLibraryItsNumberAndCheckNowButNoCancel() {
+    fun aSentInvitesJoinShowsTheLibraryUntilWhenItWaitsItsNumberAndCheckNowButNoCancel() {
         val waiting =
             OnboardingStep.Running(
                 invite,
@@ -73,6 +75,8 @@ class OnboardingProgressTest {
         }
 
         compose.onNodeWithText("Household", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Waiting for approval until", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("2026", substring = true).assertIsDisplayed()
         compose.onNodeWithText("041 778").assertIsDisplayed()
         compose.onNodeWithText("Check now").assertIsDisplayed()
         compose.onNodeWithText("Cancel").assertDoesNotExist()

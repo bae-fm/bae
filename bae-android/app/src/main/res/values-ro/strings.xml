@@ -228,11 +228,12 @@
     <string name="onboarding_restoring_title">Se restaurează biblioteca</string>
     <string name="onboarding_adding_device">Se adaugă acest dispozitiv</string>
     <string name="onboarding_joining_library">Te alături la %1$s</string>
+    <string name="onboarding_invite_ended">Această invitație s-a încheiat. A fost refuzată sau anulată, a expirat sau dispozitivul care a creat-o nu mai este în bibliotecă.</string>
+    <string name="onboarding_waiting_until">Se așteaptă aprobarea până la %1$s</string>
     <string name="onboarding_status_connecting">Se conectează…</string>
     <string name="loading_finding_libraries">Se caută bibliotecile tale…</string>
     <string name="loading_opening_library">Se deschide biblioteca…</string>
     <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
-    <string name="onboarding_invite_declined">Invitația a fost refuzată, anulată sau a expirat.</string>
     <string name="onboarding_checking">Se verifică…</string>
     <string name="onboarding_next_check">Următoarea verificare în %1$s</string>
     <string name="onboarding_check_now">Verifică acum</string>

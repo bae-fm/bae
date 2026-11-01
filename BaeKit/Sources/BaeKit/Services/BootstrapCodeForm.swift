@@ -329,7 +329,7 @@ public final class BootstrapCodeForm {
             error = DisplayError(
                 line: String(
                     localized:
-                        "The invite was declined, cancelled or has expired."
+                        "This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library."
                 )
             )
         case .joinRequestSent:

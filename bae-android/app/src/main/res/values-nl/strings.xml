@@ -227,11 +227,12 @@
     <string name="onboarding_restoring_title">Je bibliotheek wordt hersteld</string>
     <string name="onboarding_adding_device">Dit apparaat wordt toegevoegd</string>
     <string name="onboarding_joining_library">Deelnemen aan %1$s</string>
+    <string name="onboarding_invite_ended">Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek.</string>
+    <string name="onboarding_waiting_until">Wacht op goedkeuring tot %1$s</string>
     <string name="onboarding_status_connecting">Verbinden…</string>
     <string name="loading_finding_libraries">Je bibliotheken worden gezocht…</string>
     <string name="loading_opening_library">Bibliotheek wordt geopend…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
-    <string name="onboarding_invite_declined">De uitnodiging is geweigerd, ingetrokken of verlopen.</string>
     <string name="onboarding_checking">Bezig met controleren…</string>
     <string name="onboarding_next_check">Volgende controle over %1$s</string>
     <string name="onboarding_check_now">Nu controleren</string>

@@ -194,8 +194,8 @@ internal class OnboardingCore(
  * restore code or an invite, and this device restores or joins with it; a
  * restore code saved on this phone restores from the welcome's list. With
  * [restoreOver], the code restores over this device's copy of that library. What either produced goes to
- * [onBootstrapped]; an invite declined or expired returns to the code screen
- * with that said.
+ * [onBootstrapped]; an invite that ended without letting this device in returns
+ * to the code screen with that said.
  */
 internal class OnboardingFlow(
     private val scope: CoroutineScope,
@@ -416,7 +416,7 @@ internal class OnboardingFlow(
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
                         step = OnboardingStep.EnterCode(from.entry)
-                        error = DisplayError(context.getString(R.string.onboarding_invite_declined))
+                        error = DisplayError(context.getString(R.string.onboarding_invite_ended))
                     }
 
                     // The cancel came as the request was sent: the join goes on.

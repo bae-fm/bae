@@ -43,6 +43,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.settings.inviteExpiry
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -63,6 +64,7 @@ internal val actionWidth = 220.dp
 private const val COUNTDOWN_TICK_MS = 1_000L
 
 private const val PREVIEW_WAIT_SECONDS = 42L
+private const val PREVIEW_INVITE_SECONDS = 86_400L
 
 /**
  * Restoring a library over this device's copy: what its code screen says
@@ -269,7 +271,12 @@ internal fun OnboardingProgress(
         Spacer(modifier = Modifier.height(ThemeSpace.related))
         when (status) {
             is BridgeBootstrapStatus.WaitingForApproval -> {
-                WaitingForApproval(status = status, onCheckNow = onCheckNow)
+                // Only a join waits for approval.
+                WaitingForApproval(
+                    status = status,
+                    expiresAt = (step.from as OnboardingStep.Invite).invite.expiresAt,
+                    onCheckNow = onCheckNow,
+                )
             }
 
             else -> {
@@ -285,15 +292,25 @@ internal fun OnboardingProgress(
 }
 
 /**
- * A join waiting for approval: a sent invite's confirmation number, a
- * countdown to the next check, and Check now, which a provider's cooldown
- * holds.
+ * A join waiting for approval: until when it waits, which is when its invite
+ * expires, a sent invite's confirmation number, a countdown to the next
+ * check, and Check now, which a provider's cooldown holds.
  */
 @Composable
 private fun WaitingForApproval(
     status: BridgeBootstrapStatus.WaitingForApproval,
+    expiresAt: Instant,
     onCheckNow: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val until = remember(expiresAt) { context.inviteExpiry(expiresAt) }
+    Text(
+        text = stringResource(R.string.onboarding_waiting_until, until),
+        style = ThemeText.body.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(ThemeSpace.related))
     status.confirmation?.let { number ->
         Text(
             text = stringResource(R.string.join_request_confirmation),
@@ -375,6 +392,7 @@ private fun OnboardingProgressWaitingPreview() {
                                     libraryName = "Household",
                                     invitee = "Dan",
                                     delivery = BridgeInviteDeliveryKind.SENT,
+                                    expiresAt = Instant.now().plusSeconds(PREVIEW_INVITE_SECONDS),
                                 ),
                             entry = CodeEntry.NewDevice,
                         ),

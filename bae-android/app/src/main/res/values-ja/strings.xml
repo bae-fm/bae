@@ -225,11 +225,12 @@
     <string name="onboarding_restoring_title">ライブラリを復元しています</string>
     <string name="onboarding_adding_device">このデバイスを追加しています</string>
     <string name="onboarding_joining_library">%1$s に参加しています</string>
+    <string name="onboarding_invite_ended">この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。</string>
+    <string name="onboarding_waiting_until">%1$s まで承認を待っています</string>
     <string name="onboarding_status_connecting">接続しています…</string>
     <string name="loading_finding_libraries">ライブラリを探しています…</string>
     <string name="loading_opening_library">ライブラリを開いています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>
-    <string name="onboarding_invite_declined">招待は拒否されたか、取り消されたか、期限切れになりました。</string>
     <string name="onboarding_checking">確認中…</string>
     <string name="onboarding_next_check">次の確認まで %1$s</string>
     <string name="onboarding_check_now">今すぐ確認</string>

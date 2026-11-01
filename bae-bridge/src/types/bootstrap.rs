@@ -337,8 +337,9 @@ pub enum BridgeBootstrapResult {
         error: BridgeError,
     },
     SavedCodeRemoved,
-    /// The invite ended without letting this device in: declined, cancelled
-    /// or expired, which the joining device can't tell apart.
+    /// The invite ended without letting this device in: declined or
+    /// cancelled, expired, or the device that made it gone for good, which
+    /// the joining device can't tell apart.
     Declined,
     /// A cancel came after the join's request may have been sent. The join
     /// stays under way; `unfinished_joins` lists it to resume.

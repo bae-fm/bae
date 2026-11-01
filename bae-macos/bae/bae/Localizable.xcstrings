@@ -127305,180 +127305,6 @@
         }
       }
     },
-    "The invite was declined, cancelled or has expired." : {
-      "comment" : "Joining: the invite ended without letting this device in.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رُفضت الدعوة أو أُلغيت أو انتهت صلاحيتها."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поканата е отхвърлена, отменена или е изтекла."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozvánka byla odmítnuta, zrušena nebo vypršela."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invitationen blev afvist, annulleret eller er udløbet."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Einladung wurde abgelehnt, zurückgezogen oder ist abgelaufen."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Η πρόσκληση απορρίφθηκε, ακυρώθηκε ή έληξε."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The invite was declined, cancelled or has expired."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La invitación se rechazó, se canceló o ha caducado."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kutsu hylättiin, peruttiin tai se on vanhentunut."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L’invitation a été refusée, annulée ou a expiré."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ההזמנה נדחתה, בוטלה או פג תוקפה."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozivnica je odbijena, otkazana ili je istekla."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A meghívót elutasították, visszavonták, vagy lejárt."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L’invito è stato rifiutato, annullato o è scaduto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "招待は拒否されたか、取り消されたか、期限切れになりました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "초대가 거절되었거나 취소되었거나 만료되었습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invitasjonen ble avslått, avbrutt eller har utløpt."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "De uitnodiging is geweigerd, ingetrokken of verlopen."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zaproszenie zostało odrzucone, anulowane lub wygasło."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O convite foi recusado, cancelado ou expirou."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O convite foi recusado, cancelado ou expirou."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invitația a fost refuzată, anulată sau a expirat."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozvánka bola odmietnutá, zrušená alebo jej platnosť vypršala."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inbjudan avböjdes, återkallades eller har gått ut."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Davet reddedildi, iptal edildi veya süresi doldu."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запрошення відхилено, скасовано або термін його дії минув."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "邀请已被拒绝、取消或已过期。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "邀請已被拒絕、取消或已過期。"
-          }
-        }
-      }
-    },
     "%@ added" : {
       "comment" : "Add a device sheet: shown in place of the QR code once the person's new device has joined. The argument is that device's name.",
       "localizations" : {
@@ -138678,6 +138504,340 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的金鑰已在你的另一台裝置上被替換。"
+          }
+        }
+      }
+    },
+    "This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library." : {
+      "comment" : "Joining: the invite ended without letting this device in. The joining device can't tell which of these ended it.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tato pozvánka skončila. Byla odmítnuta nebo zrušena, vypršela, nebo zařízení, které ji vytvořilo, už v knihovně není."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne invitation er afsluttet. Den blev afvist eller annulleret, den udløb, eller enheden, der lavede den, er ikke længere i biblioteket."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Einladung ist beendet. Sie wurde abgelehnt oder zurückgezogen, ist abgelaufen, oder das Gerät, das sie erstellt hat, ist nicht mehr in der Bibliothek."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτή η πρόσκληση τερματίστηκε. Απορρίφθηκε ή ακυρώθηκε, έληξε, ή η συσκευή που τη δημιούργησε δεν είναι πλέον στη βιβλιοθήκη."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta invitación ha terminado. Se rechazó o se canceló, caducó, o el dispositivo que la creó ya no está en la biblioteca."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette invitation a pris fin. Elle a été refusée ou annulée, elle a expiré, ou l’appareil qui l’a créée ne fait plus partie de la bibliothèque."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u knjižnici."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a meghívó véget ért. Elutasították vagy visszavonták, lejárt, vagy az azt létrehozó eszköz már nincs a könyvtárban."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo invito è terminato. È stato rifiutato o annullato, è scaduto, oppure il dispositivo che l’ha creato non fa più parte della libreria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 초대는 종료되었습니다. 거절 또는 취소되었거나, 만료되었거나, 초대를 만든 기기가 더 이상 라이브러리에 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne invitasjonen er avsluttet. Den ble avslått eller avbrutt, den utløp, eller enheten som laget den, er ikke lenger i biblioteket."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este convite terminou. Ele foi recusado ou cancelado, expirou, ou o dispositivo que o criou não está mais na biblioteca."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este convite terminou. Foi recusado ou cancelado, expirou, ou o dispositivo que o criou já não está na biblioteca."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această invitație s-a încheiat. A fost refuzată sau anulată, a expirat sau dispozitivul care a creat-o nu mai este în bibliotecă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Táto pozvánka sa skončila. Bola odmietnutá alebo zrušená, vypršala jej platnosť alebo zariadenie, ktoré ju vytvorilo, už v knižnici nie je."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här inbjudan har upphört. Den avböjdes eller återkallades, den gick ut, eller så finns enheten som skapade den inte längre i biblioteket."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це запрошення завершилося. Його відхилено чи скасовано, термін його дії минув, або пристрою, який його створив, уже немає в бібліотеці."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此邀请已结束：它已被拒绝或取消、已过期，或者创建它的设备已不在资料库中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此邀請已結束：它已被拒絕或取消、已過期，或者建立它的裝置已不在資料庫中。"
+          }
+        }
+      }
+    },
+    "Waiting for approval until %@" : {
+      "comment" : "Joining: the request waits for an admin's approval until the invite expires; the argument is that date and time.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بانتظار الموافقة حتى %@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчаква одобрение до %@"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeká na schválení do %@"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på godkendelse indtil %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet bis %@ auf Genehmigung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αναμονή για έγκριση έως %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando aprobación hasta %@"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odottaa hyväksyntää %@ asti"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente d’approbation jusqu’au %@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין לאישור עד %@"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka odobrenje do %@"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jóváhagyásra vár eddig: %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In attesa di approvazione fino al %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ まで承認を待っています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@까지 승인을 기다립니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på godkjenning til %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacht op goedkeuring tot %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oczekiwanie na zatwierdzenie do %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando aprovação até %@"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A aguardar aprovação até %@"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se așteaptă aprobarea până la %@"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čaká na schválenie do %@"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Väntar på godkännande till %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tarihine kadar onay bekleniyor"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очікує схвалення до %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待批准，截止于 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待核准，截止於 %@"
           }
         }
       }
