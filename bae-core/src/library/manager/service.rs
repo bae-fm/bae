@@ -167,6 +167,29 @@ impl LibraryManager {
             .start_queue_workers()
             .expect("a manager being assembled has not closed");
         manager
+            .start_profile_requests()
+            .expect("a manager being assembled has not closed");
+        manager
+    }
+
+    /// Follow this person's profile request while the library is open, and
+    /// write their profile once sync has made its private circle (§5.4). A
+    /// failed read or write is reported; the request stays, and the next
+    /// open writes the profile.
+    fn start_profile_requests(&self) -> Result<(), LibraryError> {
+        let manager = self.clone();
+        self.spawn_supervised_task(
+            "profile request worker",
+            async move {
+                if let Err(error) = manager.database.finish_profile_requests().await {
+                    manager.diagnostics.report_bug(
+                        "write the requested profile",
+                        &bae_util::error_text::CauseChain(&error),
+                    );
+                }
+            },
+            |_| {},
+        )
     }
 
     pub(super) fn start_queue_workers(&self) -> Result<(), LibraryError> {

@@ -304,7 +304,6 @@
     <string name="add_device_instructions">Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
-    <string name="invite_creating">Vytváření pozvánky…</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_expires">Platnost vyprší %1$s</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
@@ -339,4 +338,7 @@
     <string name="onboarding_saved_code_delete_failed">Kód pro obnovení nelze smazat</string>
     <string name="onboarding_saved_code_removed">Tento kód pro obnovení už v tomto telefonu uložený není.</string>
     <string name="onboarding_saved_library">Knihovna</string>
+    <string name="members_joining">Připojuje se</string>
+    <string name="members_sharing_access">Sdílí se přístup</string>
+    <string name="invite_granting">Knihovna se sdílí. Kód se zobrazí, jakmile se tato knihovna synchronizuje.</string>
 </resources>

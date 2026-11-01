@@ -1,6 +1,6 @@
 use bae_core::collections::{CollectionError, RatingTarget, Stars};
 use bae_core::people::Sharing;
-use bae_test_support::{connect_storage, storage_library, test_uuid};
+use bae_test_support::{connect_storage, made_profile, storage_library, test_uuid};
 
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
@@ -8,7 +8,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let (manager, db, storage) =
         storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
     connect_storage(&manager, &storage).await;
-    let person = manager.create_profile("Robin").await.unwrap();
+    let person = made_profile(&manager, "Robin").await;
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");
     let second = test_uuid("collection-second");

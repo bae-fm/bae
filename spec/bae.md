@@ -2065,9 +2065,9 @@ profile starts private.
 
 **Plays before a profile.** A device can play before its person has a profile:
 Ana's new library has no cloud home yet, so she is no member and has no circle
-(§5.4). Her plays are kept in the device-local table `local_history`. When her
-profile is created, the same write moves every one of them into her private
-circle. They never go to the household on their own: she hadn't chosen to share
+(§5.4). Her plays are kept in the device-local table `local_history`, and
+stay there until her profile exists. When her profile is created, the same
+write moves every one of them into her private circle. They never go to the household on their own: she hadn't chosen to share
 them.
 
 **Playlists.** A playlist belongs to the person who made it, and is private or
@@ -2092,9 +2092,9 @@ history setting.
   keys, or re-inviting someone who lost every device, keeps the same id
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
-- **The joining person's own device writes their `people` row** as part of
+- **The joining person's own device asks for their `people` row** as part of
   joining, with the name the admin typed in the invite, so every member has a
-  profile. They can rename themselves later. Someone
+  profile once their circle is made (below). They can rename themselves later. Someone
   re-invited after losing every device keeps their row, since their
   `MemberId` is the same. If the write fails, the person has joined anyway,
   and Settings offers to create the profile again.
@@ -2102,7 +2102,23 @@ history setting.
   home. Until then there is no member to credit. Settings then asks for their
   name and creates their profile.
 - **Making a profile makes the person's circle**, the one only they are in
-  (§5.3), and moves any plays waiting in `local_history` into it.
+  (§5.3), and moves any plays waiting in `local_history` into it. Rows go into
+  a circle only once its entry has applied
+  ([coven §15.5](https://github.com/bae-fm/coven/blob/main/spec/coven.md#155-running-a-circle)),
+  so asking for a profile is one write that asks coven for the circle, as a
+  step of the write, and records the request in the device-local
+  `profile_request`: the circle's operation, the circle and the name. It
+  needs no connection. While the library is open, bae follows the request
+  beside coven's list of the operations the app's writes started
+  (`coven_operations`); once sync has landed the circle's entry, one write
+  creates the profile, moves the waiting plays into the circle, acknowledges
+  the operation's outcome to coven and deletes the request. Until then the
+  person has no profile and their plays stay in `local_history`, and asking
+  again is refused while the circle is being made. A circle the library
+  refused stays recorded until the person asks again, which acknowledges the
+  refusal and asks anew in the same write. A circle already made for the
+  person, by a profile write that failed after it, is used at once: asking
+  writes the profile in one write.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:
@@ -2139,6 +2155,14 @@ editable by every member.
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 
+Removing a person or a device, changing a role, renaming the library and
+approving a request are admin changes. Each is one write on the device that asks: coven checks it
+against the library as that device has it and records it, with or without a
+connection, and the call returns once it is recorded. Sync then catches up,
+checks it again and publishes it; until then the library is unchanged, on that
+device too
+([coven §11.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#111-the-steps)).
+
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
@@ -2156,10 +2180,14 @@ for it. A typed restore code shows where its library is stored and waits for
 that fails shows its error beside **Add**, to try again.
 
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
-and a role, then picks **In person** or **Send**. Her laptop shares the store's
-folder with his account, saying it is creating the invitation while that runs
-over the network, and shows the invite. On S3, Ana makes an access key
-for Dan instead of sharing with an account. Either way the invite carries the
+and a role, then picks **In person** or **Send**. Her laptop records the
+invite in one write, offline too, and shows it at once, marked as sharing
+access: sync then checks it again and shares the store's folder with his
+account, and the invite's code shows once it has. On S3, Ana makes an access
+key for Dan instead of sharing with an account. When sync can't share it, or
+the library refuses the invite (Ana is no longer an admin, say), the invite
+says why in its row and where its code would be, and **Cancel invite** ends
+it. Either way the invite carries the
 library's current name and Dan's, and Dan's phone starts joining as soon as it
 reads the code, with no form to fill in
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)):
@@ -2187,9 +2215,12 @@ device that made it shows the row, since only that device can act on it. The
 row's refresh button runs Retry Now for the library (§6.4), so the request
 shows the moment Dan says he has entered the code, without waiting for the next
 check. Opening the row shows the invite again, with **Cancel invite**. Closing
-the request dialog keeps the request, and the row opens it again. Once Ana's
-laptop has begun letting Dan in, cancelling fails and says Dan is already
-joining, rather than leaving him half joined.
+the request dialog keeps the request, and the row opens it again. Approving is
+one write on Ana's laptop that records the approval, offline too; sync then
+lets Dan in. From that write until the invite ends, Dan's row is marked
+joining and offers no Approve or Decline. Once Ana's laptop has begun letting
+Dan in, cancelling fails and says Dan is already joining, rather than leaving
+him half joined.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
@@ -3869,7 +3900,7 @@ one of its files references a coven file that coven records as stored.
 
 ### A.2 People
 
-All sync (§5), except `local_history`.
+All sync (§5), except `local_history` and `profile_request`.
 
 | Table | One row per |
 |---|---|
@@ -3879,6 +3910,7 @@ All sync (§5), except `local_history`.
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
 | `local_history` | play on this device before the person had a profile: track, when it started, how much was played (§5.3) |
+| `profile_request` | the profile this device's person asked for while their private circle is made, at most one: the circle's operation in `coven_operations`, the circle and the name (§5.4) |
 
 ### A.3 Playback
 

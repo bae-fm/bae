@@ -4,9 +4,11 @@ import os.log
 
 private let logger = Logger.bae("InviteCodeSheet")
 
-/// One of this device's open invites, shown again: the QR code of an
-/// in-person invite, or the code of a sent one with Copy and Share, when it
-/// expires, and Cancel Invitation. It closes when the invite ends.
+/// One of this device's open invites, shown again: while sync grants its
+/// access, that it is doing so, and why coven holds it when it does; then
+/// the QR code of an in-person invite, or the code of a sent one with Copy
+/// and Share, and when it expires; and Cancel Invitation. It closes when the
+/// invite ends.
 struct InviteCodeSheet: View {
     let inviteId: String
     let onDismiss: () -> Void
@@ -39,7 +41,10 @@ struct InviteCodeSheet: View {
             .padding()
             Divider()
             if let invite {
-                code(invite)
+                switch invite.shown {
+                case .granting: granting(invite)
+                case .code(let code, _): shown(invite, code: code)
+                }
             }
         }
         .frame(width: 440, height: 640)
@@ -66,14 +71,39 @@ struct InviteCodeSheet: View {
         .onDisappear { task?.cancel() }
     }
 
-    private func code(_ invite: BridgeInvite) -> some View {
+    /// Sync hasn't granted the invite's access yet: the code comes once it
+    /// has. A refused check or a failed grant says why; cancelling ends it.
+    private func granting(_ invite: BridgeInvite) -> some View {
+        VStack(spacing: ThemeSpace.edge) {
+            Spacer()
+            if let held = invite.held {
+                ErrorText(localizedCoreString(held.reason.key))
+                if let detail = held.reason.detail {
+                    Text(detail)
+                        .themeText(.mono)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            else {
+                ProgressView(
+                    "Sharing the library. The code shows once this library syncs."
+                )
+            }
+            cancelControls
+            Spacer()
+        }
+        .padding()
+    }
+
+    private func shown(_ invite: BridgeInvite, code: String) -> some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
             switch invite.delivery {
             case .inPerson:
-                QRCode(text: invite.code)
+                QRCode(text: code)
             case .sent:
-                Text(invite.code)
+                Text(code)
                     .themeText(.mono)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -81,9 +111,9 @@ struct InviteCodeSheet: View {
                     .frame(maxWidth: .infinity)
                 HStack(spacing: ThemeSpace.group) {
                     Button("Copy") {
-                        SystemActions.copyToPasteboard(invite.code)
+                        SystemActions.copyToPasteboard(code)
                     }
-                    ShareLink(item: invite.code)
+                    ShareLink(item: code)
                 }
             }
             Text(
@@ -103,16 +133,21 @@ struct InviteCodeSheet: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            if let error {
-                ErrorDetailDisclosure(error: error)
-            }
-            Button("Cancel Invitation", role: .destructive) {
-                confirmingCancel = true
-            }
-            .disabled(task != nil)
+            cancelControls
             Spacer()
         }
         .padding()
+    }
+
+    @ViewBuilder
+    private var cancelControls: some View {
+        if let error {
+            ErrorDetailDisclosure(error: error)
+        }
+        Button("Cancel Invitation", role: .destructive) {
+            confirmingCancel = true
+        }
+        .disabled(task != nil)
     }
 
     /// A cancelled invite leaves the list, which closes the sheet.

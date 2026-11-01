@@ -295,7 +295,6 @@
     <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
-    <string name="invite_creating">正在建立邀請…</string>
     <string name="invite_title">邀請</string>
     <string name="invite_expires">到期時間：%1$s</string>
     <string name="invite_cancel">取消邀請</string>
@@ -330,4 +329,7 @@
     <string name="onboarding_saved_code_delete_failed">無法刪除復原碼</string>
     <string name="onboarding_saved_code_removed">這個復原碼已不再儲存在這支手機上。</string>
     <string name="onboarding_saved_library">資料庫</string>
+    <string name="members_joining">正在加入</string>
+    <string name="members_sharing_access">正在共享存取權限</string>
+    <string name="invite_granting">正在共享資料庫。此資料庫同步後，代碼就會出現。</string>
 </resources>

@@ -304,7 +304,6 @@
     <string name="add_device_instructions">Na nowym urządzeniu wybierz „Dodaj urządzenie”, a potem zeskanuj to albo wpisz:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Utwórz zaproszenie</string>
-    <string name="invite_creating">Tworzenie zaproszenia…</string>
     <string name="invite_title">Zaproszenie</string>
     <string name="invite_expires">Wygasa %1$s</string>
     <string name="invite_cancel">Anuluj zaproszenie</string>
@@ -339,4 +338,7 @@
     <string name="onboarding_saved_code_delete_failed">Nie udało się usunąć kodu odzyskiwania</string>
     <string name="onboarding_saved_code_removed">Ten kod odzyskiwania nie jest już zapisany na tym telefonie.</string>
     <string name="onboarding_saved_library">Biblioteka</string>
+    <string name="members_joining">Dołącza</string>
+    <string name="members_sharing_access">Udostępnianie dostępu</string>
+    <string name="invite_granting">Udostępnianie biblioteki. Kod pojawi się po zsynchronizowaniu tej biblioteki.</string>
 </resources>

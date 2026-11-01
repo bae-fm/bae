@@ -295,7 +295,6 @@
     <string name="add_device_instructions">새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:</string>
     <string name="invite_email">이메일</string>
     <string name="invite_create">초대 만들기</string>
-    <string name="invite_creating">초대를 만드는 중…</string>
     <string name="invite_title">초대</string>
     <string name="invite_expires">만료: %1$s</string>
     <string name="invite_cancel">초대 취소</string>
@@ -330,4 +329,7 @@
     <string name="onboarding_saved_code_delete_failed">복구 코드를 삭제할 수 없습니다</string>
     <string name="onboarding_saved_code_removed">이 복구 코드는 더 이상 이 휴대전화에 저장되어 있지 않습니다.</string>
     <string name="onboarding_saved_library">라이브러리</string>
+    <string name="members_joining">참여 중</string>
+    <string name="members_sharing_access">접근 권한 공유 중</string>
+    <string name="invite_granting">라이브러리를 공유하는 중입니다. 이 라이브러리가 동기화되면 코드가 표시됩니다.</string>
 </resources>

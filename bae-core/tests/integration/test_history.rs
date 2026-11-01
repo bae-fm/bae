@@ -32,7 +32,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         HistoryAudience::DevicePrivate
     );
     connect_storage(&manager, &storage).await;
-    let person = manager.create_profile("Robin").await.unwrap();
+    let person = bae_test_support::made_profile(&manager, "Robin").await;
     let private = HistoryAudience::Person {
         person: person.id,
         audience: coven::Audience::Circle(person.private_circle),

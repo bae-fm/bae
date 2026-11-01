@@ -51,7 +51,7 @@ public struct HistorySharingSection: View {
                 TextField("Your name", text: $name)
                 Button("Create Profile") {
                     let name = name.trimmingCharacters(in: .whitespaces)
-                    run { _ = try await sync.createProfile(name) }
+                    run { try await sync.createProfile(name) }
                 }
                 .disabled(
                     task != nil

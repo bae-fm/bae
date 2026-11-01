@@ -50,6 +50,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -61,6 +62,8 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteProgress
+import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
@@ -337,7 +340,10 @@ private fun MembersList(
     }
 }
 
-/** One of this device's open invites: the person's name, marked invited, and when it expires. */
+/**
+ * One of this device's open invites: the person's name, marked sharing access until sync has granted it, then invited,
+ * or joining once approval has begun; when it expires; and why coven holds its work, when it does.
+ */
 @Composable
 private fun InviteRow(
     invite: BridgeInvite,
@@ -359,16 +365,44 @@ private fun InviteRow(
                     style = ThemeText.strong.style,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                StatusChip(stringResource(R.string.members_invited))
+                InviteChip(invite.shown)
             }
             Text(
                 text = stringResource(R.string.invite_expires, expires),
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            invite.held?.let { held ->
+                Text(
+                    text = context.coreString(held.reason.key),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
         IconButton(onClick = callbacks.onRefresh) {
             Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.members_check_invites))
+        }
+    }
+}
+
+@Composable
+private fun InviteChip(shown: BridgeInviteShown) {
+    when (shown) {
+        is BridgeInviteShown.Granting -> {
+            StatusChip(stringResource(R.string.members_sharing_access), tone = StatusTone.ACTIVITY)
+        }
+
+        is BridgeInviteShown.Code -> {
+            when (shown.progress) {
+                is BridgeInviteProgress.Joining -> {
+                    StatusChip(stringResource(R.string.members_joining), tone = StatusTone.ACTIVITY)
+                }
+
+                is BridgeInviteProgress.Waiting, is BridgeInviteProgress.Deciding -> {
+                    StatusChip(stringResource(R.string.members_invited))
+                }
+            }
         }
     }
 }

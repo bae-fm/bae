@@ -6311,6 +6311,21 @@ CREATE TABLE local_history (
     played_ms INTEGER NOT NULL CHECK (played_ms > 0)
 ) STRICT;
 
+-- The profile this device's person asked for while their private circle is
+-- being made: the operation coven journaled for the circle (as
+-- `coven_operations` lists it), the circle it makes, and the name they gave.
+-- The write that journals the circle inserts it. Once the circle's entry
+-- lands, the write that creates the profile from it, and moves
+-- `local_history` into the circle, deletes it; so does the write that
+-- acknowledges a circle the library refused. A person asks for one profile,
+-- so there is at most one. Never synced.
+CREATE TABLE profile_request (
+    singleton INTEGER PRIMARY KEY NOT NULL CHECK (singleton = 1),
+    operation INTEGER NOT NULL,
+    circle TEXT NOT NULL,
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0)
+) STRICT;
+
 -- Why this device's last attempt to start sync failed, while it stands: a
 -- start that failed before coven's loop ran, such as a keychain locked for
 -- the session, which coven's own status can't name. Written when starting

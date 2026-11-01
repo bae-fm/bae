@@ -34,6 +34,7 @@ mod test_library_create_cost;
 mod test_open_progress;
 mod test_people;
 mod test_playback_behavior;
+mod test_profile_request;
 mod test_release_edit_validation;
 mod test_restore_cost;
 mod test_save_s3_config;

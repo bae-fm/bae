@@ -301,7 +301,6 @@
     <string name="add_device_instructions">Na novom uređaju odaberite „Dodaj uređaj”, a zatim skenirajte ovo ili upišite:</string>
     <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>
-    <string name="invite_creating">Izrada pozivnice…</string>
     <string name="invite_title">Pozivnica</string>
     <string name="invite_expires">Istječe %1$s</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
@@ -336,4 +335,7 @@
     <string name="onboarding_saved_code_delete_failed">Nije moguće izbrisati kod za oporavak</string>
     <string name="onboarding_saved_code_removed">Ovaj kod za oporavak više nije spremljen na ovom telefonu.</string>
     <string name="onboarding_saved_library">Fonoteka</string>
+    <string name="members_joining">Pridružuje se</string>
+    <string name="members_sharing_access">Dijeli se pristup</string>
+    <string name="invite_granting">Knjižnica se dijeli. Kôd će se pojaviti kad se ova knjižnica sinkronizira.</string>
 </resources>

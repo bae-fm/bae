@@ -40,14 +40,83 @@ pub struct PersonProfile {
     pub avatar_id: Option<coven::FileId>,
 }
 
-/// The request of one of this device's open invites that waits for the
-/// admin: a sent invite's, approved only after comparing the confirmation
-/// number. An in-person invite's request is approved without the admin
-/// (§5.6).
-pub fn request_to_decide(invite: &coven::Invite) -> Option<&coven::JoinRequest> {
-    match invite.delivery {
-        coven::InviteDeliveryKind::Sent => invite.request.as_ref(),
-        coven::InviteDeliveryKind::InPerson => None,
+/// One of this device's open invites, with the pending record of its
+/// operation when coven holds one: a refused check or a failed grant, which
+/// the person ends by cancelling the invite (§5.6).
+#[derive(Clone, Debug, PartialEq)]
+pub struct OpenInvite {
+    pub invite: coven::Invite,
+    pub held: Option<crate::library::PendingWait>,
+}
+
+impl OpenInvite {
+    /// Each of `invites` with the record among `records` whose subject is
+    /// its operation.
+    pub(crate) fn held_by(
+        invites: Vec<coven::Invite>,
+        records: &[coven::PendingRecord],
+    ) -> Vec<Self> {
+        invites
+            .into_iter()
+            .map(|invite| {
+                let held = records
+                    .iter()
+                    .find(|record| {
+                        matches!(record.subject,
+                            coven::PendingSubject::Operation { id, .. } if id == invite.operation)
+                    })
+                    .map(|record| crate::library::PendingWait::of(record, None));
+                Self { invite, held }
+            })
+            .collect()
+    }
+}
+
+/// Where an open invite stands, as People shows it (§5.6).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InviteShown {
+    /// Sync is granting the invite's access; its code comes once it has.
+    Granting,
+    /// Its code, to show again, and how far its person has come.
+    Code {
+        code: String,
+        progress: InviteProgress,
+    },
+}
+
+/// How far an invite whose code can be shown has come.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InviteProgress {
+    /// Waiting for its person's request.
+    Waiting,
+    /// A sent invite's request, waiting for the admin, who approves it only
+    /// after comparing the confirmation number. An in-person invite's
+    /// request is approved without the admin.
+    Deciding(coven::JoinRequest),
+    /// Its person is being let in, which finishes without the admin; the
+    /// invite can no longer be cancelled.
+    Joining,
+}
+
+/// Where `invite` stands.
+pub fn invite_shown(invite: &coven::Invite) -> InviteShown {
+    match &invite.stage {
+        coven::InviteStage::Granting => InviteShown::Granting,
+        coven::InviteStage::Waiting { code, request } => InviteShown::Code {
+            code: code.clone(),
+            progress: match (request, invite.delivery) {
+                (Some(request), coven::InviteDeliveryKind::Sent) => {
+                    InviteProgress::Deciding(request.clone())
+                }
+                (Some(_), coven::InviteDeliveryKind::InPerson) | (None, _) => {
+                    InviteProgress::Waiting
+                }
+            },
+        },
+        coven::InviteStage::Approving { code, .. } => InviteShown::Code {
+            code: code.clone(),
+            progress: InviteProgress::Joining,
+        },
     }
 }
 
@@ -109,3 +178,7 @@ impl ProfileError {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "people_tests.rs"]
+mod tests;

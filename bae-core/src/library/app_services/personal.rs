@@ -4,7 +4,7 @@ use crate::library::LibraryError;
 use crate::people::Sharing;
 
 impl AppServices {
-    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<crate::people::PersonProfile, crate::people::ProfileError>);
+    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), crate::people::ProfileError>);
     delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), crate::people::ProfileError>);
     delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: crate::people::Sharing) -> Result<(), crate::people::ProfileError>);
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), crate::people::ProfileError>);

@@ -303,7 +303,6 @@
     <string name="add_device_instructions">Na novom zariadení vyber „Pridať zariadenie“ a potom naskenuj toto alebo zadaj:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvoriť pozvánku</string>
-    <string name="invite_creating">Vytvára sa pozvánka…</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_expires">Platnosť vyprší %1$s</string>
     <string name="invite_cancel">Zrušiť pozvánku</string>
@@ -337,4 +336,7 @@
     <string name="onboarding_saved_code_delete_failed">Kód na obnovenie sa nepodarilo odstrániť</string>
     <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto telefóne nie je uložený.</string>
     <string name="onboarding_saved_library">Knižnica</string>
+    <string name="members_joining">Pripája sa</string>
+    <string name="members_sharing_access">Zdieľa sa prístup</string>
+    <string name="invite_granting">Knižnica sa zdieľa. Kód sa zobrazí, keď sa táto knižnica synchronizuje.</string>
 </resources>

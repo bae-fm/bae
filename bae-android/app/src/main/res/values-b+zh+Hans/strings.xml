@@ -295,7 +295,6 @@
     <string name="add_device_instructions">在新设备上选择“添加设备”，然后扫描此代码或输入：</string>
     <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>
-    <string name="invite_creating">正在创建邀请…</string>
     <string name="invite_title">邀请</string>
     <string name="invite_expires">过期时间：%1$s</string>
     <string name="invite_cancel">取消邀请</string>
@@ -330,4 +329,7 @@
     <string name="onboarding_saved_code_delete_failed">无法删除恢复码</string>
     <string name="onboarding_saved_code_removed">此恢复码已不再保存在此手机上。</string>
     <string name="onboarding_saved_library">库</string>
+    <string name="members_joining">正在加入</string>
+    <string name="members_sharing_access">正在共享访问权限</string>
+    <string name="invite_granting">正在共享资料库。此资料库同步后，代码就会出现。</string>
 </resources>

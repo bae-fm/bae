@@ -297,7 +297,6 @@
     <string name="add_device_instructions">No novo dispositivo, escolha «Adicionar dispositivo» e depois leia isto ou escreva:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Criar convite</string>
-    <string name="invite_creating">A criar o convite…</string>
     <string name="invite_title">Convite</string>
     <string name="invite_expires">Expira a %1$s</string>
     <string name="invite_cancel">Cancelar convite</string>
@@ -331,4 +330,7 @@
     <string name="onboarding_saved_code_delete_failed">Não foi possível eliminar o código de recuperação</string>
     <string name="onboarding_saved_code_removed">Este código de recuperação já não está guardado neste telemóvel.</string>
     <string name="onboarding_saved_library">Biblioteca</string>
+    <string name="members_joining">A juntar-se</string>
+    <string name="members_sharing_access">A partilhar acesso</string>
+    <string name="invite_granting">A partilhar a biblioteca. O código aparecerá quando esta biblioteca sincronizar.</string>
 </resources>

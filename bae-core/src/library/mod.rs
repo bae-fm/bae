@@ -545,13 +545,15 @@ pub async fn restore_from_saved_code(
     .map_err(restore_error)
 }
 
-/// The membership is established even if writing its profile failed. Retain
-/// this handle and retry profile creation; do not join as another identity.
-/// The profile is `None` for an invite that replaced an existing member's
-/// keys: that person keeps the row they already have (§5.4).
+/// The membership is established even if asking for its profile failed.
+/// Retain this handle and retry profile creation; do not join as another
+/// identity. The profile request is `None` for an invite that replaced an
+/// existing member's keys: that person keeps the row they already have
+/// (§5.4). An asked-for profile is written once sync has made the person's
+/// private circle.
 pub type JoinedLibrary = (
     coven::CovenHandle,
-    Option<Result<crate::people::PersonProfile, crate::people::ProfileError>>,
+    Option<Result<(), crate::people::ProfileError>>,
 );
 
 /// The app's hold on a running join: cancel it before its request is sent, or
@@ -680,8 +682,9 @@ fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
     }
 }
 
-/// Write the joined person's profile with the invite's name; an invite that
-/// replaced an existing member's keys names nobody, and writes nothing.
+/// Ask for the joined person's profile with the invite's name; an invite
+/// that replaced an existing member's keys names nobody, and asks for
+/// nothing.
 async fn with_profile(
     handle: coven::CovenHandle,
     invitee: Option<&str>,

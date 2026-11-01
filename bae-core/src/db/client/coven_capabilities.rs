@@ -42,8 +42,11 @@ impl Database {
         self.inner.handle.subscribe_store_name()
     }
 
+    /// Rename the store as an admin: the write journals the rename, which
+    /// a pass claims (§5.6).
     pub(crate) async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
-        self.inner.handle.rename_store(name).await
+        self.inner.handle.rename_store(name).await?;
+        Ok(())
     }
 
     /// Delete the store, discarding what this device hasn't uploaded; the
@@ -370,56 +373,82 @@ impl Database {
         self.inner.handle.restore_code_for_transfer().await
     }
 
+    /// Remove a member: the write journals the removal, which a pass
+    /// claims (§5.6).
     pub(crate) async fn remove_member(
         &self,
         member: &coven::MemberId,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.remove_member(member).await
+        self.inner.handle.remove_member(member).await?;
+        Ok(())
     }
 
+    /// Remove a device, journaled as a removal is, and say what is left to
+    /// do at the provider.
     pub(crate) async fn remove_device(
         &self,
         device: coven::DeviceId,
     ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
-        self.inner.handle.remove_device(device).await
+        let (_removal, sign_out) = self.inner.handle.remove_device(device).await?;
+        Ok(sign_out)
     }
 
+    /// Change a member's role, journaled as a removal is.
     pub(crate) async fn set_member_role(
         &self,
         member: &coven::MemberId,
         role: coven::MemberRole,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.set_member_role(member, role).await
+        self.inner.handle.set_member_role(member, role).await?;
+        Ok(())
     }
 
+    /// Invite a new person: the write journals the invite, offline too,
+    /// and a pass grants its access and fixes its code (§5.6).
     pub(crate) async fn invite_person(
         &self,
         role: coven::MemberRole,
         name: String,
         access: coven::InviteAccess,
         delivery: coven::InviteDelivery,
-    ) -> Result<coven::Invite, coven::SyncError> {
-        self.inner
+    ) -> Result<coven::InviteId, coven::SyncError> {
+        let (invite, _member, _operation) = self
+            .inner
             .handle
             .create_invite(
                 coven::InviteTarget::NewMember { role, name },
                 access,
                 delivery,
             )
-            .await
+            .await?;
+        Ok(invite)
     }
 
-    /// This device's open invites, each with its request once one has
-    /// arrived, live from coven's `coven_invites`.
-    pub(crate) fn subscribe_invites(&self) -> coven::LiveQuery<Vec<coven::Invite>> {
-        self.inner.handle.subscribe(coven::Invite::list)
+    /// This device's open invites, each with the pending record of its
+    /// operation when coven holds one, live from coven's `coven_invites` and
+    /// `coven_pending` in one read.
+    pub(crate) fn subscribe_invites(&self) -> coven::LiveQuery<Vec<crate::people::OpenInvite>> {
+        self.inner.handle.subscribe(|sql| {
+            let records = sql.query("SELECT record, cause FROM coven_pending", [], |row| {
+                let mut record = row.get::<_, coven::PendingRecord>(0)?;
+                record.cause = row.get(1)?;
+                Ok(record)
+            })?;
+            Ok(crate::people::OpenInvite::held_by(
+                coven::Invite::list(sql)?,
+                &records,
+            ))
+        })
     }
 
+    /// Approve a sent invite's request: the write journals the approval,
+    /// and a pass binds the request's pair (§5.6).
     pub(crate) async fn approve_join_request(
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.approve_join_request(request).await
+        self.inner.handle.approve_join_request(request).await?;
+        Ok(())
     }
 
     pub(crate) async fn decline_join_request(

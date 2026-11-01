@@ -299,7 +299,6 @@
     <string name="add_device_instructions">En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:</string>
     <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>
-    <string name="invite_creating">Creando la invitación…</string>
     <string name="invite_title">Invitación</string>
     <string name="invite_expires">Caduca el %1$s</string>
     <string name="invite_cancel">Cancelar invitación</string>
@@ -334,4 +333,7 @@
     <string name="onboarding_saved_code_delete_failed">No se pudo eliminar el código de recuperación</string>
     <string name="onboarding_saved_code_removed">Este código de recuperación ya no está guardado en este teléfono.</string>
     <string name="onboarding_saved_library">Biblioteca</string>
+    <string name="members_joining">Uniéndose</string>
+    <string name="members_sharing_access">Compartiendo acceso</string>
+    <string name="invite_granting">Compartiendo la biblioteca. El código aparecerá cuando esta biblioteca se sincronice.</string>
 </resources>

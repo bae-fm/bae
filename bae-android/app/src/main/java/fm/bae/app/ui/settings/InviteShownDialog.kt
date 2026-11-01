@@ -35,11 +35,14 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
+import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
+import uniffi.bae_bridge.BridgePendingWait
 import java.text.DateFormat
 import java.time.Instant
 import java.util.Date
@@ -47,8 +50,10 @@ import java.util.Date
 private val logger = BaeLogger("bae.InviteShownDialog")
 
 /**
- * One of this device's open invites, shown again: the QR code of an in-person
- * invite, or the code of a sent one with Copy and Share, and Cancel invite.
+ * One of this device's open invites, shown again: while sync grants its
+ * access, that it is doing so, and why coven holds it when it does; then the
+ * QR code of an in-person invite, or the code of a sent one with Copy and
+ * Share; and Cancel invite.
  */
 @Composable
 internal fun InviteShownDialog(
@@ -150,27 +155,21 @@ private fun InviteCodeDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             ) {
-                when (invite.delivery) {
-                    BridgeInviteDeliveryKind.IN_PERSON -> {
-                        QRCodeImage(
-                            text = invite.code,
-                            contentDescription = title,
-                        )
+                when (val shown = invite.shown) {
+                    is BridgeInviteShown.Granting -> {
+                        InviteGranting(invite.held)
                     }
 
-                    BridgeInviteDeliveryKind.SENT -> {
-                        SelectionContainer { Text(text = invite.code, style = ThemeText.mono.style) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                            TextButton(onClick = { clipboard.setText(AnnotatedString(invite.code)) }) {
-                                Text(stringResource(R.string.copy_code))
-                            }
-                            TextButton(onClick = { context.shareInviteCode(invite.code) }) {
-                                Text(stringResource(R.string.invite_share))
-                            }
-                        }
+                    is BridgeInviteShown.Code -> {
+                        InviteCode(
+                            delivery = invite.delivery,
+                            code = shown.code,
+                            title = title,
+                            onCopy = { clipboard.setText(AnnotatedString(shown.code)) },
+                        )
+                        InviteNote(stringResource(R.string.invite_expires, expires))
                     }
                 }
-                InviteNote(stringResource(R.string.invite_expires, expires))
                 (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
                     SelectionContainer {
                         InviteNote(context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
@@ -187,6 +186,54 @@ private fun InviteCodeDialog(
             TextButton(onClick = onCancelInvite, enabled = !busy) { Text(stringResource(R.string.invite_cancel)) }
         },
     )
+}
+
+/** Sync hasn't granted the invite's access yet; a refused check or a failed grant says why. */
+@Composable
+private fun InviteGranting(held: BridgePendingWait?) {
+    val context = LocalContext.current
+    when (held) {
+        null -> {
+            WaitingIndicator(text = stringResource(R.string.invite_granting))
+        }
+
+        else -> {
+            Text(
+                text = context.coreString(held.reason.key),
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.error,
+            )
+            held.reason.detail?.let { detail ->
+                SelectionContainer { Text(text = detail, style = ThemeText.mono.style) }
+            }
+        }
+    }
+}
+
+/** The code to give the person joining: in person, a QR code to scan in bae; sent, the code to copy or share. */
+@Composable
+private fun InviteCode(
+    delivery: BridgeInviteDeliveryKind,
+    code: String,
+    title: String,
+    onCopy: () -> Unit,
+) {
+    val context = LocalContext.current
+    when (delivery) {
+        BridgeInviteDeliveryKind.IN_PERSON -> {
+            QRCodeImage(text = code, contentDescription = title)
+        }
+
+        BridgeInviteDeliveryKind.SENT -> {
+            SelectionContainer { Text(text = code, style = ThemeText.mono.style) }
+            Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                TextButton(onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
+                TextButton(onClick = { context.shareInviteCode(code) }) {
+                    Text(stringResource(R.string.invite_share))
+                }
+            }
+        }
+    }
 }
 
 /** Hand a sent invite's code to the app the person picks: a message, an email. */

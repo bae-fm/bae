@@ -15,6 +15,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         bae_core::providers::Providers::offline(),
     ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+    let made = runtime.block_on(bae_test_support::made_profile(&manager, "Robin"));
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
         .unwrap();
@@ -54,7 +55,9 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             "a typed code shows where its library is stored before connecting"
         );
 
-        let profile = app.clone().create_profile("Robin".into()).await.unwrap();
+        // Asking again for the profile the person has, by its name, is done.
+        app.clone().create_profile("Robin".into()).await.unwrap();
+        let profile = BridgePersonProfile::from_core(made.clone());
         app.clone()
             .set_history_sharing(BridgeSharing::Household)
             .await

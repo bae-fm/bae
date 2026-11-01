@@ -301,7 +301,6 @@
     <string name="add_device_instructions">במכשיר החדש בחרו ב“הוספת מכשיר”, ואז סרקו את זה או הקלידו:</string>
     <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>
-    <string name="invite_creating">יוצר את ההזמנה…</string>
     <string name="invite_title">הזמנה</string>
     <string name="invite_expires">בתוקף עד %1$s</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
@@ -336,4 +335,7 @@
     <string name="onboarding_saved_code_delete_failed">לא ניתן היה למחוק את קוד השחזור</string>
     <string name="onboarding_saved_code_removed">קוד השחזור הזה כבר לא שמור בטלפון הזה.</string>
     <string name="onboarding_saved_library">ספרייה</string>
+    <string name="members_joining">מצטרף</string>
+    <string name="members_sharing_access">משתף גישה</string>
+    <string name="invite_granting">הספרייה משותפת. הקוד יופיע אחרי שהספרייה הזו תסונכרן.</string>
 </resources>

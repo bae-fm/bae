@@ -19,6 +19,8 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
+import uniffi.bae_bridge.BridgeInviteProgress
+import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
@@ -98,9 +100,9 @@ class MembersModelTest {
                 invitee = "Dan",
                 delivery = BridgeInviteDeliveryKind.SENT,
                 access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
-                code = "invite-code",
                 expiresAt = Instant.ofEpochSecond(2_000_000_000),
-                requestToDecide = null,
+                shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),
+                held = null,
             )
         handle.invites.deliver(listOf(invite))
         shadowOf(Looper.getMainLooper()).idle()

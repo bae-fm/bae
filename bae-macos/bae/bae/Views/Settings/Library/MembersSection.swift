@@ -411,36 +411,50 @@ private struct FormerDevicesDisclosure: View {
     }
 }
 
-/// One of this device's open invites: the person's name, marked invited,
-/// when it expires, and a refresh that checks for its request now.
+/// One of this device's open invites: the person's name, marked sharing
+/// access until sync has granted it, then invited, or joining once approval
+/// has begun; when it expires; why coven holds its work, when it does; and
+/// a refresh that checks for its request now.
 private struct InviteRow: View {
     let invite: BridgeInvite
     let onOpen: () -> Void
     let onRefresh: () -> Void
 
     var body: some View {
-        HStack(spacing: ThemeSpace.related) {
-            Button(action: onOpen) {
-                HStack(spacing: ThemeSpace.related) {
-                    Text(verbatim: invite.invitee ?? "")
-                        .themeText(.rowTitle)
-                    StatusChip("Invited")
-                    Text(
-                        "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
-                    )
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    Spacer()
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            HStack(spacing: ThemeSpace.related) {
+                Button(action: onOpen) {
+                    HStack(spacing: ThemeSpace.related) {
+                        Text(verbatim: invite.invitee ?? "")
+                            .themeText(.rowTitle)
+                        switch invite.shown {
+                        case .granting:
+                            StatusChip("Sharing access", tone: .activity)
+                        case .code(_, .waiting), .code(_, .deciding):
+                            StatusChip("Invited")
+                        case .code(_, .joining):
+                            StatusChip("Joining", tone: .activity)
+                        }
+                        Text(
+                            "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
+                        )
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise")
+                        .themeIcon(.small)
+                }
+                .buttonStyle(.borderless)
+                .help("Check for Requests")
             }
-            .buttonStyle(.plain)
-            Button(action: onRefresh) {
-                Image(systemName: "arrow.clockwise")
-                    .themeIcon(.small)
+            if let held = invite.held {
+                ErrorText(localizedCoreString(held.reason.key))
             }
-            .buttonStyle(.borderless)
-            .help("Check for Requests")
         }
         .padding(.vertical, ThemeSpace.line)
     }

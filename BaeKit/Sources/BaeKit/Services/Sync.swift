@@ -20,19 +20,19 @@ public final class Sync: Sendable, Observable {
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
     /// Invite a person by name, with a role, the access they reach storage
-    /// with, and whether the invite is shown in person or sent.
+    /// with, and whether the invite is shown in person or sent; answers the
+    /// new invite's id, which the open invites list from its write on.
     public let invitePerson:
         @Sendable (
             BridgeMemberRole, String, BridgeInviteAccess, BridgeInviteDelivery
-        ) async throws -> BridgeInvite
+        ) async throws -> String
     public let approveJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
     public let declineJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
     public let cancelInvite: @Sendable (String) async throws -> Void
     public let setHistorySharing: @Sendable (BridgeSharing) async throws -> Void
-    public let createProfile:
-        @Sendable (String) async throws -> BridgePersonProfile
+    public let createProfile: @Sendable (String) async throws -> Void
     public let cloudOnlyReleaseCount: @Sendable () async throws -> UInt64
     public let retryOutbox: @Sendable () async throws -> Void
     public let renameLibrary: @Sendable (String) async throws -> Void
@@ -82,7 +82,7 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (
                 BridgeMemberRole, String, BridgeInviteAccess,
                 BridgeInviteDelivery
-            ) async throws -> BridgeInvite = { _, _, _, _ in
+            ) async throws -> String = { _, _, _, _ in
                 throw StubError.notImplemented
             },
         approveJoinRequest:
@@ -100,10 +100,9 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (BridgeSharing) async throws -> Void = { _ in
                 throw StubError.notImplemented
             },
-        createProfile:
-            @escaping @Sendable (String) async throws -> BridgePersonProfile = {
-                _ in throw StubError.notImplemented
-            },
+        createProfile: @escaping @Sendable (String) async throws -> Void = {
+            _ in throw StubError.notImplemented
+        },
         cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64 = {
             throw StubError.notImplemented
         },

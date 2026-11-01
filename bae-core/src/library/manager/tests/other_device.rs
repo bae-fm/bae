@@ -182,12 +182,16 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             .remove_device(devices.b().database().device_id())
             .await
             .unwrap();
-        assert_eq!(
-            playability().await,
-            ReleasePlayability::OnOtherDevice(OtherDevice::Former {
-                name: "Device B".to_string(),
-                state: FormerDeviceState::Removed,
+        // The write journals the removal; a pass of this device claims it.
+        devices
+            .a()
+            .wait_until("Device B's removal", || async {
+                playability().await
+                    == ReleasePlayability::OnOtherDevice(OtherDevice::Former {
+                        name: "Device B".to_string(),
+                        state: FormerDeviceState::Removed,
+                    })
             })
-        );
+            .await;
     });
 }

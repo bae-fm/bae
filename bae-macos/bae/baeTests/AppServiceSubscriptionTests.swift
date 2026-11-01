@@ -153,9 +153,9 @@ struct InvitesSubscriptionTests {
             invitee: "Dan",
             delivery: .sent,
             access: .providerAccount(email: "dan@example.com"),
-            code: "invite-code",
             expiresAt: Date(timeIntervalSince1970: 2_000_000_000),
-            requestToDecide: nil
+            shown: .code(code: "invite-code", progress: .waiting),
+            held: nil
         )
         handle.deliverInvites([invite])
         try await Wait.until { store.invites.map(\.id) == ["11"] }

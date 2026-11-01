@@ -42,6 +42,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         bae_core::providers::Providers::offline(),
     ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+    let syncing = manager.clone();
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
         .unwrap();
@@ -78,6 +79,11 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     handle
         .runtime
         .block_on(handle.clone().create_profile("Ana".to_string()))
+        .unwrap();
+    // The profile is written once sync has made Ana's private circle.
+    handle
+        .runtime
+        .block_on(syncing.attach_and_start_sync())
         .unwrap();
     pull_until(
         &handle,

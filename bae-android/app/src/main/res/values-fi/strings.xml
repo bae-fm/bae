@@ -297,7 +297,6 @@
     <string name="add_device_instructions">Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:</string>
     <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>
-    <string name="invite_creating">Luodaan kutsua…</string>
     <string name="invite_title">Kutsu</string>
     <string name="invite_expires">Vanhenee %1$s</string>
     <string name="invite_cancel">Peruuta kutsu</string>
@@ -331,4 +330,7 @@
     <string name="onboarding_saved_code_delete_failed">Palautuskoodia ei voitu poistaa</string>
     <string name="onboarding_saved_code_removed">Tätä palautuskoodia ei ole enää tallennettu tähän puhelimeen.</string>
     <string name="onboarding_saved_library">Kirjasto</string>
+    <string name="members_joining">Liittyy</string>
+    <string name="members_sharing_access">Jaetaan käyttöoikeutta</string>
+    <string name="invite_granting">Kirjastoa jaetaan. Koodi näkyy, kun tämä kirjasto on synkronoitu.</string>
 </resources>

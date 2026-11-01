@@ -300,7 +300,6 @@
     <string name="add_device_instructions">Pe noul dispozitiv, alege „Adaugă dispozitiv”, apoi scanează asta sau tastează:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Creează invitația</string>
-    <string name="invite_creating">Se creează invitația…</string>
     <string name="invite_title">Invitație</string>
     <string name="invite_expires">Expiră pe %1$s</string>
     <string name="invite_cancel">Anulează invitația</string>
@@ -334,4 +333,7 @@
     <string name="onboarding_saved_code_delete_failed">Codul de recuperare nu a putut fi șters</string>
     <string name="onboarding_saved_code_removed">Acest cod de recuperare nu mai este salvat pe acest telefon.</string>
     <string name="onboarding_saved_library">Bibliotecă</string>
+    <string name="members_joining">Se alătură</string>
+    <string name="members_sharing_access">Se partajează accesul</string>
+    <string name="invite_granting">Se partajează biblioteca. Codul apare după ce această bibliotecă se sincronizează.</string>
 </resources>

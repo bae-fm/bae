@@ -125,16 +125,6 @@ struct InvitePersonSheet: View {
                     .padding(.horizontal)
             }
             HStack {
-                if task != nil {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(
-                        "Creating the invitation…",
-                        comment:
-                            "Invite sheet, while bae creates the invitation and gives the invited person access to the library's storage."
-                    )
-                    .foregroundStyle(.secondary)
-                }
                 Spacer()
                 Button("Create Invitation") { create() }
                     .buttonStyle(PrimaryButtonStyle())
@@ -166,13 +156,13 @@ struct InvitePersonSheet: View {
         task = Task {
             defer { task = nil }
             do {
-                let invite = try await sync.invitePerson(
+                let inviteId = try await sync.invitePerson(
                     role,
                     name,
                     access,
                     chosen
                 )
-                onCreated(invite.id)
+                onCreated(inviteId)
             }
             catch is CancellationError {
                 logger.debug("invite creation cancelled")

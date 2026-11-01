@@ -1,0 +1,88 @@
+//! Profiles made as the app makes them: asked for, then written once sync
+//! has made the person's private circle (§5.4).
+
+use bae_core::followed::value_matching;
+use bae_core::{db::Database, library::LibraryManager, people::PersonProfile};
+
+/// Ask for this device's person's profile named `name`, sync until the
+/// manager has written it, then stop sync again, as [`crate::connect_storage`]
+/// leaves it.
+pub async fn made_profile(manager: &LibraryManager, name: &str) -> PersonProfile {
+    manager.create_profile(name).await.unwrap();
+    requested_profile(manager).await
+}
+
+/// The profile this device's person asked for, written by the manager once
+/// sync has made their private circle; sync runs until it is written, then
+/// stops again.
+pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
+    let member = manager
+        .own_person()
+        .await
+        .unwrap()
+        .expect("asking for a profile needs a registered person")
+        .membership
+        .id;
+    let mut profiles = manager.subscribe_profiles();
+    let mut status = manager.subscribe_sync_status();
+    manager.attach_and_start_sync().await.unwrap();
+    let profile = own(
+        value_matching(&mut profiles, |profiles| {
+            profiles.iter().any(|profile| profile.id == member)
+        })
+        .await,
+        member,
+    );
+    manager.stop_sync().await.unwrap();
+    value_matching(&mut status, |value| {
+        matches!(value.status, coven::SyncStatus::Stopped)
+    })
+    .await;
+    manager.unlock_store_key().await.unwrap();
+    profile
+}
+
+/// [`made_profile`] for a store opened without a library manager, as
+/// [`requested_profile_on`] writes it.
+pub async fn made_profile_on(
+    handle: &coven::CovenHandle,
+    database: &Database,
+    name: &str,
+) -> PersonProfile {
+    database.create_profile(name).await.unwrap();
+    requested_profile_on(handle, database).await
+}
+
+/// The profile this device's person asked for on `database` over `handle`,
+/// written once sync has made their private circle: sync starts, if it
+/// isn't running, and keeps running, and `database` follows the request
+/// meanwhile, as an open library's manager does.
+pub async fn requested_profile_on(
+    handle: &coven::CovenHandle,
+    database: &Database,
+) -> PersonProfile {
+    let member = database
+        .own_person()
+        .await
+        .unwrap()
+        .expect("asking for a profile needs a registered person")
+        .membership
+        .id;
+    let mut profiles = database.subscribe_profiles();
+    handle.start_sync().await.unwrap();
+    let written = value_matching(&mut profiles, |profiles| {
+        profiles.iter().any(|profile| profile.id == member)
+    });
+    let profiles = tokio::select! {
+        ended = database.finish_profile_requests() => panic!("following the request ended: {ended:?}"),
+        profiles = written => profiles,
+    };
+    own(profiles, member)
+}
+
+fn own(profiles: Vec<PersonProfile>, member: coven::MemberId) -> PersonProfile {
+    profiles
+        .into_iter()
+        .find(|profile| profile.id == member)
+        .expect("the matched profiles hold the person's")
+}

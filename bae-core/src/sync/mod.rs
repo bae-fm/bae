@@ -318,6 +318,9 @@ mod tests {
         // its queue, where it stood, what it is doing and where it is.
         "local_release_origin",
         "local_history",
+        // The profile this device's person asked for, while their private
+        // circle is being made.
+        "profile_request",
         "playback_queue",
         "playback_manual",
         "playback_context",

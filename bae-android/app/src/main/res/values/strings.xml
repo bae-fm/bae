@@ -353,7 +353,6 @@
     <string name="add_device_instructions">On the new device, choose “Add device”, then scan this or type:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Create invite</string>
-    <string name="invite_creating">Creating the invite…</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
     <string name="invite_expires">Expires %1$s</string>
@@ -390,4 +389,7 @@
     <string name="onboarding_saved_code_delete_failed">Couldn’t delete the recovery code</string>
     <string name="onboarding_saved_code_removed">This recovery code is no longer saved on this phone.</string>
     <string name="onboarding_saved_library">Library</string>
+    <string name="members_joining">Joining</string>
+    <string name="members_sharing_access">Sharing access</string>
+    <string name="invite_granting">Sharing the library. The code shows once this library syncs.</string>
 </resources>

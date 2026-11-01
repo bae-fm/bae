@@ -298,7 +298,6 @@
     <string name="add_device_instructions">Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:</string>
     <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>
-    <string name="invite_creating">Einladung wird erstellt…</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_expires">Läuft ab: %1$s</string>
     <string name="invite_cancel">Einladung zurückziehen</string>
@@ -333,4 +332,7 @@
     <string name="onboarding_saved_code_delete_failed">Der Wiederherstellungscode konnte nicht gelöscht werden</string>
     <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Smartphone gespeichert.</string>
     <string name="onboarding_saved_library">Bibliothek</string>
+    <string name="members_joining">Tritt bei</string>
+    <string name="members_sharing_access">Zugriff wird geteilt</string>
+    <string name="invite_granting">Die Bibliothek wird geteilt. Der Code erscheint, sobald diese Bibliothek synchronisiert ist.</string>
 </resources>

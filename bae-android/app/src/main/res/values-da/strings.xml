@@ -297,7 +297,6 @@
     <string name="add_device_instructions">Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Opret invitation</string>
-    <string name="invite_creating">Opretter invitationen…</string>
     <string name="invite_title">Invitation</string>
     <string name="invite_expires">Udløber %1$s</string>
     <string name="invite_cancel">Annuller invitation</string>
@@ -331,4 +330,7 @@
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gendannelseskoden</string>
     <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne telefon.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
+    <string name="members_joining">Tilslutter sig</string>
+    <string name="members_sharing_access">Deler adgang</string>
+    <string name="invite_granting">Biblioteket deles. Koden vises, når dette bibliotek er synkroniseret.</string>
 </resources>

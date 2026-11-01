@@ -8,10 +8,9 @@ use super::*;
 const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
 
 impl LibraryManager {
-    pub async fn create_profile(
-        &self,
-        name: &str,
-    ) -> Result<crate::people::PersonProfile, crate::people::ProfileError> {
+    /// Create this person's profile: at once when their private circle
+    /// exists, otherwise once sync has made it (§5.4).
+    pub async fn create_profile(&self, name: &str) -> Result<(), crate::people::ProfileError> {
         self.database.create_profile(name).await
     }
 
@@ -113,10 +112,14 @@ impl LibraryManager {
         })
     }
 
+    /// Remove a member. The change is recorded on this device at once,
+    /// offline too, and takes effect once sync publishes it (§5.6).
     pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {
         Ok(self.database.remove_member(member).await?)
     }
 
+    /// Remove a device, recorded as a removal is, and say what is left to
+    /// do at the provider.
     pub async fn remove_device(
         &self,
         device: coven::DeviceId,
@@ -124,6 +127,7 @@ impl LibraryManager {
         Ok(self.database.remove_device(device).await?)
     }
 
+    /// Change a member's role, recorded as a removal is.
     pub async fn set_member_role(
         &self,
         member: &coven::MemberId,
@@ -141,16 +145,16 @@ impl LibraryManager {
         name: String,
         access: coven::InviteAccess,
         delivery: coven::InviteDelivery,
-    ) -> Result<coven::Invite, LibraryError> {
+    ) -> Result<coven::InviteId, LibraryError> {
         Ok(self
             .database
             .invite_person(role, name, access, delivery)
             .await?)
     }
 
-    /// This device's open invites, each with its request once one has
-    /// arrived, live.
-    pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<coven::Invite>> {
+    /// This device's open invites, each with the pending record of its
+    /// operation when coven holds one, live.
+    pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<crate::people::OpenInvite>> {
         self.database.subscribe_invites()
     }
 

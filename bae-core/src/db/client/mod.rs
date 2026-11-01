@@ -126,6 +126,7 @@ mod people;
 mod playback;
 mod playback_now;
 mod preferences;
+mod profile_request;
 pub use playback_now::PlaybackNowRow;
 mod playback_timeline;
 pub use playback_timeline::PlaybackTimelineRow;

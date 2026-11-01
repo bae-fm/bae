@@ -1,4 +1,8 @@
 use super::membership::{member_columns, member_row, SELF_IS_ADMIN};
+use super::profile_request::{
+    end_profile_request, insert_profile_request, profile_request_on, ProfileRequest,
+    ProfileRequestState,
+};
 use super::*;
 use crate::people::{Person, PersonProfile, ProfileError, Sharing};
 
@@ -64,9 +68,15 @@ impl Database {
             .ok_or(ProfileError::Missing)
     }
 
-    /// A failed profile write can retry using the same named, self-only circle.
-    /// No background worker guesses a profile name or finishes this operation.
-    pub async fn create_profile(&self, name: &str) -> Result<PersonProfile, ProfileError> {
+    /// Create this device's person's profile, named `name`, in their own
+    /// private circle (§5.3, §5.4). With that circle already made, one write
+    /// creates the profile and moves `local_history` into the circle.
+    /// Otherwise the write journals the circle with coven and records the
+    /// request, offline too; [`Self::finish_profile_requests`] creates the
+    /// profile once the circle's entry lands. A request the library refused
+    /// is acknowledged and replaced by this one; one still running refuses
+    /// another with `CirclePending`.
+    pub async fn create_profile(&self, name: &str) -> Result<(), ProfileError> {
         let name = profile_name(name)?;
         let _creation = self.inner.profile_creation.lock().await;
         let member = self
@@ -78,59 +88,109 @@ impl Database {
                 return Err(ProfileError::AlreadyExists);
             }
             let _registration = self.inner.history_registration.lock().await;
-            let existing = profile.clone();
             self.call(move |sql| {
-                history::adopt_local_history(sql, &existing)?;
+                history::adopt_local_history(sql, &profile)?;
                 Ok(())
             })
             .await?;
-            return Ok(profile);
+            return Ok(());
         }
-        let circle_name = format!("bae-person:{member}");
-        let named = circle_name.clone();
-        let matching = self
-            .read(move |sql| {
-                Ok(
-                    sql.query(PRIVATE_CIRCLE_SQL, params![named, member], |row| {
-                        Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
-                    })?,
-                )
-            })
-            .await?;
-        let private_circle = match matching.as_slice() {
-            [] => {
-                for record in self.inner.handle.pending().await? {
-                    if let coven::PendingSubject::Operation {
-                        id,
-                        kind: coven::OperationKind::CreateCircle,
-                    } = record.subject
-                    {
-                        return Err(ProfileError::CirclePending(id));
+        // History can keep recording locally while the circle is made.
+        // Serialize only the transfer into the profile with in-flight
+        // history writes.
+        let _registration = self.inner.history_registration.lock().await;
+        let made = self
+            .call(move |sql| {
+                if let Some(request) = profile_request_on(sql)? {
+                    match request.state()? {
+                        ProfileRequestState::Making | ProfileRequestState::Made => {
+                            return Ok(ProfileWrite::Pending(request.operation));
+                        }
+                        ProfileRequestState::Refused(_) => end_profile_request(sql, &request)?,
                     }
                 }
-                Box::pin(self.inner.handle.circles().create(&circle_name)).await?
+                let circle_name = format!("bae-person:{member}");
+                let matching =
+                    sql.query(PRIVATE_CIRCLE_SQL, params![circle_name, member], |row| {
+                        Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
+                    })?;
+                match matching.as_slice() {
+                    [] => {
+                        let (circle, operation) = sql
+                            .create_circle(&circle_name)
+                            .map_err(coven::CovenError::from)?;
+                        insert_profile_request(sql, operation, circle, &name)?;
+                    }
+                    [(circle, true)] => {
+                        insert_profile(sql, &new_profile(member, name, *circle))?;
+                    }
+                    _ => return Ok(ProfileWrite::InvalidPrivateCircle),
+                }
+                Ok(ProfileWrite::Written)
+            })
+            .await
+            .map_err(profile_write_error)?;
+        match made {
+            ProfileWrite::Written => Ok(()),
+            ProfileWrite::Pending(operation) => Err(ProfileError::CirclePending(operation)),
+            ProfileWrite::InvalidPrivateCircle => Err(ProfileError::InvalidPrivateCircle),
+        }
+    }
+
+    /// Create the profile this device's person asked for once coven has
+    /// made its private circle: follows the request while the library is
+    /// open, and when the circle's operation lands, one write creates the
+    /// profile, moves `local_history` into the circle and acknowledges the
+    /// outcome. A refused circle waits for the person, who acknowledges it
+    /// by asking again (§5.4).
+    pub async fn finish_profile_requests(&self) -> Result<(), ProfileError> {
+        let mut requests = self.subscribe_profile_request();
+        while let Some(request) = requests.next().await {
+            if let Some(request) = request.map_err(DbError::from)? {
+                if request.state()? == ProfileRequestState::Made {
+                    self.finish_profile(request).await?;
+                }
             }
-            [(circle, true)] => *circle,
-            _ => return Err(ProfileError::InvalidPrivateCircle),
-        };
-        let profile = PersonProfile {
-            id: member,
-            name,
-            private_circle,
-            history_sharing: Sharing::Private,
-            avatar_id: None,
-        };
-        // History can keep recording locally while circle creation awaits storage.
-        // Serialize only the transfer into the profile with in-flight history writes.
+        }
+        Err(DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)).into())
+    }
+
+    /// The write that creates the profile `request` asked for, from its
+    /// landed circle. A profile the person made on another of their devices
+    /// meanwhile takes this device's plays instead; the circle made here
+    /// stays theirs alone.
+    async fn finish_profile(&self, request: ProfileRequest) -> Result<(), ProfileError> {
+        let _creation = self.inner.profile_creation.lock().await;
         let _registration = self.inner.history_registration.lock().await;
-        let row = profile.clone();
         self.call(move |sql| {
-            sql.execute("INSERT INTO people (id, name, private_circle, history_sharing) VALUES (?1, ?2, ?3, ?4)",
-                params![row.id.to_string(), row.name, row.private_circle.to_string(), row.history_sharing.as_str()])?;
-            history::adopt_local_history(sql, &row)?;
+            // Only this write ends a request whose circle has landed.
+            if profile_request_on(sql)?.as_ref() != Some(&request) {
+                return Err(DbError::Message(format!(
+                    "the profile request for operation {:?} changed before its profile was written",
+                    request.operation
+                )));
+            }
+            let member: coven::MemberId = sql.query_row(
+                "SELECT member FROM coven_members WHERE is_self AND NOT removed",
+                [],
+                |row| row.get(0),
+            )?;
+            end_profile_request(sql, &request)?;
+            let existing = sql
+                .query_row(
+                    &format!("SELECT {PROFILE_COLUMNS} FROM people WHERE id = ?"),
+                    [member.to_string()],
+                    profile_row,
+                )
+                .optional()?;
+            match existing {
+                Some(profile) => history::adopt_local_history(sql, &profile)?,
+                None => insert_profile(sql, &new_profile(member, request.name, request.circle))?,
+            }
             Ok(())
-        }).await?;
-        Ok(profile)
+        })
+        .await?;
+        Ok(())
     }
 
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
@@ -218,6 +278,50 @@ impl Database {
                 .await
                 .map_err(DbError::from)?,
         ))
+    }
+}
+
+/// What a profile's write did, for the call to answer.
+enum ProfileWrite {
+    Written,
+    Pending(coven::OperationId),
+    InvalidPrivateCircle,
+}
+
+/// A new profile, private until the person shares their history.
+fn new_profile(member: coven::MemberId, name: String, circle: coven::CircleId) -> PersonProfile {
+    PersonProfile {
+        id: member,
+        name,
+        private_circle: circle,
+        history_sharing: Sharing::Private,
+        avatar_id: None,
+    }
+}
+
+/// Write `profile`'s row and move the plays waiting in `local_history` into
+/// its private circle, in one write (§5.3).
+fn insert_profile(sql: &CovenWrite<'_>, profile: &PersonProfile) -> rusqlite::Result<()> {
+    sql.execute(
+        "INSERT INTO people (id, name, private_circle, history_sharing) VALUES (?1, ?2, ?3, ?4)",
+        params![
+            profile.id.to_string(),
+            profile.name,
+            profile.private_circle.to_string(),
+            profile.history_sharing.as_str()
+        ],
+    )?;
+    history::adopt_local_history(sql, profile)
+}
+
+/// A profile write's failure: a refusal of coven's circle step as the sync
+/// error it is, anything else as the database's.
+fn profile_write_error(error: DbError) -> ProfileError {
+    match error {
+        DbError::Coven(error @ coven::CovenError::Database(coven::DbError::SyncStream(_))) => {
+            ProfileError::Sync(error.into())
+        }
+        error => error.into(),
     }
 }
 

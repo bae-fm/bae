@@ -297,7 +297,6 @@
     <string name="add_device_instructions">Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Opprett invitasjon</string>
-    <string name="invite_creating">Oppretter invitasjonen…</string>
     <string name="invite_title">Invitasjon</string>
     <string name="invite_expires">Utløper %1$s</string>
     <string name="invite_cancel">Avbryt invitasjonen</string>
@@ -331,4 +330,7 @@
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gjenopprettingskoden</string>
     <string name="onboarding_saved_code_removed">Denne gjenopprettingskoden er ikke lenger lagret på denne telefonen.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
+    <string name="members_joining">Blir med</string>
+    <string name="members_sharing_access">Deler tilgang</string>
+    <string name="invite_granting">Biblioteket deles. Koden vises når dette biblioteket er synkronisert.</string>
 </resources>

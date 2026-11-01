@@ -39,7 +39,6 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
-import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlaylist
@@ -602,7 +601,7 @@ internal open class FakeAppHandle(
         name: String,
         access: BridgeInviteAccess,
         delivery: BridgeInviteDelivery,
-    ): BridgeInvite = unfaked("invitePerson")
+    ): String = unfaked("invitePerson")
 
     override suspend fun people(): List<BridgePerson> = unfaked("people")
 
@@ -642,7 +641,9 @@ internal open class FakeAppHandle(
         sharing: BridgeSharing,
     ): BridgePlaylist = unfaked("createPlaylist")
 
-    override suspend fun createProfile(name: String): BridgePersonProfile = unfaked("createProfile")
+    override suspend fun createProfile(name: String) {
+        unfaked("createProfile")
+    }
 
     override suspend fun deletePlaylist(id: String) {
         unfaked("deletePlaylist")

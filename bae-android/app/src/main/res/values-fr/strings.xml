@@ -299,7 +299,6 @@
     <string name="add_device_instructions">Sur le nouvel appareil, choisissez « Ajouter un appareil », puis scannez ceci ou saisissez :</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Créer l’invitation</string>
-    <string name="invite_creating">Création de l’invitation…</string>
     <string name="invite_title">Invitation</string>
     <string name="invite_expires">Expire le %1$s</string>
     <string name="invite_cancel">Annuler l’invitation</string>
@@ -334,4 +333,7 @@
     <string name="onboarding_saved_code_delete_failed">Impossible de supprimer le code de récupération</string>
     <string name="onboarding_saved_code_removed">Ce code de récupération n’est plus enregistré sur ce téléphone.</string>
     <string name="onboarding_saved_library">Bibliothèque</string>
+    <string name="members_joining">Adhésion en cours</string>
+    <string name="members_sharing_access">Partage de l’accès</string>
+    <string name="invite_granting">Partage de la bibliothèque. Le code apparaîtra une fois cette bibliothèque synchronisée.</string>
 </resources>

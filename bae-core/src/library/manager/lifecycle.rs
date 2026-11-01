@@ -3,7 +3,8 @@
 use super::*;
 
 impl LibraryManager {
-    /// Coven enforces administrator authority and publishes the new name.
+    /// Coven checks administrator authority and records the rename on this
+    /// device at once, offline too; sync publishes the new name.
     pub async fn rename_library(
         &self,
         name: &crate::library_name::LibraryName,

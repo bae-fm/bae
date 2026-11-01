@@ -2,7 +2,7 @@ use super::*;
 use crate::types::*;
 
 forward! { async this => {
-    fn create_profile(name: String) -> BridgePersonProfile { Ok(BridgePersonProfile::from_core(this.services.create_profile(&name).await?)) }
+    fn create_profile(name: String) -> () { Ok(this.services.create_profile(&name).await?) }
     fn rename_profile(name: String) -> () { Ok(this.services.rename_profile(&name).await?) }
     fn set_history_sharing(sharing: BridgeSharing) -> () { Ok(this.services.set_history_sharing(sharing.into_core()).await?) }
     fn set_avatar(bytes: Option<Vec<u8>>) -> () { Ok(this.services.set_avatar(bytes).await?) }

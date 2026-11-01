@@ -297,7 +297,6 @@
     <string name="add_device_instructions">Välj ”Lägg till enhet” på den nya enheten och skanna sedan det här eller skriv:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Skapa inbjudan</string>
-    <string name="invite_creating">Skapar inbjudan…</string>
     <string name="invite_title">Inbjudan</string>
     <string name="invite_expires">Går ut %1$s</string>
     <string name="invite_cancel">Avbryt inbjudan</string>
@@ -331,4 +330,7 @@
     <string name="onboarding_saved_code_delete_failed">Det gick inte att radera återställningskoden</string>
     <string name="onboarding_saved_code_removed">Den här återställningskoden är inte längre sparad på den här telefonen.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
+    <string name="members_joining">Går med</string>
+    <string name="members_sharing_access">Delar åtkomst</string>
+    <string name="invite_granting">Biblioteket delas. Koden visas när det här biblioteket har synkroniserats.</string>
 </resources>

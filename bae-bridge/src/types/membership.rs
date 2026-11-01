@@ -251,27 +251,62 @@ pub struct BridgeInvite {
     pub delivery: BridgeInviteDeliveryKind,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
-    /// The code as first shown, to show again.
-    pub code: String,
     pub expires_at: std::time::SystemTime,
+    pub shown: BridgeInviteShown,
+    /// Why coven holds the invite's work, when it does: a refused check or a
+    /// failed grant, which cancelling the invite ends.
+    pub held: Option<crate::BridgePendingWait>,
+}
+/// Where an open invite stands.
+#[derive(Clone, uniffi::Enum)]
+pub enum BridgeInviteShown {
+    /// Sync is granting the invite's access; its code comes once it has.
+    Granting,
+    /// Its code, to show again, and how far its person has come.
+    Code {
+        code: String,
+        progress: BridgeInviteProgress,
+    },
+}
+/// How far an invite whose code can be shown has come.
+#[derive(Clone, uniffi::Enum)]
+pub enum BridgeInviteProgress {
+    /// Waiting for its person's request.
+    Waiting,
     /// A sent invite's checked request, waiting for the admin to approve or
     /// decline; an in-person invite's needs nobody.
-    pub request_to_decide: Option<Arc<crate::BridgeJoinRequest>>,
+    Deciding {
+        request: Arc<crate::BridgeJoinRequest>,
+    },
+    /// Its person is being let in; it can no longer be cancelled.
+    Joining,
 }
 impl BridgeInvite {
-    pub(crate) fn from_core(value: coven::Invite) -> Self {
-        let request_to_decide = bae_core::people::request_to_decide(&value)
-            .cloned()
-            .map(|request| Arc::new(crate::BridgeJoinRequest::new(request)));
+    pub(crate) fn from_core(value: bae_core::people::OpenInvite) -> Self {
+        use bae_core::people::{InviteProgress, InviteShown};
+        let bae_core::people::OpenInvite { invite, held } = value;
+        let shown = match bae_core::people::invite_shown(&invite) {
+            InviteShown::Granting => BridgeInviteShown::Granting,
+            InviteShown::Code { code, progress } => BridgeInviteShown::Code {
+                code,
+                progress: match progress {
+                    InviteProgress::Waiting => BridgeInviteProgress::Waiting,
+                    InviteProgress::Deciding(request) => BridgeInviteProgress::Deciding {
+                        request: Arc::new(crate::BridgeJoinRequest::new(request)),
+                    },
+                    InviteProgress::Joining => BridgeInviteProgress::Joining,
+                },
+            },
+        };
         Self {
-            id: value.id.0.to_string(),
-            member: value.member.0.to_string(),
-            invitee: value.invitee,
-            delivery: BridgeInviteDeliveryKind::from_core(value.delivery),
-            access: BridgeMemberAccess::from_core(value.access),
-            code: value.code,
-            expires_at: value.expires_at,
-            request_to_decide,
+            id: invite.id.0.to_string(),
+            member: invite.member.0.to_string(),
+            invitee: invite.invitee,
+            delivery: BridgeInviteDeliveryKind::from_core(invite.delivery),
+            access: BridgeMemberAccess::from_core(invite.access),
+            expires_at: invite.expires_at,
+            shown,
+            held: held.map(crate::BridgePendingWait::from_core),
         }
     }
 }
@@ -295,17 +330,23 @@ mod tests {
     /// key to delete if nobody uses the invite.
     #[test]
     fn an_invite_carries_its_key_id_and_person() {
-        let invite = BridgeInvite::from_core(coven::Invite {
-            id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
-            member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
-            invitee: Some("Dan".into()),
-            delivery: coven::InviteDeliveryKind::Sent,
-            access: coven::MemberAccess::S3AccessKey {
-                access_key_id: "dan-key".into(),
+        let invite = BridgeInvite::from_core(bae_core::people::OpenInvite {
+            invite: coven::Invite {
+                id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+                member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
+                invitee: Some("Dan".into()),
+                delivery: coven::InviteDeliveryKind::Sent,
+                access: coven::MemberAccess::S3AccessKey {
+                    access_key_id: "dan-key".into(),
+                },
+                expires_at: std::time::UNIX_EPOCH,
+                operation: coven::OperationId(1),
+                stage: coven::InviteStage::Waiting {
+                    code: "code".into(),
+                    request: None,
+                },
             },
-            code: "code".into(),
-            expires_at: std::time::UNIX_EPOCH,
-            request: None,
+            held: None,
         });
         assert_eq!(
             invite.access,
@@ -315,6 +356,10 @@ mod tests {
         );
         assert_eq!(invite.invitee.as_deref(), Some("Dan"));
         assert_eq!(invite.delivery, BridgeInviteDeliveryKind::Sent);
-        assert!(invite.request_to_decide.is_none());
+        assert!(matches!(
+            &invite.shown,
+            BridgeInviteShown::Code { code, progress: BridgeInviteProgress::Waiting } if code == "code"
+        ));
+        assert!(invite.held.is_none());
     }
 }

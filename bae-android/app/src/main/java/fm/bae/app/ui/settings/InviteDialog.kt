@@ -32,7 +32,6 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.S3KeyFields
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInviteAccess
@@ -70,8 +69,7 @@ internal fun InviteDialog(
             error = null
             scope.launch {
                 performBridgeAction(logger, "invite a person", errors, { error = it }) {
-                    val invite = session.appHandle.invitePerson(form.role, form.name, form.access, form.delivery)
-                    onCreated(invite.id)
+                    onCreated(session.appHandle.invitePerson(form.role, form.name, form.access, form.delivery))
                 }
                 busy = false
             }
@@ -131,7 +129,6 @@ private fun InviteFormFields(
     fields: InviteFields,
     input: InviteAccessInput,
     error: DisplayError?,
-    busy: Boolean,
 ) {
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -174,9 +171,6 @@ private fun InviteFormFields(
             )
         }
         error?.let { ErrorDetailDisclosure(it) }
-        if (busy) {
-            WaitingIndicator(text = stringResource(R.string.invite_creating), modifier = Modifier.fillMaxWidth())
-        }
     }
 }
 
@@ -200,7 +194,6 @@ private fun InviteFormDialog(
                 fields = fields,
                 input = input,
                 error = error,
-                busy = busy,
             )
         },
         confirmButton = {

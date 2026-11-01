@@ -155,8 +155,8 @@ async fn bench(
             .map_err(|error| error.to_string())?,
         opening.elapsed()
     );
-    // Removing a device is an administrative change, which needs the
-    // storage connection a sync loop builds; the app always runs one.
+    // Removing a device is an administrative change, which the sync loop
+    // claims; the app always runs one.
     source
         .start_sync()
         .await
@@ -240,10 +240,24 @@ async fn restore_runs(
         let closing = closing.elapsed();
         let removing = if let Some(source) = source {
             let removing = Instant::now();
-            source
+            let (removal, _sign_out) = source
                 .remove_device(device)
                 .await
                 .map_err(|error| format!("run {run}: remove_device failed: {error}"))?;
+            // The write journals the removal; the sync loop claims its slot.
+            if let Some(removal) = removal {
+                let outcome = source
+                    .operation_outcome(removal)
+                    .await
+                    .map_err(|error| format!("run {run}: the removal's outcome: {error}"))?;
+                if let coven::OperationOutcome::Rejected(reason) = outcome {
+                    return Err(format!("run {run}: the removal was refused: {reason:?}"));
+                }
+                source
+                    .write(move |sql| Ok(sql.acknowledge_operation(removal)?))
+                    .await
+                    .map_err(|error| format!("run {run}: acknowledging the removal: {error}"))?;
+            }
             Some(removing.elapsed())
         } else {
             None

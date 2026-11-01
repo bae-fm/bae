@@ -39,7 +39,9 @@ mod import;
 mod library;
 mod musicbrainz;
 mod playback;
+mod profiles;
 mod storage;
+pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
 pub use audio::{assert_captured_matches_reference, filled_sparse_buffer, samples_as_f32};

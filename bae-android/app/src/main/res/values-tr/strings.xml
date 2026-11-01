@@ -298,7 +298,6 @@
     <string name="add_device_instructions">Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:</string>
     <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>
-    <string name="invite_creating">Davet oluşturuluyor…</string>
     <string name="invite_title">Davet</string>
     <string name="invite_expires">Son geçerlilik: %1$s</string>
     <string name="invite_cancel">Daveti iptal et</string>
@@ -333,4 +332,7 @@
     <string name="onboarding_saved_code_delete_failed">Kurtarma kodu silinemedi</string>
     <string name="onboarding_saved_code_removed">Bu kurtarma kodu artık bu telefonda kayıtlı değil.</string>
     <string name="onboarding_saved_library">Kitaplık</string>
+    <string name="members_joining">Katılıyor</string>
+    <string name="members_sharing_access">Erişim paylaşılıyor</string>
+    <string name="invite_granting">Kitaplık paylaşılıyor. Kod, bu kitaplık eşitlendiğinde görünür.</string>
 </resources>
