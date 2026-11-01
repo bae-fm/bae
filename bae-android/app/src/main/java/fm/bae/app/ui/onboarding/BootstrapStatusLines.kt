@@ -1,16 +1,12 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,11 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.StepBar
+import fm.bae.app.ui.components.stepFraction
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeOpenStep
@@ -61,19 +58,17 @@ internal fun StatusLines(
             }
 
             is BridgeBootstrapStatus.Opening -> {
-                StepProgressLine(
+                StepBar(
                     title = context.coreString(openStepKey(status.progress.step)),
-                    done = status.progress.done,
-                    total = status.progress.total,
+                    fraction = stepFraction(status.progress.done, status.progress.total),
                 )
                 emptyList()
             }
 
             is BridgeBootstrapStatus.Loading -> {
-                StepProgressLine(
+                StepBar(
                     title = context.coreString(loadStepKey(status.progress.step)),
-                    done = status.progress.done,
-                    total = status.progress.total,
+                    fraction = stepFraction(status.progress.done, status.progress.total),
                 )
                 emptyList()
             }
@@ -92,31 +87,6 @@ internal fun StatusLines(
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-        )
-    }
-}
-
-/** The step a restore, join or reset is on, over a bar of how much of it is done. */
-@Composable
-private fun StepProgressLine(
-    title: String,
-    done: ULong,
-    total: ULong,
-) {
-    Column(
-        modifier = Modifier.widthIn(max = 360.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
-    ) {
-        Text(
-            text = title,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        LinearProgressIndicator(
-            progress = { if (total == 0uL) 0f else minOf(done, total).toFloat() / total.toFloat() },
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

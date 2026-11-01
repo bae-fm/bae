@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Denne tjenesten tilbyr ikke versjonering.</string>
     <string name="storage_set_up">Konfigurer</string>
     <string name="storage_dropbox_choose">Velg en delt mappe</string>
+    <string name="storage_dropbox_reading">Leser de delte Dropbox-mappene dine…</string>
+    <string name="storage_onedrive_reading">Leser mappene på OneDrive…</string>
+    <string name="storage_onedrive_creating">Oppretter mappen…</string>
     <string name="storage_dropbox_none">Ingen mapper er delt med denne Dropbox-kontoen. Del en mappe i Dropbox, og oppdater deretter.</string>
     <string name="storage_refresh">Oppdater</string>
     <string name="storage_onedrive_new_folder">Ny mappe</string>

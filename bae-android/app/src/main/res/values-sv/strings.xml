@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Den här tjänsten erbjuder inte versionshantering.</string>
     <string name="storage_set_up">Konfigurera</string>
     <string name="storage_dropbox_choose">Välj en delad mapp</string>
+    <string name="storage_dropbox_reading">Läser dina delade Dropbox-mappar…</string>
+    <string name="storage_onedrive_reading">Läser mapparna på din OneDrive…</string>
+    <string name="storage_onedrive_creating">Skapar mappen…</string>
     <string name="storage_dropbox_none">Inga mappar delas med det här Dropbox-kontot. Dela en mapp i Dropbox och uppdatera sedan.</string>
     <string name="storage_refresh">Uppdatera</string>
     <string name="storage_onedrive_new_folder">Ny mapp</string>

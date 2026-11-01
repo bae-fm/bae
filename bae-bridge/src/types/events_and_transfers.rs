@@ -158,6 +158,11 @@ pub enum BridgeFastValue {
     BootstrapStatus {
         status: super::BridgeBootstrapStatus,
     },
+    /// How far a storage setup has come; a stream's one key, `""`, while it
+    /// runs a step.
+    StorageSetupProgress {
+        progress: super::BridgeStorageSetupProgress,
+    },
     /// The step a library's close or removal runs; a stream's one key, `""`,
     /// while it runs one.
     ClosingStep { step: super::BridgeClosingStep },

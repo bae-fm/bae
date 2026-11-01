@@ -252,6 +252,9 @@
     <string name="storage_versioning_unavailable">השירות הזה אינו מציע ניהול גרסאות.</string>
     <string name="storage_set_up">הגדרה</string>
     <string name="storage_dropbox_choose">בחרו תיקייה משותפת</string>
+    <string name="storage_dropbox_reading">קורא את תיקיות ה-Dropbox המשותפות שלך…</string>
+    <string name="storage_onedrive_reading">קורא את התיקיות ב-OneDrive שלך…</string>
+    <string name="storage_onedrive_creating">יוצר את התיקייה…</string>
     <string name="storage_dropbox_none">אין תיקיות שמשותפות עם חשבון ה-Dropbox הזה. שתפו תיקייה ב-Dropbox ואז רעננו.</string>
     <string name="storage_refresh">רענון</string>
     <string name="storage_onedrive_new_folder">תיקייה חדשה</string>

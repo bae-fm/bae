@@ -140,20 +140,22 @@ impl Database {
         device_name: &str,
         access_key: String,
         secret_key: coven::SecretText,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner
             .handle
-            .setup_s3_storage(storage, device_name, access_key, secret_key)
+            .setup_s3_storage(storage, device_name, access_key, secret_key, steps)
             .await
     }
 
     pub(crate) async fn setup_cloudkit_storage(
         &self,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner
             .handle
-            .setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name)
+            .setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps)
             .await
     }
 
@@ -170,10 +172,11 @@ impl Database {
         &self,
         storage: coven::StorageConfig,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner
             .handle
-            .setup_oauth_storage(storage, device_name)
+            .setup_oauth_storage(storage, device_name, steps)
             .await
     }
 

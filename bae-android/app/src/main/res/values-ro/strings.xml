@@ -251,6 +251,9 @@
     <string name="storage_versioning_unavailable">Acest serviciu nu oferă gestionarea versiunilor.</string>
     <string name="storage_set_up">Configurează</string>
     <string name="storage_dropbox_choose">Alege un dosar partajat</string>
+    <string name="storage_dropbox_reading">Se citesc dosarele tale Dropbox partajate…</string>
+    <string name="storage_onedrive_reading">Se citesc dosarele din OneDrive…</string>
+    <string name="storage_onedrive_creating">Se creează dosarul…</string>
     <string name="storage_dropbox_none">Niciun dosar nu este partajat cu acest cont Dropbox. Partajează un dosar în Dropbox, apoi reîmprospătează.</string>
     <string name="storage_refresh">Reîmprospătează</string>
     <string name="storage_onedrive_new_folder">Dosar nou</string>

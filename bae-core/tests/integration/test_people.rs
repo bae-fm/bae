@@ -251,7 +251,7 @@ impl Household {
         match storage.config().oauth_access() {
             Some(access) => {
                 owner.authenticate(access).await.unwrap();
-                Box::pin(owner.setup_oauth_storage(storage.config(), "Owner Device"))
+                Box::pin(owner.setup_oauth_storage(storage.config(), "Owner Device", &|_| ()))
                     .await
                     .unwrap();
             }
@@ -261,6 +261,7 @@ impl Household {
                     "Owner Device",
                     "owner-key".into(),
                     coven::SecretText::new("owner-secret".into()),
+                    &|_| (),
                 ))
                 .await
                 .unwrap();

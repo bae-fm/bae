@@ -115,6 +115,7 @@ async fn restore_cost(library: Library) {
             "Ana's Mac",
             "key".into(),
             SecretText::new("secret".into()),
+            &|_| (),
         )
         .await
         .unwrap();

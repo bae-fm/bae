@@ -248,6 +248,9 @@
     <string name="storage_versioning_unavailable">このサービスはバージョニングに対応していません。</string>
     <string name="storage_set_up">設定</string>
     <string name="storage_dropbox_choose">共有フォルダを選択</string>
+    <string name="storage_dropbox_reading">共有の Dropbox フォルダを読み込んでいます…</string>
+    <string name="storage_onedrive_reading">OneDrive のフォルダを読み込んでいます…</string>
+    <string name="storage_onedrive_creating">フォルダを作成しています…</string>
     <string name="storage_dropbox_none">この Dropbox アカウントと共有されているフォルダはありません。Dropbox でフォルダを共有してから、更新してください。</string>
     <string name="storage_refresh">更新</string>
     <string name="storage_onedrive_new_folder">新規フォルダ</string>

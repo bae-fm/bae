@@ -98,12 +98,13 @@ async fn signing_in_again_to_s3_storage_presents_no_sign_in() {
             "Test Device",
             "test-key".into(),
             coven::SecretText::new("test-secret".into()),
+            &|_| (),
         )
         .await
         .unwrap();
 
     let error = manager
-        .sign_in_again("Test Device")
+        .sign_in_again("Test Device", &|_| ())
         .await
         .expect_err("an S3 library takes a new access key instead");
 

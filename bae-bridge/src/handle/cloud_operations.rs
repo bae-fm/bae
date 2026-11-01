@@ -20,8 +20,9 @@ forward! { async this => {
 forward! {
     #[cfg(feature = "cloudkit")]
     async this => {
-        fn use_cloudkit(device_name: String) -> crate::types::BridgeStorageSetup {
-            Ok(crate::types::BridgeStorageSetup::from_core(this.services.use_cloudkit(&device_name).await?))
+        fn use_cloudkit(device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
+            let steps = crate::screens::SetupSteps::of(setup);
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.use_cloudkit(&device_name, &|progress| steps.storage(progress)).await?))
         }
     }
 }
@@ -31,11 +32,13 @@ forward! {
         fn sign_in(provider: crate::types::BridgeCloudProvider) -> () {
             Ok(this.services.sign_in(provider.into_core()).await?)
         }
-        fn sign_in_again(device_name: String) -> crate::types::BridgeStorageSetup {
-            Ok(crate::types::BridgeStorageSetup::from_core(this.services.sign_in_again(&device_name).await?))
+        fn sign_in_again(device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
+            let steps = crate::screens::SetupSteps::of(setup);
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.sign_in_again(&device_name, &|progress| steps.storage(progress)).await?))
         }
-        fn setup_oauth_storage(location: crate::types::BridgeStorageLocation, device_name: String) -> crate::types::BridgeStorageSetup {
-            Ok(crate::types::BridgeStorageSetup::from_core(this.services.setup_oauth_storage(location.into_core()?, &device_name).await?))
+        fn setup_oauth_storage(location: crate::types::BridgeStorageLocation, device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
+            let steps = crate::screens::SetupSteps::of(setup);
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.setup_oauth_storage(location.into_core()?, &device_name, &|progress| steps.storage(progress)).await?))
         }
         fn onedrive_root() -> crate::types::BridgeStorageFolder {
             Ok(crate::types::BridgeStorageFolder::from_core(this.services.onedrive_root().await?))

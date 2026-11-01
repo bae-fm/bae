@@ -301,6 +301,9 @@
     <string name="storage_versioning_unavailable">This service doesn’t offer versioning.</string>
     <string name="storage_set_up">Set up</string>
     <string name="storage_dropbox_choose">Choose a shared folder</string>
+    <string name="storage_dropbox_reading">Reading your shared Dropbox folders…</string>
+    <string name="storage_onedrive_reading">Reading the folders on your OneDrive…</string>
+    <string name="storage_onedrive_creating">Making the folder…</string>
     <string name="storage_dropbox_none">No folders are shared with this Dropbox account. Share a folder in Dropbox, then refresh.</string>
     <string name="storage_refresh">Refresh</string>
     <string name="storage_onedrive_new_folder">New folder</string>

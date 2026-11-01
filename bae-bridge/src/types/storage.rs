@@ -230,6 +230,92 @@ impl BridgeStorageSetup {
     }
 }
 
+/// A step of setting up storage, in the order they run. Mirrors
+/// `coven::StorageSetupStep`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeStorageSetupStep {
+    /// S3, creating the library where member keys reach a whole bucket:
+    /// checking the bucket holds nothing else.
+    CheckingBucket,
+    /// S3: probing the service for the settings the location needs.
+    DetectingSettings,
+    /// iCloud, creating the library: reading the account and saving its zone.
+    PreparingZone,
+    /// Dropbox or OneDrive: reading the signed-in account's name.
+    ReadingAccount,
+    /// Connecting and checking the provider with a test object.
+    Connecting,
+    /// Creating the library in storage.
+    CreatingStore,
+    /// Reconnecting: loading what other devices published, a step of loading.
+    Loading { step: crate::types::BridgeLoadStep },
+    /// Reconnecting with changed access: publishing it.
+    RecordingAccess,
+}
+
+/// How far a storage setup has come: its step, and how many of the step's
+/// units are done out of its total. A step other than `Loading` is one unit.
+/// Its stream's one key, `""`, holds it while a step runs.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeStorageSetupProgress {
+    pub step: BridgeStorageSetupStep,
+    pub done: u64,
+    pub total: u64,
+}
+
+impl BridgeStorageSetupProgress {
+    pub(crate) fn from_core(value: coven::Progress<coven::StorageSetupStep>) -> Self {
+        use coven::StorageSetupStep as Step;
+        Self {
+            step: match value.step {
+                Step::CheckingBucket => BridgeStorageSetupStep::CheckingBucket,
+                Step::DetectingSettings => BridgeStorageSetupStep::DetectingSettings,
+                Step::PreparingZone => BridgeStorageSetupStep::PreparingZone,
+                Step::ReadingAccount => BridgeStorageSetupStep::ReadingAccount,
+                Step::Connecting => BridgeStorageSetupStep::Connecting,
+                Step::CreatingStore => BridgeStorageSetupStep::CreatingStore,
+                Step::Loading(step) => BridgeStorageSetupStep::Loading {
+                    step: crate::types::BridgeLoadStep::from_core(step),
+                },
+                Step::RecordingAccess => BridgeStorageSetupStep::RecordingAccess,
+            },
+            done: value.done,
+            total: value.total,
+        }
+    }
+}
+
+/// Localization key for a storage setup's step, the line over its progress
+/// bar; a loading step's is the load step's own. The UI resolves it against
+/// the `Core` table.
+#[uniffi::export]
+pub fn bridge_storage_setup_step_key(step: BridgeStorageSetupStep) -> String {
+    match step {
+        BridgeStorageSetupStep::CheckingBucket => {
+            "core.library.storage_setup_step.checking_bucket".to_string()
+        }
+        BridgeStorageSetupStep::DetectingSettings => {
+            "core.library.storage_setup_step.detecting_settings".to_string()
+        }
+        BridgeStorageSetupStep::PreparingZone => {
+            "core.library.storage_setup_step.preparing_zone".to_string()
+        }
+        BridgeStorageSetupStep::ReadingAccount => {
+            "core.library.storage_setup_step.reading_account".to_string()
+        }
+        BridgeStorageSetupStep::Connecting => {
+            "core.library.storage_setup_step.connecting".to_string()
+        }
+        BridgeStorageSetupStep::CreatingStore => {
+            "core.library.storage_setup_step.creating_store".to_string()
+        }
+        BridgeStorageSetupStep::Loading { step } => crate::types::bridge_load_step_key(step),
+        BridgeStorageSetupStep::RecordingAccess => {
+            "core.library.storage_setup_step.recording_access".to_string()
+        }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageFolder {
     pub name: String,

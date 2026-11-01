@@ -250,6 +250,9 @@
     <string name="storage_versioning_unavailable">Bu hizmet sürüm oluşturma sunmuyor.</string>
     <string name="storage_set_up">Ayarla</string>
     <string name="storage_dropbox_choose">Paylaşılan bir klasör seçin</string>
+    <string name="storage_dropbox_reading">Paylaşılan Dropbox klasörleriniz okunuyor…</string>
+    <string name="storage_onedrive_reading">OneDrive\'ınızdaki klasörler okunuyor…</string>
+    <string name="storage_onedrive_creating">Klasör oluşturuluyor…</string>
     <string name="storage_dropbox_none">Bu Dropbox hesabıyla paylaşılan klasör yok. Dropbox’ta bir klasör paylaşın, ardından yenileyin.</string>
     <string name="storage_refresh">Yenile</string>
     <string name="storage_onedrive_new_folder">Yeni klasör</string>

@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Αυτή η υπηρεσία δεν προσφέρει διατήρηση εκδόσεων.</string>
     <string name="storage_set_up">Ρύθμιση</string>
     <string name="storage_dropbox_choose">Επιλέξτε έναν κοινόχρηστο φάκελο</string>
+    <string name="storage_dropbox_reading">Ανάγνωση των κοινόχρηστων φακέλων σας στο Dropbox…</string>
+    <string name="storage_onedrive_reading">Ανάγνωση των φακέλων στο OneDrive σας…</string>
+    <string name="storage_onedrive_creating">Δημιουργία του φακέλου…</string>
     <string name="storage_dropbox_none">Δεν υπάρχουν φάκελοι κοινόχρηστοι με αυτόν τον λογαριασμό Dropbox. Μοιραστείτε έναν φάκελο στο Dropbox και ανανεώστε.</string>
     <string name="storage_refresh">Ανανέωση</string>
     <string name="storage_onedrive_new_folder">Νέος φάκελος</string>

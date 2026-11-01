@@ -36,7 +36,7 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     // Nothing listens on port 1, so the probe fails with connection-refused
     // before `save_s3_config` reaches any of its persisting steps.
     let err = runtime
-        .block_on(lm.save_s3_config(unreachable_s3_config(), "Test Device"))
+        .block_on(lm.save_s3_config(unreachable_s3_config(), "Test Device", &|_| ()))
         .expect_err("an unreachable endpoint must fail the probe");
     // An unreachable backend is the network case within the cloud-setup
     // category, distinct from the authentication and permission cases.
@@ -65,9 +65,11 @@ fn save_s3_config_survives_a_narrow_host_stack() {
                     .stack_size(512 * 1024)
                     .spawn_scoped(scope, move || {
                         runtime
-                            .block_on(
-                                manager.save_s3_config(unreachable_s3_config(), "Test Device"),
-                            )
+                            .block_on(manager.save_s3_config(
+                                unreachable_s3_config(),
+                                "Test Device",
+                                &|_| (),
+                            ))
                             .expect_err("an unreachable endpoint must fail the probe");
                     })
                     .expect("spawn narrow S3 host")

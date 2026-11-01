@@ -112,6 +112,7 @@ async fn connected_library(
             "Device",
             "owner-key".into(),
             coven::SecretText::new("owner-secret".into()),
+            &|_| (),
         )
         .await
         .unwrap();

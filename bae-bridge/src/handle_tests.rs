@@ -291,6 +291,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
                             profile: None,
                         },
                         "Test device".into(),
+                        None,
                     ))
                     .err()
                     .expect("an unreachable endpoint must fail the probe");

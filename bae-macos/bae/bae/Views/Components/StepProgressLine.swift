@@ -22,6 +22,16 @@ extension BridgeClosingStep: ProgressStep {
     var fraction: Double? { nil }
 }
 
+extension BridgeStorageSetupProgress: ProgressStep {
+    var title: String {
+        localizedCoreString(bridgeStorageSetupStepKey(step: step))
+    }
+    /// A step of one unit moves without a count; loading's steps count.
+    var fraction: Double? {
+        total > 1 ? Double(done) / Double(total) : nil
+    }
+}
+
 extension BridgeSetupProgress: ProgressStep {
     var title: String { localizedCoreString(bridgeSetupStepKey(step: step)) }
     var fraction: Double? {

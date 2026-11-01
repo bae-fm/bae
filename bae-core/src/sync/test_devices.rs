@@ -184,6 +184,7 @@ impl Library {
                 "Device A",
                 "owner-key".into(),
                 coven::SecretText::new("owner-secret".into()),
+                &|_| (),
             )
             .await
             .unwrap();

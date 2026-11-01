@@ -193,6 +193,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
                 "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
+                &|_| (),
             )
             .await
             .unwrap();

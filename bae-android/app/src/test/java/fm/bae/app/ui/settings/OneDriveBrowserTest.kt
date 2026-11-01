@@ -20,6 +20,7 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -188,6 +189,7 @@ class OneDriveBrowserTest {
         override suspend fun signInAgain(
             handle: AppHandleInterface,
             deviceName: String,
+            setup: BridgeLibrarySetup,
         ): BridgeStorageSetup = error("not used")
 
         override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = error("not used")
@@ -196,6 +198,7 @@ class OneDriveBrowserTest {
             handle: AppHandleInterface,
             location: BridgeStorageLocation,
             deviceName: String,
+            setup: BridgeLibrarySetup,
         ): BridgeStorageSetup = error("not used")
     }
 }

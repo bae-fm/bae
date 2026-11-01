@@ -91,12 +91,15 @@ impl LibraryManager {
         Ok(async move { answer.await.into() })
     }
 
+    /// Set S3 up as the library's storage, telling `steps` each step coven
+    /// runs.
     pub async fn save_s3_config(
         &self,
         data: S3ConfigData,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.save_s3_config(data, device_name).await
+        self.sync.save_s3_config(data, device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -111,8 +114,9 @@ impl LibraryManager {
     pub async fn sign_in_again(
         &self,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.sign_in_again(device_name).await
+        self.sync.sign_in_again(device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -120,8 +124,11 @@ impl LibraryManager {
         &self,
         storage: coven::StorageConfig,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.setup_oauth_storage(storage, device_name).await
+        self.sync
+            .setup_oauth_storage(storage, device_name, steps)
+            .await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -154,8 +161,9 @@ impl LibraryManager {
     pub async fn use_cloudkit(
         &self,
         device_name: &str,
+        steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.use_cloudkit(device_name).await
+        self.sync.use_cloudkit(device_name, steps).await
     }
 
     pub async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {

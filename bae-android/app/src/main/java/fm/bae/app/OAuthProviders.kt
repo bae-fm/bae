@@ -4,6 +4,7 @@ import android.content.Context
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
@@ -32,11 +33,13 @@ interface OAuthProviders {
 
     /**
      * Sign in again to the open library's provider when its sync asks, with the
-     * access its location needs, and reconnect that location under [deviceName].
+     * access its location needs, and reconnect that location under [deviceName],
+     * each step written into [setup]'s stream.
      */
     suspend fun signInAgain(
         handle: AppHandleInterface,
         deviceName: String,
+        setup: BridgeLibrarySetup,
     ): BridgeStorageSetup
 
     /** The Dropbox folders shared with the signed-in account, each a place a library can live. */
@@ -58,11 +61,12 @@ interface OAuthProviders {
         name: String,
     ): BridgeStorageFolder
 
-    /** Make [location] the open library's cloud home. */
+    /** Make [location] the open library's cloud home, each step written into [setup]'s stream. */
     suspend fun setUpStorage(
         handle: AppHandleInterface,
         location: BridgeStorageLocation,
         deviceName: String,
+        setup: BridgeLibrarySetup,
     ): BridgeStorageSetup
 
     companion object {

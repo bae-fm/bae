@@ -342,7 +342,8 @@ private func makeAppService(
             discogsUsable: false
         ),
         seed: emptySeed,
-        deviceName: "Test Mac"
+        deviceName: "Test Mac",
+        host: TestHost.shared
     )
 }
 

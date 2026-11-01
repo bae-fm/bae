@@ -254,6 +254,9 @@
     <string name="storage_versioning_unavailable">Tato služba verzování nenabízí.</string>
     <string name="storage_set_up">Nastavit</string>
     <string name="storage_dropbox_choose">Vyberte sdílenou složku</string>
+    <string name="storage_dropbox_reading">Načítají se vaše sdílené složky Dropboxu…</string>
+    <string name="storage_onedrive_reading">Načítají se složky na vašem OneDrivu…</string>
+    <string name="storage_onedrive_creating">Vytváří se složka…</string>
     <string name="storage_dropbox_none">S tímto účtem Dropbox nejsou sdíleny žádné složky. Nasdílejte složku v Dropboxu a pak obnovte.</string>
     <string name="storage_refresh">Obnovit</string>
     <string name="storage_onedrive_new_folder">Nová složka</string>

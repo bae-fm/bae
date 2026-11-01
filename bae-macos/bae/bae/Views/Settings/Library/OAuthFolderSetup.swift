@@ -26,11 +26,14 @@
             SetupStep(
                 actionTitle: "Connect",
                 ready: browser.target != nil,
-                operation: { [cloudSyncSetup, browser] in
+                operation: { [cloudSyncSetup, browser] setup in
                     guard let target = browser.target else {
                         preconditionFailure("Connect needs a chosen folder")
                     }
-                    return try await cloudSyncSetup.connect(target.location)
+                    return try await cloudSyncSetup.connect(
+                        target.location,
+                        setup
+                    )
                 },
                 onConnected: onConnected
             ) {

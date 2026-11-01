@@ -250,6 +250,9 @@
     <string name="storage_versioning_unavailable">Тази услуга не предлага версии.</string>
     <string name="storage_set_up">Настройване</string>
     <string name="storage_dropbox_choose">Изберете споделена папка</string>
+    <string name="storage_dropbox_reading">Четене на споделените ви папки в Dropbox…</string>
+    <string name="storage_onedrive_reading">Четене на папките във вашия OneDrive…</string>
+    <string name="storage_onedrive_creating">Папката се създава…</string>
     <string name="storage_dropbox_none">Няма папки, споделени с този акаунт в Dropbox. Споделете папка в Dropbox и опреснете.</string>
     <string name="storage_refresh">Опресняване</string>
     <string name="storage_onedrive_new_folder">Нова папка</string>

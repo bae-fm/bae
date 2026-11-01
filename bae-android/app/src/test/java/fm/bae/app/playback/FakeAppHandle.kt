@@ -35,6 +35,7 @@ import uniffi.bae_bridge.BridgeInviteDelivery
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
@@ -412,6 +413,7 @@ internal open class FakeAppHandle(
     override suspend fun saveSyncConfig(
         configData: BridgeSaveSyncConfig,
         deviceName: String,
+        setup: BridgeLibrarySetup?,
     ): BridgeStorageSetup = unfaked("saveSyncConfig")
 
     override fun subscribeArtistSearch(): ArtistSearchSubscription = unfaked("subscribeArtistSearch")

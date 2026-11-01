@@ -140,6 +140,9 @@
         /// previews never touch cloud storage.
         static func previewSync() -> Sync {
             Sync(
+                storageSetupSteps: {
+                    StorageSetupSteps(host: BaeHost.preview())
+                },
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(
                         code: recoveryCode,

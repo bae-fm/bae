@@ -12,6 +12,7 @@ import org.json.JSONObject
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOAuthClients
 import uniffi.bae_bridge.BridgeOAuthPresentationException
 import uniffi.bae_bridge.BridgeOAuthRedirects
@@ -90,7 +91,8 @@ class OAuthSignIn private constructor(
     override suspend fun signInAgain(
         handle: AppHandleInterface,
         deviceName: String,
-    ): BridgeStorageSetup = handle.signInAgain(deviceName)
+        setup: BridgeLibrarySetup,
+    ): BridgeStorageSetup = handle.signInAgain(deviceName, setup)
 
     override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
 
@@ -111,7 +113,8 @@ class OAuthSignIn private constructor(
         handle: AppHandleInterface,
         location: BridgeStorageLocation,
         deviceName: String,
-    ): BridgeStorageSetup = handle.setupOauthStorage(location, deviceName)
+        setup: BridgeLibrarySetup,
+    ): BridgeStorageSetup = handle.setupOauthStorage(location, deviceName, setup)
 
     companion object {
         /**

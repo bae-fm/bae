@@ -19,7 +19,7 @@ async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
 
 #[cfg(feature = "test-utils")]
 async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
-    manager.database.setup_s3_storage(manager.storage.config(), "Test Device", "test-key".into(), coven::SecretText::new("test-secret".into())).await.unwrap();
+    manager.database.setup_s3_storage(manager.storage.config(), "Test Device", "test-key".into(), coven::SecretText::new("test-secret".into()), &|_| ()).await.unwrap();
     let mut status = manager.database.subscribe_sync_status();
     crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Synced { .. })).await;
     manager.storage.clone()

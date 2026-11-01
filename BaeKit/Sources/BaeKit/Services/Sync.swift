@@ -3,9 +3,12 @@ import Foundation
 public final class Sync: Sendable, Observable {
     public let disconnectCloudProvider: @Sendable () async throws -> Void
     /// Connect an S3 bucket as this library's cloud home, registering this
-    /// device under its name.
+    /// device under its name, each step written into the setup's stream.
     public let saveSyncConfig:
-        @Sendable (BridgeSaveSyncConfig) async throws -> BridgeStorageSetup
+        @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup) async throws ->
+            BridgeStorageSetup
+    /// A new storage setup's steps, for the view that shows the setup.
+    public let storageSetupSteps: @Sendable () -> StorageSetupSteps
     public let generateRestoreCode:
         @Sendable () async throws -> BridgeRestoreCodeShare
     /// Add Device's code, with the watch for the person's device that joins
@@ -52,8 +55,13 @@ public final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         saveSyncConfig:
-            @escaping @Sendable (BridgeSaveSyncConfig) async throws ->
-            BridgeStorageSetup = { _ in throw StubError.notImplemented },
+            @escaping @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup)
+            async throws -> BridgeStorageSetup = { _, _ in
+                throw StubError.notImplemented
+            },
+        storageSetupSteps: @escaping @Sendable () -> StorageSetupSteps = {
+            preconditionFailure("this Sync sets no storage up")
+        },
         generateRestoreCode:
             @escaping @Sendable () async throws -> BridgeRestoreCodeShare = {
                 throw StubError.notImplemented
@@ -133,6 +141,7 @@ public final class Sync: Sendable, Observable {
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
+        self.storageSetupSteps = storageSetupSteps
         self.generateRestoreCode = generateRestoreCode
         self.addDevice = addDevice
         self.removeMember = removeMember
@@ -157,9 +166,12 @@ public final class Sync: Sendable, Observable {
         self.pendingActions = pendingActions
     }
 
+    /// The production wiring over the open library's handle; a storage
+    /// setup's steps are pulled on `host`'s runtime.
     public convenience init(
         handle: any AppHandleProtocol,
-        deviceName: String
+        deviceName: String,
+        host: BridgeHost
     ) {
         self.init(
             disconnectCloudProvider: {
@@ -168,9 +180,11 @@ public final class Sync: Sendable, Observable {
             saveSyncConfig: {
                 try await handle.saveSyncConfig(
                     configData: $0,
-                    deviceName: deviceName
+                    deviceName: deviceName,
+                    setup: $1
                 )
             },
+            storageSetupSteps: { StorageSetupSteps(host: host) },
             generateRestoreCode: { try await handle.generateRestoreCode() },
             addDevice: { try await handle.addDevice() },
             removeMember: { try await handle.removeMember(member: $0) },

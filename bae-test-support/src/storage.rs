@@ -58,6 +58,7 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
                 secret_key: "test-secret".into(),
             },
             "Test Device",
+            &|_| (),
         )
         .await
         .unwrap();

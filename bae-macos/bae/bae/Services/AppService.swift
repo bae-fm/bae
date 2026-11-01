@@ -67,7 +67,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         uiStore: UiStore,
         config: BridgeConfig,
         seed: LibrarySessionSeed,
-        deviceName: String
+        deviceName: String,
+        host: BridgeHost
     ) {
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(
@@ -88,7 +89,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let queue = Queue(handle: appHandle)
         let mediaPaths = MediaPaths(handle: appHandle)
         let imageStore = ImageStore(handle: appHandle)
-        let sync = Sync(handle: appHandle, deviceName: deviceName)
+        let sync = Sync(handle: appHandle, deviceName: deviceName, host: host)
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
         let importStore = ImportStore()

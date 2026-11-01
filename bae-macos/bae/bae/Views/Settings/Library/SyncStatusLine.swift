@@ -31,6 +31,9 @@ struct SyncStatusLine: View {
     private var sheet: PendingActionSheet?
     @State
     private var reconnectTask: Task<Void, Never>?
+    /// The steps of the reconnect a sign-in runs; nil while none runs.
+    @State
+    private var signInSteps: StorageSetupSteps?
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -57,6 +60,9 @@ struct SyncStatusLine: View {
                 location: location,
                 onDismiss: { self.sheet = nil }
             )
+        }
+        if let signInSteps {
+            StepProgressLine(steps: signInSteps.steps) { EmptyView() }
         }
         if let error = status.error {
             ErrorDetailDisclosure(error: error)
@@ -118,7 +124,10 @@ struct SyncStatusLine: View {
             sheet = .s3Key
         case .accountSignIn:
             #if BAE_OAUTH_PROVIDERS
-                _ = try await cloudSyncSetup.signInAgain()
+                let steps = sync.storageSetupSteps()
+                signInSteps = steps
+                defer { signInSteps = nil }
+                _ = try await cloudSyncSetup.signInAgain(steps.setup)
             #else
                 preconditionFailure("\(provider) sign-in needs the OAuth build")
             #endif
@@ -262,6 +271,9 @@ private struct S3KeySheet: View {
     private var secretKey = ""
     @State
     private var task: Task<Void, Never>?
+    /// The running reconnect's steps; nil while none runs.
+    @State
+    private var steps: StorageSetupSteps?
     @State
     private var error: DisplayError?
 
@@ -276,6 +288,10 @@ private struct S3KeySheet: View {
                 }
             }
             .formStyle(.grouped)
+            if let steps {
+                StepProgressLine(steps: steps.steps) { EmptyView() }
+                    .padding(.horizontal)
+            }
             if let error {
                 ErrorDetailDisclosure(error: error)
                     .padding(.horizontal)
@@ -303,10 +319,15 @@ private struct S3KeySheet: View {
             secretKey: secretKey
         )
         error = nil
+        let running = sync.storageSetupSteps()
+        steps = running
         task = Task {
-            defer { task = nil }
+            defer {
+                task = nil
+                steps = nil
+            }
             do {
-                _ = try await sync.saveSyncConfig(config)
+                _ = try await sync.saveSyncConfig(config, running.setup)
                 onDismiss()
             }
             catch is CancellationError {

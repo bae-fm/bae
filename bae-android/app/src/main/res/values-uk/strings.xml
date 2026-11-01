@@ -254,6 +254,9 @@
     <string name="storage_versioning_unavailable">Ця служба не підтримує керування версіями.</string>
     <string name="storage_set_up">Налаштувати</string>
     <string name="storage_dropbox_choose">Виберіть спільну папку</string>
+    <string name="storage_dropbox_reading">Читання ваших спільних папок Dropbox…</string>
+    <string name="storage_onedrive_reading">Читання папок у вашому OneDrive…</string>
+    <string name="storage_onedrive_creating">Створення папки…</string>
     <string name="storage_dropbox_none">З цим обліковим записом Dropbox не поширено жодної папки. Поширте папку в Dropbox, а потім оновіть.</string>
     <string name="storage_refresh">Оновити</string>
     <string name="storage_onedrive_new_folder">Нова папка</string>

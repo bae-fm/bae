@@ -74,6 +74,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
                 "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
+                &|_| (),
             )
             .await
             .unwrap();

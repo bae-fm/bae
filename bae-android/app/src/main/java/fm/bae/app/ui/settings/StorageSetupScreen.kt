@@ -26,18 +26,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.StorageSetupProgress
 import fm.bae.app.deviceName
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -48,10 +51,13 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeStorageSetup
+import uniffi.bae_bridge.BridgeStorageSetupProgress
 import uniffi.bae_bridge.availableCloudProviders
 
 private val logger = BaeLogger("bae.StorageSetupScreen")
@@ -271,17 +277,54 @@ private fun ColumnScope.SetupDone(
     PrimaryButton(onClick = onDone) { Text(stringResource(R.string.done)) }
 }
 
-/** Run a setup step that ends in a storage setup, reporting its failure through [onError]. */
-internal suspend fun runSetup(
-    context: Context,
-    operation: String,
+/**
+ * Runs a screen's storage setup calls: each one's steps are [steps] while it
+ * runs, pulled in [scope]; its failure goes to [onError] and the setup it
+ * ends in to [onSetUp].
+ */
+internal class StorageSetupRunner(
+    private val context: Context,
+    private val session: OpenLibrary,
+    private val scope: CoroutineScope,
+    private val onError: (DisplayError?) -> Unit,
+    private val onSetUp: (BridgeStorageSetup) -> Unit,
+) {
+    /** The running setup's steps; null while none runs. */
+    var steps by mutableStateOf<LatestSource<BridgeStorageSetupProgress>?>(null)
+        private set
+
+    /** Run [setUp], named [operation] in the log, under this device's name. */
+    suspend fun run(
+        operation: String,
+        setUp: suspend (deviceName: String, setup: BridgeLibrarySetup) -> BridgeStorageSetup,
+    ) {
+        var result: BridgeStorageSetup? = null
+        StorageSetupProgress((context.applicationContext as BaeApp).host, scope, session.bugs).use { progress ->
+            steps = progress.steps
+            try {
+                performBridgeAction(logger, operation, LocaleErrorDisplays(context), onError) {
+                    result = setUp(deviceName(context), progress.setup)
+                }
+            } finally {
+                steps = null
+            }
+        }
+        result?.let(onSetUp)
+    }
+}
+
+/** A storage setup runner for [session]'s screen, reporting to the latest [onError] and [onSetUp]. */
+@Composable
+internal fun rememberStorageSetupRunner(
+    session: OpenLibrary,
     onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
-    setUp: suspend (deviceName: String) -> BridgeStorageSetup,
-) {
-    var result: BridgeStorageSetup? = null
-    performBridgeAction(logger, operation, LocaleErrorDisplays(context), onError) {
-        result = setUp(deviceName(context))
+): StorageSetupRunner {
+    val context = LocalContext.current
+    val scope = rememberScreenScope()
+    val latestError by rememberUpdatedState(onError)
+    val latestSetUp by rememberUpdatedState(onSetUp)
+    return remember(session) {
+        StorageSetupRunner(context, session, scope, { latestError(it) }, { latestSetUp(it) })
     }
-    result?.let(onSetUp)
 }

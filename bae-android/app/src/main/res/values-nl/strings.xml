@@ -250,6 +250,9 @@
     <string name="storage_versioning_unavailable">Deze dienst biedt geen versiebeheer.</string>
     <string name="storage_set_up">Instellen</string>
     <string name="storage_dropbox_choose">Kies een gedeelde map</string>
+    <string name="storage_dropbox_reading">Je gedeelde Dropbox-mappen worden gelezen…</string>
+    <string name="storage_onedrive_reading">Mappen op je OneDrive worden gelezen…</string>
+    <string name="storage_onedrive_creating">Map wordt gemaakt…</string>
     <string name="storage_dropbox_none">Er zijn geen mappen gedeeld met dit Dropbox-account. Deel een map in Dropbox en vernieuw daarna.</string>
     <string name="storage_refresh">Vernieuwen</string>
     <string name="storage_onedrive_new_folder">Nieuwe map</string>

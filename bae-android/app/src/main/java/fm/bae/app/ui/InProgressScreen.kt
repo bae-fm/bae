@@ -5,11 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +27,9 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.OpenProgressLine
+import fm.bae.app.ui.components.StepBar
 import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
@@ -117,28 +117,14 @@ private fun SetupStepScreen(steps: LatestSource<BridgeSetupProgress>) {
     val context = LocalContext.current
     val progress by remember(steps) { steps.changes() }.collectAsState(initial = null)
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            val shown = progress
-            if (shown == null) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                Text(
-                    text = context.coreString(bridgeSetupStepKey(shown.step)),
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (shown.total > 0uL) {
-                    LinearProgressIndicator(
-                        progress = { minOf(shown.done, shown.total).toFloat() / shown.total.toFloat() },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-            }
+        val shown = progress
+        if (shown == null) {
+            CircularProgressIndicator()
+        } else {
+            StepBar(
+                title = context.coreString(bridgeSetupStepKey(shown.step)),
+                fraction = stepFraction(shown.done, shown.total),
+            )
         }
     }
 }

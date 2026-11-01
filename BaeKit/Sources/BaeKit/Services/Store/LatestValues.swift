@@ -515,6 +515,28 @@ extension LatestStream where Value == BridgeBootstrapStatus {
     }
 }
 
+extension LatestStream where Value == BridgeStorageSetupProgress {
+    /// How far a storage setup has come, while it runs a step; a preview's
+    /// holds `value` and nothing feeds it.
+    public static func storageSetupProgress(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .storageSetupProgress(let progress) = $0 {
+                progress
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the steps of the storage setup `setup` is handed to.
+    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
+        fed { setup.feedSetupSteps() }
+    }
+}
+
 extension LatestStream where Value == BridgeClosingStep {
     /// The step a library's close runs, while it runs one; a preview's holds
     /// `value` and nothing feeds it.

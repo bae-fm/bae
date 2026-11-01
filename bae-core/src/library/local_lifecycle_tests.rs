@@ -53,6 +53,7 @@ impl Home {
                 "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
+                &|_| (),
             )
             .await
             .unwrap();

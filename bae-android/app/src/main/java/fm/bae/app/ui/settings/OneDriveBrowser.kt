@@ -49,8 +49,11 @@ internal class OneDriveBrowser(
     var failure by mutableStateOf<OneDriveFailure?>(null)
         private set
 
-    /** A move or the setup is in flight; nothing else can start. */
-    var busy by mutableStateOf(false)
+    /** What is in flight, a move, a new folder or the setup; while one is, nothing else can start. */
+    var work by mutableStateOf<OneDriveWork?>(null)
+
+    /** Whether anything is in flight. */
+    val busy: Boolean get() = work != null
 
     suspend fun openRoot() {
         move("open the OneDrive root", ::openRoot) {
@@ -87,7 +90,7 @@ internal class OneDriveBrowser(
         name: String,
     ) {
         var created: BridgeStorageFolder? = null
-        step("create a OneDrive folder", { create(from, name) }) {
+        step(OneDriveWork.CREATING, "create a OneDrive folder", { create(from, name) }) {
             created = providers.createOneDriveFolder(handle, from.folder.location, name)
         }
         created?.let { open(from, it) }
@@ -98,19 +101,32 @@ internal class OneDriveBrowser(
         retry: suspend () -> Unit,
         load: suspend () -> OneDriveListing,
     ) {
-        step(operation, retry) { shown = load() }
+        step(OneDriveWork.LISTING, operation, retry) { shown = load() }
     }
 
     private suspend fun step(
+        work: OneDriveWork,
         operation: String,
         retry: suspend () -> Unit,
         action: suspend () -> Unit,
     ) {
-        busy = true
+        this.work = work
         failure = null
         performBridgeAction(logger, operation, errors, { error -> failure = OneDriveFailure(error, retry) }) {
             action()
         }
-        busy = false
+        this.work = null
     }
+}
+
+/** What a OneDrive folder choice has in flight. */
+internal enum class OneDriveWork {
+    /** Listing a folder's folders. */
+    LISTING,
+
+    /** Making a new folder. */
+    CREATING,
+
+    /** Setting the folder shown up as the library's cloud home. */
+    SETTING_UP,
 }

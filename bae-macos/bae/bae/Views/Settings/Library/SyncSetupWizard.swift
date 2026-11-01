@@ -199,7 +199,7 @@ struct SyncSetupWizard: View {
             SetupStep(
                 actionTitle: "Use iCloud",
                 ready: true,
-                operation: { try await cloudSyncSetup.useCloudKit() },
+                operation: { try await cloudSyncSetup.useCloudKit($0) },
                 onConnected: onConnected,
                 fields: {
                     Section {
@@ -217,17 +217,24 @@ struct SyncSetupWizard: View {
 #endif
 
 /// A setup step's fields above its one action: the error and the button stay
-/// below the fields while they scroll.
+/// below the fields while they scroll. While the connection is set up, the
+/// step it runs shows over its bar above the button.
 struct SetupStep<Fields: View>: View {
     let actionTitle: LocalizedStringKey
     let ready: Bool
-    let operation: () async throws -> BridgeStorageSetup
+    /// Set the storage up, writing each step into the setup's stream.
+    let operation: (BridgeLibrarySetup) async throws -> BridgeStorageSetup
     let onConnected: (BridgeStorageSetup) -> Void
     @ViewBuilder
     let fields: Fields
 
+    @Environment(Sync.self)
+    private var sync
     @State
     private var task: Task<Void, Never>?
+    /// The running setup's steps; nil while none runs.
+    @State
+    private var steps: StorageSetupSteps?
     @State
     private var error: DisplayError?
 
@@ -245,11 +252,12 @@ struct SetupStep<Fields: View>: View {
                     .padding(.bottom, ThemeSpace.related)
             }
 
+            if let steps {
+                StepProgressLine(steps: steps.steps) { EmptyView() }
+                    .padding(.horizontal)
+                    .padding(.bottom, ThemeSpace.related)
+            }
             HStack(spacing: ThemeSpace.related) {
-                if task != nil {
-                    ProgressView()
-                        .controlSize(.small)
-                }
                 Spacer()
                 Button(task != nil ? "Connecting..." : actionTitle) {
                     connect()
@@ -266,10 +274,15 @@ struct SetupStep<Fields: View>: View {
 
     private func connect() {
         error = nil
+        let running = sync.storageSetupSteps()
+        steps = running
         task = Task {
-            defer { task = nil }
+            defer {
+                task = nil
+                steps = nil
+            }
             do {
-                onConnected(try await operation())
+                onConnected(try await operation(running.setup))
             }
             catch is CancellationError {
                 logger.debug("Connect attempt cancelled")

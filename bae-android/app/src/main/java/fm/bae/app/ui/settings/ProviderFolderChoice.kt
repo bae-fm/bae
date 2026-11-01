@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,10 +36,13 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageSetup
+import uniffi.bae_bridge.BridgeStorageSetupProgress
 
 private val logger = BaeLogger("bae.ProviderFolderChoice")
 
@@ -59,6 +61,7 @@ internal fun DropboxFolderChoice(
     val scope = rememberScreenScope()
     var folders by remember { mutableStateOf<List<BridgeStorageFolder>?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     val load: suspend () -> Unit = {
         folders = null
         performBridgeAction(logger, "list Dropbox shared folders", LocaleErrorDisplays(context), onError) {
@@ -70,7 +73,7 @@ internal fun DropboxFolderChoice(
     Text(stringResource(R.string.storage_dropbox_choose), style = ThemeText.heading.style)
     when (val listed = folders) {
         null -> {
-            CircularProgressIndicator()
+            WaitingIndicator(text = stringResource(R.string.storage_dropbox_reading))
         }
 
         else -> {
@@ -82,13 +85,14 @@ internal fun DropboxFolderChoice(
                     busy = true
                     onError(null)
                     scope.launch {
-                        runSetup(context, "set up Dropbox storage", onError, onSetUp) { deviceName ->
-                            providers.setUpStorage(session.appHandle, folder.location, deviceName)
+                        setup.run("set up Dropbox storage") { deviceName, bridgeSetup ->
+                            providers.setUpStorage(session.appHandle, folder.location, deviceName, bridgeSetup)
                         }
                         busy = false
                     }
                 }
             }
+            setup.steps?.let { StorageSetupLine(it) }
             OutlinedButton(onClick = { scope.launch { load() } }, enabled = !busy) {
                 Text(stringResource(R.string.storage_refresh))
             }
@@ -112,6 +116,7 @@ internal fun OneDriveFolderChoice(
     val scope = rememberScreenScope()
     val browser = remember(session) { OneDriveBrowser(session.appHandle, providers, LocaleErrorDisplays(context)) }
     var naming by remember { mutableStateOf(false) }
+    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     LaunchedEffect(browser) { browser.openRoot() }
 
     val shown = browser.shown
@@ -124,9 +129,7 @@ internal fun OneDriveFolderChoice(
             Text(stringResource(R.string.retry))
         }
     }
-    if (browser.busy) {
-        CircularProgressIndicator()
-    }
+    OneDriveWorkLine(browser.work, setup.steps)
     if (shown == null) return
     shown.children.forEach { folder ->
         FolderRow(folder = folder, enabled = !browser.busy) { scope.launch { browser.open(shown, folder) } }
@@ -138,13 +141,13 @@ internal fun OneDriveFolderChoice(
         PrimaryButton(
             enabled = !browser.busy,
             onClick = {
-                browser.busy = true
+                browser.work = OneDriveWork.SETTING_UP
                 onError(null)
                 scope.launch {
-                    runSetup(context, "set up OneDrive storage", onError, onSetUp) { deviceName ->
-                        providers.setUpStorage(session.appHandle, shown.folder.location, deviceName)
+                    setup.run("set up OneDrive storage") { deviceName, bridgeSetup ->
+                        providers.setUpStorage(session.appHandle, shown.folder.location, deviceName, bridgeSetup)
                     }
-                    browser.busy = false
+                    browser.work = null
                 }
             },
         ) {
@@ -159,6 +162,29 @@ internal fun OneDriveFolderChoice(
             },
             onDismiss = { naming = false },
         )
+    }
+}
+
+/** What a OneDrive folder choice has in flight, named, or the setup's [setupSteps] while it sets up. */
+@Composable
+private fun OneDriveWorkLine(
+    work: OneDriveWork?,
+    setupSteps: LatestSource<BridgeStorageSetupProgress>?,
+) {
+    when (work) {
+        OneDriveWork.LISTING -> {
+            WaitingIndicator(text = stringResource(R.string.storage_onedrive_reading))
+        }
+
+        OneDriveWork.CREATING -> {
+            WaitingIndicator(text = stringResource(R.string.storage_onedrive_creating))
+        }
+
+        OneDriveWork.SETTING_UP -> {
+            setupSteps?.let { StorageSetupLine(it) }
+        }
+
+        null -> {}
     }
 }
 

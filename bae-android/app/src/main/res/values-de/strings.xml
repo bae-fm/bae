@@ -250,6 +250,9 @@
     <string name="storage_versioning_unavailable">Dieser Dienst bietet keine Versionierung.</string>
     <string name="storage_set_up">Einrichten</string>
     <string name="storage_dropbox_choose">Geteilten Ordner wählen</string>
+    <string name="storage_dropbox_reading">Deine geteilten Dropbox-Ordner werden gelesen…</string>
+    <string name="storage_onedrive_reading">Ordner in deinem OneDrive werden gelesen…</string>
+    <string name="storage_onedrive_creating">Ordner wird erstellt…</string>
     <string name="storage_dropbox_none">Mit diesem Dropbox-Konto sind keine Ordner geteilt. Teile einen Ordner in Dropbox und aktualisiere dann.</string>
     <string name="storage_refresh">Aktualisieren</string>
     <string name="storage_onedrive_new_folder">Neuer Ordner</string>

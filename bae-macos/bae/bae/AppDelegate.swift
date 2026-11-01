@@ -480,7 +480,8 @@ extension AppDelegate {
             uiStore: uiStore,
             config: config,
             seed: seed,
-            deviceName: requiredApplicationServices.deviceName
+            deviceName: requiredApplicationServices.deviceName,
+            host: requiredApplicationServices.host
         )
         service.wireUp()
         return service

@@ -248,6 +248,9 @@
     <string name="storage_versioning_unavailable">此服務不提供版本控制。</string>
     <string name="storage_set_up">設定</string>
     <string name="storage_dropbox_choose">選擇一個共用資料夾</string>
+    <string name="storage_dropbox_reading">正在讀取你共享的 Dropbox 資料夾…</string>
+    <string name="storage_onedrive_reading">正在讀取你的 OneDrive 上的資料夾…</string>
+    <string name="storage_onedrive_creating">正在建立資料夾…</string>
     <string name="storage_dropbox_none">沒有與此 Dropbox 帳號共用的資料夾。請在 Dropbox 中共用一個資料夾，然後重新整理。</string>
     <string name="storage_refresh">重新整理</string>
     <string name="storage_onedrive_new_folder">新增資料夾</string>

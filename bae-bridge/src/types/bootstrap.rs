@@ -283,22 +283,24 @@ pub fn bridge_setup_step_key(step: BridgeSetupStep) -> String {
     .to_string()
 }
 
+impl BridgeLoadStep {
+    pub(crate) fn from_core(step: coven::LoadStep) -> Self {
+        match step {
+            coven::LoadStep::FindingKeys => Self::FindingKeys,
+            coven::LoadStep::Streaming(coven::Audience::Store) => Self::StreamingLibrary,
+            coven::LoadStep::Streaming(coven::Audience::Circle(_)) => Self::StreamingCircle,
+            coven::LoadStep::Installing => Self::Installing,
+            coven::LoadStep::InstallingSlots => Self::InstallingSlots,
+            coven::LoadStep::Reading => Self::Reading,
+            coven::LoadStep::Applying => Self::Applying,
+        }
+    }
+}
+
 impl BridgeLoadProgress {
     pub(crate) fn from_core(value: coven::Progress<coven::LoadStep>) -> Self {
         Self {
-            step: match value.step {
-                coven::LoadStep::FindingKeys => BridgeLoadStep::FindingKeys,
-                coven::LoadStep::Streaming(coven::Audience::Store) => {
-                    BridgeLoadStep::StreamingLibrary
-                }
-                coven::LoadStep::Streaming(coven::Audience::Circle(_)) => {
-                    BridgeLoadStep::StreamingCircle
-                }
-                coven::LoadStep::Installing => BridgeLoadStep::Installing,
-                coven::LoadStep::InstallingSlots => BridgeLoadStep::InstallingSlots,
-                coven::LoadStep::Reading => BridgeLoadStep::Reading,
-                coven::LoadStep::Applying => BridgeLoadStep::Applying,
-            },
+            step: BridgeLoadStep::from_core(value.step),
             done: value.done,
             total: value.total,
         }

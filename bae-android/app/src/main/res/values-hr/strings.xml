@@ -252,6 +252,9 @@
     <string name="storage_versioning_unavailable">Ova usluga ne nudi verzioniranje.</string>
     <string name="storage_set_up">Postavi</string>
     <string name="storage_dropbox_choose">Odaberite dijeljenu mapu</string>
+    <string name="storage_dropbox_reading">Čitanje vaših dijeljenih mapa na Dropboxu…</string>
+    <string name="storage_onedrive_reading">Čitanje mapa na vašem OneDriveu…</string>
+    <string name="storage_onedrive_creating">Izrada mape…</string>
     <string name="storage_dropbox_none">S ovim računom Dropbox nije dijeljena nijedna mapa. Podijelite mapu u Dropboxu, a zatim osvježite.</string>
     <string name="storage_refresh">Osvježi</string>
     <string name="storage_onedrive_new_folder">Nova mapa</string>

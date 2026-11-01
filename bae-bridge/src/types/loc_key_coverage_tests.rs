@@ -498,6 +498,19 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.push(bridge_setup_step_key(step));
     }
+    // bridge_storage_setup_step_key — each step carries a key; a loading
+    // step's is the load step's, covered above.
+    for step in [
+        BridgeStorageSetupStep::CheckingBucket,
+        BridgeStorageSetupStep::DetectingSettings,
+        BridgeStorageSetupStep::PreparingZone,
+        BridgeStorageSetupStep::ReadingAccount,
+        BridgeStorageSetupStep::Connecting,
+        BridgeStorageSetupStep::CreatingStore,
+        BridgeStorageSetupStep::RecordingAccess,
+    ] {
+        keys.push(bridge_storage_setup_step_key(step));
+    }
     // bridge_closing_step_key — each step carries a key.
     for step in [
         BridgeClosingStep::StoppingServers,

@@ -258,6 +258,9 @@
     <string name="storage_versioning_unavailable">لا تقدّم هذه الخدمة إدارة الإصدارات.</string>
     <string name="storage_set_up">إعداد</string>
     <string name="storage_dropbox_choose">اختر مجلدًا مشتركًا</string>
+    <string name="storage_dropbox_reading">جارٍ قراءة مجلدات Dropbox المشتركة…</string>
+    <string name="storage_onedrive_reading">جارٍ قراءة المجلدات على OneDrive…</string>
+    <string name="storage_onedrive_creating">جارٍ إنشاء المجلد…</string>
     <string name="storage_dropbox_none">لا توجد مجلدات مشتركة مع حساب Dropbox هذا. شارك مجلدًا في Dropbox، ثم حدّث.</string>
     <string name="storage_refresh">تحديث</string>
     <string name="storage_onedrive_new_folder">مجلد جديد</string>

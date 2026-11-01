@@ -2358,7 +2358,22 @@ it
 An Advanced section holds the optional key prefix and a choice of profile,
 automatic by default. For a service coven doesn't know, *Detect Settings*
 probes the bucket with the key and shows what it found, which the person can
-then use. When coven refuses a setup, bae says why in plain words.
+then use, naming the probe while it runs. When coven refuses a setup, bae says
+why in plain words.
+
+**What setup shows while it runs.** Setting a cloud home up, or reconnecting
+one after signing in again or with a new S3 key, waits on the provider, at
+most a minute of rate limits, and on a reconnect loading what other devices
+published. So each setup call is handed a stream of its own, of the kind a
+setup call reports in (§9.1), and writes into it the steps coven reports
+([coven §20.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#208-checking-a-provider-before-use)):
+checking the bucket and detecting its settings on S3, preparing iCloud, reading
+the account on Dropbox and OneDrive, connecting and checking the provider,
+creating the library in storage, or loading with loading's own steps, and
+recording changed access. The apps show the step's name over a bar in place of
+a spinner, counted for loading's steps. Listing a provider's folders, and
+making a new OneDrive folder, say so while they run. The dev reset connects its
+storage without such a stream: it reports connecting storage as its own step.
 
 The key prefix is the folder in the bucket the library lives under. The app
 passes it as typed, and coven parses it once

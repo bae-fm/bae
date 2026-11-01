@@ -138,6 +138,19 @@ pub(crate) struct SetupSteps {
 }
 
 impl SetupSteps {
+    /// Where a call writes its steps: `setup`'s stream, or nowhere when the
+    /// app doesn't show the call.
+    pub(crate) fn of(setup: Option<Arc<BridgeLibrarySetup>>) -> Self {
+        match setup {
+            Some(setup) => setup.writer(),
+            None => Self {
+                writer: None,
+                #[cfg(test)]
+                written: Arc::default(),
+            },
+        }
+    }
+
     /// The call runs `step`, `done` of its `total` units; a total of 0 has
     /// nothing to count.
     pub(crate) fn step(&self, step: BridgeSetupStep, done: u64, total: u64) {
@@ -149,6 +162,13 @@ impl SetupSteps {
     /// The call runs `step`, which has nothing to count.
     pub(crate) fn uncounted(&self, step: BridgeSetupStep) {
         self.step(step, 0, 0);
+    }
+
+    /// How far a storage setup has come, as coven reports it.
+    pub(crate) fn storage(&self, progress: coven::Progress<coven::StorageSetupStep>) {
+        self.set(BridgeFastValue::StorageSetupProgress {
+            progress: crate::types::BridgeStorageSetupProgress::from_core(progress),
+        });
     }
 
     /// Where a restore or join stands now.

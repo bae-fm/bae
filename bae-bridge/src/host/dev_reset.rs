@@ -137,7 +137,7 @@ impl BridgeHost {
         steps.uncounted(crate::types::BridgeSetupStep::ConnectingStorage);
         tracing::info!("dev reset: connecting S3 storage");
         app.clone()
-            .save_sync_config(profile.sync_config, device_name.to_string())
+            .save_sync_config(profile.sync_config, device_name.to_string(), None)
             .await?;
 
         tracing::info!("dev reset: saving the Discogs key");

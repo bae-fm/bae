@@ -472,7 +472,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
 async fn failed_storage_setup_keeps_the_library_unconfigured() {
     let (manager, _temp) = setup_test_manager().await;
     manager.storage.set_online(false);
-    manager.database.setup_s3_storage(manager.storage.config(), "Device", "key".into(), coven::SecretText::new("secret".into()))
+    manager.database.setup_s3_storage(manager.storage.config(), "Device", "key".into(), coven::SecretText::new("secret".into()), &|_| ())
         .await.expect_err("offline storage cannot be set up");
     assert!(!manager.is_sync_configured().await.unwrap());
     assert_eq!(manager.library_name().await.unwrap(), "Test Library");

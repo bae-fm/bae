@@ -36,12 +36,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.StorageSetupProgress
 import fm.bae.app.deviceName
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
@@ -51,6 +53,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -58,6 +61,7 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgeStorageSetupProgress
 
 private val logger = BaeLogger("bae.SyncPendingScreen")
 
@@ -72,6 +76,10 @@ private class PendingActionRunner(
     private val scope: CoroutineScope,
 ) {
     var error by mutableStateOf<DisplayError?>(null)
+
+    /** The steps of the reconnect a sign-in runs; null while none runs. */
+    var signInSteps by mutableStateOf<LatestSource<BridgeStorageSetupProgress>?>(null)
+        private set
 
     fun perform(
         operation: String,
@@ -131,7 +139,17 @@ private class PendingActionRunner(
         if (providers == null) {
             error = DisplayError(context.getString(R.string.oauth_unconfigured))
         } else {
-            perform("sign in to $provider again") { providers.signInAgain(session.appHandle, deviceName(context)) }
+            perform("sign in to $provider again") {
+                val host = (context.applicationContext as BaeApp).host
+                StorageSetupProgress(host, scope, session.bugs).use { progress ->
+                    signInSteps = progress.steps
+                    try {
+                        providers.signInAgain(session.appHandle, deviceName(context), progress.setup)
+                    } finally {
+                        signInSteps = null
+                    }
+                }
+            }
         }
     }
 }
@@ -172,6 +190,7 @@ internal fun SyncPendingScreen(
                 onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
             )
             DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
+            runner.signInSteps?.let { StorageSetupLine(it) }
             runner.error?.let { ErrorDetailDisclosure(it) }
         }
         when (val records = pending) {

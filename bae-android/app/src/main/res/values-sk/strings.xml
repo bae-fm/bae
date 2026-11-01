@@ -253,6 +253,9 @@
     <string name="storage_versioning_unavailable">Táto služba neponúka verzovanie.</string>
     <string name="storage_set_up">Nastaviť</string>
     <string name="storage_dropbox_choose">Vyber zdieľaný priečinok</string>
+    <string name="storage_dropbox_reading">Načítavajú sa vaše zdieľané priečinky Dropboxu…</string>
+    <string name="storage_onedrive_reading">Načítavajú sa priečinky na vašom OneDrive…</string>
+    <string name="storage_onedrive_creating">Vytvára sa priečinok…</string>
     <string name="storage_dropbox_none">S týmto účtom Dropbox nie sú zdieľané žiadne priečinky. Zdieľaj priečinok v Dropboxe a potom obnov.</string>
     <string name="storage_refresh">Obnoviť</string>
     <string name="storage_onedrive_new_folder">Nový priečinok</string>

@@ -248,6 +248,9 @@
     <string name="storage_versioning_unavailable">이 서비스는 버전 관리를 제공하지 않습니다.</string>
     <string name="storage_set_up">설정</string>
     <string name="storage_dropbox_choose">공유 폴더 선택</string>
+    <string name="storage_dropbox_reading">공유된 Dropbox 폴더를 읽는 중…</string>
+    <string name="storage_onedrive_reading">OneDrive의 폴더를 읽는 중…</string>
+    <string name="storage_onedrive_creating">폴더를 만드는 중…</string>
     <string name="storage_dropbox_none">이 Dropbox 계정과 공유된 폴더가 없습니다. Dropbox에서 폴더를 공유한 다음 새로 고치세요.</string>
     <string name="storage_refresh">새로 고침</string>
     <string name="storage_onedrive_new_folder">새 폴더</string>

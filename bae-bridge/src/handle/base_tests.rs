@@ -91,3 +91,79 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         "{again:?}"
     );
 }
+
+/// Setting S3 up as the library's storage writes the steps coven reports into
+/// the setup's stream, the last its creating the library in storage, and the
+/// stream holds nothing once the setup ends.
+#[test]
+fn setting_up_s3_storage_writes_its_steps() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .thread_stack_size(16 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .unwrap();
+    let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
+        root.path(),
+        bae_core::providers::Providers::offline(),
+    ));
+    let coven::StorageConfig::S3 {
+        bucket,
+        region,
+        endpoint,
+        profile,
+        prefix,
+    } = coven::Storage::config(storage.as_ref())
+    else {
+        panic!("the memory provider uses S3 configuration");
+    };
+    let services = runtime
+        .block_on(bae_core::library::AppServices::for_test(manager))
+        .unwrap();
+    let app = Arc::new(
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_core::diagnostics::Diagnostics::noop(),
+        )
+        .unwrap(),
+    );
+    let host = crate::BridgeHost::with_test_keyring(
+        crate::BridgeDiagnostics::noop(),
+        crate::BridgeAppDir::new(root.path().join("host").to_str().unwrap().into()).unwrap(),
+    )
+    .unwrap();
+    let setup = crate::BridgeLibrarySetup::new(host);
+
+    app.runtime
+        .block_on(app.clone().save_sync_config(
+            crate::types::BridgeSaveSyncConfig {
+                bucket,
+                region,
+                endpoint: endpoint.map(|url| url.to_string()),
+                key_prefix: prefix.to_string(),
+                access_key: "test-access".into(),
+                secret_key: "test-secret".into(),
+                profile: profile.map(crate::types::BridgeS3Profile::from_core),
+            },
+            "Test Device".into(),
+            Some(setup.clone()),
+        ))
+        .unwrap();
+
+    let written = setup.written();
+    assert_eq!(written.last(), Some(&None), "{written:?}");
+    assert_eq!(
+        written.iter().rev().nth(1),
+        Some(&Some(crate::types::BridgeFastValue::StorageSetupProgress {
+            progress: crate::types::BridgeStorageSetupProgress {
+                step: crate::types::BridgeStorageSetupStep::CreatingStore,
+                done: 1,
+                total: 1,
+            },
+        })),
+        "{written:?}"
+    );
+    app.close_library(None).unwrap();
+}

@@ -193,10 +193,13 @@ forward! { async this => {
         Ok(this.services.delete_album(&album_id).await?)
     }
 
-    fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String) -> crate::types::BridgeStorageSetup {
+    /// Set S3 up as the library's storage, each step coven runs written into
+    /// `setup`'s stream when the app shows the setup.
+    fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
+        let steps = crate::screens::SetupSteps::of(setup);
         Ok(this
             .services
-            .save_s3_config(config_data.into_core()?, &device_name)
+            .save_s3_config(config_data.into_core()?, &device_name, &|progress| steps.storage(progress))
             .await.map(crate::types::BridgeStorageSetup::from_core)?)
     }
 

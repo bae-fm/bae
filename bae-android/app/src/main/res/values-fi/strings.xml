@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Tämä palvelu ei tarjoa versiointia.</string>
     <string name="storage_set_up">Määritä</string>
     <string name="storage_dropbox_choose">Valitse jaettu kansio</string>
+    <string name="storage_dropbox_reading">Luetaan jaettuja Dropbox-kansioitasi…</string>
+    <string name="storage_onedrive_reading">Luetaan OneDrivesi kansioita…</string>
+    <string name="storage_onedrive_creating">Luodaan kansiota…</string>
     <string name="storage_dropbox_none">Tämän Dropbox-tilin kanssa ei ole jaettu kansioita. Jaa kansio Dropboxissa ja päivitä sitten.</string>
     <string name="storage_refresh">Päivitä</string>
     <string name="storage_onedrive_new_folder">Uusi kansio</string>

@@ -111,11 +111,11 @@ internal fun S3SetupForm(
     onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     val input = remember { S3FormInput() }
     var showAdvanced by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
 
     TextInput(input.bucket, R.string.settings_bucket) { input.bucket = it.trim() }
     TextInput(input.region, R.string.settings_region) { input.region = it.trim() }
@@ -132,14 +132,15 @@ internal fun S3SetupForm(
     if (showAdvanced) {
         S3Advanced(session = session, input = input, onError = onError)
     }
+    setup.steps?.let { StorageSetupLine(it) }
     PrimaryButton(
         enabled = input.complete && !busy,
         onClick = {
             busy = true
             onError(null)
             scope.launch {
-                runSetup(context, "set up S3 storage", onError, onSetUp) { deviceName ->
-                    session.appHandle.saveSyncConfig(input.config(), deviceName)
+                setup.run("set up S3 storage") { deviceName, bridgeSetup ->
+                    session.appHandle.saveSyncConfig(input.config(), deviceName, bridgeSetup)
                 }
                 busy = false
             }

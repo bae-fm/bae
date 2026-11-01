@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import fm.bae.app.OpenLibraryHandle
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
@@ -22,11 +23,15 @@ internal abstract class EditionFakeAppHandle : OpenLibraryHandle {
     override suspend fun setupOauthStorage(
         location: BridgeStorageLocation,
         deviceName: String,
+        setup: BridgeLibrarySetup?,
     ): BridgeStorageSetup = unfaked("setupOauthStorage")
 
     override suspend fun signIn(provider: BridgeCloudProvider) {
         unfaked("signIn")
     }
 
-    override suspend fun signInAgain(deviceName: String): BridgeStorageSetup = unfaked("signInAgain")
+    override suspend fun signInAgain(
+        deviceName: String,
+        setup: BridgeLibrarySetup?,
+    ): BridgeStorageSetup = unfaked("signInAgain")
 }

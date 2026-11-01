@@ -917,3 +917,64 @@ async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     manager.set_sync_paused(false).await.unwrap();
     assert!(!paused.next().await.unwrap().unwrap());
 }
+
+/// Setting S3 up as the library's storage tells the caller the steps coven
+/// reports as it runs them, in order, the last its creating the store.
+#[tokio::test]
+async fn setting_up_s3_storage_tells_each_step_coven_reports() {
+    use coven::StorageSetupStep::*;
+    let (manager, _temp) = setup_test_manager().await;
+    let coven::StorageConfig::S3 {
+        bucket,
+        region,
+        endpoint,
+        prefix,
+        profile,
+    } = manager.storage.config()
+    else {
+        panic!("the memory provider uses S3 configuration");
+    };
+    let told = std::sync::Mutex::new(Vec::new());
+
+    manager
+        .save_s3_config(
+            crate::sync::S3ConfigData {
+                bucket,
+                region,
+                endpoint: endpoint.map(|url| url.to_string()),
+                key_prefix: prefix,
+                profile,
+                access_key: "test-key".into(),
+                secret_key: "test-secret".into(),
+            },
+            "Test Device",
+            &|progress| told.lock().unwrap().push(progress),
+        )
+        .await
+        .unwrap();
+
+    let told = told.into_inner().unwrap();
+    let order = [CheckingBucket, DetectingSettings, Connecting, CreatingStore];
+    let positions: Vec<usize> = told
+        .iter()
+        .map(|progress| {
+            order
+                .iter()
+                .position(|step| *step == progress.step)
+                .unwrap_or_else(|| panic!("a step S3 setup doesn't run: {progress:?}"))
+        })
+        .collect();
+    assert!(
+        positions.windows(2).all(|pair| pair[0] <= pair[1]),
+        "{told:?}"
+    );
+    assert_eq!(
+        told.last(),
+        Some(&coven::Progress {
+            step: CreatingStore,
+            done: 1,
+            total: 1
+        }),
+        "{told:?}"
+    );
+}

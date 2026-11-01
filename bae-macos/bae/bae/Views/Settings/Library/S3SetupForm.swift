@@ -34,8 +34,8 @@ struct S3SetupForm: View {
         SetupStep(
             actionTitle: "Connect",
             ready: fields.ready,
-            operation: { [sync, fields] in
-                try await sync.saveSyncConfig(fields.config)
+            operation: { [sync, fields] setup in
+                try await sync.saveSyncConfig(fields.config, setup)
             },
             onConnected: onConnected
         ) {
@@ -81,6 +81,8 @@ struct S3SetupForm: View {
             if fields.isDetecting {
                 ProgressView()
                     .controlSize(.small)
+                Text("Detecting the service's settings…")
+                    .foregroundStyle(.secondary)
             }
         }
         if let detectError = fields.detectError {

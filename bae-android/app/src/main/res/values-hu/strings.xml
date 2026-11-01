@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Ez a szolgáltatás nem kínál verziókezelést.</string>
     <string name="storage_set_up">Beállítás</string>
     <string name="storage_dropbox_choose">Válassz megosztott mappát</string>
+    <string name="storage_dropbox_reading">A megosztott Dropbox-mappák beolvasása…</string>
+    <string name="storage_onedrive_reading">A OneDrive-mappák beolvasása…</string>
+    <string name="storage_onedrive_creating">A mappa létrehozása…</string>
     <string name="storage_dropbox_none">Ezzel a Dropbox-fiókkal nincs megosztva mappa. Ossz meg egy mappát a Dropboxban, majd frissíts.</string>
     <string name="storage_refresh">Frissítés</string>
     <string name="storage_onedrive_new_folder">Új mappa</string>

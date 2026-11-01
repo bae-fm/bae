@@ -249,6 +249,9 @@
     <string name="storage_versioning_unavailable">Este serviço não oferece controlo de versões.</string>
     <string name="storage_set_up">Configurar</string>
     <string name="storage_dropbox_choose">Escolha uma pasta partilhada</string>
+    <string name="storage_dropbox_reading">A ler as suas pastas partilhadas do Dropbox…</string>
+    <string name="storage_onedrive_reading">A ler as pastas do seu OneDrive…</string>
+    <string name="storage_onedrive_creating">A criar a pasta…</string>
     <string name="storage_dropbox_none">Nenhuma pasta está partilhada com esta conta do Dropbox. Partilhe uma pasta no Dropbox e atualize.</string>
     <string name="storage_refresh">Atualizar</string>
     <string name="storage_onedrive_new_folder">Nova pasta</string>
