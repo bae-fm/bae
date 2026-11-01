@@ -1604,6 +1604,13 @@ its files stay on it, and no device can move them to the cloud any more. Such
 a release offers nothing here, neither moving it to the cloud, which reads
 the originals, nor pinning it (§4.3). Playing it says it isn't uploaded yet.
 
+Whether this device can play a release, and whether it offers moving it to
+the cloud, comes from these records alone; bae doesn't ask the disk whether
+an original is still there. An original gone or changed since import fails
+what reads it, when it reads it: playing a track says its original files are
+missing or changed, moving the release to the cloud fails as it reads the
+file (one already moving waits or fails as below), and an export fails.
+
 A release is *uploaded* once every one of its files is stored in the cloud.
 Until then it is local, on every device. The rows sync anyway, so every
 device knows what the household owns, and a rating or playlist entry pointing
@@ -1648,8 +1655,7 @@ files switches, and the pending list names the file and offers Cancel Upload.
 **Cancelling an upload** while any of its files is still queued, or after its
 move failed, cancels the release's move in one write. Nothing was switched, so
 nothing is taken back and no row changes: every file stays on this device
-only, and the release plays from its originals again, or shows an original
-missing or changed. What already reached storage stays until nothing refers to
+only, and the release plays from its originals again. What already reached storage stays until nothing refers to
 it; coven then deletes it
 ([coven §17.10](https://github.com/bae-fm/coven/blob/main/spec/coven.md#1710-deleting-stored-files)).
 Other devices go on showing the release without playing it.

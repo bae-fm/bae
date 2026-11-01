@@ -369,29 +369,15 @@ pub struct DbSendingUploads {
     pub paused: bool,
 }
 
-/// What coven records this device holding for one of a release's audio
-/// files on one device only. Whether that original is still on the disk is
-/// the disk's to say, not the database's.
+/// What the library records this device holding for one of a release's audio
+/// files on one device only.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DbUnstoredAudio {
     /// No original here: the file is on another device, as coven's
     /// registration of that device reads.
     Elsewhere(crate::album_detail::OtherDevice),
-    /// This device's original, as coven recorded it.
-    Original(RecordedOriginal),
-}
-
-/// Where one of a release's original audio files sits on this device, and
-/// the size and modification time recorded for it.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordedOriginal {
-    pub path: std::path::PathBuf,
-    pub size: i64,
-    /// The modification time as `coven_user_files` lists it: whole seconds
-    /// since the Unix epoch, rounded down, and the nanoseconds past that
-    /// second (`coven::unix_seconds_and_nanos`).
-    pub modified_seconds: i64,
-    pub modified_nanos: u32,
+    /// This device's original, as coven records it.
+    Original,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

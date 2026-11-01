@@ -189,15 +189,10 @@ impl LibraryManager {
         let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home();
-        let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(
-                raw_rows.iter().flat_map(|row| &row.release.unstored_audio),
-            ))
-            .await?;
-        let mut rows = Vec::with_capacity(raw_rows.len());
-        for raw in raw_rows {
-            rows.push(StorageRow::from_raw(raw, has_cloud_home, &originals));
-        }
+        let rows = raw_rows
+            .into_iter()
+            .map(|raw| StorageRow::from_raw(raw, has_cloud_home))
+            .collect();
         Ok(StoragePage { rows, total_count })
     }
 
@@ -211,38 +206,13 @@ impl LibraryManager {
         self.database.subscribe_storage_browse(initial)
     }
 
-    /// Every row a Storage Manager delivery resolves: each window's, in window
-    /// then row order, then each selected release's.
-    fn storage_browse_rows(
-        projection: &crate::db::StorageBrowseProjection,
-    ) -> impl Iterator<Item = &crate::db::DbStorageRow> {
-        projection
-            .windows
-            .iter()
-            .flat_map(|window| &window.rows)
-            .chain(&projection.selected)
-    }
-
-    /// The originals the library records this device holding for the
-    /// releases a Storage Manager delivery shows: what the disk is asked about.
-    pub(crate) fn storage_browse_originals(
-        projection: &crate::db::StorageBrowseProjection,
-    ) -> Vec<crate::db::RecordedOriginal> {
-        crate::album_detail::recorded_originals(
-            Self::storage_browse_rows(projection).flat_map(|row| &row.release.unstored_audio),
-        )
-    }
-
-    /// Resolve a Storage Manager delivery with what the disk has said of its
-    /// originals (see [`Self::storage_browse_originals`]).
+    /// Resolve a Storage Manager delivery.
     pub(crate) fn resolve_storage_browse(
         &self,
         projection: crate::db::StorageBrowseProjection,
-        originals: &crate::album_detail::OriginalsSeen,
     ) -> crate::library::StorageBrowseSnapshot {
         let has_cloud_home = self.has_cloud_home();
-        let resolve =
-            |raw: crate::db::DbStorageRow| StorageRow::from_raw(raw, has_cloud_home, originals);
+        let resolve = |raw: crate::db::DbStorageRow| StorageRow::from_raw(raw, has_cloud_home);
         let windows = projection
             .windows
             .into_iter()

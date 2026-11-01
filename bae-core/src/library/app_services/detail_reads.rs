@@ -17,55 +17,53 @@ impl AppServices {
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
-            let mut id = ids.borrow_and_update().clone();
-            let mut query = reconfigurable_live_query_events(
-                &manager,
-                manager.subscribe_album_detail(id.clone()),
-                tx.clone(),
-            );
-            let mut last: Option<crate::db::AlbumDetailProjection> = None;
-            loop {
-                let value = tokio::select! {
-                    event = query.recv() => match event {
-                        None => return,
-                        Some(Ok(projection)) => {
-                            originals.show(LibraryManager::album_detail_originals(&projection));
-                            last = Some(projection.clone());
-                            manager.resolve_album_detail_projection(projection, originals.seen())
+        self.inner.manager.spawn_stoppable_subscription_task(
+            "detail",
+            task.clone(),
+            tx.clone(),
+            async move {
+                let mut id = ids.borrow_and_update().clone();
+                let mut query = reconfigurable_live_query_events(
+                    &manager,
+                    manager.subscribe_album_detail(id.clone()),
+                    tx.clone(),
+                );
+                let mut last: Option<crate::db::AlbumDetailProjection> = None;
+                loop {
+                    let value = tokio::select! {
+                        event = query.recv() => match event {
+                            None => return,
+                            Some(Ok(projection)) => {
+                                last = Some(projection.clone());
+                                Ok(manager.resolve_album_detail_projection(projection))
+                            }
+                            Some(Err(error)) => Err(error),
+                        },
+                        changed = ids.changed() => {
+                            if changed.is_err() { return; }
+                            id = ids.borrow_and_update().clone();
+                            last = None;
+                            query.set(id.clone());
+                            continue;
                         }
-                        Some(Err(error)) => Err(error),
-                    },
-                    answer = originals.answered() => match (answer, last.clone()) {
-                        (Ok(true), Some(projection)) => {
-                            manager.resolve_album_detail_projection(projection, originals.seen())
+                        changed = cloud_home.changed() => {
+                            if changed.is_err() { return; }
+                            cloud_home.borrow_and_update();
+                            let Some(projection) = last.clone() else { continue };
+                            Ok(manager.resolve_album_detail_projection(projection))
                         }
-                        (Ok(_), _) => continue,
-                        (Err(error), _) => Err(error),
-                    },
-                    changed = ids.changed() => {
-                        if changed.is_err() { return; }
-                        id = ids.borrow_and_update().clone();
-                        last = None;
-                        query.set(id.clone());
-                        continue;
+                    };
+                    let value = value.map(|value| crate::library::DetailSnapshot {
+                        id: id.clone(),
+                        value,
+                    });
+                    if tx.send(value).is_err() {
+                        return;
                     }
-                    changed = cloud_home.changed() => {
-                        if changed.is_err() { return; }
-                        cloud_home.borrow_and_update();
-                        let Some(projection) = last.clone() else { continue };
-                        manager.resolve_album_detail_projection(projection, originals.seen())
-                    }
-                };
-                let value = value.map(|value| crate::library::DetailSnapshot {
-                    id: id.clone(),
-                    value,
-                });
-                if tx.send(value).is_err() { return; }
-            }
-        });
+                }
+            },
+        );
         crate::library::DetailSubscription::new(id_tx, rx, task)
     }
 
@@ -81,63 +79,58 @@ impl AppServices {
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
-            let mut id = ids.borrow_and_update().clone();
-            let mut query = reconfigurable_live_query_events(
-                &manager,
-                manager.subscribe_release_detail(id.clone()),
-                tx.clone(),
-            );
-            let mut last: Option<crate::db::ReleaseDetailProjection> = None;
-            let resolve = |id: &Option<String>,
-                           projection,
-                           seen: &crate::album_detail::OriginalsSeen| match id {
-                Some(release_id) => {
-                    manager.resolve_release_detail_projection(release_id, projection, seen)
-                }
-                None => Ok(None),
-            };
-            loop {
-                let value = tokio::select! {
-                    event = query.recv() => match event {
-                        None => return,
-                        Some(Ok(projection)) => {
-                            originals.show(LibraryManager::release_detail_originals(&projection));
-                            last = Some(projection.clone());
-                            resolve(&id, projection, originals.seen())
-                        }
-                        Some(Err(error)) => Err(error),
-                    },
-                    answer = originals.answered() => match (answer, last.clone()) {
-                        (Ok(true), Some(projection)) => {
-                            resolve(&id, projection, originals.seen())
-                        }
-                        (Ok(_), _) => continue,
-                        (Err(error), _) => Err(error),
-                    },
-                    changed = ids.changed() => {
-                        if changed.is_err() { return; }
-                        id = ids.borrow_and_update().clone();
-                        last = None;
-                        query.set(id.clone());
-                        continue;
-                    }
-                    changed = cloud_home.changed() => {
-                        if changed.is_err() { return; }
-                        cloud_home.borrow_and_update();
-                        let Some(projection) = last.clone() else { continue };
-                        resolve(&id, projection, originals.seen())
-                    }
+        self.inner.manager.spawn_stoppable_subscription_task(
+            "detail",
+            task.clone(),
+            tx.clone(),
+            async move {
+                let mut id = ids.borrow_and_update().clone();
+                let mut query = reconfigurable_live_query_events(
+                    &manager,
+                    manager.subscribe_release_detail(id.clone()),
+                    tx.clone(),
+                );
+                let mut last: Option<crate::db::ReleaseDetailProjection> = None;
+                let resolve = |id: &Option<String>, projection| {
+                    Ok(id.as_ref().and_then(|release_id| {
+                        manager.resolve_release_detail_projection(release_id, projection)
+                    }))
                 };
-                let value = value.map(|value| crate::library::DetailSnapshot {
-                    id: id.clone(),
-                    value,
-                });
-                if tx.send(value).is_err() { return; }
-            }
-        });
+                loop {
+                    let value = tokio::select! {
+                        event = query.recv() => match event {
+                            None => return,
+                            Some(Ok(projection)) => {
+                                last = Some(projection.clone());
+                                resolve(&id, projection)
+                            }
+                            Some(Err(error)) => Err(error),
+                        },
+                        changed = ids.changed() => {
+                            if changed.is_err() { return; }
+                            id = ids.borrow_and_update().clone();
+                            last = None;
+                            query.set(id.clone());
+                            continue;
+                        }
+                        changed = cloud_home.changed() => {
+                            if changed.is_err() { return; }
+                            cloud_home.borrow_and_update();
+                            let Some(projection) = last.clone() else { continue };
+                            resolve(&id, projection)
+                        }
+                    };
+                    let value = value.map(|value| crate::library::DetailSnapshot {
+                        id: id.clone(),
+                        value,
+                    });
+                    if tx.send(value).is_err() {
+                        return;
+                    }
+                }
+            },
+        );
         crate::library::DetailSubscription::new(id_tx, rx, task)
     }
 

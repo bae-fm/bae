@@ -635,10 +635,10 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     close.await.unwrap().unwrap();
 }
 
-/// Each device says whether it can play a release: the importing device plays
-/// its own originals, another device names the device the audio is on, and an
-/// original removed on the importing device reads as missing, at play time
-/// as well.
+/// Each device says whether it can play a release from the library's
+/// records: the importing device plays its own originals, and another device
+/// names the device the audio is on. An original removed on the importing
+/// device changes nothing shown; playing it fails as missing.
 #[test]
 fn a_release_says_whether_this_device_can_play_it() {
     crate::sync::test_devices::run_two_device_test(async |devices| {
@@ -688,7 +688,8 @@ async fn check_playability(
     std::fs::remove_file(originals.join("track.flac")).unwrap();
     assert_eq!(
         playability(here.id.clone()).await,
-        ReleasePlayability::OriginalMissing
+        ReleasePlayability::Playable,
+        "the disk is not asked"
     );
     let file = release_files(manager, &here.id).await.remove(0);
     let reason = playback_error_reason_for_file(manager, &file).await;

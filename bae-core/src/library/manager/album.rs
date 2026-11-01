@@ -115,7 +115,7 @@ impl LibraryManager {
         let Some(raw) = self.database.find_album_detail(album_id).await? else {
             return Ok(None);
         };
-        Ok(Some(self.resolve_album_detail(raw).await?))
+        Ok(Some(self.resolve_album_detail(raw)))
     }
 
     pub(crate) fn subscribe_album_detail(
@@ -125,35 +125,12 @@ impl LibraryManager {
         self.database.subscribe_album_detail(initial)
     }
 
-    /// The originals the library records this device holding for the
-    /// releases an album-detail delivery shows: what the disk is asked about.
-    pub(crate) fn album_detail_originals(
-        projection: &crate::db::AlbumDetailProjection,
-    ) -> Vec<crate::db::RecordedOriginal> {
-        projection
-            .detail
-            .as_ref()
-            .map(|raw| {
-                crate::album_detail::recorded_originals(
-                    raw.releases
-                        .iter()
-                        .flat_map(|release| &release.unstored_audio),
-                )
-            })
-            .unwrap_or_default()
-    }
-
-    /// Resolve an album-detail delivery with what the disk has said of its
-    /// originals (see [`Self::album_detail_originals`]).
+    /// Resolve an album-detail delivery.
     pub(crate) fn resolve_album_detail_projection(
         &self,
         projection: crate::db::AlbumDetailProjection,
-        originals: &crate::album_detail::OriginalsSeen,
-    ) -> Result<Option<AlbumDetail>, LibraryError> {
-        let Some(raw) = projection.detail else {
-            return Ok(None);
-        };
-        self.resolve_album_detail_with(raw, originals).map(Some)
+    ) -> Option<AlbumDetail> {
+        projection.detail.map(|raw| self.resolve_album_detail(raw))
     }
 
     /// The library albums a parsed, non-blank query finds, as the album
@@ -243,27 +220,7 @@ impl LibraryManager {
     /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins
     /// artist names, formats labels, groups tracks by side, and builds
     /// galleries.
-    pub(super) async fn resolve_album_detail(
-        &self,
-        raw: crate::db::DbAlbumDetail,
-    ) -> Result<AlbumDetail, LibraryError> {
-        let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(
-                raw.releases
-                    .iter()
-                    .flat_map(|release| &release.unstored_audio),
-            ))
-            .await?;
-        self.resolve_album_detail_with(raw, &originals)
-    }
-
-    /// The album detail as its rows read it, with what the disk said of its
-    /// originals.
-    fn resolve_album_detail_with(
-        &self,
-        raw: crate::db::DbAlbumDetail,
-        originals: &crate::album_detail::OriginalsSeen,
-    ) -> Result<AlbumDetail, LibraryError> {
+    pub(super) fn resolve_album_detail(&self, raw: crate::db::DbAlbumDetail) -> AlbumDetail {
         let artist_names = crate::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
@@ -273,7 +230,6 @@ impl LibraryManager {
         for (i, r) in raw.releases.into_iter().enumerate() {
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
-                originals,
                 cover: crate::album_detail::cover_ref(&r.release.id, r.cover_version.clone()),
                 is_compilation: raw.album.is_compilation,
             };
@@ -282,13 +238,13 @@ impl LibraryManager {
             releases.push(detail);
         }
 
-        Ok(AlbumDetail {
+        AlbumDetail {
             album: raw.album,
             artists: raw.artists,
             artist_names,
             releases,
             primary_release_id,
             cover,
-        })
+        }
     }
 }

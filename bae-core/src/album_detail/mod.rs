@@ -46,9 +46,7 @@ pub use album::*;
 pub use artist::*;
 pub use composer::*;
 pub use file_kind::{FileKind, FilePlace};
-pub(crate) use playability::{
-    recorded_originals, release_playability, OriginalOnDisk, OriginalsSeen,
-};
+pub(crate) use playability::release_playability;
 pub use playability::{OtherDevice, ReleasePlayability};
 pub use release::*;
 pub use search::*;
@@ -136,8 +134,9 @@ pub enum ReleaseStorageAction {
 /// Remote requires a cloud home, so without one there are no transitions at all.
 ///
 /// `Upload` uploads from this device's originals, so it is offered only
-/// where the release plays from them: not for a release another device
-/// imported, nor one whose originals are gone or changed since import. It
+/// where the library records this device holding them: not for a release
+/// another device imported. An original gone or changed since import fails
+/// the move when it reads the file. It
 /// admits work to coven's durable outbox; a stopped loop leaves that work
 /// truthfully queued until a cycle can drain it, and does not remove the
 /// action. Pin / Unpin / DetachAudio gate on the connected cloud home alone.
@@ -422,19 +421,16 @@ mod tests {
     }
 
     /// Uploading reads this device's originals, so a release another device
-    /// imported, or one whose originals are gone, offers nothing to upload.
+    /// imported offers nothing to upload.
     #[test]
     fn local_without_its_originals_here_offers_nothing() {
         let elsewhere = OnOtherDevice(OtherDevice::Active {
             name: "Device A".to_string(),
         });
-        for playability in [elsewhere, OriginalMissing] {
-            assert_eq!(
-                available_storage_actions(Local, &playability, false, true),
-                Vec::<ReleaseStorageAction>::new(),
-                "{playability:?} offers no upload"
-            );
-        }
+        assert_eq!(
+            available_storage_actions(Local, &elsewhere, false, true),
+            Vec::<ReleaseStorageAction>::new(),
+        );
     }
 
     /// A stopped loop delays the upload; it does not prevent admitting the work.

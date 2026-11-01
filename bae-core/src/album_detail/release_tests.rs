@@ -36,10 +36,8 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         transfer_action: None,
         cover_version: None,
     };
-    let originals = OriginalsSeen::default();
     let ctx = ReleaseResolveCtx {
         has_cloud_home: false,
-        originals: &originals,
         cover: None,
         is_compilation: false,
     };

@@ -652,8 +652,6 @@ fn playability_messages() -> Vec<BridgeMessage> {
                 state: BridgeFormerDeviceState::Replaced,
             },
         },
-        BridgeReleasePlayability::OriginalMissing,
-        BridgeReleasePlayability::CheckingOriginals,
     ]
     .iter()
     .filter_map(bridge_release_playability_line)

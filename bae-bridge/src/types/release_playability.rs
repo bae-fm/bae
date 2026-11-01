@@ -9,8 +9,6 @@ use super::{BridgeFormerDeviceState, BridgeMessage, BridgeMessageArg};
 pub enum BridgeReleasePlayability {
     Playable,
     OnOtherDevice { device: BridgeOtherDevice },
-    OriginalMissing,
-    CheckingOriginals,
 }
 
 mirror_enum! {
@@ -19,8 +17,6 @@ mirror_enum! {
     variants: {
         Playable,
         OnOtherDevice(device: (BridgeOtherDevice)),
-        OriginalMissing,
-        CheckingOriginals,
     },
 }
 
@@ -47,9 +43,8 @@ mirror_enum! {
 }
 
 /// The line a release shows when this device can't play it, or `None` when
-/// it can, or when its originals have not been answered for yet. A release on
-/// another device names that device ("On Dima's Mac"), and says so when the
-/// device was removed from the library or replaced.
+/// it can. A release on another device names that device ("On Dima's Mac"),
+/// and says so when the device was removed from the library or replaced.
 #[uniffi::export]
 pub fn bridge_release_playability_line(
     playability: &BridgeReleasePlayability,
@@ -59,7 +54,7 @@ pub fn bridge_release_playability_line(
         args,
     };
     match playability {
-        BridgeReleasePlayability::Playable | BridgeReleasePlayability::CheckingOriginals => None,
+        BridgeReleasePlayability::Playable => None,
         BridgeReleasePlayability::OnOtherDevice { device } => Some(match device {
             BridgeOtherDevice::Active { name } => message(
                 "core.release.on_device",
@@ -73,8 +68,5 @@ pub fn bridge_release_playability_line(
                 vec![BridgeMessageArg::new("device", name.clone())],
             ),
         }),
-        BridgeReleasePlayability::OriginalMissing => {
-            Some(message("core.release.original_missing", Vec::new()))
-        }
     }
 }

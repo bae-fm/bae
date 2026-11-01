@@ -9,8 +9,7 @@ use crate::sync::membership::FormerDeviceState;
 /// How long a test waits for a live read to deliver a value.
 const DELIVERY: std::time::Duration = std::time::Duration::from_secs(20);
 
-/// The next value of a release's live read for which `wanted` holds, with
-/// what each device's disk has said of no original.
+/// The next value of a release's live read for which `wanted` holds.
 async fn next_playability(
     manager: &LibraryManager,
     live: &mut coven::ReconfigurableLiveQuery<Option<String>, crate::db::ReleaseDetailProjection>,
@@ -26,12 +25,7 @@ async fn next_playability(
                 .result
                 .expect("the release reads");
             let playability = manager
-                .resolve_release_detail_projection(
-                    release_id,
-                    projection,
-                    &crate::album_detail::OriginalsSeen::default(),
-                )
-                .unwrap()
+                .resolve_release_detail_projection(release_id, projection)
                 .expect("the release exists")
                 .playability;
             if wanted(&playability) {

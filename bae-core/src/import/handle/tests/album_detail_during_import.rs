@@ -54,10 +54,9 @@ async fn next_for(
     }
 }
 
-/// The import is held partway through measuring its tracks, and the volume
-/// the shown album's originals sit on is held with it. The album's detail
-/// arrives anyway, its originals not yet answered for; once the volume
-/// answers, it says the release plays here.
+/// The import is held partway through measuring its tracks. The shown
+/// album's detail arrives anyway, and says the release plays here from the
+/// originals the library records, without asking the disk.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let (manager, tmp) = setup_test_manager().await;
@@ -90,7 +89,6 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         &handle.event_tx,
         crate::import::ImportPhase::MeasuringLoudness,
     );
-    let volume = manager.hold_disk();
     let importing = handle.start_import(&importing_key).await.unwrap().expect_queued();
     tokio::time::timeout(HANG_GUARD, handle.event_tx.send_held())
         .await
@@ -101,27 +99,14 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let shown = next_for(
         &values,
         &shown_album,
-        "the album detail arrives while the import holds the volume",
+        "the album detail arrives while the other import runs",
     )
     .await;
     assert_eq!(shown.album.id, shown_album);
     assert_eq!(
         shown.releases[0].playability,
-        crate::album_detail::ReleasePlayability::CheckingOriginals,
-        "nothing has looked at the originals while the volume is held"
-    );
-
-    drop(volume);
-    let looked = next_for(
-        &values,
-        &shown_album,
-        "the album detail follows the volume's answer",
-    )
-    .await;
-    assert_eq!(
-        looked.releases[0].playability,
         crate::album_detail::ReleasePlayability::Playable,
-        "the originals are where the import recorded them"
+        "the library records this device holding the originals"
     );
     drop(import);
     await_import_outcome(&mut events, &importing)

@@ -669,8 +669,10 @@ async fn the_storage_view_moves_one_subscription() {
 
 /// Uploading reads this device's originals, so every surface that offers it —
 /// the release detail, its storage summary, and the Storage Manager row —
-/// offers it only for a release whose originals are here and unchanged: not
-/// for a release another device imported, nor once an original is gone.
+/// offers it only for a release the library records this device holding the
+/// originals of: not for a release another device imported. The disk is not
+/// asked: an original gone since import still offers it, and the move then
+/// fails reading the file.
 #[test]
 fn upload_is_offered_only_where_this_device_holds_the_originals() {
     crate::sync::test_devices::run_two_device_test(async |devices| {
@@ -730,7 +732,10 @@ async fn check_upload_offered(
     );
     assert_eq!(offered(elsewhere.id.clone()).await, Vec::new());
     std::fs::remove_file(originals.join("track.flac")).unwrap();
-    assert_eq!(offered(here.id.clone()).await, Vec::new());
+    assert_eq!(
+        offered(here.id.clone()).await,
+        vec![ReleaseStorageAction::Upload]
+    );
 }
 
 /// The Storage Manager row of a release with files waiting to upload says
@@ -771,7 +776,6 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
             row.release,
             &crate::album_detail::ReleaseResolveCtx {
                 has_cloud_home: true,
-                originals: &crate::album_detail::OriginalsSeen::default(),
                 cover: None,
                 is_compilation: false,
             },

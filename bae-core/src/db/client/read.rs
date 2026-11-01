@@ -205,19 +205,16 @@ pub(super) fn build_release_detail_on(
 }
 
 /// What coven records this device holding for each of a release's audio
-/// files on one device only: the original's path with the size and
-/// modification time coven recorded for it, from `coven_user_files`, which
-/// lists exactly this device's originals, when the file is on this device;
-/// otherwise the device it is on, from `coven_devices`, and whether that
-/// device or its person was removed from the library. The disk is not read
-/// here: a read holds one of the database's readers, and the disk an original
-/// sits on can be slow to answer.
+/// files on one device only: its original, when `coven_user_files`, which
+/// lists exactly this device's originals, lists it; otherwise the device it
+/// is on, from `coven_devices`, and whether that device or its person was
+/// removed from the library. The disk is not asked.
 pub(super) fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
     let rows: Vec<UnstoredRow> = sql.query(
-        "SELECT f.content_type, f.file, u.path, u.size, u.modified_seconds, u.modified_nanos, \
+        "SELECT f.content_type, f.file, u.file IS NOT NULL, \
                 d.is_self, d.name, d.state, m.removed \
          FROM release_files f JOIN coven_files coven ON coven.id = f.file \
          LEFT JOIN coven_user_files u ON u.file = f.file \
@@ -230,11 +227,11 @@ pub(super) fn unstored_audio_on(
             Ok(UnstoredRow {
                 content_type: row.get(0)?,
                 file: row.get(1)?,
-                original: (row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?),
-                is_self: row.get(6)?,
-                name: row.get(7)?,
-                state: row.get(8)?,
-                member_removed: row.get(9)?,
+                original_here: row.get(2)?,
+                is_self: row.get(3)?,
+                name: row.get(4)?,
+                state: row.get(5)?,
+                member_removed: row.get(6)?,
             })
         },
     )?;
@@ -248,9 +245,8 @@ pub(super) fn unstored_audio_on(
 struct UnstoredRow {
     content_type: String,
     file: String,
-    /// The original's path bytes, size and modification time, when
-    /// `coven_user_files` lists it.
-    original: (Option<Vec<u8>>, Option<i64>, Option<i64>, Option<u32>),
+    /// Whether `coven_user_files` lists an original of it on this device.
+    original_here: bool,
     /// Whether the device the file is on is this one; `None` when
     /// `coven_devices` lists no such device, as for this device until the
     /// library connects to storage.
@@ -274,34 +270,15 @@ impl UnstoredRow {
                 self.file
             ))
         };
-        let recorded = match self.original.clone() {
-            (Some(path), Some(size), Some(modified_seconds), Some(modified_nanos)) => {
-                Some(RecordedOriginal {
-                    path: path_column::decode(path)?,
-                    size,
-                    modified_seconds,
-                    modified_nanos,
-                })
-            }
-            (None, None, None, None) => None,
-            partial => {
-                return Err(DbError::Message(format!(
-                    "coven_user_files lists the original of release file {} as {partial:?}",
-                    self.file
-                )))
-            }
-        };
         // This device has no registration until the library connects to
         // storage, so its own file can be on a device `coven_devices` doesn't
         // list; another device's never is.
-        match (recorded, self.is_self) {
-            (Some(_), Some(false)) => {
-                Err(broken("on another device, with an original recorded here"))
-            }
-            (Some(original), None | Some(true)) => Ok(DbUnstoredAudio::Original(original)),
-            (None, Some(false)) => Ok(DbUnstoredAudio::Elsewhere(self.other_device()?)),
-            (None, Some(true)) => Err(broken("on this device, with no original recorded")),
-            (None, None) => Err(broken(
+        match (self.original_here, self.is_self) {
+            (true, Some(false)) => Err(broken("on another device, with an original recorded here")),
+            (true, None | Some(true)) => Ok(DbUnstoredAudio::Original),
+            (false, Some(false)) => Ok(DbUnstoredAudio::Elsewhere(self.other_device()?)),
+            (false, Some(true)) => Err(broken("on this device, with no original recorded")),
+            (false, None) => Err(broken(
                 "on another device it has no registration of, or on this device with no original recorded",
             )),
         }

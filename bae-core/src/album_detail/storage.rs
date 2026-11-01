@@ -31,12 +31,10 @@ pub struct ReleaseStorageSummary {
 
 impl ReleaseStorageSummary {
     /// `storage_state` derives from `remote` alone, and `pinned` is the
-    /// orthogonal pin state the row reads beside it; `originals` is what the
-    /// disk has said of the originals the library records this device holding.
+    /// orthogonal pin state the row reads beside it.
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
-        originals: &OriginalsSeen,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
         // A release with files waiting to upload offers only cancelling.
@@ -45,7 +43,7 @@ impl ReleaseStorageSummary {
         } else {
             available_storage_actions(
                 storage_state,
-                &release_playability(&raw.unstored_audio, originals),
+                &release_playability(&raw.unstored_audio),
                 raw.pinned,
                 has_cloud_home,
             )
@@ -146,15 +144,10 @@ impl StorageRow {
     /// The release and its album arrive pre-joined from SQL, each with its
     /// cover's version; each half maps to its own summary projection, so the
     /// release row carries its own art and the album its primary release's.
-    pub(crate) fn from_raw(
-        raw: DbStorageRow,
-        has_cloud_home: bool,
-        originals: &OriginalsSeen,
-    ) -> StorageRow {
+    pub(crate) fn from_raw(raw: DbStorageRow, has_cloud_home: bool) -> StorageRow {
         let cover = cover_ref(&raw.release.id, raw.release_cover_version);
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            originals,
             cover,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so
             // the per-track compilation flag is never read on this path.

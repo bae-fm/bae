@@ -356,14 +356,9 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        let has_cloud_home = self.has_cloud_home();
-        let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
-            .await?;
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
-            has_cloud_home,
-            &originals,
+            self.has_cloud_home(),
         )))
     }
 
@@ -374,43 +369,25 @@ impl LibraryManager {
         self.database.subscribe_release_detail(initial)
     }
 
-    /// The originals the library records this device holding for the release
-    /// a release-detail delivery shows: what the disk is asked about.
-    pub(crate) fn release_detail_originals(
-        projection: &crate::db::ReleaseDetailProjection,
-    ) -> Vec<crate::db::RecordedOriginal> {
-        projection
-            .context
-            .as_ref()
-            .map(|context| crate::album_detail::recorded_originals(&context.detail.unstored_audio))
-            .unwrap_or_default()
-    }
-
-    /// Resolve a release-detail delivery with what the disk has said of its
-    /// originals (see [`Self::release_detail_originals`]).
+    /// Resolve a release-detail delivery.
     pub(crate) fn resolve_release_detail_projection(
         &self,
         release_id: &str,
         projection: crate::db::ReleaseDetailProjection,
-        originals: &crate::album_detail::OriginalsSeen,
-    ) -> Result<Option<ReleaseDetail>, LibraryError> {
-        let Some(crate::db::ReleaseDetailContext {
+    ) -> Option<ReleaseDetail> {
+        let crate::db::ReleaseDetailContext {
             detail,
             album_artists,
             release_index,
             is_compilation,
-        }) = projection.context
-        else {
-            return Ok(None);
-        };
-        Ok(Some(self.resolve_release_detail_context(
+        } = projection.context?;
+        Some(self.resolve_release_detail_context(
             release_id,
             detail,
             album_artists,
             release_index,
             is_compilation,
-            originals,
-        )))
+        ))
     }
 
     fn resolve_release_detail_context(
@@ -420,12 +397,10 @@ impl LibraryManager {
         album_artists: Vec<crate::credits::LibraryCredit>,
         release_index: usize,
         is_compilation: bool,
-        originals: &crate::album_detail::OriginalsSeen,
     ) -> ReleaseDetail {
         let has_cloud_home = self.has_cloud_home();
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            originals,
             cover: crate::album_detail::cover_ref(release_id, raw.cover_version.clone()),
             is_compilation,
         };
@@ -454,16 +429,12 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
-            .await?;
         Ok(Some(self.resolve_release_detail_context(
             release_id,
             raw,
             album_artists,
             release_index,
             is_compilation,
-            &originals,
         )))
     }
 

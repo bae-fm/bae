@@ -14807,7 +14807,7 @@ nb = "På {device}, en erstattet enhet"
 fi = "Korvatulla laitteella {device}"
 
 [messages."core.release.original_missing"]
-comment = "A release this device can't play, and playing it: a local release imported here whose original files are gone or changed."
+comment = "Playing a track of a local release imported here whose original files are gone or changed since import."
 value = "Its original files are missing from this device, or changed since it was imported."
 
 [messages."core.release.original_missing".translations]

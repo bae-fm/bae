@@ -174,8 +174,6 @@ impl LibraryManager {
             outputs,
             release_writes: Arc::default(),
             #[cfg(test)]
-            disk_hold: Arc::default(),
-            #[cfg(test)]
             pin_reads_hold: Arc::default(),
         };
         manager
