@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The storage state chip: what core says the row's storage shows. Files on
-/// the move fill their chip as far as they have come; a transition this
-/// process runs while they rest shows its own words.
+/// the move fill their chip as far as they have come, as does a release
+/// being made local; another transition this process runs while the files
+/// rest shows its own words.
 struct StorageStateLabel: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
@@ -14,6 +15,8 @@ struct StorageStateLabel: View {
             StorageUploadingChip(releaseId: release.id)
         case .pinning:
             StoragePinningChip(releaseId: release.id)
+        case .transferring(.detachAudio):
+            StorageMakingLocalChip(releaseId: release.id)
         case .transferring(let action):
             StatusChip(verbatim: action.transferLabel, tone: .activity)
         case .local:
@@ -54,6 +57,24 @@ private struct StoragePinningChip: View {
             label: "Pinning",
             kind: .pin,
             fill: .pin(downloadStore.downloadProgress(forRelease: releaseId))
+        )
+    }
+}
+
+/// A release being made local's chip, filled each frame from how far its
+/// files have downloaded into the person's folder.
+private struct StorageMakingLocalChip: View {
+    let releaseId: String
+    @Environment(DownloadStore.self)
+    private var downloadStore
+
+    var body: some View {
+        StorageProgressChip(
+            verbatim: BridgeReleaseStorageAction.detachAudio.transferLabel,
+            kind: .pin,
+            fill: .makeLocal(
+                downloadStore.makeLocalProgress(forRelease: releaseId)
+            )
         )
     }
 }

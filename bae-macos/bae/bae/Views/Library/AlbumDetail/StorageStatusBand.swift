@@ -2,9 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// A release's storage state, transfer or upload progress, and storage
-/// actions. An upload's bar and bytes are native views that read the
-/// release's latest progress each frame, so moving bytes run no SwiftUI
-/// update.
+/// actions. An upload's and a make-local's bar and bytes are native views
+/// that read the release's latest progress each frame, so moving bytes run
+/// no SwiftUI update.
 struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
@@ -12,6 +12,8 @@ struct StorageStatusBand: View {
     let onSaveAs: () -> Void
     @Environment(OutboxStore.self)
     private var outboxStore
+    @Environment(DownloadStore.self)
+    private var downloadStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
@@ -40,8 +42,13 @@ struct StorageStatusBand: View {
             }
             // Read off the identity-stable summary so the bar updates in place.
             if let transfer = release.summary.transfer {
-                ProgressLine(transfer.label, progress: nil)
-                    .themeText(.body)
+                if transfer.action == .detachAudio {
+                    makeLocalLine(transfer)
+                }
+                else {
+                    ProgressLine(transfer.label, progress: nil)
+                        .themeText(.body)
+                }
             }
             else if !release.summary.transitioning {
                 transferActions
@@ -64,6 +71,25 @@ struct StorageStatusBand: View {
             StreamBar(stream: .upload(source))
                 .frame(minWidth: 48)
             StreamLabel(stream: .uploadBytes(source))
+        }
+    }
+
+    /// The transition's words over the bytes the release and the file being
+    /// downloaded hold, and a bar of the release's, read from how far its
+    /// files have downloaded into the person's folder each frame.
+    private func makeLocalLine(_ transfer: TransferState) -> some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(transfer.label)
+                .themeText(.body)
+                .foregroundStyle(.secondary)
+            TransferReadout(
+                stream: .makeLocal(
+                    downloadStore.makeLocalProgress(
+                        forRelease: release.summary.id
+                    )
+                ),
+                kind: .pin
+            )
         }
     }
 
@@ -129,6 +155,7 @@ struct StorageStatusBand: View {
         .frame(width: 560)
         .background(Theme.background)
         .environment(OutboxStore(uploadsPaused: false))
+        .environment(PreviewData.downloadStore())
     }
 
     // Local: the only offered transition is uploading to the cloud.

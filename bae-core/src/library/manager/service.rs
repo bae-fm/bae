@@ -155,6 +155,7 @@ impl LibraryManager {
             track_deletions: Arc::default(),
             sync,
             detach_cancels: Default::default(),
+            make_local_transfers: crate::library::make_local_transfers::MakeLocalTransfers::new(),
             downloads,
             #[cfg(desktop)]
             outputs,
@@ -691,6 +692,16 @@ impl LibraryManager {
         std::collections::BTreeMap<String, crate::library::DownloadTransferProgress>,
     > {
         self.downloads.subscribe_transfers()
+    }
+
+    /// The bytes each release this process is making local has downloaded,
+    /// by release, and each change to them.
+    pub(crate) fn subscribe_make_local_transfers(
+        &self,
+    ) -> tokio::sync::watch::Receiver<
+        std::collections::BTreeMap<String, crate::library::MakeLocalTransferProgress>,
+    > {
+        self.make_local_transfers.subscribe()
     }
 
     /// The export queue as it stands now, each entry beside its release, the

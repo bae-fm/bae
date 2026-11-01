@@ -178,6 +178,14 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "DownloadStore",
+        "makeLocalProgress",
+        "the latest bytes a release being made local has downloaded into the "
+        "person's folder, which core sends as they arrive and keeps in no "
+        "table; the leaf hands it to a native view that reads it each display "
+        "frame",
+    ),
+    KeyedStream(
+        "DownloadStore",
         "fileShare",
         "the latest share a file being downloaded to keep whole has moved, "
         "which coven's download watch tells and no table keeps; the leaf hands "

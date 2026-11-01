@@ -41,6 +41,12 @@ mirror_struct! {
     fields: { bytes_done, bytes_total, fraction, throughput_bps },
 }
 
+mirror_struct! {
+    crate::types::BridgeMakeLocalProgress = bae_core::library::MakeLocalTransferProgress,
+    from_core: pub(crate) fn,
+    fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
+}
+
 impl crate::types::BridgeDownloadState {
     pub(super) fn from_core(state: bae_core::library::DownloadPhase) -> Self {
         match state {

@@ -737,6 +737,8 @@ pub struct LibraryManager {
     /// How to stop each transfer making a release local that this process
     /// runs.
     detach_cancels: crate::library::detach_cancels::DetachCancels,
+    /// How far each release this process is making local has come.
+    make_local_transfers: crate::library::make_local_transfers::MakeLocalTransfers,
     /// The "Pin for offline" queue: its table, which the Downloads pane and
     /// the detail views read, and the bytes its active download has moved. A
     /// single serial worker drains it one release at a time. Shared across

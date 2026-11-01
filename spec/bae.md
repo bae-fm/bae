@@ -1755,9 +1755,10 @@ opens.
 Each row's storage state is the place it sorts by, which core reads with the
 row: Uploading, its chip filled as far as its bytes have come while any file
 is being sent; Pinning, filled as far as its download has come once it
-starts; Local, Pinned or Cloud at rest, or, while another transition this
-process runs leaves the files where they are, that transition's words. No
-rate shows beside it.
+starts; making local, filled as far as its copies have downloaded (§4.4);
+Local, Pinned or Cloud at rest, or, while another transition this process
+runs leaves the files where they are, that transition's words. No rate shows
+beside it.
 
 Under the list, beside its count and total size, each transfer queue
 holding files waiting or on the move shows while it does: uploads, pins
@@ -1840,9 +1841,15 @@ hands coven the folder and each file's path below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
-is whole and synced. Then one write switches every file to Carol's device
-only, coven recording each copy as the file's original there, and ends the
-release's transition (§4.2); no synced row of the release changes. Other devices see the files on Carol's device,
+is whole and synced. While it downloads, the release's Storage Manager row and
+its storage band show how far: a bar and the bytes of the whole release, and
+the bytes of the file being downloaded. coven reports both as each file's
+bytes arrive, a few times a second; they are kept only in memory, keyed by
+release, beside the tables, and the release leaves them as its transition
+ends, however it ends. Then one write switches every file to
+Carol's device only, coven recording each copy as the file's original there,
+and ends the release's transition (§4.2); no synced row of the release
+changes. Other devices see the files on Carol's device,
 drop their pins and cached bytes of them, and can't play the release. The
 stored bytes go once nothing names them. A cancel or failure before that write
 removes every copy and every folder the call made, and leaves the release

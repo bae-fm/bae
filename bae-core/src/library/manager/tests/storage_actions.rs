@@ -284,7 +284,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     let (_stop, stopped) = tokio::sync::watch::channel(false);
     let prepared = manager
         .database
-        .prepare_device_only(&refused_folder, paths, &stopped)
+        .prepare_device_only(&refused_folder, paths, &stopped, |_| {})
         .await
         .unwrap();
     let refused = manager
@@ -416,4 +416,83 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     release.id
+}
+
+/// While a release's copies download into the person's folder, the release
+/// is listed with the bytes of the file coven downloads and of the whole
+/// release; once its files have switched it is listed no more.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release_id = uploaded_release(
+        &manager,
+        &temp_dir.path().join("made-local"),
+        "Made Local",
+        false,
+    )
+    .await;
+    let file = release_files(&manager, &release_id).await.remove(0);
+    let reference = manager.release_file_ref(&file.id).await.unwrap();
+    manager.evict_file_for_test(file.file).await.unwrap();
+    let coven::FilePlace::Cloud { location, .. } = reference.place() else {
+        panic!("the uploaded file is stored");
+    };
+
+    // Hold the download one byte into the file's encrypted chunk.
+    let (reached, observed) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_body_at(
+        coven::ObjectPath::file(
+            manager.database.store_id_for_test(),
+            location.uploader(),
+            location.object(),
+        ),
+        12,
+        reached,
+        resumed,
+    )
+    .await;
+    let mut transfers = manager.subscribe_make_local_transfers();
+    let folder = temp_dir.path().join("local");
+    std::fs::create_dir(&folder).unwrap();
+    let making = tokio::spawn({
+        let manager = manager.library.clone();
+        let release_id = release_id.clone();
+        async move {
+            manager
+                .detach_release_audio_into(
+                    &release_id,
+                    &folder,
+                    &crate::library::CancellationToken::new(),
+                )
+                .await
+        }
+    });
+    observed.await.unwrap();
+    let listed = tokio::time::timeout(WAIT, async {
+        loop {
+            if let Some(progress) = transfers.borrow_and_update().get(&release_id).copied() {
+                return progress;
+            }
+            transfers.changed().await.unwrap();
+        }
+    })
+    .await
+    .expect("the release is listed while its copy downloads");
+    assert!(listed.file_bytes_total > 0, "{listed:?}");
+    assert!(
+        listed.file_bytes_done < listed.file_bytes_total,
+        "{listed:?}"
+    );
+    assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
+    assert!(listed.bytes_total >= listed.file_bytes_total, "{listed:?}");
+
+    resume.send(()).unwrap();
+    making.await.unwrap().unwrap();
+    assert!(
+        transfers.borrow().is_empty(),
+        "a release whose files switched is listed no more"
+    );
 }

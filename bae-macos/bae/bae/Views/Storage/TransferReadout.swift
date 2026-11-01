@@ -3,7 +3,8 @@ import BaeKit
 import SwiftUI
 
 /// A release transfer's readout: the bytes it holds of its size and how fast
-/// it goes on one line, over a bar of the same bytes, all read from the
+/// it goes (for a release made local, the bytes of the file being
+/// downloaded) on one line, over a bar of the same bytes, all read from the
 /// release's latest progress once per display frame while it moves. Moving
 /// bytes run no SwiftUI update. Before the stream names the release the
 /// labels are empty and the bar empty.
@@ -20,7 +21,7 @@ final class TransferReadoutNSView: NSView {
         self?
             .show(
                 bytes: transfer?.bar.text,
-                rate: transfer.map(\.throughputBps),
+                detail: Self.rateText(transfer.map(\.throughputBps)),
                 fraction: transfer?.bar.fraction
             )
     }
@@ -30,7 +31,19 @@ final class TransferReadoutNSView: NSView {
         self?
             .show(
                 bytes: progress?.bytesText,
-                rate: progress?.throughputBps,
+                detail: Self.rateText(progress?.throughputBps),
+                fraction: progress?.fraction
+            )
+    }
+    private lazy var makeLocals = FrameFollowing<BridgeMakeLocalProgress>(
+        view: self
+    ) { [weak self] progress in
+        self?
+            .show(
+                bytes: progress?.bytesText,
+                detail: progress.map {
+                    String(localized: "Current file: \($0.fileBytesText)")
+                },
                 fraction: progress?.fraction
             )
     }
@@ -106,25 +119,35 @@ final class TransferReadoutNSView: NSView {
         switch stream {
         case .upload(let source):
             pins.stop()
+            makeLocals.stop()
             uploads.follow(source)
         case .pin(let source):
             uploads.stop()
+            makeLocals.stop()
             pins.follow(source)
+        case .makeLocal(let source):
+            uploads.stop()
+            pins.stop()
+            makeLocals.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         pins.stop()
+        makeLocals.stop()
     }
 
     /// A zero or unknown rate shows nothing rather than a stalled speed.
-    private func show(bytes: String?, rate: UInt64?, fraction: Double?) {
+    private static func rateText(_ rate: UInt64?) -> String? {
+        rate.flatMap {
+            $0 > 0 ? QueueSummary.throughputText(bytesPerSecond: $0) : nil
+        }
+    }
+
+    private func show(bytes: String?, detail: String?, fraction: Double?) {
         bytesField.stringValue = bytes ?? ""
-        rateField.stringValue =
-            rate.flatMap {
-                $0 > 0 ? QueueSummary.throughputText(bytesPerSecond: $0) : nil
-            } ?? ""
+        rateField.stringValue = detail ?? ""
         bar.progress = fraction ?? 0
     }
 }

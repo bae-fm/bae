@@ -19,7 +19,10 @@ import Foundation
 
 /// An in-flight storage transition for a release.
 public struct TransferState: Equatable, Sendable {
-    public let label: String
+    public let action: BridgeReleaseStorageAction
+
+    /// The transition's words while it runs.
+    public var label: String { action.transferLabel }
 }
 
 public struct ReleaseSummary: Identifiable, Sendable {
@@ -106,6 +109,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
     private static func transferState(
         from action: BridgeReleaseStorageAction?
     ) -> TransferState? {
-        action.map { TransferState(label: $0.transferLabel) }
+        action.map { TransferState(action: $0) }
     }
 }

@@ -133,6 +133,9 @@ pub enum BridgeFastValue {
     Download {
         progress: BridgeDownloadTransferProgress,
     },
+    /// How far a release being made local has downloaded into the
+    /// person's folder; keyed by release.
+    MakeLocal { progress: BridgeMakeLocalProgress },
     /// An exporting release's percent; keyed by release.
     ExportPercent { percent: u8 },
     /// Where the playing track is; keyed by track, the playing one alone.
@@ -180,6 +183,17 @@ pub struct BridgeDownloadTransferProgress {
     pub bytes_total: u64,
     pub fraction: f64,
     pub throughput_bps: Option<u64>,
+}
+
+/// How far a release being made local has downloaded: the bytes of the file
+/// coven is downloading, and of every file of the release. Mirrors
+/// `MakeLocalTransferProgress`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMakeLocalProgress {
+    pub file_bytes_done: u64,
+    pub file_bytes_total: u64,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
 }
 
 /// What the library holds now for a queued release: what its queue row

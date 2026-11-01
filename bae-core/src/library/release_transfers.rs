@@ -1,7 +1,8 @@
-//! The progress of the active entry of a release queue — a download's bytes,
-//! an export's percent — for a reader that draws each one: all of it first,
-//! then each release whose progress moved. The queue's table leaves the
-//! progress out, so its reads change only as entries come, go, start or fail.
+//! The progress of each release transfer under way — the active download's
+//! bytes, the active export's percent, a make-local's bytes — for a reader
+//! that draws each one: all of it first, then each release whose progress
+//! moved. No table holds the progress, so the reads of the transfers' tables
+//! change only as transfers come, go, start or fail.
 
 use super::DownloadTransferProgress;
 use std::collections::BTreeMap;
@@ -33,6 +34,7 @@ pub struct ReleaseTransfersWatch<Progress> {
 
 pub type DownloadTransfersWatch = ReleaseTransfersWatch<DownloadTransferProgress>;
 pub type OutputTransfersWatch = ReleaseTransfersWatch<u8>;
+pub type MakeLocalTransfersWatch = ReleaseTransfersWatch<super::MakeLocalTransferProgress>;
 
 impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
     pub(crate) fn of(transfers: watch::Receiver<BTreeMap<String, Progress>>) -> Self {

@@ -71,6 +71,14 @@ impl AppHandle {
         crate::screens::preview_position(self.runtime.clone(), self.run_feed())
     }
 
+    /// Write how far each release being made local has downloaded into the
+    /// person's folder, the file coven is downloading and the whole release,
+    /// into a stream by release id. Only the desktop apps make releases
+    /// local.
+    pub fn feed_make_local_transfers(&self) -> Arc<KeyedValueStream> {
+        crate::screens::make_local_transfers(self.runtime.clone(), self.run_feed())
+    }
+
     /// Write how far through its step each running import is into a stream
     /// by candidate key.
     pub fn feed_import_percents(&self) -> Arc<KeyedValueStream> {

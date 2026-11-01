@@ -12,21 +12,31 @@ final class StreamBarNSView: ProgressTrackNSView {
     private lazy var pins = FrameFollowing<BridgeDownloadTransferProgress>(
         view: self
     ) { [weak self] progress in self?.progress = progress?.fraction ?? 0 }
+    private lazy var makeLocals = FrameFollowing<BridgeMakeLocalProgress>(
+        view: self
+    ) { [weak self] progress in self?.progress = progress?.fraction ?? 0 }
 
     func follow(_ stream: ReleaseProgressSource) {
         switch stream {
         case .upload(let source):
             pins.stop()
+            makeLocals.stop()
             uploads.follow(source)
         case .pin(let source):
             uploads.stop()
+            makeLocals.stop()
             pins.follow(source)
+        case .makeLocal(let source):
+            uploads.stop()
+            pins.stop()
+            makeLocals.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         pins.stop()
+        makeLocals.stop()
     }
 }
 

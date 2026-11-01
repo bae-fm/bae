@@ -268,17 +268,19 @@ impl Database {
 
     /// Download these cloud files to their paths under `folder`, for a write
     /// to switch them all to this device only with
-    /// [`Self::make_release_local`]. A failure or a cancel removes every copy
+    /// [`Self::make_release_local`], telling `on_progress` how far each file
+    /// and the whole call have come. A failure or a cancel removes every copy
     /// and folder the call made.
     pub(crate) async fn prepare_device_only(
         &self,
         folder: &std::path::Path,
         files: Vec<(coven::FileId, coven::RelativePath)>,
         cancel: &tokio::sync::watch::Receiver<bool>,
+        on_progress: impl Fn(coven::Progress<coven::DeviceOnlyStep>),
     ) -> Result<coven::PreparedDeviceOnly, coven::DeviceOnlyError> {
         self.inner
             .handle
-            .prepare_device_only(folder, files, cancel, |_| {})
+            .prepare_device_only(folder, files, cancel, on_progress)
             .await
     }
 

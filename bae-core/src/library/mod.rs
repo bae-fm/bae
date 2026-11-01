@@ -11,6 +11,7 @@ mod library_status;
 mod live_read;
 mod live_values;
 mod local_lifecycle;
+pub(crate) mod make_local_transfers;
 pub mod manager;
 mod outbox_watch;
 pub mod output_snapshot;
@@ -52,6 +53,7 @@ pub use local_lifecycle::{
     finish_removals, remove_local_library, remove_unopenable_library, unsent_before_removal,
     LibraryRemovalError, UnfinishedRemoval,
 };
+pub use make_local_transfers::MakeLocalTransferProgress;
 pub use manager::*;
 pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
@@ -75,8 +77,8 @@ pub use release_queue::{
     TransferStage,
 };
 pub use release_transfers::{
-    DownloadTransferChange, DownloadTransfersWatch, OutputTransferChange, OutputTransfersWatch,
-    ReleaseTransferChange, ReleaseTransfersWatch,
+    DownloadTransferChange, DownloadTransfersWatch, MakeLocalTransfersWatch, OutputTransferChange,
+    OutputTransfersWatch, ReleaseTransferChange, ReleaseTransfersWatch,
 };
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,

@@ -58,6 +58,14 @@ impl AppServices {
         )
     }
 
+    /// The bytes each release this process is making local has downloaded,
+    /// sent as they move.
+    pub fn watch_make_local_transfers(&self) -> crate::library::MakeLocalTransfersWatch {
+        crate::library::MakeLocalTransfersWatch::of(
+            self.inner.manager.subscribe_make_local_transfers(),
+        )
+    }
+
     /// The export queue as it stands now, each entry beside its release, the
     /// active one with the percent it has reached: the automation surface's
     /// export status.

@@ -115,9 +115,15 @@ impl LibraryManager {
                         crate::db::StoredTransition::DetachAudio,
                         async {
                             let (stop, stopped) = tokio::sync::watch::channel(false);
-                            let call = manager
-                                .database
-                                .prepare_device_only(&folder, files, &stopped);
+                            // Listed until the transition ends, however it
+                            // ends.
+                            let report = manager.make_local_transfers.report(&release_id);
+                            let call = manager.database.prepare_device_only(
+                                &folder,
+                                files,
+                                &stopped,
+                                |progress| report.progress(progress),
+                            );
                             tokio::pin!(call);
                             // A cancel that came first stops the call before
                             // it starts.

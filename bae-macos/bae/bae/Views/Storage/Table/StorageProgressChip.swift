@@ -7,14 +7,41 @@ import SwiftUI
 /// The fill is a native view that reads the release's latest progress each
 /// display frame, so moving bytes run no SwiftUI update.
 struct StorageProgressChip: View {
-    let label: LocalizedStringKey
+    let label: Text
     let kind: StorageTransferKind
     /// The release's stream; `nil` draws no fill, as for files only waiting
     /// their turn.
     let fill: ReleaseProgressSource?
 
+    init(
+        label: LocalizedStringKey,
+        kind: StorageTransferKind,
+        fill: ReleaseProgressSource?
+    ) {
+        self.init(text: Text(label), kind: kind, fill: fill)
+    }
+
+    /// A chip whose words are already in the person's language.
+    init(
+        verbatim label: String,
+        kind: StorageTransferKind,
+        fill: ReleaseProgressSource?
+    ) {
+        self.init(text: Text(verbatim: label), kind: kind, fill: fill)
+    }
+
+    private init(
+        text: Text,
+        kind: StorageTransferKind,
+        fill: ReleaseProgressSource?
+    ) {
+        label = text
+        self.kind = kind
+        self.fill = fill
+    }
+
     var body: some View {
-        Text(label)
+        label
             .themeText(.chip)
             .lineLimit(1)
             .foregroundStyle(.primary)
@@ -45,6 +72,9 @@ final class ChipFillNSView: NSView {
         view: self
     ) { [weak self] transfer in self?.show(transfer?.bar.fraction) }
     private lazy var pins = FrameFollowing<BridgeDownloadTransferProgress>(
+        view: self
+    ) { [weak self] progress in self?.show(progress?.fraction) }
+    private lazy var makeLocals = FrameFollowing<BridgeMakeLocalProgress>(
         view: self
     ) { [weak self] progress in self?.show(progress?.fraction) }
 
@@ -82,16 +112,23 @@ final class ChipFillNSView: NSView {
         switch fill {
         case .upload(let source):
             pins.stop()
+            makeLocals.stop()
             uploads.follow(source)
         case .pin(let source):
             uploads.stop()
+            makeLocals.stop()
             pins.follow(source)
+        case .makeLocal(let source):
+            uploads.stop()
+            pins.stop()
+            makeLocals.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         pins.stop()
+        makeLocals.stop()
     }
 
     private func show(_ fraction: Double?) {
