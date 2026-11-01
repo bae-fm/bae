@@ -41,7 +41,7 @@ async fn pure_reads_use_the_read_connection() {
             .await
             .unwrap_err()
             .to_string(),
-        "candidate missing has no editable metadata draft"
+        "candidate missing has no state"
     );
 
     // Writers that already have the requested state decide before opening a
