@@ -15,6 +15,7 @@ mod preparation_rows;
 mod prepared_asset_rows;
 mod rows;
 mod run_rows;
+mod search_rows;
 mod session_rows;
 mod signal_rows;
 mod standing_rows;
@@ -41,7 +42,7 @@ use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
 pub(super) use standing_rows::{
-    change_identification_on, end_identification_unless_of_on, load_standing_on, move_import_on,
+    change_identification_on, end_file_work_unless_of_on, load_standing_on, move_import_on,
     RuntimeFactColumns, RUNTIME_FACT_COLUMNS,
 };
 
@@ -804,7 +805,7 @@ pub(super) fn settle_scanned_candidates(
         }
         // The decision makes the candidate other files than its
         // identification was of, which ends with it.
-        end_identification_unless_of_on(
+        end_file_work_unless_of_on(
             sql,
             &path,
             Some(&crate::import::CandidateFiles {

@@ -862,7 +862,7 @@ impl Database {
             }
             // The release the grouping read leaves the scan with it, and its
             // identification with it.
-            super::import_state::end_identification_unless_of_on(sql, &key, None)?;
+            super::import_state::end_file_work_unless_of_on(sql, &key, None)?;
             let mut returned = Vec::with_capacity(members.len());
             for member in members {
                 if let Some((_, stored)) =

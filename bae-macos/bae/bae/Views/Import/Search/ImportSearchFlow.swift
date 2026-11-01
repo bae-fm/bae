@@ -22,6 +22,20 @@ enum ImportSearchFlow {
         }
     }
 
+    /// Re-ask the providers whose part of the candidate's search failed; the
+    /// answers land on the stored search, which the pane draws.
+    @MainActor
+    static func retrySearch(
+        importer: Importer,
+        importStore: ImportStore,
+        key: Data
+    ) {
+        Task { @MainActor in
+            do { try await importer.retryCandidateSearch(key) }
+            catch { importStore.reportFailure(error) }
+        }
+    }
+
     /// The bridge query for the active tab: the general (artist/album),
     /// catalog-number, or barcode field set.
     @MainActor

@@ -20,7 +20,7 @@ pub(crate) fn delete_entry(
     key: &CandidateKey,
 ) -> Result<(), DbError> {
     delete_entry_row(sql, watched_folder_path, key)?;
-    super::super::import_state::end_identification_unless_of_on(sql, key, None)
+    super::super::import_state::end_file_work_unless_of_on(sql, key, None)
 }
 
 fn delete_entry_row(
@@ -170,7 +170,7 @@ pub(super) fn prune_other_generations(
     // The candidates the pass did not find leave the scan, and their
     // identifications with them.
     for key in &pruned {
-        super::super::import_state::end_identification_unless_of_on(sql, key, None)?;
+        super::super::import_state::end_file_work_unless_of_on(sql, key, None)?;
     }
     Ok(pruned)
 }

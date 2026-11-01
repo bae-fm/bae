@@ -78,7 +78,13 @@ extension ImportSearchFlow {
                     form: form
                 )
             },
-            onRetrySearch: { services.importer.retryCandidateSearch(key) },
+            onRetrySearch: {
+                retrySearch(
+                    importer: services.importer,
+                    importStore: importStore,
+                    key: key
+                )
+            },
             onOpenSettings: openSettings,
             // The chip acts on one identifier; that change goes to core, and
             // the run that reads the changed choices starts from there.

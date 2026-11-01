@@ -200,18 +200,6 @@ forward! {
         fn cancel_all_imports() {
             this.services.import_cancel_all_in_background();
         }
-
-        /// Re-ask only the providers whose part of the search failed, keeping what
-        /// the others found. A no-op when the candidate has no search running.
-        fn retry_candidate_search(candidate_key: Vec<u8>) {
-            this.services.import_retry_candidate_search(candidate_key.into());
-        }
-
-        /// Drop a candidate's search, so its result area goes back to whatever
-        /// identification has to say.
-        fn clear_candidate_search(candidate_key: Vec<u8>) {
-            this.services.import_clear_candidate_search(candidate_key.into());
-        }
     }
 }
 
@@ -230,6 +218,16 @@ forward! {
             Ok(this
                 .services
                 .pane_start_candidate_search(candidate_key.into(), query.into_core())
+                .await?)
+        }
+
+        /// Re-ask only the providers whose part of the search failed, keeping
+        /// what the others found. Asks nothing when the candidate has no
+        /// search, or none of its providers failed.
+        fn retry_candidate_search(candidate_key: Vec<u8>) -> () {
+            Ok(this
+                .services
+                .import_retry_candidate_search(candidate_key.into())
                 .await?)
         }
 

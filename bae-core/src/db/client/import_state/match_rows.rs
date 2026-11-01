@@ -1,6 +1,6 @@
-//! A verdict's release-match rows: one per release it found, where the run
-//! lists it, what the record said and the rows hanging off it, written and
-//! read back.
+//! The release-match rows: one per release a verdict or a run in flight
+//! found, or a typed search's catalog returned, where it is listed, what the
+//! record said and the rows hanging off it, written and read back.
 
 use super::super::album_link_rows::AlbumLinkRow;
 use super::verdict_rows::{unreadable, Owner};
@@ -21,34 +21,94 @@ fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
     CoverStanding::from_column(stored).ok_or_else(|| unreadable("cover_standing", stored))
 }
 
-/// Where a release a verdict stores is listed, with what an offered or
-/// narrowed-out one carries: its pressing row, and for an offered one the
-/// note the folder's text names its row by.
+/// Whose match rows these are: a verdict-shaped owner's — a candidate's
+/// verdict or a run in flight — or a typed search's, whose rows hang off the
+/// catalog part that returned them.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum MatchOwner<'a> {
+    Verdict(Owner<'a>),
+    Search(i64),
+}
+
+impl MatchOwner<'_> {
+    /// The column that names this owner on every row it owns.
+    pub(super) fn column(self) -> &'static str {
+        match self {
+            Self::Verdict(owner) => owner.column(),
+            Self::Search(_) => "search_run",
+        }
+    }
+
+    fn content_hash(self) -> Option<String> {
+        match self {
+            Self::Verdict(owner) => owner.content_hash(),
+            Self::Search(_) => None,
+        }
+    }
+
+    fn run(self) -> Option<i64> {
+        match self {
+            Self::Verdict(owner) => owner.run(),
+            Self::Search(_) => None,
+        }
+    }
+
+    fn search(self) -> Option<i64> {
+        match self {
+            Self::Verdict(_) => None,
+            Self::Search(search) => Some(search),
+        }
+    }
+}
+
+/// Where a stored release is listed, with what an offered or narrowed-out
+/// one carries: its pressing row, and for an offered one the note the
+/// folder's text names its row by. A search's release is returned, and no
+/// pick has read it when it lands.
 #[derive(Clone, Copy)]
 pub(super) enum Written<'a> {
     Offered(u32, Option<&'a str>),
     NarrowedOut(u32),
     Unlisted,
+    Returned,
 }
 
 /// One match at `position`, in place of the one there, with the rows under
-/// it. The rows under the match that stood there are already gone.
+/// it. The rows under the match that stood there are already gone. Only a
+/// search writes a returned release, and only a verdict-shaped owner a listed
+/// or unlisted one.
 pub(super) fn store_match(
     sql: &SqlContext<'_, '_>,
-    owner: Owner<'_>,
+    owner: MatchOwner<'_>,
     position: usize,
     result: &MetadataResult,
     listing: Written<'_>,
 ) -> Result<(), DbError> {
-    let position = i64::try_from(position).map_err(|error| {
-        DbError::Message(format!(
-            "a match list is longer than SQLite counts: {error}"
-        ))
-    })?;
-    let (listing, pressing, named_note) = match listing {
-        Written::Offered(pressing, named_note) => (LISTING_OFFERED, Some(pressing), named_note),
-        Written::NarrowedOut(pressing) => (LISTING_NARROWED_OUT, Some(pressing), None),
-        Written::Unlisted => (LISTING_UNLISTED, None, None),
+    let position = ordinal_column(position)?;
+    let (listing, pressing, named_note) = match (owner, listing) {
+        (MatchOwner::Verdict(_), Written::Offered(pressing, named_note)) => {
+            (LISTING_OFFERED, Some(pressing), named_note)
+        }
+        (MatchOwner::Verdict(_), Written::NarrowedOut(pressing)) => {
+            (LISTING_NARROWED_OUT, Some(pressing), None)
+        }
+        (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None),
+        (MatchOwner::Search(_), Written::Returned) => (LISTING_RETURNED, None, None),
+        (MatchOwner::Verdict(_), Written::Returned)
+        | (
+            MatchOwner::Search(_),
+            Written::Offered(..) | Written::NarrowedOut(_) | Written::Unlisted,
+        ) => {
+            return Err(DbError::Message(format!(
+                "{owner:?} stores a release listed as no owner of its kind lists one"
+            )))
+        }
+    };
+    // A search's release hangs off the part that answered with it, which
+    // holds releases only while it stands answered.
+    let (search_state, picked) = match owner {
+        MatchOwner::Search(_) => (Some(SEARCH_STATE_DONE), Some(false)),
+        MatchOwner::Verdict(_) => (None, None),
     };
     let cover = result.cover_art.as_ref();
     let (tracks_kind, tracks_count) = match &result.source_tracks {
@@ -57,11 +117,7 @@ pub(super) fn store_match(
         Some(SourceTracks::Unreadable) => (Some("unreadable"), None),
         Some(SourceTracks::Listed { count }) => (Some("listed"), Some(i64::from(*count))),
     };
-    let album_links_kind = match &result.album_links {
-        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
-        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
-        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
-    };
+    let album_links_kind = album_links_column(&result.album_links);
     let (media_kind, media_entries): (&str, Vec<(Option<Medium>, u32)>) = match &result.media {
         StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
         StatedMedia::PerMedium(entries) => (
@@ -79,18 +135,24 @@ pub(super) fn store_match(
     let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
-    let (content_hash, run, column) = (owner.content_hash(), owner.run(), owner.column());
+    let (content_hash, run, search, column) = (
+        owner.content_hash(),
+        owner.run(),
+        owner.search(),
+        owner.column(),
+    );
     sql.execute(
         &format!(
-        "INSERT INTO import_candidate_match \
-             (content_hash, identify_run, position, pressing, source, release_id, title, artist, year, \
+            "INSERT INTO import_candidate_match \
+             (content_hash, identify_run, search_run, search_state, picked, position, pressing, \
+              source, release_id, title, artist, year, \
               country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?) \
+                 ?, ?, ?, ?) \
          ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
@@ -111,6 +173,9 @@ pub(super) fn store_match(
         params![
             content_hash,
             run,
+            search,
+            search_state,
+            picked,
             position,
             pressing,
             result.source.as_str(),
@@ -142,11 +207,13 @@ pub(super) fn store_match(
         for copy in &cover.image.downscaled {
             sql.execute(
                 "INSERT INTO import_candidate_match_cover_copy \
-                     (content_hash, identify_run, position, cover_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                     (content_hash, identify_run, search_run, position, cover_url, max_edge, \
+                      url) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
                 params![
                     content_hash,
                     run,
+                    search,
                     position,
                     cover.image.url,
                     copy.max_edge,
@@ -158,12 +225,13 @@ pub(super) fn store_match(
     for (ordinal, label) in result.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_label \
-                 (content_hash, identify_run, position, ordinal, name, catalog_number, \
-                  musicbrainz_label_id, discogs_label_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, search_run, position, ordinal, name, \
+                  catalog_number, musicbrainz_label_id, discogs_label_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 run,
+                search,
                 position,
                 ordinal_column(ordinal)?,
                 label.name(),
@@ -176,11 +244,12 @@ pub(super) fn store_match(
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_barcode \
-                 (content_hash, identify_run, position, ordinal, barcode) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, search_run, position, ordinal, barcode) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 run,
+                search,
                 position,
                 ordinal_column(ordinal)?,
                 barcode
@@ -190,11 +259,13 @@ pub(super) fn store_match(
     for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_medium \
-                 (content_hash, identify_run, position, media_kind, ordinal, medium, quantity) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, search_run, position, media_kind, ordinal, medium, \
+                  quantity) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 run,
+                search,
                 position,
                 media_kind,
                 ordinal_column(ordinal)?,
@@ -206,11 +277,12 @@ pub(super) fn store_match(
     for (ordinal, link) in result.links.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_link \
-                 (content_hash, identify_run, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, search_run, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 run,
+                search,
                 position,
                 ordinal_column(ordinal)?,
                 link.catalog.as_str(),
@@ -218,14 +290,25 @@ pub(super) fn store_match(
             ],
         )?;
     }
-    for (ordinal, album) in result.album_links.read().iter().enumerate() {
+    store_album_link_rows(sql, owner, position, &result.album_links)
+}
+
+/// The album link rows of the match at `position`, which holds none yet.
+fn store_album_link_rows(
+    sql: &SqlContext<'_, '_>,
+    owner: MatchOwner<'_>,
+    position: i64,
+    links: &AlbumLinks,
+) -> Result<(), DbError> {
+    for (ordinal, album) in links.read().iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, identify_run, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, search_run, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
-                content_hash,
-                run,
+                owner.content_hash(),
+                owner.run(),
+                owner.search(),
                 position,
                 ordinal_column(ordinal)?,
                 album.catalog.as_str(),
@@ -234,6 +317,45 @@ pub(super) fn store_match(
         )?;
     }
     Ok(())
+}
+
+/// Mark every row of `release` the search `search_run` holds picked, each
+/// stating `links` as its album on the other catalog, in place of what it
+/// stated.
+pub(super) fn store_picked(
+    sql: &SqlContext<'_, '_>,
+    search_run: i64,
+    release: &MetadataRef,
+    links: &AlbumLinks,
+) -> Result<(), DbError> {
+    let positions = sql.query(
+        "SELECT position FROM import_candidate_match \
+         WHERE search_run = ? AND source = ? AND release_id = ?",
+        params![search_run, release.catalog.as_str(), release.key],
+        |row| row.get::<_, i64>(0),
+    )?;
+    for position in positions {
+        sql.execute(
+            "DELETE FROM import_candidate_match_album_link WHERE search_run = ? AND position = ?",
+            params![search_run, position],
+        )?;
+        sql.execute(
+            "UPDATE import_candidate_match SET picked = 1, album_links = ? \
+             WHERE search_run = ? AND position = ?",
+            params![album_links_column(links), search_run, position],
+        )?;
+        store_album_link_rows(sql, MatchOwner::Search(search_run), position, links)?;
+    }
+    Ok(())
+}
+
+/// The stored `album_links` value of `links`.
+fn album_links_column(links: &AlbumLinks) -> &'static str {
+    match links {
+        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
+        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
+        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
+    }
 }
 
 pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
@@ -248,6 +370,10 @@ pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
 const LISTING_OFFERED: &str = "offered";
 const LISTING_NARROWED_OUT: &str = "narrowed_out";
 const LISTING_UNLISTED: &str = "unlisted";
+const LISTING_RETURNED: &str = "returned";
+
+/// The `search_state` a search's release names its answered part by.
+const SEARCH_STATE_DONE: &str = "done";
 
 /// The stored `album_links` values, one per [`AlbumLinks`] shape.
 const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
@@ -290,6 +416,11 @@ pub(super) enum Listing {
     /// Found by a cell of the ledger and listed in neither: only the cell
     /// shows it.
     Unlisted,
+    /// Returned by a typed search's catalog, and whether a pick has read its
+    /// documents.
+    Returned {
+        picked: bool,
+    },
 }
 
 /// What a release a verdict lists carries beside the release: which pressing
@@ -326,6 +457,7 @@ pub(super) struct MatchColumns {
     pub(super) position: i64,
     pressing: Option<i64>,
     listing: String,
+    picked: Option<bool>,
     media_kind: String,
     /// The stored `album_links` value; [`match_of`] reads it with the album
     /// link rows.
@@ -345,6 +477,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         position,
         pressing,
         listing,
+        picked,
         media_kind,
         album_links: album_links_kind,
         mut result,
@@ -446,7 +579,14 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         }),
         LISTING_NARROWED_OUT if named_note.is_none() => Listing::NarrowedOut(listed(pressing)?),
         LISTING_UNLISTED if pressing.is_none() && named_note.is_none() => Listing::Unlisted,
-        LISTING_NARROWED_OUT | LISTING_UNLISTED => {
+        LISTING_RETURNED if pressing.is_none() && named_note.is_none() => Listing::Returned {
+            picked: picked.ok_or_else(|| {
+                DbError::Message(format!(
+                    "match {position} of {content_hash} is returned but says nothing of a pick"
+                ))
+            })?,
+        },
+        LISTING_NARROWED_OUT | LISTING_UNLISTED | LISTING_RETURNED => {
             return Err(DbError::Message(format!(
                 "match {position} of {content_hash} is {listing} but holds what only a listed \
                  or offered release holds"
@@ -503,6 +643,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         position: row.get("position")?,
         pressing: row.get("pressing")?,
         listing: row.get("listing")?,
+        picked: row.get("picked")?,
         media_kind: row.get("media_kind")?,
         album_links: row.get("album_links")?,
         result: MetadataResult {

@@ -433,7 +433,7 @@ impl ImportServiceHandle {
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
         self.land_picked(&candidate_key, release.release(), release.album_links())
-            .await;
+            .await?;
         let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
         let folder_tracks = u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
         // A release that cannot be read onto the folder's audio — it lists
@@ -456,7 +456,7 @@ impl ImportServiceHandle {
         .await?;
         for partner in &prepared_partners {
             self.land_picked(&candidate_key, partner.release(), partner.album_links())
-                .await;
+                .await?;
         }
         // The choice is stored as the candidate's result unless a run's result
         // already stands.

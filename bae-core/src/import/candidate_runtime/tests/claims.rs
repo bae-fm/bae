@@ -23,7 +23,6 @@ async fn a_claim_is_refused_by_the_claim_the_table_holds() {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
 
     let holding_nothing = runtime.over_the_same_library_for_test();
-    assert!(holding_nothing.inner.lock().unwrap().runtime.is_empty());
     assert!(matches!(
         holding_nothing.claim_for_import(key, "imp-2", false).await,
         Err(crate::import::ImportError::CandidateImportInProgress)

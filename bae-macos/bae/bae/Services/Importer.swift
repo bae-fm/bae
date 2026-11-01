@@ -49,7 +49,7 @@ private struct ImportOperations: Sendable {
     let endReleaseIdentification: @Sendable (String) async throws -> Void
     let startCandidateSearch:
         @Sendable (Data, BridgeSearchQuery) async throws -> Void
-    let retryCandidateSearch: @Sendable (Data) -> Void
+    let retryCandidateSearch: @Sendable (Data) async throws -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let editCandidateLookupChoices:
         @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
@@ -171,7 +171,7 @@ extension ImportOperations {
                 )
             },
             retryCandidateSearch: {
-                handle.retryCandidateSearch(candidateKey: $0)
+                try await handle.retryCandidateSearch(candidateKey: $0)
             },
             subscribeLibraryStatuses: {
                 let subscription = handle.subscribeLibraryStatuses()
@@ -373,7 +373,8 @@ final class Importer: Sendable, Observable {
         startCandidateSearch:
             @escaping @Sendable (Data, BridgeSearchQuery) async throws ->
             Void = { _, _ in },
-        retryCandidateSearch: @escaping @Sendable (Data) -> Void = { _ in },
+        retryCandidateSearch:
+            @escaping @Sendable (Data) async throws -> Void = { _ in },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         editCandidateLookupChoices:
@@ -642,8 +643,8 @@ extension Importer {
     }
 
     /// Re-ask only the providers whose part of the search failed.
-    func retryCandidateSearch(_ candidateKey: Data) {
-        operations.retryCandidateSearch(candidateKey)
+    func retryCandidateSearch(_ candidateKey: Data) async throws {
+        try await operations.retryCandidateSearch(candidateKey)
     }
 
     /// Open one live read of library membership for an import pane's offers.

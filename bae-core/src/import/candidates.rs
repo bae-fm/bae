@@ -125,21 +125,22 @@ impl SaveFailure {
 /// Where a folder candidate's identification and import stand is read from
 /// the standings table, the only place it is held; the state a run published,
 /// a library release's re-identify run included, from the runs table beside
-/// it; the search from the candidate runtime.
+/// it; the search from the search tables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
     pub identification: Option<IdentificationRuntime>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
     /// The typed search a person submitted for this candidate, as its sources
-    /// land. `None` before one is submitted and after it is cleared.
+    /// land. `None` before one is submitted and after the files it was of
+    /// change.
     ///
-    /// It lives here rather than in the pane because its sources land one at a
-    /// time and the pane is rebuilt from stored state: a value the pane owned
-    /// would be lost on every redraw, and lost outright if the person looked
-    /// at another candidate while a provider was still answering. The runtime
-    /// holds the one each landing folds into and derives this from it, so what
-    /// a surface draws cannot disagree with what a landing reads back.
+    /// It is stored rather than held by the pane because its sources land one
+    /// at a time and the pane is rebuilt from stored state: a value the pane
+    /// owned would be lost on every redraw, and lost outright if the person
+    /// looked at another candidate while a provider was still answering. Each
+    /// landing is a write to the rows this is read from, so what a surface
+    /// draws cannot disagree with what a landing wrote.
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 

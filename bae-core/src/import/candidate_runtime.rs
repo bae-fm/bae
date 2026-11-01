@@ -17,19 +17,21 @@
 //! it ends. The count of identifications in flight is the table's too, moved
 //! by each change in its own write.
 //!
-//! This runtime holds what is not stored: how far through its step an import
-//! is, for the import percents' stream alone; a person's typed search; and
-//! extraction's [`Signals`](crate::signals::Signals).
-//! [`CandidateRuntimeSnapshot`] is the stored runtime with these beside it.
+//! A person's typed search is stored beside them too
+//! (`import_candidate_search`, see [`CandidateSearch`]): each catalog's
+//! answer lands on it in a write of its own.
 //!
-//! A key has an entry only while something is held for it. Readers of the
-//! snapshots wake on [`RuntimeView`], which a read of the table
-//! and a change to what is held each move key by key, naming the keys they
-//! moved; readers of the signals wake on [`Revisions`], which names the keys
-//! whose signals moved.
+//! This runtime holds what is not stored: how far through its step an import
+//! is, for the import percents' stream alone, and extraction's
+//! [`Signals`](crate::signals::Signals). [`CandidateRuntimeSnapshot`] is the
+//! stored runtime as one read of the tables composes it.
+//!
+//! Readers of the snapshots wake on [`RuntimeView`], which each read of the
+//! tables moves key by key, naming the keys it moved; readers of the signals
+//! wake on [`Revisions`], which names the keys whose signals moved.
 
 use super::candidate_key::CandidateKey;
-use super::candidate_search::CandidateSearch;
+use super::candidate_search::{CandidateSearch, SearchRun};
 use super::candidates::CandidateRuntimeSnapshot;
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
@@ -109,14 +111,6 @@ impl CandidateShape {
     }
 }
 
-/// A candidate's search and the run it is on, which tells a current landing
-/// from a superseded one.
-#[derive(Clone, PartialEq)]
-struct RunningSearch {
-    run: u64,
-    search: CandidateSearch,
-}
-
 /// How far through its step the import that last reported for a key is. The
 /// import id tells it from an import that already ended.
 #[derive(Clone, PartialEq)]
@@ -126,23 +120,8 @@ struct ImportReport {
     percent: Option<u32>,
 }
 
-/// What this runtime holds for one key.
-#[derive(Clone, Default, PartialEq)]
-struct CandidateRuntimeState {
-    search: Option<RunningSearch>,
-}
-
-impl CandidateRuntimeState {
-    /// Nothing is held for the key, so its entry is removed.
-    fn is_idle(&self) -> bool {
-        self.search.is_none()
-    }
-}
-
 #[derive(Default)]
 struct Inner {
-    /// Also holds `reidentify:` keys, which have no scanned folder.
-    runtime: HashMap<CandidateKey, CandidateRuntimeState>,
     /// The files last reported for each scanned key, so a reshape can be told
     /// from a repeat.
     shapes: HashMap<CandidateKey, CandidateShape>,
@@ -152,17 +131,6 @@ struct Inner {
     signals: HashMap<CandidateKey, (IdentifyRunId, Signals)>,
     /// Which keys' signals moved, so a reader reads only those.
     signal_changes: change_log::ChangeLog,
-    /// The next search run number, one counter across every key so no old
-    /// run is mistaken for a current one.
-    next_search_run: u64,
-}
-
-impl Inner {
-    fn mint_search_run(&mut self) -> u64 {
-        let run = self.next_search_run;
-        self.next_search_run += 1;
-        run
-    }
 }
 
 #[derive(Clone)]
@@ -339,136 +307,71 @@ impl CandidateRuntime {
         changes
     }
 
-    /// Apply `mutate` to the key's entry under the map's lock, creating one if
-    /// needed, and compose the key's snapshot again if it changed. An entry
-    /// left idle is removed. Returns what `mutate` returned.
-    fn set<R>(
+    /// Store `search`, just started, as `key`'s in place of any search it
+    /// had, and return the run each catalog's answer names to land on it.
+    pub(super) async fn start_search(
         &self,
         key: &CandidateKey,
-        mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
-    ) -> R {
-        let (result, changed) = {
-            let mut inner = self.held();
-            let previous = inner.runtime.get(key).cloned();
-            let mut next = previous.clone().unwrap_or_default();
-            let result = mutate(&mut inner, &mut next);
-            let next = (!next.is_idle()).then_some(next);
-            let changed = next != previous;
-            match next {
-                Some(next) => inner.runtime.insert(key.clone(), next),
-                None => inner.runtime.remove(key),
-            };
-            (result, changed)
-        };
-        if changed {
-            self.recompose(key);
-        }
-        result
+        search: &CandidateSearch,
+    ) -> Result<SearchRun, DbError> {
+        self.database.start_candidate_search(key, search).await
     }
 
-    /// Put `key` on a new search run carrying `search`, and return the run a
-    /// landing must name to count.
-    pub(super) fn start_search(&self, key: &CandidateKey, search: CandidateSearch) -> u64 {
-        self.set(key, |inner, runtime| {
-            let run = inner.mint_search_run();
-            runtime.search = Some(RunningSearch { run, search });
-            run
-        })
-    }
-
-    /// Put every failed source of `key`'s search back to looking on a new run,
-    /// returning the query, the sources to re-ask and the run; `None` when
-    /// there is nothing to re-ask.
-    pub(super) fn retry_search(
+    /// Put every failed part of `key`'s search back to searching, returning
+    /// the run it is on, the query and the catalogs to ask again; `None` when
+    /// there is nothing to ask again.
+    pub(super) async fn retry_search(
         &self,
         key: &CandidateKey,
-    ) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
-        self.set(key, |inner, runtime| {
-            let running = runtime.search.as_mut()?;
-            let mut search = running.search.clone();
-            search.restart_failed();
-            let sources = search.searching_sources();
-            if sources.is_empty() {
-                return None;
-            }
-            let run = inner.mint_search_run();
-            let query = search.query.clone();
-            *running = RunningSearch { run, search };
-            Some((query, sources, run))
-        })
+    ) -> Result<Option<(SearchRun, SearchQuery, Vec<Catalog>)>, DbError> {
+        self.database.retry_candidate_search(key).await
     }
 
-    /// Drop `key`'s search, so nothing its run has out can land.
-    pub(super) fn clear_search(&self, key: &CandidateKey) {
-        self.set(key, |_, runtime| runtime.search = None);
-    }
-
-    /// Stop asking `source` on every running search. Each keeps its run, so
-    /// the other source's lookup in flight still lands; the dropped source's
-    /// answer is refused because that part is no longer looking.
-    pub(super) fn switch_source_off(&self, source: Catalog) {
-        let searching: Vec<CandidateKey> = self
-            .held()
-            .runtime
-            .iter()
-            .filter(|(_, state)| state.search.is_some())
-            .map(|(key, _)| key.clone())
-            .collect();
-        for key in searching {
-            self.set(&key, |_, runtime| {
-                if let Some(running) = runtime.search.as_mut() {
-                    running.search.switch_off(source);
-                }
-            });
-        }
+    /// Stop asking `source` on every search. Each keeps its run, so the
+    /// other source's answer still lands; the dropped source's is refused
+    /// because that part is no longer searching.
+    pub(super) async fn switch_source_off(&self, source: Catalog) -> Result<(), DbError> {
+        self.database.switch_search_source_off(source).await
     }
 
     /// Whether `run` is still the run `key`'s search is on.
     #[cfg(test)]
-    pub(super) fn search_run_is_current(&self, key: &CandidateKey, run: u64) -> bool {
-        self.held()
-            .runtime
-            .get(key)
-            .and_then(|state| state.search.as_ref())
-            .is_some_and(|running| running.run == run)
+    pub(super) async fn search_run_is_current(&self, key: &CandidateKey, run: SearchRun) -> bool {
+        self.database
+            .candidate_search_run(key)
+            .await
+            .expect("a test reads the search it started")
+            == Some(run)
     }
 
-    /// Land one source's answer on `key`'s search if `run` is still its run;
-    /// `false` when it was cleared or superseded. Landing and superseding
-    /// share the map's lock, so an old run never writes over a newer one.
-    pub(super) fn land_search(
+    /// Land `source`'s answer on its part of the search `run`, if that part
+    /// is still searching; `false` when the search was replaced or ended, or
+    /// the part settled or was switched off. The landing decides in its own
+    /// write, so an answer of an older search never writes over a newer one.
+    pub(super) async fn land_search(
         &self,
-        key: &CandidateKey,
-        run: u64,
+        run: SearchRun,
         source: Catalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
-    ) -> bool {
-        self.set(key, |_, runtime| {
-            let Some(running) = runtime.search.as_mut() else {
-                return false;
-            };
-            if running.run != run {
-                return false;
-            }
-            running.search.record(source, outcome);
-            true
-        })
+    ) -> Result<bool, DbError> {
+        self.database
+            .land_candidate_search(run, source, outcome)
+            .await
     }
 
     /// Land what `release`'s documents state its album is on whatever search
     /// `key` is on now — a statement about the release stays true whichever
     /// search holds it — returning what to keep; nothing when the key has no
     /// search, or its search does not hold the release.
-    pub(super) fn land_picked(
+    pub(super) async fn land_picked(
         &self,
         key: &CandidateKey,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
-    ) -> Vec<(String, Vec<crate::import::MetadataRef>)> {
-        self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) => running.search.record_picked(release, links),
-            None => Vec::new(),
-        })
+    ) -> Result<Vec<(String, Vec<crate::import::MetadataRef>)>, DbError> {
+        self.database
+            .land_candidate_search_pick(key, release, links)
+            .await
     }
 
     /// The state `run` of the folder candidate `key` published, and the
@@ -508,9 +411,9 @@ impl CandidateRuntime {
     }
 
     /// The scan dropped or reshaped the key: its work in flight ends, and its
-    /// search and signals go with the files they were of. What its runs
-    /// published goes as each run ends; an import outlives it, and only that
-    /// import's ending clears it.
+    /// signals go with the files they were of. Its search went in the scan's
+    /// own write, and what its runs published goes as each run ends; an
+    /// import outlives it, and only that import's ending clears it.
     fn end_candidate(&self, key: &CandidateKey) {
         self.end_work(key);
         let signals_removed = {
@@ -521,7 +424,6 @@ impl CandidateRuntime {
             }
             removed
         };
-        self.set(key, |_, runtime| runtime.search = None);
         if signals_removed {
             self.revisions
                 .send_modify(|revisions| revisions.signals += 1);

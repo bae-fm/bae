@@ -14,7 +14,7 @@ use super::ledger_rows::{
     delete_ledger, read_ledger, step_columns, store_ledger, MatchPositions, StoredLedger,
     LEDGER_COLUMNS,
 };
-use super::match_rows::{ordinal_column, store_match, Listing, StoredMatches, Written};
+use super::match_rows::{ordinal_column, store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
 use crate::identify::{
     Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote, RunOutcome,
@@ -370,7 +370,7 @@ fn store_matches<'a>(
         }
     }
     for (position, (result, listing)) in written.iter().enumerate() {
-        store_match(sql, owner, position, result, *listing)?;
+        store_match(sql, MatchOwner::Verdict(owner), position, result, *listing)?;
     }
     Ok(written.into_iter().map(|(result, _)| result).collect())
 }
@@ -454,6 +454,18 @@ pub(super) fn outcome_of(
         medium_conflict,
         kept_own_draft,
     } = row;
+    // Only a typed search's catalog returns a release; a verdict-shaped
+    // owner's rows are listed or unlisted.
+    if let Some(returned) = found
+        .rows
+        .iter()
+        .find(|row| matches!(row.listing, Listing::Returned { .. }))
+    {
+        return Err(DbError::Message(format!(
+            "match {} of {content_hash} is a search's release",
+            returned.position
+        )));
+    }
     let held: HashMap<i64, &MetadataResult> = found
         .rows
         .iter()
@@ -508,7 +520,7 @@ pub(super) fn outcome_of(
                     findings.narrowed_out.matches.push(row.result);
                     findings.narrowed_out.pressings.push(listed.pressing);
                 }
-                Listing::Unlisted => {}
+                Listing::Unlisted | Listing::Returned { .. } => {}
             }
         }
         findings

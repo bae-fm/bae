@@ -34,12 +34,14 @@ impl StoredStanding {
 }
 
 /// One key's standing with what each of its runs in flight last published
-/// (`import_identify_run`): a folder candidate's run the standing names, or
-/// a library release's re-identify runs, which hold no standing.
+/// (`import_identify_run`) — a folder candidate's run the standing names, or
+/// a library release's re-identify runs, which hold no standing — and its
+/// typed search (`import_candidate_search`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct StoredRuntime {
     pub(crate) standing: StoredStanding,
     pub(crate) runs: std::collections::BTreeMap<IdentifyRunId, crate::identify::PublishedRun>,
+    pub(crate) search: Option<crate::import::candidate_search::CandidateSearch>,
 }
 
 /// An identification of the files it names.

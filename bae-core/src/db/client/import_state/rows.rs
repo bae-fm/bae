@@ -5,7 +5,7 @@ use super::super::query::CandidateRows;
 use super::edit_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::match_rows::{
-    match_of, read_match_row, MatchColumns, MatchEntries, StoredMatches, StoredMedium,
+    match_of, read_match_row, MatchColumns, MatchEntries, MatchRow, StoredMatches, StoredMedium,
 };
 use super::verdict_rows::{
     identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
@@ -300,8 +300,8 @@ const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
-     found.document_failure, found.document_failure_status, fetched.album_first_year, \
-     found.named_note";
+     found.picked, found.document_failure, found.document_failure_status, \
+     fetched.album_first_year, found.named_note";
 
 /// What hangs off a match joined as `found`, each list a JSON array in its
 /// stored order: its labels, its barcodes, its cover's copies, its media, its
@@ -312,6 +312,7 @@ fn match_entries_columns() -> String {
             "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
               WHERE entry.content_hash IS found.content_hash \
                 AND entry.identify_run IS found.identify_run \
+                AND entry.search_run IS found.search_run \
                 AND entry.position = found.position)"
         )
     };
@@ -334,7 +335,7 @@ fn match_entries_columns() -> String {
         copies = super::super::downscaled_copies::copies_json_sql(
             "import_candidate_match_cover_copy",
             "copy.content_hash IS found.content_hash AND copy.identify_run IS found.identify_run \
-             AND copy.position = found.position",
+             AND copy.search_run IS found.search_run AND copy.position = found.position",
         ),
         media = child(
             "import_candidate_match_medium",
@@ -500,6 +501,48 @@ pub(super) fn load_run_matches_on(
             .entry(run)
             .or_default()
             .rows
+            .push(match_of(columns, entries.entries()?)?);
+    }
+    Ok(matches)
+}
+
+/// The releases every typed search holds, or `key`'s search alone, by search,
+/// each search's under its catalog parts in their order, each part's in the
+/// order it returned them.
+pub(super) fn load_search_matches_on(
+    sql: &impl super::super::query::QueryRows,
+    key: Option<&crate::import::CandidateKey>,
+) -> Result<HashMap<i64, Vec<MatchRow>>, DbError> {
+    let rows = sql.query(
+        &format!(
+            "SELECT 'search ' || found.search_run AS content_hash, \
+                    found.search_run AS match_search, {MATCH_COLUMNS}, {entries} \
+             FROM import_candidate_match AS found \
+             JOIN import_candidate_search AS search ON search.search_run = found.search_run \
+             JOIN import_candidate_search_source AS part \
+                 ON part.search_run = found.search_run AND part.catalog = found.source \
+             LEFT JOIN source_release AS fetched \
+                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
+             WHERE ?1 IS NULL OR search.candidate_key = ?1 \
+             ORDER BY found.search_run, part.position, found.position",
+            entries = match_entries_columns(),
+        ),
+        params![key],
+        |row| {
+            Ok((
+                row.get::<_, i64>("match_search")?,
+                read_match_row(row).and_then(|columns| {
+                    Ok((columns, read_match_entries(row).map_err(DbError::from)?))
+                }),
+            ))
+        },
+    )?;
+    let mut matches: HashMap<i64, Vec<MatchRow>> = HashMap::new();
+    for (search, found) in rows {
+        let (columns, entries) = found?;
+        matches
+            .entry(search)
+            .or_default()
             .push(match_of(columns, entries.entries()?)?);
     }
     Ok(matches)

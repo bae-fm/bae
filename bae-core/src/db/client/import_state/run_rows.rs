@@ -13,6 +13,7 @@
 //! identification standing are a release's.
 
 use super::rows::load_run_matches_on;
+use super::search_rows::{load_search_on, load_searches_on};
 use super::signal_rows::{read_signals, signals_read_columns, store_signals};
 use super::standing_rows::{change_identification_on, load_standing_on, load_standings_on};
 use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_columns};
@@ -74,7 +75,8 @@ fn load_runs_on(
     Ok(runs)
 }
 
-/// Where `key` stands and what each of its runs in flight last published.
+/// Where `key` stands, what each of its runs in flight last published, and
+/// its typed search.
 pub(crate) fn load_stored_runtime_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     key: &CandidateKey,
@@ -84,11 +86,12 @@ pub(crate) fn load_stored_runtime_on(
         runs: load_runs_on(sql, Some(key))?
             .remove(key)
             .unwrap_or_default(),
+        search: load_search_on(sql, key)?,
     })
 }
 
-/// Every key something is running for: where it stands and what each of its
-/// runs in flight last published.
+/// Every key something is running for: where it stands, what each of its
+/// runs in flight last published, and its typed search.
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
@@ -99,13 +102,16 @@ fn load_stored_runtimes_on(
                 key,
                 StoredRuntime {
                     standing,
-                    runs: BTreeMap::new(),
+                    ..StoredRuntime::default()
                 },
             )
         })
         .collect();
     for (key, runs) in load_runs_on(sql, None)? {
         runtimes.entry(key).or_default().runs = runs;
+    }
+    for (key, search) in load_searches_on(sql)? {
+        runtimes.entry(key).or_default().search = Some(search);
     }
     Ok(runtimes)
 }

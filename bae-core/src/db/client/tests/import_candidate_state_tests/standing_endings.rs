@@ -92,6 +92,73 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
     assert_identification_ended(&db, &key).await;
 }
 
+/// A typed search is of the files it was started for: the scan writing the
+/// candidate with the same files keeps it, and the write that reads it with
+/// other files ends it, every row it owns with it.
+#[tokio::test]
+async fn an_entry_rewritten_with_other_files_ends_its_search() {
+    let (db, _tmp) = empty_db().await;
+    stored_pane_candidate(&db).await;
+    let key = pane_candidate_key();
+    let root = host_root("/music");
+    let search = crate::import::CandidateSearch::started(
+        crate::import::search::SearchQuery::Barcode {
+            barcode: "012345678905".to_string(),
+        },
+        &[crate::import::CatalogAvailability {
+            catalog: bae_catalogs::catalog::Catalog::Discogs,
+            state: crate::import::SourceAvailability::On,
+        }],
+    );
+    let run = db.start_candidate_search(&key, &search).await.unwrap();
+    assert!(db
+        .land_candidate_search(
+            run,
+            bae_catalogs::catalog::Catalog::Discogs,
+            Ok(vec![crate::import::search::MetadataResult::for_test(
+                bae_catalogs::catalog::Catalog::Discogs,
+                "dg-1",
+                None,
+            )]),
+        )
+        .await
+        .unwrap());
+    let searched = |db: Database| async move {
+        db.load_candidate_runtime(&pane_candidate_key())
+            .await
+            .unwrap()
+            .search
+    };
+    assert!(searched(db.clone()).await.is_some());
+
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &scanned_candidate(&root, "Album"))
+        .await
+        .unwrap()
+        .expect("the current scan accepts the candidate");
+    assert!(
+        searched(db.clone()).await.is_some(),
+        "the same files keep their search"
+    );
+
+    let mut reshaped = scanned_candidate(&root, "Album");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
+        unreachable!("the fixture creates a valid candidate")
+    };
+    candidate.files.files[0].file.size += 1;
+    db.save_folder_scan_item(&root, generation, &reshaped)
+        .await
+        .unwrap()
+        .expect("the current scan accepts the candidate");
+
+    assert!(searched(db.clone()).await.is_none());
+    assert_eq!(
+        db.count_rows_for_test("import_candidate_match", "source", "discogs").await.unwrap(),
+        0,
+        "the releases it held went with it"
+    );
+}
+
 #[tokio::test]
 async fn a_file_decision_ends_its_candidate_s_identification() {
     let (db, _tmp) = empty_db().await;

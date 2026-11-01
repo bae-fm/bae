@@ -60,6 +60,17 @@ impl TrackDecode {
     }
 }
 
+/// Why switching a metadata source on or off failed: the preference was
+/// refused or could not be written, or the searches asking the source could
+/// not be closed after it was.
+#[derive(Debug, thiserror::Error)]
+pub enum MetadataSourceSwitchError {
+    #[error(transparent)]
+    Preference(#[from] crate::config::ConfigError),
+    #[error(transparent)]
+    Searches(#[from] crate::library::LibraryError),
+}
+
 macro_rules! delegate_sync {
     ($field:ident, $name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ret:ty) => {
         pub fn $name(&self, $($arg: $ty),*) -> $ret {
@@ -392,7 +403,7 @@ impl AppServices {
         &self,
         source: bae_catalogs::catalog::Catalog,
         enabled: bool,
-    ) -> Result<(), crate::config::ConfigError> {
+    ) -> Result<(), MetadataSourceSwitchError> {
         self.inner
             .manager
             .set_metadata_source_enabled(source, enabled)
@@ -402,7 +413,11 @@ impl AppServices {
             if !enabled {
                 // Searches first: a landing that races the switch then finds a
                 // part that has stopped looking, and is dropped.
-                self.inner.import.stop_asking_source(source);
+                self.inner
+                    .import
+                    .stop_asking_source(source)
+                    .await
+                    .map_err(crate::library::LibraryError::from)?;
                 // A run reads the provider list once, at its start, so every
                 // run in flight is answering the list as it was. Each is
                 // superseded by a run that reads the list as it now is — every

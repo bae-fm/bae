@@ -740,7 +740,7 @@ pub(super) fn write_entry(
         }
         ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
     };
-    super::import_state::end_identification_unless_of_on(sql, &entry_key, held.as_ref())?;
+    super::import_state::end_file_work_unless_of_on(sql, &entry_key, held.as_ref())?;
     if let Some(snapshot) = carried {
         write::replace_candidate_file_tag_snapshot(
             sql,

@@ -21,8 +21,7 @@ impl AppServices {
     delegate_async!(import, import_read_watched_folders => read_watched_folders() -> Result<Vec<crate::import::WatchedFolderScanStatus>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(candidate_key: crate::import::CandidateKey, skipped: bool) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: bae_catalogs::catalog::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
-    delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: crate::import::CandidateKey) -> ());
-    delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: crate::import::CandidateKey) -> ());
+    delegate_async!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: crate::import::CandidateKey) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_start_import => start_import(candidate_key: &crate::import::CandidateKey) -> Result<crate::import::ImportStart, crate::import::ImportError>);
     delegate_async!(import, import_selected => import_selected(candidate_key: &crate::import::CandidateKey) -> Result<crate::import::ImportStart, crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);

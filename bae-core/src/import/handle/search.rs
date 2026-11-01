@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::candidate_search::CandidateSearch;
+use crate::import::candidate_search::{CandidateSearch, SearchRun};
 use crate::import::cover_art::RemoteCoverGallery;
 use crate::import::search::{search_source, SearchQuery};
 use bae_catalogs::rate_limiter::CallPriority;
@@ -26,82 +26,95 @@ impl ImportServiceHandle {
             .await?)
     }
 
-    /// Submit a candidate's typed search. Fire-and-forget: the run lands on
-    /// the candidate's runtime one source at a time, and every landing reaches
-    /// a surface as a `CandidateRuntimeChange` for that key.
-    ///
-    /// A search already running for this key is superseded — one search per
-    /// candidate at a time, because the pane shows one result area.
-    pub fn start_candidate_search(
+    /// Submit a candidate's typed search, stored before any source is asked,
+    /// over whatever search the candidate had: one search per candidate at a
+    /// time, because the pane shows one result area. Each source's answer
+    /// lands on the stored search as it arrives, which the candidate's
+    /// runtime read delivers.
+    pub async fn start_candidate_search(
         &self,
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
-    ) {
+    ) -> Result<(), crate::import::ImportError> {
         let search =
             CandidateSearch::started(query.clone(), &self.library_manager.metadata_sources());
-        let sources = search.searching_sources();
-        let run = self.runtime.start_search(&candidate_key, search);
-        for source in sources {
+        let run = self
+            .runtime
+            .start_search(&candidate_key, &search)
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        for source in search.searching_sources() {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
+        Ok(())
     }
 
-    /// Re-ask only the sources that failed, keeping what the others found. A
-    /// no-op when the candidate has no search, or none of its sources failed.
-    pub fn retry_candidate_search(&self, candidate_key: crate::import::CandidateKey) {
-        let Some((query, sources, run)) = self.runtime.retry_search(&candidate_key) else {
+    /// Re-ask only the sources that failed, keeping what the others found and
+    /// leaving a source still searching to its answer already out. Asks
+    /// nothing when the candidate has no search, or none of its sources
+    /// failed.
+    pub async fn retry_candidate_search(
+        &self,
+        candidate_key: crate::import::CandidateKey,
+    ) -> Result<(), crate::import::ImportError> {
+        let Some((run, query, sources)) = self
+            .runtime
+            .retry_search(&candidate_key)
+            .await
+            .map_err(crate::library::LibraryError::from)?
+        else {
             debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
-            return;
+            return Ok(());
         };
         for source in sources {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
+        Ok(())
     }
 
-    /// Drop a candidate's search: its lookups stop mattering and the result
-    /// area goes back to the identify verdict.
-    pub fn clear_candidate_search(&self, candidate_key: crate::import::CandidateKey) {
-        self.runtime.clear_search(&candidate_key);
-    }
-
-    /// The library has stopped asking `source`: close its part of every search
-    /// running right now, wherever the person is looking.
+    /// The library has stopped asking `source`: close its part of every
+    /// search, wherever the person is looking.
     ///
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
-    pub fn stop_asking_source(&self, source: Catalog) {
-        self.runtime.switch_source_off(source);
+    pub async fn stop_asking_source(&self, source: Catalog) -> Result<(), crate::db::DbError> {
+        self.runtime.switch_source_off(source).await
     }
 
-    /// Run one source's part of a search and land it on the candidate's
-    /// current run. The runtime holds the value the landing folds into and
-    /// publishes what it leaves behind, so a superseded run writes nothing.
+    /// Run one source's part of a search and land it on the search's run,
+    /// which takes it only while that part is still searching.
     fn spawn_source_search(
         &self,
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
         source: Catalog,
-        run: u64,
+        run: SearchRun,
     ) {
         let library_manager = self.library_manager.clone();
         let runtime = self.runtime.clone();
-        let panicked_runtime = self.runtime.clone();
-        let panicked_key = candidate_key.clone();
-        // A search that panics lands as failed, so its source stops showing
-        // a search under way.
+        let diagnostics = self.diagnostics.clone();
         self.diagnostics.spawn_reported(
             &self.runtime_handle,
             "search one source",
             async move {
-                let found =
-                    search_source(&library_manager, source, &query, CallPriority::Interactive)
-                        .await;
-                land_source_search(&runtime, &candidate_key, run, source, found);
+                // A lookup that panics lands as failed, so its source stops
+                // showing a search under way.
+                let found = match bae_util::task_failure::caught(
+                    "ask one source a search",
+                    search_source(&library_manager, source, &query, CallPriority::Interactive),
+                )
+                .await
+                {
+                    Ok(found) => found,
+                    Err(failed) => Err(crate::signals::Failure::Internal(
+                        diagnostics.bug(failed).into(),
+                    )),
+                };
+                land_source_search(&runtime, &diagnostics, &candidate_key, run, source, found)
+                    .await;
             },
-            move |failed| {
-                let failure = crate::signals::Failure::Internal(failed.into());
-                land_source_search(&panicked_runtime, &panicked_key, run, source, Err(failure));
-            },
+            // The landing is what panicked, so nothing is left to land.
+            |_| {},
         );
     }
 
@@ -113,11 +126,15 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
-    ) {
-        let kept = self.runtime.land_picked(candidate_key, release, links);
+    ) -> Result<(), crate::library::LibraryError> {
+        let kept = self
+            .runtime
+            .land_picked(candidate_key, release, links)
+            .await?;
         if !kept.is_empty() {
             self.library_manager.keep_album_links(kept).await;
         }
+        Ok(())
     }
 
     /// Ask one source a typed query, check library status, and bundle the
@@ -427,19 +444,27 @@ impl ImportServiceHandle {
     }
 }
 
-/// Land one source's answer on `candidate_key`'s search run `run`.
-fn land_source_search(
+/// Land one source's answer on `candidate_key`'s search run `run`. The
+/// search was started by a person who is not waiting on this answer, so a
+/// landing that cannot be written is reported as a bug.
+async fn land_source_search(
     runtime: &crate::import::CandidateRuntime,
+    diagnostics: &crate::diagnostics::Diagnostics,
     candidate_key: &crate::import::CandidateKey,
-    run: u64,
+    run: SearchRun,
     source: Catalog,
     found: crate::import::search::SourceLookup,
 ) {
-    if !runtime.land_search(candidate_key, run, source, found) {
-        debug!(
-            "{}'s {} search landed on no run; it was cleared or superseded",
+    match runtime.land_search(run, source, found).await {
+        Ok(true) => {}
+        Ok(false) => debug!(
+            "{}'s {} search landed on no part still searching",
             candidate_key,
             source.as_str()
-        );
+        ),
+        Err(error) => diagnostics.report_bug(
+            &format!("land {}'s {} search", candidate_key, source.as_str()),
+            &error,
+        ),
     }
 }

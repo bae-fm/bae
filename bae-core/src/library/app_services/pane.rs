@@ -226,8 +226,8 @@ impl AppServices {
         self.inner.import.clear_pane_failure(&candidate_key).await?;
         self.inner
             .import
-            .start_candidate_search(candidate_key, query);
-        Ok(())
+            .start_candidate_search(candidate_key, query)
+            .await
     }
 
     /// Make one change to what a candidate's identification asks about, and

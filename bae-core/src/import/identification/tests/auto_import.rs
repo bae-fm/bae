@@ -322,13 +322,17 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
     fixture.identification();
     let mut events = fixture.import.every_event();
 
-    fixture.import.start_candidate_search(
-        key.clone(),
-        crate::import::search::SearchQuery::General {
-            artist: "Artist".to_string(),
-            album: "Album".to_string(),
-        },
-    );
+    fixture
+        .import
+        .start_candidate_search(
+            key.clone(),
+            crate::import::search::SearchQuery::General {
+                artist: "Artist".to_string(),
+                album: "Album".to_string(),
+            },
+        )
+        .await
+        .unwrap();
     tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let landed = fixture

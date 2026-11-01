@@ -597,6 +597,17 @@ impl From<bae_core::config::ConfigError> for BridgeError {
     }
 }
 
+/// A metadata source's switch failed on its preference or on the searches it
+/// closes, each crossing as that error does.
+impl From<bae_core::library::MetadataSourceSwitchError> for BridgeError {
+    fn from(error: bae_core::library::MetadataSourceSwitchError) -> Self {
+        match error {
+            bae_core::library::MetadataSourceSwitchError::Preference(error) => error.into(),
+            bae_core::library::MetadataSourceSwitchError::Searches(error) => error.into(),
+        }
+    }
+}
+
 /// An import failure crosses in the class core gave it.
 #[cfg(feature = "desktop")]
 impl From<bae_core::import::ImportError> for BridgeError {

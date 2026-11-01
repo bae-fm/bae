@@ -8,11 +8,12 @@
 //! removes a candidate or reads it with other files — a pass pruning what it
 //! no longer finds, an entry rewritten, a folder's reading replacing its
 //! releases, a sidecar taking a folder's files, a file decision, a grouping
-//! or a watched folder removed — ends the identification of each candidate
-//! it changes, by key, inside itself ([`end_identification_unless_of_on`]),
-//! so no read sees a candidate with an identification of files it does not
-//! have, and a candidate removed and found again starts with none. Its import
-//! outlives it: only that import's own ending ends a claim.
+//! or a watched folder removed — ends the identification and the typed
+//! search of each candidate it changes, by key, inside itself
+//! ([`end_file_work_unless_of_on`]), so no read sees a candidate with an
+//! identification or a search of files it does not have, and a candidate
+//! removed and found again starts with neither. Its import outlives it: only
+//! that import's own ending ends a claim.
 //!
 //! The identification count is held beside it (`import_identification_batch`)
 //! and moved by each change to an identification in that change's own write.
@@ -304,14 +305,16 @@ fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbErr
     })
 }
 
-/// End, inside the caller's write, `candidate_key`'s identification unless
-/// it is of `held` — the files the write leaves the scan holding the candidate
-/// with, `None` for a write that leaves the scan without it.
-pub(crate) fn end_identification_unless_of_on(
+/// End, inside the caller's write, `candidate_key`'s identification and its
+/// typed search unless they are of `held` — the files the write leaves the
+/// scan holding the candidate with, `None` for a write that leaves the scan
+/// without it.
+pub(crate) fn end_file_work_unless_of_on(
     sql: &SqlContext<'_, '_>,
     candidate_key: &CandidateKey,
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
+    super::search_rows::end_search_unless_of_on(sql, candidate_key, held)?;
     change_identification_on(
         sql,
         candidate_key,
@@ -525,14 +528,15 @@ pub(crate) enum ImportClaim {
 }
 
 impl Database {
-    /// Remove every candidate's standing and every run's published state:
-    /// what the library opens with, since nothing they describe outlives the
-    /// process that wrote it.
+    /// Remove every candidate's standing, every run's published state and
+    /// every typed search: what the library opens with, since nothing they
+    /// describe outlives the process that wrote it.
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), DbError> {
         self.call(|sql| {
             sql.execute("DELETE FROM import_candidate_standing", [])?;
             sql.execute("DELETE FROM import_identification_batch", [])?;
             sql.execute("DELETE FROM import_identify_run", [])?;
+            sql.execute("DELETE FROM import_candidate_search", [])?;
             Ok(())
         })
         .await

@@ -37,6 +37,12 @@ impl CandidateKey {
         Self([REIDENTIFY, release_id.as_bytes()].concat())
     }
 
+    /// Whether this is the key of a library release identified again, which
+    /// no folder holds.
+    pub(crate) fn names_release(&self) -> bool {
+        self.0.starts_with(REIDENTIFY)
+    }
+
     /// The key whose bytes are `bytes`, as a row or the app holds them.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         Self(bytes)

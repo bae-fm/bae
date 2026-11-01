@@ -82,7 +82,7 @@ impl Database {
             // Every candidate under the folders leaves the scan, and its
             // identification with it.
             for key in &removed {
-                super::end_identification_unless_of_on(sql, key, None)?;
+                super::end_file_work_unless_of_on(sql, key, None)?;
             }
             Ok(Some(removed))
         })

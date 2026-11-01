@@ -369,7 +369,6 @@ async fn a_finished_import_leaves_nothing_in_flight() {
             runtime.snapshot(key).await.unwrap().is_none(),
             "{ending:?} left something behind"
         );
-        assert!(runtime.inner.lock().unwrap().runtime.is_empty());
         assert!(runtime.percents().is_empty(), "{ending:?} left a percent");
     }
 }
@@ -517,22 +516,18 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
         .is_some_and(|runtime| runtime.import.is_some()));
 }
 
-/// A rescan reporting the same files keeps what is held for the key; one
-/// reporting other files ends its work and its search.
+/// A rescan reporting the same files keeps the key's work; one reporting
+/// other files ends it. Its search ends in the scan's own write (see the
+/// standings' ending tests).
 #[tokio::test]
-async fn a_rescan_reporting_new_files_ends_the_key_s_work_and_search() {
+async fn a_rescan_reporting_new_files_ends_the_key_s_work() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     let work = runtime.start_work(CandidateWork::Identify, key.clone(), |token, _| token);
-    runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
 
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     assert!(!work.is_cancelled(), "an unchanged re-scan keeps the work");
-    assert!(runtime.snapshot(key).await.unwrap().is_some());
 
     let mut reshaped = folder_candidate(key, "/watch/a");
     reshaped.file_edit_revision = 1;
@@ -540,7 +535,6 @@ async fn a_rescan_reporting_new_files_ends_the_key_s_work_and_search() {
         candidate: reshaped,
     }));
     assert!(work.is_cancelled());
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
 }
 
 /// Extraction's snapshots are kept for the one form that reads them, but they
@@ -783,7 +777,6 @@ async fn a_cancel_ends_the_run_and_what_it_published() {
 
     runtime.cancel_identification(key).await.unwrap();
     assert!(runtime.snapshot(key).await.unwrap().is_none());
-    assert!(runtime.inner.lock().unwrap().runtime.is_empty());
 }
 
 include!("tests/claims.rs");

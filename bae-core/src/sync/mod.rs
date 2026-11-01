@@ -406,6 +406,8 @@ mod tests {
         "import_candidate_standing",
         "import_identification_batch",
         "import_identify_run",
+        "import_candidate_search",
+        "import_candidate_search_source",
         "import_candidate_artist_identity_conflict",
         "import_candidate_artist_identity_choice",
         "import_candidate_label_identity_conflict",
