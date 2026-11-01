@@ -2172,6 +2172,27 @@ checks it again and publishes it; until then the library is unchanged, on that
 device too
 ([coven §11.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#111-the-steps)).
 
+The same write records what the change changes in the device-local
+`admin_operations`, keyed by its operation in coven's list of the operations
+the app's writes started (`coven_operations`): the new name, the person and
+the role, the person, the device, or for an approval the person it lets in
+and the name the invite gave them. Coven's list says what kind of change it
+is and how it ended, so the row holds neither. Each change shows, under
+**Changes from this Mac** in Library settings on a Mac and **Changes from this
+phone** in Settings and People on Android, as what it asks ("Remove Ben",
+"Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
+device's name as they stand: waiting to sync, then done, or refused with why
+the library refused it (Ben is no longer in the library, it would leave the
+library without an admin, or this device isn't allowed to make it, such as
+when another device removed this one first). Done covers a change sync found
+already made. Ana's laptop is offline when she removes Ben's old phone; the
+row says it waits to sync, Ben's phone stays in the list, and once the
+laptop syncs the phone moves to his removed devices and the row says done.
+A finished change stays until the person dismisses it: one write
+acknowledges its outcome to coven and deletes its row. A change still
+waiting can't be dismissed. Removing a device says at once what is left to
+do at the provider, titled as a removal still to happen.
+
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
@@ -3909,7 +3930,8 @@ one of its files references a coven file that coven records as stored.
 
 ### A.2 People
 
-All sync (§5), except `local_history` and `profile_request`.
+All sync (§5), except `local_history`, `profile_request` and
+`admin_operations`.
 
 | Table | One row per |
 |---|---|
@@ -3919,6 +3941,7 @@ All sync (§5), except `local_history` and `profile_request`.
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
 | `local_history` | play on this device before the person had a profile: track, when it started, how much was played (§5.3) |
+| `admin_operations` | admin change this device asked for, while coven lists its operation: keyed by that operation, the library's new name, the person and their new role, the person removed, the device removed, or the person an approval lets in with the name their invite gave them (§5.6) |
 | `profile_request` | the profile this device's person asked for while their private circle is made, at most one: the circle's operation in `coven_operations`, the circle and the name (§5.4) |
 
 ### A.3 Playback

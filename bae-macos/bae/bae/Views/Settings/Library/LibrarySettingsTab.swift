@@ -81,6 +81,7 @@ struct LibrarySettingsTab: View {
 
             if configStore.hasCloudHome {
                 MembersSection()
+                AdminChangesSection()
                 HistorySharingSection()
                 RecoveryCodeSection(reveal: recoveryCode)
             }

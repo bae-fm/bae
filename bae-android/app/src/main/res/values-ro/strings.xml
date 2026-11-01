@@ -285,7 +285,7 @@
         <item quantity="few">Dispozitive eliminate (%1$d)</item>
         <item quantity="other">Dispozitive eliminate (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Dispozitiv eliminat</string>
+    <string name="device_removed_title">Dispozitivul va fi eliminat</string>
     <string name="members_invite">Invită o persoană</string>
     <string name="invite_name">Nume</string>
     <string name="invite_in_person">În persoană</string>
@@ -349,4 +349,13 @@
     <string name="operation_rejection_keys_already_used">Aceste chei sunt deja folosite.</string>
     <string name="operation_rejection_member_keys_changed">Între timp, cheile acestei persoane au fost înlocuite.</string>
     <string name="operation_rejection_not_allowed">Acest dispozitiv nu are permisiunea să facă această modificare.</string>
+    <string name="admin_changes_title">Modificări de pe acest telefon</string>
+    <string name="admin_change_rename">Redenumește biblioteca în „%1$s”</string>
+    <string name="admin_change_make_admin">Fă-l pe %1$s administrator</string>
+    <string name="admin_change_make_member">Fă-l pe %1$s membru</string>
+    <string name="admin_change_remove">Elimină %1$s</string>
+    <string name="admin_change_waiting">Așteaptă sincronizarea</string>
+    <string name="admin_change_refused">Refuzat</string>
+    <string name="dismiss">Închide</string>
+    <string name="admin_change_approve">Lasă-l pe %1$s să intre</string>
 </resources>

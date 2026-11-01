@@ -283,7 +283,7 @@
         <item quantity="one">Entferntes Gerät (%1$d)</item>
         <item quantity="other">Entfernte Geräte (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Gerät entfernt</string>
+    <string name="device_removed_title">Das Gerät wird entfernt</string>
     <string name="members_invite">Person einladen</string>
     <string name="invite_name">Name</string>
     <string name="invite_in_person">Persönlich</string>
@@ -348,4 +348,13 @@
     <string name="operation_rejection_keys_already_used">Diese Schlüssel werden bereits verwendet.</string>
     <string name="operation_rejection_member_keys_changed">Die Schlüssel dieser Person wurden inzwischen ersetzt.</string>
     <string name="operation_rejection_not_allowed">Dieses Gerät darf diese Änderung nicht vornehmen.</string>
+    <string name="admin_changes_title">Änderungen von diesem Smartphone</string>
+    <string name="admin_change_rename">Bibliothek in „%1$s“ umbenennen</string>
+    <string name="admin_change_make_admin">%1$s zum Admin machen</string>
+    <string name="admin_change_make_member">%1$s zum Mitglied machen</string>
+    <string name="admin_change_remove">%1$s entfernen</string>
+    <string name="admin_change_waiting">Wartet auf Synchronisierung</string>
+    <string name="admin_change_refused">Abgelehnt</string>
+    <string name="dismiss">Ausblenden</string>
+    <string name="admin_change_approve">%1$s hereinlassen</string>
 </resources>

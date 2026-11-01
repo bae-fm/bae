@@ -284,7 +284,7 @@
         <item quantity="one">Dispositivo rimosso (%1$d)</item>
         <item quantity="other">Dispositivi rimossi (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Dispositivo rimosso</string>
+    <string name="device_removed_title">Il dispositivo verrà rimosso</string>
     <string name="members_invite">Invita una persona</string>
     <string name="invite_name">Nome</string>
     <string name="invite_in_person">Di persona</string>
@@ -349,4 +349,13 @@
     <string name="operation_rejection_keys_already_used">Quelle chiavi sono già in uso.</string>
     <string name="operation_rejection_member_keys_changed">Nel frattempo le chiavi di quella persona sono state sostituite.</string>
     <string name="operation_rejection_not_allowed">Questo dispositivo non è autorizzato a fare quella modifica.</string>
+    <string name="admin_changes_title">Modifiche da questo telefono</string>
+    <string name="admin_change_rename">Rinomina la libreria in “%1$s”</string>
+    <string name="admin_change_make_admin">Rendi %1$s amministratore</string>
+    <string name="admin_change_make_member">Rendi %1$s membro</string>
+    <string name="admin_change_remove">Rimuovi %1$s</string>
+    <string name="admin_change_waiting">In attesa di sincronizzazione</string>
+    <string name="admin_change_refused">Rifiutato</string>
+    <string name="dismiss">Ignora</string>
+    <string name="admin_change_approve">Fai entrare %1$s</string>
 </resources>

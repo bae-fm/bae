@@ -280,7 +280,7 @@
     <plurals name="members_former_devices">
         <item quantity="other">削除済みのデバイス（%1$d）</item>
     </plurals>
-    <string name="device_removed_title">デバイスを削除しました</string>
+    <string name="device_removed_title">デバイスは削除されます</string>
     <string name="members_invite">メンバーを招待</string>
     <string name="invite_name">名前</string>
     <string name="invite_in_person">対面</string>
@@ -345,4 +345,13 @@
     <string name="operation_rejection_keys_already_used">それらのキーはすでに使用されています。</string>
     <string name="operation_rejection_member_keys_changed">その間に、その人のキーが置き換えられました。</string>
     <string name="operation_rejection_not_allowed">このデバイスにはその変更を行う権限がありません。</string>
+    <string name="admin_changes_title">このスマートフォンからの変更</string>
+    <string name="admin_change_rename">ライブラリ名を「%1$s」に変更</string>
+    <string name="admin_change_make_admin">%1$sを管理者にする</string>
+    <string name="admin_change_make_member">%1$sをメンバーにする</string>
+    <string name="admin_change_remove">%1$sを削除</string>
+    <string name="admin_change_waiting">同期待ち</string>
+    <string name="admin_change_refused">拒否されました</string>
+    <string name="dismiss">閉じる</string>
+    <string name="admin_change_approve">%1$sの参加を許可</string>
 </resources>

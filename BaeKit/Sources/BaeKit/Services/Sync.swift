@@ -19,6 +19,8 @@ public final class Sync: Sendable, Observable {
         @Sendable (UInt64) async throws -> BridgeProviderSignOut?
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
+    /// Dismiss a finished admin change by its operation.
+    public let acknowledgeAdminChange: @Sendable (Int64) async throws -> Void
     /// Invite a person by name, with a role, the access they reach storage
     /// with, and whether the invite is shown in person or sent; answers the
     /// new invite's id, which the open invites list from its write on.
@@ -78,6 +80,9 @@ public final class Sync: Sendable, Observable {
         setMemberRole:
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
             { _, _ in throw StubError.notImplemented },
+        acknowledgeAdminChange:
+            @escaping @Sendable (Int64) async throws -> Void =
+            { _ in throw StubError.notImplemented },
         invitePerson:
             @escaping @Sendable (
                 BridgeMemberRole, String, BridgeInviteAccess,
@@ -146,6 +151,7 @@ public final class Sync: Sendable, Observable {
         self.removeMember = removeMember
         self.removeDevice = removeDevice
         self.setMemberRole = setMemberRole
+        self.acknowledgeAdminChange = acknowledgeAdminChange
         self.invitePerson = invitePerson
         self.approveJoinRequest = approveJoinRequest
         self.declineJoinRequest = declineJoinRequest
@@ -190,6 +196,9 @@ public final class Sync: Sendable, Observable {
             removeDevice: { try await handle.removeDevice(device: $0) },
             setMemberRole: {
                 try await handle.setMemberRole(member: $0, role: $1)
+            },
+            acknowledgeAdminChange: {
+                try await handle.acknowledgeAdminChange(operation: $0)
             },
             invitePerson: {
                 try await handle.invitePerson(

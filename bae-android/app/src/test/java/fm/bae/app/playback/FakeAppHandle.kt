@@ -4,6 +4,7 @@ import fm.bae.app.BridgeFixtures
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.AddedDeviceSubscription
+import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
@@ -13,6 +14,7 @@ import uniffi.bae_bridge.ArtistDetailSubscription
 import uniffi.bae_bridge.ArtistSearchSubscription
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddedDeviceWatch
+import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -626,6 +628,15 @@ internal open class FakeAppHandle(
 
     override fun subscribeInvites(): InvitesSubscription = invites
 
+    /** The admin changes the handle answers, which a test delivers to. */
+    val adminChanges = FakeAdminChangesSubscription()
+
+    override fun subscribeAdminChanges(): AdminChangesSubscription = adminChanges
+
+    override suspend fun acknowledgeAdminChange(operation: Long) {
+        unfaked("acknowledgeAdminChange")
+    }
+
     override fun subscribeMembers(): MembersSubscription = unfaked("subscribeMembers")
 
     override fun subscribeAddedDevice(watch: BridgeAddedDeviceWatch): AddedDeviceSubscription = unfaked("subscribeAddedDevice")
@@ -824,6 +835,25 @@ internal class FakeSyncActivitySubscription : SyncActivitySubscription(NoHandle)
     }
 
     override suspend fun next(): BridgeSyncActivity = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
+    }
+}
+
+/** Admin changes a test hands the app a list at a time: each pull waits for the next. */
+internal class FakeAdminChangesSubscription : AdminChangesSubscription(NoHandle) {
+    private val values = Channel<List<BridgeAdminChange>>(Channel.UNLIMITED)
+
+    fun deliver(changes: List<BridgeAdminChange>) {
+        values.trySend(changes)
+    }
+
+    override suspend fun next(): List<BridgeAdminChange> = values.receive()
 
     override suspend fun cancel() {
         values.close(BridgeException.Cancelled())

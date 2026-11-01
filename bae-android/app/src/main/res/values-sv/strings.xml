@@ -282,7 +282,7 @@
         <item quantity="one">Borttagen enhet (%1$d)</item>
         <item quantity="other">Borttagna enheter (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Enheten har tagits bort</string>
+    <string name="device_removed_title">Enheten tas bort</string>
     <string name="members_invite">Bjud in en person</string>
     <string name="invite_name">Namn</string>
     <string name="invite_in_person">Personligen</string>
@@ -346,4 +346,13 @@
     <string name="operation_rejection_keys_already_used">De nycklarna används redan.</string>
     <string name="operation_rejection_member_keys_changed">Den personens nycklar byttes ut under tiden.</string>
     <string name="operation_rejection_not_allowed">Den här enheten får inte göra den ändringen.</string>
+    <string name="admin_changes_title">Ändringar från den här telefonen</string>
+    <string name="admin_change_rename">Byt namn på biblioteket till ”%1$s”</string>
+    <string name="admin_change_make_admin">Gör %1$s till administratör</string>
+    <string name="admin_change_make_member">Gör %1$s till medlem</string>
+    <string name="admin_change_remove">Ta bort %1$s</string>
+    <string name="admin_change_waiting">Väntar på synkronisering</string>
+    <string name="admin_change_refused">Avvisad</string>
+    <string name="dismiss">Avfärda</string>
+    <string name="admin_change_approve">Släpp in %1$s</string>
 </resources>

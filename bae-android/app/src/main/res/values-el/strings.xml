@@ -282,7 +282,7 @@
         <item quantity="one">Συσκευή που αφαιρέθηκε (%1$d)</item>
         <item quantity="other">Συσκευές που αφαιρέθηκαν (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Η συσκευή αφαιρέθηκε</string>
+    <string name="device_removed_title">Η συσκευή θα αφαιρεθεί</string>
     <string name="members_invite">Πρόσκληση ατόμου</string>
     <string name="invite_name">Όνομα</string>
     <string name="invite_in_person">Αυτοπροσώπως</string>
@@ -346,4 +346,13 @@
     <string name="operation_rejection_keys_already_used">Αυτά τα κλειδιά χρησιμοποιούνται ήδη.</string>
     <string name="operation_rejection_member_keys_changed">Τα κλειδιά αυτού του ατόμου αντικαταστάθηκαν στο μεταξύ.</string>
     <string name="operation_rejection_not_allowed">Αυτή η συσκευή δεν επιτρέπεται να κάνει αυτή την αλλαγή.</string>
+    <string name="admin_changes_title">Αλλαγές από αυτό το τηλέφωνο</string>
+    <string name="admin_change_rename">Μετονομασία της βιβλιοθήκης σε «%1$s»</string>
+    <string name="admin_change_make_admin">Ορισμός του/της %1$s ως διαχειριστή</string>
+    <string name="admin_change_make_member">Ορισμός του/της %1$s ως μέλους</string>
+    <string name="admin_change_remove">Αφαίρεση %1$s</string>
+    <string name="admin_change_waiting">Αναμονή για συγχρονισμό</string>
+    <string name="admin_change_refused">Απορρίφθηκε</string>
+    <string name="dismiss">Απόρριψη</string>
+    <string name="admin_change_approve">Είσοδος του/της %1$s</string>
 </resources>

@@ -51,6 +51,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -130,16 +131,35 @@ internal fun SettingsScreen(
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)
         // People, devices and the recovery code live in the library's store, which only a cloud home has.
         (model.cloudHome as? CloudHome.At)?.let { home ->
-            SectionDivider()
-            SettingsPeopleSection(onManagePeople = { onPush(LibraryDestination.Members) })
-            SectionDivider()
-            RecoveryCodeSection(
-                needsS3Key = home.location is BridgeStorageLocation.S3,
-                generate = { session.appHandle.generateRestoreCode().code },
-            )
+            SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
         }
         SettingsClosingSections(session = session, onRemove = actions.removeLibrary)
     }
+}
+
+/** What lives in the library's store: its people and the changes this phone asked of them, and the recovery code. */
+@Composable
+private fun SettingsStoreSections(
+    session: OpenLibrary,
+    home: CloudHome.At,
+    adminChanges: List<BridgeAdminChange>,
+    onPush: (LibraryDestination) -> Unit,
+) {
+    SectionDivider()
+    SettingsPeopleSection(
+        adminChanges = adminChanges,
+        onDismissChange = { change ->
+            session.messages.perform("dismiss an admin change") {
+                session.appHandle.acknowledgeAdminChange(change.operation)
+            }
+        },
+        onManagePeople = { onPush(LibraryDestination.Members) },
+    )
+    SectionDivider()
+    RecoveryCodeSection(
+        needsS3Key = home.location is BridgeStorageLocation.S3,
+        generate = { session.appHandle.generateRestoreCode().code },
+    )
 }
 
 /** How this device plays: sides and discs, restoring on launch, and casting. */
@@ -275,7 +295,11 @@ private fun SettingsAboutSection() {
 
 /** The library's people and their devices, where this person also adds their own devices. */
 @Composable
-private fun SettingsPeopleSection(onManagePeople: () -> Unit) {
+private fun SettingsPeopleSection(
+    adminChanges: List<BridgeAdminChange>,
+    onDismissChange: (BridgeAdminChange) -> Unit,
+    onManagePeople: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -284,6 +308,7 @@ private fun SettingsPeopleSection(onManagePeople: () -> Unit) {
         PrimaryButton(onClick = onManagePeople) {
             Text(stringResource(R.string.members_title))
         }
+        AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
     }
 }
 
@@ -311,6 +336,6 @@ private fun SettingsRemoveSection(onRequestRemove: () -> Unit) {
 @Composable
 private fun SettingsPeopleSectionPreview() {
     BaeTheme {
-        SettingsPeopleSection(onManagePeople = {})
+        SettingsPeopleSection(adminChanges = emptyList(), onDismissChange = {}, onManagePeople = {})
     }
 }

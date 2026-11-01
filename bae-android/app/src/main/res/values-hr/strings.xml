@@ -286,7 +286,7 @@
         <item quantity="few">Uklonjeni uređaji (%1$d)</item>
         <item quantity="other">Uklonjeni uređaji (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Uređaj uklonjen</string>
+    <string name="device_removed_title">Uređaj će biti uklonjen</string>
     <string name="members_invite">Pozovi osobu</string>
     <string name="invite_name">Ime</string>
     <string name="invite_in_person">Osobno</string>
@@ -351,4 +351,13 @@
     <string name="operation_rejection_keys_already_used">Ti se ključevi već koriste.</string>
     <string name="operation_rejection_member_keys_changed">Ključevi te osobe u međuvremenu su zamijenjeni.</string>
     <string name="operation_rejection_not_allowed">Ovaj uređaj nema dopuštenje za tu promjenu.</string>
+    <string name="admin_changes_title">Promjene s ovog telefona</string>
+    <string name="admin_change_rename">Preimenuj knjižnicu u „%1$s”</string>
+    <string name="admin_change_make_admin">Postavi osobu %1$s za administratora</string>
+    <string name="admin_change_make_member">Postavi osobu %1$s za člana</string>
+    <string name="admin_change_remove">Ukloni %1$s</string>
+    <string name="admin_change_waiting">Čeka sinkronizaciju</string>
+    <string name="admin_change_refused">Odbijeno</string>
+    <string name="dismiss">Odbaci</string>
+    <string name="admin_change_approve">Pusti osobu %1$s unutra</string>
 </resources>

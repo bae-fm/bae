@@ -288,6 +288,7 @@ include!("tests/storage.rs");
 include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 mod added_device;
+mod admin_changes;
 mod bound_images;
 mod detachment;
 mod invites;

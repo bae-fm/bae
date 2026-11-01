@@ -43,10 +43,15 @@ impl Database {
     }
 
     /// Rename the store as an admin: the write journals the rename, which
-    /// a pass claims (§5.6).
+    /// a pass claims, and records it to show (§5.6).
     pub(crate) async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
-        self.inner.handle.rename_store(name).await?;
-        Ok(())
+        let name = name.to_owned();
+        let renamed = name.clone();
+        self.admin_change(
+            super::admin_operations::AdminTarget::LibraryName(renamed),
+            move |sql| Ok((sql.rename_store(&name)?, ())),
+        )
+        .await
     }
 
     /// Delete the store, discarding what this device hasn't uploaded; the
@@ -374,33 +379,44 @@ impl Database {
     }
 
     /// Remove a member: the write journals the removal, which a pass
-    /// claims (§5.6).
+    /// claims, and records it to show (§5.6).
     pub(crate) async fn remove_member(
         &self,
         member: &coven::MemberId,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.remove_member(member).await?;
-        Ok(())
+        let member = *member;
+        self.admin_change(
+            super::admin_operations::AdminTarget::Person(member),
+            move |sql| Ok((sql.remove_member(&member)?, ())),
+        )
+        .await
     }
 
-    /// Remove a device, journaled as a removal is, and say what is left to
-    /// do at the provider.
+    /// Remove a device, journaled and recorded as a removal is, and say
+    /// what is left to do at the provider.
     pub(crate) async fn remove_device(
         &self,
         device: coven::DeviceId,
     ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
-        let (_removal, sign_out) = self.inner.handle.remove_device(device).await?;
-        Ok(sign_out)
+        self.admin_change(
+            super::admin_operations::AdminTarget::Device(device),
+            move |sql| sql.remove_device(device),
+        )
+        .await
     }
 
-    /// Change a member's role, journaled as a removal is.
+    /// Change a member's role, journaled and recorded as a removal is.
     pub(crate) async fn set_member_role(
         &self,
         member: &coven::MemberId,
         role: coven::MemberRole,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.set_member_role(member, role).await?;
-        Ok(())
+        let member = *member;
+        self.admin_change(
+            super::admin_operations::AdminTarget::Role(member, role),
+            move |sql| Ok((sql.set_member_role(&member, role)?, ())),
+        )
+        .await
     }
 
     /// Invite a new person: the write journals the invite, offline too,
@@ -442,13 +458,27 @@ impl Database {
     }
 
     /// Approve a sent invite's request: the write journals the approval,
-    /// and a pass binds the request's pair (§5.6).
+    /// which a pass binds, and records it to show by the name the invite
+    /// gave its person (§5.6).
     pub(crate) async fn approve_join_request(
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.approve_join_request(request).await?;
-        Ok(())
+        let invite = request.invite;
+        let invitee = self
+            .inner
+            .handle
+            .read(coven::Invite::list)
+            .await?
+            .into_iter()
+            .find(|open| open.id == invite)
+            .and_then(|open| open.invitee);
+        let request = request.clone();
+        self.admin_change(
+            super::admin_operations::AdminTarget::Approval(request.member, invitee),
+            move |sql| Ok((Some(sql.approve_join_request(&request)?), ())),
+        )
+        .await
     }
 
     pub(crate) async fn decline_join_request(

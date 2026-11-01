@@ -283,7 +283,7 @@
         <item quantity="one">Kaldırılan aygıt (%1$d)</item>
         <item quantity="other">Kaldırılan aygıtlar (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Cihaz kaldırıldı</string>
+    <string name="device_removed_title">Cihaz kaldırılacak</string>
     <string name="members_invite">Bir kişiyi davet et</string>
     <string name="invite_name">Ad</string>
     <string name="invite_in_person">Yüz yüze</string>
@@ -348,4 +348,13 @@
     <string name="operation_rejection_keys_already_used">Bu anahtarlar zaten kullanılıyor.</string>
     <string name="operation_rejection_member_keys_changed">Bu kişinin anahtarları bu arada değiştirildi.</string>
     <string name="operation_rejection_not_allowed">Bu cihazın bu değişikliği yapmasına izin verilmiyor.</string>
+    <string name="admin_changes_title">Bu telefondan yapılan değişiklikler</string>
+    <string name="admin_change_rename">Kitaplığın adını “%1$s” olarak değiştir</string>
+    <string name="admin_change_make_admin">%1$s kişisini yönetici yap</string>
+    <string name="admin_change_make_member">%1$s kişisini üye yap</string>
+    <string name="admin_change_remove">%1$s kaldır</string>
+    <string name="admin_change_waiting">Eşitleme bekleniyor</string>
+    <string name="admin_change_refused">Reddedildi</string>
+    <string name="dismiss">Kapat</string>
+    <string name="admin_change_approve">%1$s kişisini içeri al</string>
 </resources>

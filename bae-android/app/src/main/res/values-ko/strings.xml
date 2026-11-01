@@ -280,7 +280,7 @@
     <plurals name="members_former_devices">
         <item quantity="other">제거된 기기 (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">기기가 제거됨</string>
+    <string name="device_removed_title">기기가 제거됩니다</string>
     <string name="members_invite">사람 초대</string>
     <string name="invite_name">이름</string>
     <string name="invite_in_person">직접</string>
@@ -345,4 +345,13 @@
     <string name="operation_rejection_keys_already_used">그 키는 이미 사용 중입니다.</string>
     <string name="operation_rejection_member_keys_changed">그사이에 그 사람의 키가 교체되었습니다.</string>
     <string name="operation_rejection_not_allowed">이 기기는 그 변경을 할 수 없습니다.</string>
+    <string name="admin_changes_title">이 휴대전화에서 요청한 변경</string>
+    <string name="admin_change_rename">라이브러리 이름을 “%1$s”(으)로 변경</string>
+    <string name="admin_change_make_admin">%1$s 님을 관리자로 지정</string>
+    <string name="admin_change_make_member">%1$s 님을 구성원으로 지정</string>
+    <string name="admin_change_remove">%1$s 제거</string>
+    <string name="admin_change_waiting">동기화 대기 중</string>
+    <string name="admin_change_refused">거부됨</string>
+    <string name="dismiss">닫기</string>
+    <string name="admin_change_approve">%1$s 님 참여 허용</string>
 </resources>

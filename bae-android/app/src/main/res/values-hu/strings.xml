@@ -282,7 +282,7 @@
         <item quantity="one">Eltávolított eszköz (%1$d)</item>
         <item quantity="other">Eltávolított eszközök (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Eszköz eltávolítva</string>
+    <string name="device_removed_title">Az eszköz el lesz távolítva</string>
     <string name="members_invite">Személy meghívása</string>
     <string name="invite_name">Név</string>
     <string name="invite_in_person">Személyesen</string>
@@ -346,4 +346,13 @@
     <string name="operation_rejection_keys_already_used">Ezek a kulcsok már használatban vannak.</string>
     <string name="operation_rejection_member_keys_changed">Ennek a személynek a kulcsait időközben lecserélték.</string>
     <string name="operation_rejection_not_allowed">Ez az eszköz nem végezheti el ezt a módosítást.</string>
+    <string name="admin_changes_title">Módosítások erről a telefonról</string>
+    <string name="admin_change_rename">A könyvtár átnevezése erre: „%1$s”</string>
+    <string name="admin_change_make_admin">%1$s legyen adminisztrátor</string>
+    <string name="admin_change_make_member">%1$s legyen tag</string>
+    <string name="admin_change_remove">%1$s eltávolítása</string>
+    <string name="admin_change_waiting">Szinkronizálásra vár</string>
+    <string name="admin_change_refused">Elutasítva</string>
+    <string name="dismiss">Bezárás</string>
+    <string name="admin_change_approve">%1$s beengedése</string>
 </resources>

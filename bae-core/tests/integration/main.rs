@@ -13,6 +13,7 @@
 mod own_process;
 
 mod alac_fixtures;
+mod test_admin_changes;
 mod test_album_sort;
 mod test_bootstrap_fixture;
 mod test_bootstrap_pointer;

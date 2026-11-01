@@ -60,6 +60,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteProgress
@@ -106,6 +107,10 @@ internal class MembersModel(
     var invites by mutableStateOf<List<BridgeInvite>>(emptyList())
         private set
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
+        private set
+
+    /** The admin changes this device asked for, each until the person dismisses its outcome. */
+    var adminChanges by mutableStateOf<List<BridgeAdminChange>>(emptyList())
         private set
     var error by mutableStateOf<DisplayError?>(null)
     private var reloading: Job? = null
@@ -173,10 +178,21 @@ internal class MembersModel(
                     this@MembersModel.error = errors.display(error)
                 },
             )
+        val changes =
+            ScreenSubscription(
+                appHandle.subscribeAdminChanges().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> adminChanges = value },
+                onError = { error ->
+                    logger.error("reading the library's admin changes failed", error)
+                    this@MembersModel.error = errors.display(error)
+                },
+            )
         return {
             members.stop()
             profiles.stop()
             open.stop()
+            changes.stop()
         }
     }
 
@@ -237,6 +253,7 @@ fun MembersScreen(
                     people = read.people,
                     selfIsAdmin = model.selfIsAdmin,
                     invites = model.invites,
+                    adminChanges = model.adminChanges,
                     callbacks = memberCallbacks(session, model, dialogs),
                     inviteCallbacks = inviteCallbacks(session, dialogs),
                 )
@@ -258,6 +275,9 @@ private fun memberCallbacks(
         onRemovePerson = { member, name -> dialogs.pendingRemoval = PendingRemoval.Person(member, name) },
         onRemoveDevice = { dialogs.pendingRemoval = PendingRemoval.Device(it) },
         onAddDevice = { dialogs.addingDevice = true },
+        onDismissChange = { change ->
+            model.perform("dismiss an admin change") { handle.acknowledgeAdminChange(change.operation) }
+        },
     )
 }
 
@@ -278,6 +298,7 @@ private class MemberCallbacks(
     val onRemovePerson: (BridgeMember, String) -> Unit,
     val onRemoveDevice: (BridgeActiveDevice) -> Unit,
     val onAddDevice: () -> Unit,
+    val onDismissChange: (BridgeAdminChange) -> Unit,
 )
 
 /** What this device's person can do with an invite it has open. */
@@ -309,6 +330,7 @@ private fun MembersList(
     people: List<BridgePerson>,
     selfIsAdmin: Boolean,
     invites: List<BridgeInvite>,
+    adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
 ) {
@@ -317,6 +339,7 @@ private fun MembersList(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
+        item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         items(people, key = { person -> person.membership.id }) { person ->
             HorizontalDivider()
             MemberRow(
@@ -518,7 +541,8 @@ private fun MembersListPreview() {
             people = listOf(PreviewData.person()),
             selfIsAdmin = true,
             invites = emptyList(),
-            callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}),
+            adminChanges = emptyList(),
+            callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}, {}),
             inviteCallbacks = InviteCallbacks({}, {}),
         )
     }

@@ -282,7 +282,7 @@
         <item quantity="one">Poistettu laite (%1$d)</item>
         <item quantity="other">Poistetut laitteet (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Laite poistettu</string>
+    <string name="device_removed_title">Laite poistetaan</string>
     <string name="members_invite">Kutsu henkilö</string>
     <string name="invite_name">Nimi</string>
     <string name="invite_in_person">Henkilökohtaisesti</string>
@@ -346,4 +346,13 @@
     <string name="operation_rejection_keys_already_used">Nämä avaimet ovat jo käytössä.</string>
     <string name="operation_rejection_member_keys_changed">Tämän henkilön avaimet vaihdettiin sillä välin.</string>
     <string name="operation_rejection_not_allowed">Tällä laitteella ei ole lupaa tehdä tätä muutosta.</string>
+    <string name="admin_changes_title">Muutokset tästä puhelimesta</string>
+    <string name="admin_change_rename">Nimeä kirjasto uudelleen nimellä ”%1$s”</string>
+    <string name="admin_change_make_admin">Tee käyttäjästä %1$s ylläpitäjä</string>
+    <string name="admin_change_make_member">Tee käyttäjästä %1$s jäsen</string>
+    <string name="admin_change_remove">Poista %1$s</string>
+    <string name="admin_change_waiting">Odottaa synkronointia</string>
+    <string name="admin_change_refused">Hylätty</string>
+    <string name="dismiss">Hylkää</string>
+    <string name="admin_change_approve">Päästä %1$s sisään</string>
 </resources>

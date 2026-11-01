@@ -6326,6 +6326,26 @@ CREATE TABLE profile_request (
     name TEXT NOT NULL CHECK (length(trim(name)) > 0)
 ) STRICT;
 
+-- What each admin change this device asked for changes, which coven's
+-- `coven_operations` doesn't say: keyed by the change's operation there, whose
+-- kind says which of these columns it uses and whose outcome says how it
+-- stands. A rename (`RenameStore`) has the new `name`; a role change
+-- (`SetRole`) the `member` and the `role`; a person's removal
+-- (`RemoveMember`) the `member`; a device's removal (`RemoveDevice`) the
+-- `device`, its eight bytes as `coven_devices` holds them; an approval of a
+-- sent invite's request (`Invite`, or `ReplaceMemberKeys` for a replacement
+-- invite) the `member` it lets in and, as `name`, the name the invite gave
+-- them, none for a replacement. The write that
+-- journals the change inserts it; the write that acknowledges the change's
+-- outcome deletes it. Never synced.
+CREATE TABLE admin_operations (
+    operation INTEGER PRIMARY KEY NOT NULL,
+    member TEXT,
+    device BLOB,
+    role TEXT CHECK (role IN ('admin', 'member')),
+    name TEXT
+) STRICT;
+
 -- Why this device's last attempt to start sync failed, while it stands: a
 -- start that failed before coven's loop ran, such as a keychain locked for
 -- the session, which coven's own status can't name. Written when starting

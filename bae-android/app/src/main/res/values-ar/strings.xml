@@ -295,7 +295,7 @@
         <item quantity="many">الأجهزة المُزالة (%1$d)</item>
         <item quantity="other">الأجهزة المُزالة (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">تمت إزالة الجهاز</string>
+    <string name="device_removed_title">ستتم إزالة الجهاز</string>
     <string name="members_invite">دعوة شخص</string>
     <string name="invite_name">الاسم</string>
     <string name="invite_in_person">شخصيًا</string>
@@ -360,4 +360,13 @@
     <string name="operation_rejection_keys_already_used">هذه المفاتيح مستخدمة بالفعل.</string>
     <string name="operation_rejection_member_keys_changed">استُبدلت مفاتيح هذا الشخص في هذه الأثناء.</string>
     <string name="operation_rejection_not_allowed">لا يُسمح لهذا الجهاز بإجراء هذا التغيير.</string>
+    <string name="admin_changes_title">التغييرات من هذا الهاتف</string>
+    <string name="admin_change_rename">إعادة تسمية المكتبة إلى “%1$s”</string>
+    <string name="admin_change_make_admin">جعل %1$s مسؤولًا</string>
+    <string name="admin_change_make_member">جعل %1$s عضوًا</string>
+    <string name="admin_change_remove">إزالة %1$s</string>
+    <string name="admin_change_waiting">في انتظار المزامنة</string>
+    <string name="admin_change_refused">مرفوض</string>
+    <string name="dismiss">تجاهل</string>
+    <string name="admin_change_approve">السماح بدخول %1$s</string>
 </resources>

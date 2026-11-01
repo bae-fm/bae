@@ -15,6 +15,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChangeKind
+import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
@@ -111,6 +114,31 @@ class MembersModelTest {
         handle.invites.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(emptyList<BridgeInvite>(), model.invites)
+        stop()
+    }
+
+    /** Each list of admin changes the model pulls replaces the one it shows. */
+    @Test
+    fun eachPulledListOfAdminChangesReplacesTheShownOne() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges)
+
+        val waiting =
+            BridgeAdminChange(
+                operation = 7,
+                change = BridgeAdminChangeKind.RemoveDevice(device = 4uL, name = "Tablet"),
+                state = BridgeAdminChangeState.Waiting,
+            )
+        handle.adminChanges.deliver(listOf(waiting))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf(waiting), model.adminChanges)
+
+        handle.adminChanges.deliver(emptyList())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges)
         stop()
     }
 

@@ -255,6 +255,18 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// The admin changes this device asked for, each until the person
+    /// dismisses its outcome.
+    AdminChangesSubscription:
+        Vec<bae_core::sync::admin_change::AdminChange>
+            => Vec<crate::types::BridgeAdminChange>,
+    converted by |changes: Vec<bae_core::sync::admin_change::AdminChange>| {
+        changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
+    },
+    built by admin_changes
+}
+
+pulled_values! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:

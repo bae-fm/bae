@@ -79,6 +79,14 @@ impl AppHandle {
             self.runtime.clone(),
         )
     }
+    /// The admin changes this device asked for, each until the person
+    /// dismisses its outcome.
+    pub fn subscribe_admin_changes(&self) -> Arc<crate::AdminChangesSubscription> {
+        crate::screens::admin_changes(
+            self.services.subscribe_admin_changes(),
+            self.runtime.clone(),
+        )
+    }
     /// This device's open invites, each with its stage and what coven holds
     /// its work for; other devices' invites are never listed.
     pub fn subscribe_invites(&self) -> Arc<crate::InvitesSubscription> {
@@ -92,6 +100,7 @@ forward! {async this => {
     fn own_person()->Option<BridgePerson> {Ok(this.services.own_person().await?.map(BridgePerson::from_core))}
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&coven::MemberId(member.parse().map_err(BridgeError::config)?)).await?)}
     fn remove_device(device:u64)->Option<BridgeProviderSignOut> {Ok(this.services.remove_device(coven::DeviceId(device)).await?.map(BridgeProviderSignOut::from_core))}
+    fn acknowledge_admin_change(operation:i64)->() {Ok(this.services.acknowledge_admin_change(coven::OperationId(operation)).await?)}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&coven::MemberId(member.parse().map_err(BridgeError::config)?),role.into_core()).await?)}
     fn invite_person(role:BridgeMemberRole,name:String,access:BridgeInviteAccess,delivery:BridgeInviteDelivery)->String {Ok(this.services.invite_person(role.into_core(),name,access.into_core(),delivery.into_core()).await?.0.to_string())}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}

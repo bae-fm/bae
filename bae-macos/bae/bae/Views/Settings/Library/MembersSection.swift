@@ -171,7 +171,7 @@ struct MembersSection: View {
             }
         }
         .alert(
-            "Device removed",
+            "The device will be removed",
             isPresented: Binding(
                 get: { signOut != nil },
                 set: { if !$0 { signOut = nil } }

@@ -8,6 +8,7 @@
 // unchanged. Cloud file operations use the exact stored file reference.
 pub use coven::{decode_code_info, restore_from_code};
 
+pub mod admin_change;
 pub mod membership;
 pub mod restore_code;
 
@@ -321,6 +322,9 @@ mod tests {
         // The profile this device's person asked for, while their private
         // circle is being made.
         "profile_request",
+        // What each admin change this device asked for changes, while coven
+        // lists its operation.
+        "admin_operations",
         "playback_queue",
         "playback_manual",
         "playback_context",

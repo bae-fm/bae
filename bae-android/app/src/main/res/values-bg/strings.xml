@@ -283,7 +283,7 @@
         <item quantity="one">Премахнато устройство (%1$d)</item>
         <item quantity="other">Премахнати устройства (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Устройството е премахнато</string>
+    <string name="device_removed_title">Устройството ще бъде премахнато</string>
     <string name="members_invite">Поканване на човек</string>
     <string name="invite_name">Име</string>
     <string name="invite_in_person">Лично</string>
@@ -348,4 +348,13 @@
     <string name="operation_rejection_keys_already_used">Тези ключове вече се използват.</string>
     <string name="operation_rejection_member_keys_changed">Междувременно ключовете на този човек бяха заменени.</string>
     <string name="operation_rejection_not_allowed">Това устройство няма право да направи тази промяна.</string>
+    <string name="admin_changes_title">Промени от този телефон</string>
+    <string name="admin_change_rename">Преименуване на библиотеката на „%1$s“</string>
+    <string name="admin_change_make_admin">Направи %1$s администратор</string>
+    <string name="admin_change_make_member">Направи %1$s член</string>
+    <string name="admin_change_remove">Премахване на %1$s</string>
+    <string name="admin_change_waiting">Изчаква синхронизиране</string>
+    <string name="admin_change_refused">Отказано</string>
+    <string name="dismiss">Отхвърляне</string>
+    <string name="admin_change_approve">Пускане на %1$s</string>
 </resources>

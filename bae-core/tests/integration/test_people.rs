@@ -165,7 +165,7 @@ async fn an_undecodable_avatar_is_refused() {
 
 /// Run a test body on the worker stack the app gives native invite and
 /// bootstrap futures.
-fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) {
+pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_stack_size(16 * 1024 * 1024)
@@ -176,7 +176,7 @@ fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) 
 }
 
 /// An owner's library on shared S3 or Dropbox storage, with Robin's profile.
-struct Household {
+pub(super) struct Household {
     _dir: tempfile::TempDir,
     owner: coven::CovenHandle,
     storage: std::sync::Arc<coven::MemoryStorage>,
@@ -188,7 +188,7 @@ struct Household {
 const GUEST_ACCOUNT: &str = "guest@example.com";
 
 impl Household {
-    async fn new() -> Self {
+    pub(super) async fn new() -> Self {
         Self::on(coven::CloudProvider::S3, None).await
     }
 
@@ -276,7 +276,7 @@ impl Household {
 
     /// An invite giving S3 storage's `key`, or the Dropbox guest's account,
     /// once the owner's sync has granted its access and fixed its code.
-    async fn invite(&self, target: coven::InviteTarget, key: &str) -> Invited {
+    pub(super) async fn invite(&self, target: coven::InviteTarget, key: &str) -> Invited {
         use coven::Storage;
         let access = match self.storage.config().provider() {
             coven::CloudProvider::S3 => coven::InviteAccess::S3AccessKey {
@@ -333,6 +333,39 @@ impl Household {
             .storage_connector(std::sync::Arc::new(storage))
     }
 
+    /// A library manager over the owner's store, in `dir`.
+    pub(super) fn owners_manager(
+        &self,
+        dir: &std::path::Path,
+    ) -> bae_core::library::LibraryManager {
+        bae_test_support::test_library_from_handle(
+            self.owner.clone(),
+            dir,
+            bae_core::providers::Providers::offline(),
+        )
+        .0
+    }
+
+    /// Join with `code` from a device of its own, named Guest Device.
+    pub(super) async fn join(
+        &self,
+        code: &str,
+        installation: &coven::TestCoven,
+        dir: &tempfile::TempDir,
+        control: &bae_core::library::JoinControl,
+    ) -> Result<Option<bae_core::library::JoinedLibrary>, bae_core::library::RestoreFromCodeError>
+    {
+        bae_core::library::join_with_invite(
+            self.device(installation, dir),
+            code,
+            "Guest Device",
+            self.clock.clone(),
+            |_| {},
+            control,
+        )
+        .await
+    }
+
     /// Approve the first request among the owner's open invites.
     async fn approve(&self) {
         let mut invites = self.owner.subscribe(coven::Invite::list);
@@ -373,12 +406,12 @@ async fn joined_profile(
 
 /// An invite the owner's sync has granted: the code to join with, and the
 /// member id it fixed.
-struct Invited {
-    code: String,
-    member: coven::MemberId,
+pub(super) struct Invited {
+    pub(super) code: String,
+    pub(super) member: coven::MemberId,
 }
 
-fn new_member(name: &str) -> coven::InviteTarget {
+pub(super) fn new_member(name: &str) -> coven::InviteTarget {
     coven::InviteTarget::NewMember {
         role: coven::MemberRole::Member,
         name: name.into(),

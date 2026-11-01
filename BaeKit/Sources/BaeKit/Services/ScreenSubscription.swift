@@ -163,6 +163,7 @@ extension SyncStatusSubscription: PulledSubscription {}
 extension SyncActivitySubscription: PulledSubscription {}
 extension MembersSubscription: PulledSubscription {}
 extension InvitesSubscription: PulledSubscription {}
+extension AdminChangesSubscription: PulledSubscription {}
 extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}

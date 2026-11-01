@@ -282,7 +282,7 @@
         <item quantity="one">Fjernet enhed (%1$d)</item>
         <item quantity="other">Fjernede enheder (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Enheden er fjernet</string>
+    <string name="device_removed_title">Enheden fjernes</string>
     <string name="members_invite">Inviter en person</string>
     <string name="invite_name">Navn</string>
     <string name="invite_in_person">Personligt</string>
@@ -346,4 +346,13 @@
     <string name="operation_rejection_keys_already_used">De nøgler er allerede i brug.</string>
     <string name="operation_rejection_member_keys_changed">Den persons nøgler blev udskiftet i mellemtiden.</string>
     <string name="operation_rejection_not_allowed">Denne enhed har ikke tilladelse til at foretage den ændring.</string>
+    <string name="admin_changes_title">Ændringer fra denne telefon</string>
+    <string name="admin_change_rename">Omdøb biblioteket til “%1$s”</string>
+    <string name="admin_change_make_admin">Gør %1$s til administrator</string>
+    <string name="admin_change_make_member">Gør %1$s til medlem</string>
+    <string name="admin_change_remove">Fjern %1$s</string>
+    <string name="admin_change_waiting">Venter på synkronisering</string>
+    <string name="admin_change_refused">Afvist</string>
+    <string name="dismiss">Afvis</string>
+    <string name="admin_change_approve">Lad %1$s komme ind</string>
 </resources>

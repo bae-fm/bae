@@ -117,6 +117,7 @@ pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, ImportClaim, RunVerdictSaved, ScannedCandidateKey,
 };
+mod admin_operations;
 #[cfg(desktop)]
 mod album_link_rows;
 mod collections;

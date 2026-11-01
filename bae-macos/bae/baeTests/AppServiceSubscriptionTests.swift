@@ -461,6 +461,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentRequestedProfile()
     }
 
+    override func subscribeAdminChanges() -> AdminChangesSubscription {
+        SilentAdminChanges()
+    }
+
     func deliverInvites(_ value: [BridgeInvite]) {
         invites.values.deliver(value)
     }
@@ -795,6 +799,27 @@ private final class SilentRequestedProfile: RequestedProfileSubscription,
     }
 
     override func next() async throws -> BridgeRequestedProfile? {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// Admin changes that never change: a pull waits until cancelled.
+private final class SilentAdminChanges: AdminChangesSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<[BridgeAdminChange]>()
+
+    init() {
+        super.init(noHandle: AdminChangesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> [BridgeAdminChange] {
         try await values.next()
     }
 

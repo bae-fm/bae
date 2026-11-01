@@ -119,6 +119,23 @@ impl LibraryManager {
         })
     }
 
+    /// The admin changes this device asked for, each until the person
+    /// dismisses its outcome, live (§5.6).
+    pub fn subscribe_admin_changes(
+        &self,
+    ) -> coven::LiveQuery<Vec<crate::sync::admin_change::AdminChange>> {
+        self.database.subscribe_admin_changes()
+    }
+
+    /// Dismiss a finished admin change: coven's record of its outcome and
+    /// this device's row about it go together.
+    pub async fn acknowledge_admin_change(
+        &self,
+        operation: coven::OperationId,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.acknowledge_admin_change(operation).await?)
+    }
+
     /// Remove a member. The change is recorded on this device at once,
     /// offline too, and takes effect once sync publishes it (§5.6).
     pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {

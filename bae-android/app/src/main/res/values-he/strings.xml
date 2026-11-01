@@ -286,7 +286,7 @@
         <item quantity="two">מכשירים שהוסרו (%1$d)</item>
         <item quantity="other">מכשירים שהוסרו (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">המכשיר הוסר</string>
+    <string name="device_removed_title">המכשיר יוסר</string>
     <string name="members_invite">הזמנת אדם</string>
     <string name="invite_name">שם</string>
     <string name="invite_in_person">פנים אל פנים</string>
@@ -351,4 +351,13 @@
     <string name="operation_rejection_keys_already_used">המפתחות האלה כבר בשימוש.</string>
     <string name="operation_rejection_member_keys_changed">המפתחות של האדם הזה הוחלפו בינתיים.</string>
     <string name="operation_rejection_not_allowed">למכשיר הזה אין הרשאה לבצע את השינוי הזה.</string>
+    <string name="admin_changes_title">שינויים מהטלפון הזה</string>
+    <string name="admin_change_rename">שינוי שם הספרייה ל-“%1$s”</string>
+    <string name="admin_change_make_admin">להפוך את %1$s למנהל</string>
+    <string name="admin_change_make_member">להפוך את %1$s לחבר</string>
+    <string name="admin_change_remove">הסר %1$s</string>
+    <string name="admin_change_waiting">ממתין לסנכרון</string>
+    <string name="admin_change_refused">נדחה</string>
+    <string name="dismiss">סגור</string>
+    <string name="admin_change_approve">להכניס את %1$s</string>
 </resources>

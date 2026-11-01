@@ -336,7 +336,7 @@
         <item quantity="one">Removed device (%1$d)</item>
         <item quantity="other">Removed devices (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Device removed</string>
+    <string name="device_removed_title">The device will be removed</string>
     <string name="members_invite">Invite a person</string>
     <string name="invite_name">Name</string>
     <string name="invite_in_person">In person</string>
@@ -405,4 +405,13 @@
     <string name="operation_rejection_keys_already_used">Those keys are already in use.</string>
     <string name="operation_rejection_member_keys_changed">That person’s keys were replaced in the meantime.</string>
     <string name="operation_rejection_not_allowed">This device isn’t allowed to make that change.</string>
+    <string name="admin_changes_title">Changes from this phone</string>
+    <string name="admin_change_rename">Rename the library to “%1$s”</string>
+    <string name="admin_change_make_admin">Make %1$s an admin</string>
+    <string name="admin_change_make_member">Make %1$s a member</string>
+    <string name="admin_change_remove">Remove %1$s</string>
+    <string name="admin_change_waiting">Waiting to sync</string>
+    <string name="admin_change_refused">Refused</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="admin_change_approve">Let %1$s in</string>
 </resources>

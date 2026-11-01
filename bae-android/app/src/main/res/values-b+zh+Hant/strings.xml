@@ -280,7 +280,7 @@
     <plurals name="members_former_devices">
         <item quantity="other">已移除的裝置（%1$d）</item>
     </plurals>
-    <string name="device_removed_title">裝置已移除</string>
+    <string name="device_removed_title">此裝置將被移除</string>
     <string name="members_invite">邀請成員</string>
     <string name="invite_name">姓名</string>
     <string name="invite_in_person">當面</string>
@@ -345,4 +345,13 @@
     <string name="operation_rejection_keys_already_used">這些金鑰已在使用中。</string>
     <string name="operation_rejection_member_keys_changed">在此期間，此人的金鑰已被替換。</string>
     <string name="operation_rejection_not_allowed">此裝置無權進行該變更。</string>
+    <string name="admin_changes_title">來自此手機的變更</string>
+    <string name="admin_change_rename">將資料庫重新命名為「%1$s」</string>
+    <string name="admin_change_make_admin">將 %1$s 設為管理員</string>
+    <string name="admin_change_make_member">將 %1$s 設為成員</string>
+    <string name="admin_change_remove">移除%1$s</string>
+    <string name="admin_change_waiting">等待同步</string>
+    <string name="admin_change_refused">已拒絕</string>
+    <string name="dismiss">關閉</string>
+    <string name="admin_change_approve">讓 %1$s 加入</string>
 </resources>
