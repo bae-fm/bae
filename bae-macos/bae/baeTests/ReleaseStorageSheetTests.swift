@@ -44,6 +44,7 @@ struct ReleaseStorageSheetTests {
             )
             .environment(library)
             .environment(OutboxStore(uploadsPaused: false))
+            .environment(DownloadStore())
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
