@@ -4,14 +4,37 @@ import OSLog
 private let logger = Logger.bae("LibrarySessionOpener")
 
 public protocol LibrarySessionHandle: AnyObject, Sendable {
-    func getConfig() -> BridgeConfig
+    func currentConfig() async throws -> BridgeConfig
     func libraryName() async throws -> String
     func storageLocation() async throws -> BridgeStorageLocation?
     func getUploadsPaused() async throws -> Bool
     func closeLibrary() throws
 }
 
-extension AppHandle: LibrarySessionHandle {}
+extension AppHandle: LibrarySessionHandle {
+    /// The library's preferences now: the first value a config pull answers,
+    /// which then ends.
+    public func currentConfig() async throws -> BridgeConfig {
+        let configs = subscribeConfig()
+        let config: BridgeConfig
+        do {
+            config = try await configs.next()
+        }
+        catch {
+            do {
+                try await configs.cancel()
+            }
+            catch let ending {
+                logger.warning(
+                    "a config read did not end cleanly: \(String(reflecting: ending))"
+                )
+            }
+            throw error
+        }
+        try await configs.cancel()
+        return config
+    }
+}
 
 public struct LibrarySessionSeed: Sendable {
     public let name: String
@@ -94,11 +117,10 @@ public final class LibrarySessionOpener<
                 do {
                     try Task.checkCancellation()
                     let seed = try await LibrarySessionSeed.read(from: handle)
+                    let config = try await handle.currentConfig()
                     try Task.checkCancellation()
                     onOutcome(
-                        .opened(
-                            self.makeService(handle, handle.getConfig(), seed)
-                        )
+                        .opened(self.makeService(handle, config, seed))
                     )
                 }
                 catch {

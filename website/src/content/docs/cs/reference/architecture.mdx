@@ -16,15 +16,14 @@ Vedle aplikací: `bae-mcp` (server MCP) a `bae-automation`.
 
 ## Jedna knihovna na disku
 
-Knihovna žije ve dvou adresářích (na mobilu v datových adresářích platformy): v úložišti coven a vedle něj ve vlastním nastavení bae.
+Knihovna žije ve dvou adresářích (na mobilu v datových adresářích platformy): v úložišti coven a vedle něj ve vlastní mezipaměti bae.
 
 ```
 ~/.bae/stores/<id>/       # úložiště coven, otevírané jen přes coven
-  store.db                # SQLite: katalog, kredity, specifikace přehrávání, účetnictví coven
+  store.db                # SQLite: katalog, kredity, specifikace přehrávání, nastavení tohoto zařízení, účetnictví coven
   files/                  # kopie vlastních souborů bae v coven (obaly, obrázky interpretů, avatary)
   cache/                  # kopie nahraných souborů v mezipaměti a připnuté
 ~/.bae/libraries/<id>/    # vlastní adresář bae; nikdy se nesynchronizuje
-  preferences.toml        # nastavení bae
   cache/                  # obrázky stažené z katalogů
 ```
 

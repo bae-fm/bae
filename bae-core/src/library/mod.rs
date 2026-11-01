@@ -126,10 +126,6 @@ pub enum RestoreFromCodeError {
     Profile(#[from] crate::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
-    /// This device's preferences for the library, which set its transfer
-    /// limits, couldn't be read.
-    #[error("read the library's preferences: {0}")]
-    Preferences(#[source] crate::config::ConfigError),
     #[error("restore failed: {0}")]
     Restore(#[source] Box<coven::BootstrapError>),
 }
@@ -141,7 +137,6 @@ impl RestoreFromCodeError {
         match self {
             Self::Profile(error) => error.category(),
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
-            Self::Preferences(_) => crate::ui::UiErrorCategory::Config,
             Self::Restore(error) => manager::bootstrap_category(error),
         }
     }
@@ -282,30 +277,14 @@ pub(crate) fn with_transfer_limits(
         .max_concurrent_downloads(limits.downloads)
 }
 
-/// The transfer limits this device's preferences for `store` set, which the
-/// library runs under once open. A restore or join runs under them too: it
-/// reads the library's history from storage under the download limit.
-fn library_transfers(
-    app_dir: &AppDir,
-    store: coven::StoreId,
-) -> Result<coven::TransferLimits, RestoreFromCodeError> {
-    Ok(crate::config::Config::load(app_dir, store)
-        .map_err(RestoreFromCodeError::Preferences)?
-        .prefs
-        .transfer_limits())
-}
-
-/// `builder` configured as bae's store for loading `store` from storage,
-/// under [`library_transfers`].
-fn loading_builder(
-    builder: coven::CovenBuilder,
-    app_dir: &AppDir,
-    store: coven::StoreId,
-) -> Result<coven::CovenBuilder, RestoreFromCodeError> {
-    Ok(with_transfer_limits(
+/// `builder` configured as bae's store for loading a library from storage,
+/// under the default transfer limits: the library's own preferences are in
+/// the store being loaded, so they apply once it opens.
+fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
+    with_transfer_limits(
         configure_store(builder),
-        library_transfers(app_dir, store)?,
-    ))
+        crate::config::default_transfer_limits(),
+    )
 }
 
 /// The most each connection to a library keeps in its page cache. A cache
@@ -519,7 +498,6 @@ pub async fn create_library_default(
 /// running library instead of reopening from a second configuration copy.
 pub async fn restore_from_code(
     mut builder: coven::CovenBuilder,
-    app_dir: &AppDir,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
@@ -529,7 +507,7 @@ pub async fn restore_from_code(
     let metadata = bootstrap_auth::code_metadata(code)?;
     bootstrap_auth::authenticate(&mut builder, metadata.oauth_access, cancel).await?;
     coven::restore_from_code(
-        loading_builder(builder, app_dir, metadata.store_id)?,
+        loading_builder(builder),
         code,
         s3_credentials,
         device_name,
@@ -542,7 +520,6 @@ pub async fn restore_from_code(
 
 pub async fn restore_from_saved_code(
     mut builder: coven::CovenBuilder,
-    app_dir: &AppDir,
     saved: &coven::SavedRestoreCode,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
@@ -551,7 +528,7 @@ pub async fn restore_from_saved_code(
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
     bootstrap_auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
     coven::restore_from_saved_code(
-        loading_builder(builder, app_dir, saved.store_id)?,
+        loading_builder(builder),
         saved,
         s3_credentials,
         device_name,
@@ -611,7 +588,6 @@ impl Default for JoinControl {
 /// `resume_join`.
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
-    app_dir: &AppDir,
     code: &str,
     device_name: &str,
     clock: coven::ClockRef,
@@ -626,7 +602,7 @@ pub async fn join_with_invite(
     )
     .await?;
     let joined = Box::pin(coven::join_with_invite(
-        loading_builder(builder, app_dir, invite.metadata.store_id)?,
+        loading_builder(builder),
         code,
         device_name,
         on_status,
@@ -655,22 +631,14 @@ pub async fn unfinished_joins(
 /// for each (§5.6).
 pub async fn resume_join(
     builder: impl Fn() -> coven::CovenBuilder,
-    app_dir: &AppDir,
     join: &coven::InviteInfo,
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let (store, on_status, coven_control) = (join.metadata.store_id, &on_status, &control.join);
-    let limits = library_transfers(app_dir, store)?;
     let resume = move |builder: coven::CovenBuilder| {
-        Box::pin(
-            with_transfer_limits(configure_store(builder), limits).resume_join(
-                store,
-                on_status,
-                coven_control,
-            ),
-        )
+        Box::pin(loading_builder(builder).resume_join(store, on_status, coven_control))
     };
     let joined = match resume(builder()).await {
         Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
@@ -736,11 +704,10 @@ async fn with_profile(
 /// notification.
 pub async fn reset_device(
     builder: coven::CovenBuilder,
-    app_dir: &AppDir,
     store: coven::StoreId,
     device_name: &str,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
-    loading_builder(builder, app_dir, store)?
+    loading_builder(builder)
         .reset_device(store, device_name)
         .await
         .map_err(restore_error)
@@ -761,7 +728,6 @@ pub async fn reset_device(
 /// `on_status`.
 pub async fn restore_replacing_device(
     mut builder: coven::CovenBuilder,
-    app_dir: &AppDir,
     store: coven::StoreId,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
@@ -794,7 +760,7 @@ pub async fn restore_replacing_device(
         coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),
         status => on_status(status),
     };
-    loading_builder(builder, app_dir, store)?
+    loading_builder(builder)
         .restore_device(store, code, s3_credentials, device_name, status, cancel)
         .await
         .map_err(restore_error)

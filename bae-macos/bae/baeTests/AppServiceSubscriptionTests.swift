@@ -282,10 +282,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     // here syncs.
     override func reportNetworkChange() {}
 
-    override func subscribeConfig(
-        callback _: any ConfigCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeConfig() -> ConfigSubscription {
+        SilentConfig()
     }
 
     override func subscribeSyncStatus(
@@ -468,6 +466,26 @@ private final class PullQueue<Value: Sendable>: @unchecked Sendable {
         }
         puller?.resume(throwing: BridgeError.Cancelled)
     }
+}
+
+/// Preferences that never change after the ones the service was built with:
+/// a pull waits until it is cancelled.
+private final class SilentConfig: ConfigSubscription, @unchecked Sendable {
+    private let values = PullQueue<BridgeConfig>()
+
+    init() {
+        super.init(noHandle: ConfigSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeConfig {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
 }
 
 /// Playback values a test hands the app one at a time.

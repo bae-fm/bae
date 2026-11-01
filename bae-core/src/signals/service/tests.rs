@@ -152,14 +152,9 @@ async fn make_library_manager_reporting_to(
 
     // Unique per test so keyring entries don't collide in the shared mock store.
 
-    let config =
-        crate::config::Config::with_defaults(database.store_id(), tmp.path().join("preferences"));
-    let config_handle = Arc::new(crate::config::ConfigHandle::new(config));
-
     let manager = crate::library::LibraryManager::new(
         database,
         crate::config::AppDir::under_home(tmp.path()).unwrap(),
-        config_handle,
         clock,
         Arc::new(coven::UuidIds),
         diagnostics,

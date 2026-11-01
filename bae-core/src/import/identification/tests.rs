@@ -2,7 +2,6 @@
 //! fixture answers their URLs and records each request.
 
 use super::*;
-use crate::config::{Config, ConfigHandle};
 use crate::db::{
     Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
@@ -338,8 +337,6 @@ impl Fixture {
                 .unwrap();
         let preparations = crate::import::CandidatePreparations::new(database.clone());
 
-        let config = Config::with_defaults(database.store_id(), temp.path().join("preferences"));
-
         let provider = FakeProvider::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.
         let http = bae_util::http::Http::for_test()
@@ -351,7 +348,6 @@ impl Fixture {
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
-            Arc::new(ConfigHandle::new(config)),
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),

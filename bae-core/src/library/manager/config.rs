@@ -1,13 +1,14 @@
-//! Config access and Discogs token management for [`LibraryManager`].
+//! This device's preferences for the library, read and written through its
+//! `preferences` row, for [`LibraryManager`].
 //!
-//! Reads and writes config fields only. Library-lifecycle operations that
+//! Reads and writes preferences only. Library-lifecycle operations that
 //! mutate the on-disk library presence (rename, lock, forget) live in
 //! `lifecycle.rs`.
 
 use super::*;
 
 /// A preference the UI writes and nothing else reacts to: the write *is* the
-/// whole operation, and the config value stream re-renders whoever reads it.
+/// whole operation, and the row's live queries re-render whoever reads it.
 /// Setters that also validate, or that hand the new value to something already
 /// running, are written out below instead.
 macro_rules! pref_setter {
@@ -15,35 +16,72 @@ macro_rules! pref_setter {
         $(#[$doc])*
         pub async fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
             self
-                .update_preferences(move |prefs| prefs.$field = value)
+                .update_preferences(move |prefs| {
+                    prefs.$field = value;
+                    Ok(())
+                })
                 .await
         }
     };
 }
 
 impl LibraryManager {
-    /// Edit the preferences and replace their file, on a blocking thread: the
-    /// write waits on the disk. A panic in it is reported as a bug.
+    /// Edit the preferences in one write of their row. `edit` sees what is
+    /// stored and may refuse the change, which then writes nothing.
     pub(super) async fn update_preferences(
         &self,
-        edit: impl FnOnce(&mut crate::config::Preferences) + Send + 'static,
+        edit: impl FnOnce(&mut crate::config::Preferences) -> Result<(), crate::config::ConfigError>
+            + Send
+            + 'static,
     ) -> Result<(), crate::config::ConfigError> {
-        let config_handle = Arc::clone(&self.config_handle);
-        blocking("write the preferences", move || {
-            config_handle.update_preferences_now(edit)
-        })
-        .await
-        .map_err(|failed| self.bug(failed))?
+        self.database.edit_preferences(edit).await
     }
 
-    pub fn get_config(&self) -> crate::config::Config {
-        self.config_handle.config().clone()
+    /// This device's preferences for the library, as stored now.
+    pub async fn preferences(&self) -> Result<crate::config::Preferences, crate::db::DbError> {
+        self.database.preferences().await
     }
 
-    /// Subscribe to the config-state stream; each change yields the whole latest
-    /// `Config`.
-    pub fn subscribe_config_changes(&self) -> tokio::sync::watch::Receiver<crate::config::Config> {
-        self.config_handle.subscribe()
+    /// The library this is, by its store id.
+    pub fn store_id(&self) -> coven::StoreId {
+        self.database.store_id()
+    }
+
+    /// bae's own directory for this library, apart from coven's store: the
+    /// remote image cache and the like.
+    pub fn library_path(&self) -> PathBuf {
+        self.app_dir
+            .registered_library(&self.database.store_id().to_string())
+    }
+
+    /// The library's preferences as the settings screens read them, with the
+    /// library and its directory: the first value at once, then one after
+    /// each write that changes them, until the surface cancels or the library
+    /// closes.
+    pub fn subscribe_config(&self) -> crate::library::LiveValues<crate::config::Config> {
+        let store_id = self.database.store_id();
+        let library_path = self.library_path();
+        self.values_until_closed(self.database.subscribe_preferences().process(move |prefs| {
+            Ok(crate::config::Config {
+                store_id,
+                library_path: library_path.clone(),
+                prefs,
+            })
+        }))
+    }
+
+    /// The part of the preferences `part` takes, followed: the first value at
+    /// once, then one after each write that changes that part, until the
+    /// library closes.
+    pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
+        &self,
+        part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
+    ) -> crate::library::LiveValues<T> {
+        self.values_until_closed(
+            self.database
+                .subscribe_preferences()
+                .process(move |prefs| Ok(part(prefs))),
+        )
     }
 
     pref_setter!(set_pause_between_sides, pause_between_sides: bool);
@@ -76,8 +114,11 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.update_preferences(move |prefs| prefs.identification.automatic = enabled)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.identification.automatic = enabled;
+            Ok(())
+        })
+        .await
     }
 
     /// Whether what an identification run settles on as needing nothing is
@@ -89,8 +130,11 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.update_preferences(move |prefs| prefs.identification.import_when_identified = enabled)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.identification.import_when_identified = enabled;
+            Ok(())
+        })
+        .await
     }
 
     /// Whether imports go to the cloud home, when the library has one.
@@ -98,29 +142,37 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.update_preferences(move |prefs| prefs.import_storage.cloud = enabled)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.import_storage.cloud = enabled;
+            Ok(())
+        })
+        .await
     }
 
     /// Whether a release that goes to the cloud also stays downloaded here.
     pub async fn set_import_pinned(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.update_preferences(move |prefs| prefs.import_storage.pinned = enabled)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.import_storage.pinned = enabled;
+            Ok(())
+        })
+        .await
     }
 
     /// Whether a release found now is identified on its own.
     #[cfg(desktop)]
-    pub(crate) fn identifies_automatically(&self) -> bool {
-        self.config_handle.config().prefs.identification.automatic
+    pub(crate) async fn identifies_automatically(&self) -> Result<bool, crate::db::DbError> {
+        Ok(self.preferences().await?.identification.automatic)
     }
 
     /// Which metadata sources this library asks, one entry per
     /// [`Catalog`](bae_catalogs::catalog::Catalog). See
-    /// [`Config::metadata_sources`](crate::config::Config::metadata_sources) —
-    /// the answer is a fact about the stored config, read here off the current
-    /// one.
-    pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
-        self.config_handle.config().metadata_sources()
+    /// [`Preferences::metadata_sources`](crate::config::Preferences::metadata_sources)
+    /// — the answer is a fact about the stored preferences, read here off the
+    /// current ones.
+    pub async fn metadata_sources(
+        &self,
+    ) -> Result<Vec<crate::import::CatalogAvailability>, crate::db::DbError> {
+        Ok(self.preferences().await?.metadata_sources())
     }
 
     /// Ask, or stop asking, one metadata source. The switch behind every place
@@ -140,14 +192,19 @@ impl LibraryManager {
         source: bae_catalogs::catalog::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        if !enabled && crate::import::is_the_only_asked_source(&self.metadata_sources(), source) {
-            return Err(crate::config::ConfigError::Config(format!(
-                "{} is the only source left to search",
-                source.display_name()
-            )));
-        }
-        self.update_preferences(move |prefs| prefs.identification.catalogs.set(source, enabled))
-            .await
+        self.update_preferences(move |prefs| {
+            if !enabled
+                && crate::import::is_the_only_asked_source(&prefs.metadata_sources(), source)
+            {
+                return Err(crate::config::ConfigError::Config(format!(
+                    "{} is the only source left to search",
+                    source.display_name()
+                )));
+            }
+            prefs.identification.catalogs.set(source, enabled);
+            Ok(())
+        })
+        .await
     }
 
     pref_setter!(
@@ -175,10 +232,12 @@ impl LibraryManager {
         n: u32,
     ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
-        self.update_preferences(move |prefs| prefs.max_concurrent_uploads = n)
-            .await?;
-        self.apply_transfer_limits();
-        Ok(())
+        self.update_preferences(move |prefs| {
+            prefs.max_concurrent_uploads = n;
+            Ok(())
+        })
+        .await?;
+        self.apply_transfer_limits().await
     }
 
     /// How many file downloads a pin fetches at once. Same bounds and
@@ -188,17 +247,20 @@ impl LibraryManager {
         n: u32,
     ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
-        self.update_preferences(move |prefs| prefs.max_concurrent_downloads = n)
-            .await?;
-        self.apply_transfer_limits();
-        Ok(())
+        self.update_preferences(move |prefs| {
+            prefs.max_concurrent_downloads = n;
+            Ok(())
+        })
+        .await?;
+        self.apply_transfer_limits().await
     }
 
-    /// Hand the stored transfer limits to the open store. The builder reads
-    /// them at open; this is what a change after open does.
-    fn apply_transfer_limits(&self) {
+    /// Hand the stored transfer limits to the open store, as opening it
+    /// does; this is what a change after open does.
+    async fn apply_transfer_limits(&self) -> Result<(), crate::config::ConfigError> {
         self.database
-            .set_transfer_limits(self.config_handle.config().prefs.transfer_limits());
+            .set_transfer_limits(self.preferences().await?.transfer_limits());
+        Ok(())
     }
 
     /// The limits the open store runs under — what a change through the
@@ -207,8 +269,8 @@ impl LibraryManager {
         self.database.transfer_limits()
     }
 
-    pub fn save_presets(&self) -> Vec<crate::config::SavePreset> {
-        self.config_handle.config().prefs.save_presets.clone()
+    pub async fn save_presets(&self) -> Result<Vec<crate::config::SavePreset>, crate::db::DbError> {
+        Ok(self.preferences().await?.save_presets)
     }
 
     pub async fn set_save_presets(
@@ -225,47 +287,45 @@ impl LibraryManager {
                 )));
             }
         }
-        // Both save defaults are required, valid preset ids: re-validate them
-        // against the new list so deleting a default's preset (or the last
-        // preset applicable to a level) is rejected rather than leaving a
-        // dangling default.
-        let (default_track, default_release) = {
-            let config = self.config_handle.config();
-            (
-                config.prefs.default_track_save_preset.clone(),
-                config.prefs.default_release_save_preset.clone(),
-            )
-        };
-        Self::validate_default_save_preset(&default_track, &presets, true)?;
-        Self::validate_default_save_preset(&default_release, &presets, false)?;
-        self.update_preferences(move |prefs| prefs.save_presets = presets)
-            .await
+        // Both save defaults are required, valid preset ids: re-validate the
+        // stored ones against the new list so deleting a default's preset (or
+        // the last preset applicable to a level) is refused rather than
+        // leaving a dangling default.
+        self.update_preferences(move |prefs| {
+            Self::validate_default_save_preset(&prefs.default_track_save_preset, &presets, true)?;
+            Self::validate_default_save_preset(
+                &prefs.default_release_save_preset,
+                &presets,
+                false,
+            )?;
+            prefs.save_presets = presets;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn set_default_track_save_preset(
         &self,
         preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
-        Self::validate_default_save_preset(
-            &preset_id,
-            &self.config_handle.config().prefs.save_presets,
-            true,
-        )?;
-        self.update_preferences(move |prefs| prefs.default_track_save_preset = preset_id)
-            .await
+        self.update_preferences(move |prefs| {
+            Self::validate_default_save_preset(&preset_id, &prefs.save_presets, true)?;
+            prefs.default_track_save_preset = preset_id;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn set_default_release_save_preset(
         &self,
         preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
-        Self::validate_default_save_preset(
-            &preset_id,
-            &self.config_handle.config().prefs.save_presets,
-            false,
-        )?;
-        self.update_preferences(move |prefs| prefs.default_release_save_preset = preset_id)
-            .await
+        self.update_preferences(move |prefs| {
+            Self::validate_default_save_preset(&preset_id, &prefs.save_presets, false)?;
+            prefs.default_release_save_preset = preset_id;
+            Ok(())
+        })
+        .await
     }
 
     /// A save default must name a preset that exists and applies to its level
@@ -303,8 +363,11 @@ impl LibraryManager {
         config: crate::config::McpConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.update_preferences(move |prefs| prefs.mcp = config)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.mcp = config;
+            Ok(())
+        })
+        .await
     }
 
     /// The MCP bearer token, read from the keychain on a blocking thread.
@@ -338,8 +401,11 @@ impl LibraryManager {
         config: crate::config::SubsonicConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.update_preferences(move |prefs| prefs.subsonic = config)
-            .await
+        self.update_preferences(move |prefs| {
+            prefs.subsonic = config;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {

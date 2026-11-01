@@ -36,8 +36,12 @@ impl ImportServiceHandle {
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), crate::import::ImportError> {
-        let search =
-            CandidateSearch::started(query.clone(), &self.library_manager.metadata_sources());
+        let sources = self
+            .library_manager
+            .metadata_sources()
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        let search = CandidateSearch::started(query.clone(), &sources);
         let run = self
             .runtime
             .start_search(&candidate_key, &search)

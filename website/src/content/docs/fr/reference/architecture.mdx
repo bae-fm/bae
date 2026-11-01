@@ -16,15 +16,14 @@ bae est un cœur Rust porté par quatre applications natives. Tout ce qui défin
 
 ## Une bibliothèque sur disque
 
-Une bibliothèque vit dans deux dossiers (des dossiers de données de plateforme sur mobile) : le stockage de coven et, à côté, les réglages propres à bae.
+Une bibliothèque vit dans deux dossiers (des dossiers de données de plateforme sur mobile) : le stockage de coven et, à côté, le cache propre à bae.
 
 ```
 ~/.bae/stores/<id>/       # stockage de coven, ouvert seulement via coven
-  store.db                # SQLite : catalogue, crédits, données de lecture, suivi de coven
+  store.db                # SQLite : catalogue, crédits, données de lecture, réglages de cet appareil, suivi de coven
   files/                  # copies par coven des fichiers propres à bae (pochettes, images d’artistes, avatars)
   cache/                  # copies en cache et épinglées des fichiers envoyés
 ~/.bae/libraries/<id>/    # propre à bae ; jamais synchronisé
-  preferences.toml        # réglages de bae
   cache/                  # illustrations récupérées depuis les catalogues
 ```
 

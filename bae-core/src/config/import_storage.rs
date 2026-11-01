@@ -1,5 +1,5 @@
-//! Where an import puts a release: `preferences.toml`'s `import_storage`
-//! table.
+//! Where an import puts a release: the `preferences` row's
+//! `import_to_cloud` and `import_pinned`.
 
 use serde::{Deserialize, Serialize};
 
@@ -21,12 +21,12 @@ impl Default for ImportStoragePreferences {
     }
 }
 
-impl super::Config {
+impl super::Preferences {
     /// Where an import goes: to the cloud, pinned as chosen, when the choice is
     /// the cloud and the library has a cloud home; locally otherwise.
     #[cfg(desktop)]
     pub fn import_destination(&self, storage_configured: bool) -> crate::import::ImportDestination {
-        let storage = self.prefs.import_storage;
+        let storage = self.import_storage;
         if storage.cloud && storage_configured {
             crate::import::ImportDestination::Remote {
                 pin: storage.pinned,

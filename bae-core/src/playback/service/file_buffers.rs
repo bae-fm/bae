@@ -171,8 +171,12 @@ pub(super) async fn prepare_track_for_playback(
     }
 
     // Read the replay-gain mode once, here, and pass it down — rather than a
-    // config lookup buried inside `finalize_playback_track`.
-    let replay_gain_mode = library_manager.get_config().prefs.replay_gain_mode;
+    // preferences read buried inside `finalize_playback_track`.
+    let replay_gain_mode = library_manager
+        .preferences()
+        .await
+        .map_err(PlaybackError::database)?
+        .replay_gain_mode;
 
     Ok(finalize_playback_track(
         track_id.to_string(),

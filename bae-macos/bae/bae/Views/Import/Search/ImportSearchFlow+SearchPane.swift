@@ -183,7 +183,14 @@ extension ImportSearchFlow {
     ) {
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            services.importer.autoIdentifyRelease(releaseId)
+            let importStore = services.importStore
+            Task { @MainActor in
+                do {
+                    try await services.importer.autoIdentifyRelease(releaseId)
+                }
+                catch is CancellationError {}
+                catch { importStore.reportFailure(error) }
+            }
         case .folder:
             services.importer.rerunIdentifyForCandidate(input.key)
         }
@@ -205,7 +212,16 @@ extension ImportSearchFlow {
         let importStore = services.importStore
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            services.importer.editReleaseLookupChoices(releaseId, edit)
+            Task { @MainActor in
+                do {
+                    try await services.importer.editReleaseLookupChoices(
+                        releaseId,
+                        edit
+                    )
+                }
+                catch is CancellationError {}
+                catch { importStore.reportFailure(error) }
+            }
         case .folder:
             // Core states a failure on the pane; one it could not store is
             // told here.

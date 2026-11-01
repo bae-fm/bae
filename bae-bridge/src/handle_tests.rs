@@ -149,15 +149,10 @@ pub(super) fn fresh_test_library(
                 .create_store("Test Library"),
         )
         .expect("test store");
-    let config = bae_core::config::Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let manager =
         runtime
             .block_on(bae_core::library::LibraryManager::open(
                 app_dir,
-                Arc::new(bae_core::config::ConfigHandle::new(config)),
                 Arc::new(coven::SystemClock),
                 Arc::new(coven::UuidIds),
                 bae_core::diagnostics::Diagnostics::noop(),

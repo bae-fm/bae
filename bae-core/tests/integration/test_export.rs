@@ -144,7 +144,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
 
-    let mut presets = f.mgr.save_presets();
+    let mut presets = f.mgr.save_presets().await.unwrap();
     presets.push(SavePreset {
         id: "title-only".to_string(),
         name: "Title only".to_string(),
@@ -284,7 +284,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         applies_to_release: true,
         embed_cover: true,
     };
-    let mut presets = f.mgr.save_presets();
+    let mut presets = f.mgr.save_presets().await.unwrap();
     presets.push(image_preset.clone());
     f.mgr.set_save_presets(presets).await.unwrap();
 
@@ -411,7 +411,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
     preset.filename_tokens = vec![SaveFilenameToken::Title];
-    let mut presets = f.mgr.save_presets();
+    let mut presets = f.mgr.save_presets().await.unwrap();
     presets.push(preset.clone());
     f.mgr.set_save_presets(presets).await.unwrap();
 
@@ -488,7 +488,7 @@ async fn peak_sources_open_saving(
     source_dir: &Path,
     preset: SavePreset,
 ) -> usize {
-    let mut presets = f.mgr.save_presets();
+    let mut presets = f.mgr.save_presets().await.unwrap();
     presets.push(preset.clone());
     f.mgr.set_save_presets(presets).await.unwrap();
     let target = f.temp_path().join(format!("export-{}", preset.id));

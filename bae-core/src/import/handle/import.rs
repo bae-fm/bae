@@ -358,7 +358,9 @@ impl ImportServiceHandle {
             selected_cover: None,
             destination: self
                 .library_manager
-                .get_config()
+                .preferences()
+                .await
+                .map_err(crate::library::LibraryError::from)?
                 .import_destination(self.library_manager.is_sync_configured().await?),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,
@@ -495,7 +497,13 @@ impl ImportServiceHandle {
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         use crate::config::DiscogsValidation;
 
-        if self.library_manager.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
+        if self
+            .library_manager
+            .discogs_validation()
+            .await
+            .map_err(crate::library::LibraryError::from)?
+            != Some(DiscogsValidation::Unvalidated)
+        {
             return Ok(());
         }
         self.library_manager.revalidate_discogs_token().await

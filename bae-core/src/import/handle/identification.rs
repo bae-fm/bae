@@ -26,9 +26,9 @@ impl ImportServiceHandle {
     /// Reports whether a run started. A candidate with no source to ask gets
     /// none, and nothing will ever report on `run`, so whoever asked for it
     /// has to stop waiting for it — and the extraction started to feed that
-    /// run is stopped here, since nothing is left to read it.
-    #[must_use]
-    pub(crate) fn start_identification(
+    /// run is stopped here, since nothing is left to read it, as it is when
+    /// the sources to ask can't be read, which fails.
+    pub(crate) async fn start_identification(
         &self,
         run: crate::identify::IdentifyRunId,
         key: crate::import::CandidateKey,
@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         priority: bae_catalogs::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
-    ) -> bool {
+    ) -> Result<bool, crate::library::LibraryError> {
         let subject = match &source {
             crate::signals::ExtractionSource::Candidate { candidate } => {
                 crate::import::candidate_runtime::RunSubject::Candidate(
@@ -48,19 +48,22 @@ impl ImportServiceHandle {
             }
         };
         let snapshots = self.extraction.start(run, key.clone(), source, priority);
-        if self.identify.start(
-            run,
-            key.clone(),
-            subject,
-            priority,
-            choices,
-            title_search,
-            snapshots,
-        ) {
-            return true;
+        let started = self
+            .identify
+            .start(
+                run,
+                key.clone(),
+                subject,
+                priority,
+                choices,
+                title_search,
+                snapshots,
+            )
+            .await;
+        if !matches!(started, Ok(true)) {
+            self.extraction.cancel(&key);
         }
-        self.extraction.cancel(&key);
-        false
+        Ok(started?)
     }
 
     /// Stop identifying this candidate: the run and the extraction feeding it.

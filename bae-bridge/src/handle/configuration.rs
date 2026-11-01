@@ -2,14 +2,16 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    pub fn get_config(&self) -> BridgeConfig {
-        BridgeConfig::from_core(&self.services.get_config())
+    /// This device's preferences for the library, as the settings screens
+    /// show them: the first value at once, then one after each write that
+    /// changes them.
+    pub fn subscribe_config(&self) -> std::sync::Arc<crate::ConfigSubscription> {
+        crate::screens::config(self.services.subscribe_config(), self.runtime.clone())
     }
 }
 
-// Every setter persists the config with a durable file replace, so each is an
-// async call the host awaits off its own thread; the write itself runs on a
-// blocking thread in core.
+// Every setter writes the preferences row, so each is an async call the host
+// awaits off its own thread.
 forward! { async this => {
     fn rename_library(name: String) -> () {
         let name = bae_core::library_name::LibraryName::parse(&name)
@@ -116,3 +118,7 @@ forward! { async this => {
         Ok(())
     }
 } }
+
+#[cfg(test)]
+#[path = "config_subscription_tests.rs"]
+mod config_subscription_tests;

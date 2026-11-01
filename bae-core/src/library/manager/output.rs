@@ -42,6 +42,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let preset = self
             .save_presets()
+            .await?
             .into_iter()
             .find(|preset| preset.id == preset_id && preset.applies_to_release)
             .ok_or_else(|| {

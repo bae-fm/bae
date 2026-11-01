@@ -1,5 +1,4 @@
 use super::*;
-use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
@@ -35,8 +34,6 @@ async fn setup_import_service() -> TestService {
         .await
         .unwrap();
 
-    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
-
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     // The runtime writes its standings into the library the import commits
     // into.
@@ -47,7 +44,6 @@ async fn setup_import_service() -> TestService {
     let manager = LibraryManager::new(
         database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),

@@ -213,14 +213,18 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
         .unwrap()
         .expect("the scanned candidate is answerable");
     let run = fixture.import.new_identification_run();
-    assert!(fixture.import.start_identification(
-        run,
-        key.clone(),
-        ExtractionSource::Candidate { candidate },
-        CallPriority::Interactive,
-        LookupChoices::default(),
-        None,
-    ));
+    assert!(fixture
+        .import
+        .start_identification(
+            run,
+            key.clone(),
+            ExtractionSource::Candidate { candidate },
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            None,
+        )
+        .await
+        .unwrap());
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(fixture.import.is_identifying(&key));
 

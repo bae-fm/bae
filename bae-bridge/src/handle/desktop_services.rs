@@ -76,8 +76,8 @@ forward! { async this => {
     /// Validate then persist a Discogs API token, returning what happened so the
     /// UI can react (keep the draft on `Rejected`, show the optimistic-save note
     /// on `Unvalidated`). Lives on the import service, which only runs on desktop
-    /// (identification). Mobile reads token status via `get_config` but never
-    /// writes.
+    /// (identification). Mobile reads token status from `subscribe_config`
+    /// but never writes.
     fn save_discogs_token(token: String) -> BridgeDiscogsSaveOutcome {
         this.services
             .import_save_discogs_token(&token)

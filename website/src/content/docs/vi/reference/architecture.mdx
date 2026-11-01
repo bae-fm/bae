@@ -16,15 +16,14 @@ Bên cạnh các ứng dụng: `bae-mcp` (máy chủ MCP) và `bae-automation`.
 
 ## Một thư viện trên đĩa
 
-Một thư viện nằm trong hai thư mục (thư mục dữ liệu nền tảng trên mobile): store của coven, và cài đặt riêng của bae bên cạnh nó.
+Một thư viện nằm trong hai thư mục (thư mục dữ liệu nền tảng trên mobile): store của coven, và bộ nhớ đệm riêng của bae bên cạnh nó.
 
 ```
 ~/.bae/stores/<id>/       # store của coven, chỉ mở qua coven
-  store.db                # SQLite: catalog, ghi công, thông số phát, sổ sách của coven
+  store.db                # SQLite: catalog, ghi công, thông số phát, cài đặt của thiết bị này, sổ sách của coven
   files/                  # bản sao do coven giữ của các tệp riêng của bae (bìa, ảnh nghệ sĩ, ảnh đại diện)
   cache/                  # bản sao đệm và bản ghim của các tệp đã tải lên
 ~/.bae/libraries/<id>/    # của riêng bae; không bao giờ đồng bộ
-  preferences.toml        # cài đặt của bae
   cache/                  # artwork lấy từ các catalog
 ```
 

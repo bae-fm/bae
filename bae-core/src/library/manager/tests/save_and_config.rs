@@ -6,7 +6,7 @@ async fn set_save_presets_rejects_removing_selected_default() {
         .unwrap();
 
     let presets_without_mp3: Vec<_> = manager
-        .save_presets()
+        .save_presets().await.unwrap()
         .into_iter()
         .filter(|preset| preset.id != "mp3")
         .collect();
@@ -16,7 +16,7 @@ async fn set_save_presets_rejects_removing_selected_default() {
 
     assert!(err.to_string().contains("unknown export preset mp3"));
     assert!(manager
-        .save_presets()
+        .save_presets().await.unwrap()
         .iter()
         .any(|preset| preset.id == "mp3"));
 }
@@ -50,7 +50,7 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
         "an unknown preset id is rejected"
     );
 
-    let mut presets = manager.save_presets();
+    let mut presets = manager.save_presets().await.unwrap();
     presets.push(release_only_image_preset());
     manager.set_save_presets(presets).await.unwrap();
 
@@ -70,7 +70,7 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
 #[tokio::test]
 async fn save_track_rejects_release_only_preset() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut presets = manager.save_presets();
+    let mut presets = manager.save_presets().await.unwrap();
     presets.push(release_only_image_preset());
     manager.set_save_presets(presets).await.unwrap();
 
@@ -104,7 +104,7 @@ async fn enqueue_release_save_captures_the_preset() {
 
     // Rename the "flac" preset after enqueue; the queued save keeps the old one.
     let edited: Vec<_> = manager
-        .save_presets()
+        .save_presets().await.unwrap()
         .into_iter()
         .map(|mut preset| {
             if preset.id == "flac" {
@@ -159,7 +159,7 @@ async fn removal_releases_custody_and_preferences() {
     let id = manager.database.store_id().to_string();
     manager.ensure_mcp_token().await.unwrap();
     manager.set_mcp_config(crate::config::McpConfig::disabled_default()).await.unwrap();
-    manager.get_config().save_active_library(&manager.app_dir).unwrap();
+    manager.app_dir.save_active_library(manager.database.store_id()).unwrap();
     manager.remove_library().await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
     assert!(!manager.app_dir.registered_library(&id).exists());
@@ -207,7 +207,7 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     };
     assert!(manager.set_mcp_config(invalid).await.is_err());
     assert_eq!(
-        manager.get_config().prefs.mcp,
+        manager.preferences().await.unwrap().mcp,
         crate::config::McpConfig::disabled_default()
     );
 
@@ -216,7 +216,7 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
         port: crate::config::MCP_DEFAULT_PORT + 1,
     };
     manager.set_mcp_config(valid).await.unwrap();
-    assert_eq!(manager.get_config().prefs.mcp, valid);
+    assert_eq!(manager.preferences().await.unwrap().mcp, valid);
 }
 
 #[tokio::test]
@@ -270,7 +270,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         .set_subsonic_config(enabled_without_username).await
         .is_err());
     assert_eq!(
-        manager.get_config().prefs.subsonic,
+        manager.preferences().await.unwrap().subsonic,
         crate::config::SubsonicConfig::disabled_default()
     );
 
@@ -281,7 +281,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         bind_address: "0.0.0.0".to_string(),
     };
     manager.set_subsonic_config(valid.clone()).await.unwrap();
-    assert_eq!(manager.get_config().prefs.subsonic, valid);
+    assert_eq!(manager.preferences().await.unwrap().subsonic, valid);
 }
 
 /// Something has to be asked. Core refuses the write that would leave nothing,
@@ -296,7 +296,7 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 
     // No Discogs key in a fresh library, so MusicBrainz is the only one asked.
     let states: Vec<_> = manager
-        .metadata_sources()
+        .metadata_sources().await.unwrap()
         .into_iter()
         .map(|entry| (entry.catalog, entry.state))
         .collect();
@@ -316,7 +316,7 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
         "the refusal names the source: {refused}"
     );
     assert_eq!(
-        manager.metadata_sources()[0].state,
+        manager.metadata_sources().await.unwrap()[0].state,
         SourceAvailability::On,
         "the refused write changed nothing"
     );
@@ -337,14 +337,15 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
         .set_metadata_source_enabled(Catalog::Discogs, false).await
         .expect("switching off a source nothing is asking is allowed");
     assert_eq!(
-        manager.metadata_sources()[1].state,
+        manager.metadata_sources().await.unwrap()[1].state,
         SourceAvailability::NotConfigured,
         "no credential still beats the switch"
     );
     assert!(
         !manager
-            .get_config()
-            .prefs
+            .preferences()
+            .await
+            .unwrap()
             .identification
             .catalogs
             .enabled(Catalog::Discogs),

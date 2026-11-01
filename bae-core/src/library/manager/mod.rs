@@ -32,7 +32,6 @@ use crate::album_detail::{
     ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StoragePage, StorageRow,
     WorkDetail, WorkReleaseSummary, WorkSummary,
 };
-use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
     DbLibraryImage, DbRelease, DbTrack, LibraryImageType,
@@ -718,7 +717,6 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 #[derive(Clone)]
 pub struct LibraryManager {
     database: Database,
-    config_handle: Arc<ConfigHandle>,
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,
     /// and where forgetting this library removes it from.
@@ -771,7 +769,7 @@ pub struct LibraryManager {
     /// own writes, so no client outlives the key it was built with.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     discogs_client:
-        Arc<std::sync::Mutex<Option<Arc<bae_catalogs::discogs::client::DiscogsClient>>>>,
+        Arc<tokio::sync::Mutex<Option<Arc<bae_catalogs::discogs::client::DiscogsClient>>>>,
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,

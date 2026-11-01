@@ -4,33 +4,6 @@
 use super::*;
 use crate::library::{LiveRead, LiveReadError};
 
-/// A preference write that panics fails as something that went wrong, is
-/// reported once, and leaves the next write free to run.
-#[tokio::test]
-async fn a_preference_write_that_panics_is_reported_and_the_next_one_runs() {
-    let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
-
-    let error = manager
-        .update_preferences(|_| panic!("the edit broke"))
-        .await
-        .expect_err("a write that panicked fails");
-
-    assert!(
-        matches!(error, crate::config::ConfigError::Unfinished(_)),
-        "{error}"
-    );
-    assert!(matches!(
-        LibraryError::from(error).category(),
-        crate::ui::UiErrorCategory::Internal
-    ));
-    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
-    manager
-        .set_show_remaining_time(true)
-        .await
-        .expect("the next write runs");
-    assert!(manager.get_config().prefs.show_remaining_time);
-}
-
 /// A live read whose task panics ends with the failure, which its reader
 /// tells apart from its own cancel, and the panic is reported once.
 #[tokio::test]

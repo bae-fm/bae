@@ -52,14 +52,9 @@ async fn manager_signing_in_with(
             .create_store("Test Library")
             .await
             .unwrap();
-    let config = Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let manager = LibraryManager::new(
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds)),
         app_dir,
-        Arc::new(ConfigHandle::new(config)),
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),

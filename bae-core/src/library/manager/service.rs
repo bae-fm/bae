@@ -6,10 +6,11 @@ pub type OpenProgressReport = Box<dyn Fn(coven::Progress<coven::OpenStep>) + Sen
 
 /// Either open an existing store or retain a handle returned by creation or restore.
 pub enum LibraryOpening {
-    /// Open the registered store, reporting the open's steps to
+    /// Open the registered store `store`, reporting the open's steps to
     /// `on_progress`.
     Registered {
         builder: coven::CovenBuilder,
+        store: coven::StoreId,
         on_progress: OpenProgressReport,
     },
     Open(coven::CovenHandle),
@@ -52,10 +53,10 @@ impl BackgroundTasks {
 
 impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
-    /// over the resulting handle.
+    /// over the resulting handle, running its file transfers as this device's
+    /// preferences for it say.
     pub async fn open(
         app_dir: crate::config::AppDir,
-        config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,
@@ -64,27 +65,23 @@ impl LibraryManager {
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
-        let limits = config_handle.config().prefs.transfer_limits();
-        let store_id = config_handle.config().store_id;
         let handle = match opening {
             LibraryOpening::Registered {
                 builder,
+                store,
                 on_progress,
             } => {
-                crate::library::with_transfer_limits(
-                    crate::library::configure_store(builder),
-                    limits,
-                )
-                .clock(clock.clone())
-                .open(store_id, on_progress)
-                .await?
+                crate::library::configure_store(builder)
+                    .clock(clock.clone())
+                    .open(store, on_progress)
+                    .await?
             }
-            LibraryOpening::Open(handle) => {
-                handle.set_transfer_limits(limits);
-                handle
-            }
+            LibraryOpening::Open(handle) => handle,
         };
         let database = Database::from_handle(handle, clock.clone(), ids.clone());
+        // The store opens running one transfer per direction, the least any
+        // preference allows, so nothing it starts before this exceeds them.
+        database.set_transfer_limits(database.preferences().await?.transfer_limits());
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.
@@ -94,7 +91,6 @@ impl LibraryManager {
         Ok(Self::assemble(
             database,
             app_dir,
-            config_handle,
             clock,
             ids,
             diagnostics,
@@ -110,7 +106,6 @@ impl LibraryManager {
     pub fn new(
         database: Database,
         app_dir: crate::config::AppDir,
-        config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,
@@ -121,7 +116,6 @@ impl LibraryManager {
         Self::assemble(
             database,
             app_dir,
-            config_handle,
             clock,
             ids,
             diagnostics,
@@ -136,7 +130,6 @@ impl LibraryManager {
     fn assemble(
         database: Database,
         app_dir: crate::config::AppDir,
-        config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,
@@ -154,12 +147,11 @@ impl LibraryManager {
             preparations: crate::import::CandidatePreparations::new(database.clone()),
             database,
             app_dir,
-            config_handle,
             remote_images,
             #[cfg(desktop)]
             providers,
             #[cfg(desktop)]
-            discogs_client: Arc::new(std::sync::Mutex::new(None)),
+            discogs_client: Arc::new(tokio::sync::Mutex::new(None)),
             clock,
             ids,
             diagnostics,

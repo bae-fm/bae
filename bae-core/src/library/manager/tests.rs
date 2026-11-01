@@ -14,7 +14,6 @@ const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track
 const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
 
 use super::*;
-use crate::config::Config;
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
     LibraryImageType, NewReleaseFile,
@@ -81,16 +80,11 @@ async fn setup_test_manager_with(
         .create_store("Test Library")
         .await
         .unwrap();
-    let config = Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
     let manager = LibraryManager::new(
         database,
         app_dir,
-        Arc::new(ConfigHandle::new(config)),
         clock,
         Arc::new(coven::UuidIds),
         diagnostics,

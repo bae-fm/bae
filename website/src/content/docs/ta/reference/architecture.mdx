@@ -16,15 +16,14 @@ apps உடன்: `bae-mcp` (MCP server) மற்றும் `bae-automation`
 
 ## Disk இல் ஒரு நூலகம்
 
-நூலகம் இரண்டு அடைவுகளில் இருக்கும் (கைப்பேசியில் தளத்தின் தரவு அடைவுகள்): coven இன் store, அதன் அருகில் bae இன் சொந்த அமைப்புகள்.
+நூலகம் இரண்டு அடைவுகளில் இருக்கும் (கைப்பேசியில் தளத்தின் தரவு அடைவுகள்): coven இன் store, அதன் அருகில் bae இன் சொந்த இடைநினைவகம்.
 
 ```
 ~/.bae/stores/<id>/       # coven இன் store, coven வழியாக மட்டுமே திறக்கப்படும்
-  store.db                # SQLite: catalog, credits, playback specs, coven இன் கணக்கு
+  store.db                # SQLite: catalog, credits, playback specs, இந்தச் சாதனத்தின் அமைப்புகள், coven இன் கணக்கு
   files/                  # bae இன் சொந்தக் கோப்புகளின் coven நகல்கள் (அட்டைப்படங்கள், கலைஞர் படங்கள், avatars)
   cache/                  # பதிவேற்றிய கோப்புகளின் தற்காலிக மற்றும் pinned நகல்கள்
 ~/.bae/libraries/<id>/    # bae க்கு மட்டும்; ஒருபோதும் ஒத்திசைக்கப்படாது
-  preferences.toml        # bae அமைப்புகள்
   cache/                  # பட்டியல்களிலிருந்து பெற்ற கலைப்படம்
 ```
 

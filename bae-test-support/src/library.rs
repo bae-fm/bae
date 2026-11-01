@@ -16,16 +16,6 @@ pub fn tracing_init() {
         .try_init();
 }
 
-/// Preferences for the same store the test database owns.
-pub fn test_config(
-    database: &bae_core::db::Database,
-    directory: &std::path::Path,
-) -> std::sync::Arc<bae_core::config::ConfigHandle> {
-    std::sync::Arc::new(bae_core::config::ConfigHandle::new(
-        bae_core::config::Config::with_defaults(database.store_id_for_test(), directory),
-    ))
-}
-
 /// Open `dir/test.db` under the real clock and real UUID provider.
 async fn open_test_db(dir: &std::path::Path) -> bae_core::db::Database {
     bae_core::db::Database::new_test(
@@ -93,11 +83,9 @@ fn manager_for_database(
     dir: &std::path::Path,
     providers: bae_core::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
-    let config_handle = test_config(&database, &dir.join("preferences"));
     let library_manager = bae_core::library::LibraryManager::new(
         database.clone(),
         bae_core::config::AppDir::under_home(dir).unwrap(),
-        config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -152,10 +140,6 @@ pub fn setup_fresh_library(
         )
         .expect("create fresh test store");
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
-    let config = bae_core::config::Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let database = bae_core::db::Database::from_handle(
         handle,
         clock.clone(),
@@ -165,7 +149,6 @@ pub fn setup_fresh_library(
     let lm = bae_core::library::LibraryManager::new(
         database,
         app_dir,
-        std::sync::Arc::new(bae_core::config::ConfigHandle::new(config)),
         clock,
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),

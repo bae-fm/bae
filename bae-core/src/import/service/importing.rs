@@ -714,8 +714,9 @@ impl ImportService {
         // before finalize commits anything to the library.
         if self
             .library_manager
-            .get_config()
-            .prefs
+            .preferences()
+            .await
+            .map_err(crate::library::LibraryError::from)?
             .verify_decode_on_import
             && !loudness.broken.is_empty()
         {

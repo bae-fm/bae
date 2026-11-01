@@ -35,7 +35,7 @@ use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::{debug, info, warn};
@@ -114,7 +114,6 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         .import
         .take_event_feed()
         .expect("one identification queue per import service");
-    let config = context.library_manager.subscribe_config_changes();
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -128,13 +127,7 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         async move {
             let ran = bae_util::task_failure::caught(
                 "run the identification queue",
-                queue::run(
-                    &loop_context,
-                    &loop_token,
-                    &mut bus,
-                    &mut command_rx,
-                    &config,
-                ),
+                queue::run(&loop_context, &loop_token, &mut bus, &mut command_rx),
             )
             .await;
             // A queue that panicked is reported and stopped as a shutdown

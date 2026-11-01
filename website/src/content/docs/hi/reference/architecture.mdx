@@ -16,15 +16,14 @@ bae चार native ऐप के भीतर एक Rust core है। produ
 
 ## disk पर एक लाइब्रेरी
 
-लाइब्रेरी दो directories में रहती है (mobile पर प्लेटफ़ॉर्म डेटा directories): coven का store, और उसके बगल में bae की अपनी सेटिंग्स।
+लाइब्रेरी दो directories में रहती है (mobile पर प्लेटफ़ॉर्म डेटा directories): coven का store, और उसके बगल में bae का अपना कैश।
 
 ```
 ~/.bae/stores/<id>/       # coven का store, केवल coven के जरिए खुलता है
-  store.db                # SQLite: कैटलॉग, क्रेडिट, प्लेबैक specs, coven का हिसाब
+  store.db                # SQLite: कैटलॉग, क्रेडिट, प्लेबैक specs, इस उपकरण की सेटिंग्स, coven का हिसाब
   files/                  # bae की अपनी फाइलों की coven कॉपियां (कवर, कलाकार चित्र, अवतार)
   cache/                  # अपलोड की गई फाइलों की कैश और पिन की गई कॉपियां
 ~/.bae/libraries/<id>/    # bae की अपनी; कभी सिंक नहीं होती
-  preferences.toml        # bae की सेटिंग्स
   cache/                  # कैटलॉग से लाए गए चित्र
 ```
 

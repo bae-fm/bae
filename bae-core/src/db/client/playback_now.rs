@@ -33,7 +33,7 @@ impl Database {
             .subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
     }
 
-    /// What playback is doing now, as [`Self::subscribe_now_playing`] reads it.
+    /// What playback is doing now, as `subscribe_now_playing` reads it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn now_playing(&self) -> Result<Option<NowPlayingValues>, DbError> {
         self.read(|sql| now_playing_on(&sql)).await

@@ -32,16 +32,15 @@ impl Home {
         }
     }
 
-    /// A library with its preferences written, as one this device has opened.
+    /// A library with bae's own directory for it, as one this device has
+    /// opened.
     async fn library(&self, name: &str) -> coven::CovenHandle {
         let handle = super::configure_store(self.installation.builder(self.app_dir.store_layout()))
             .storage_connector(self.storage.clone())
             .create_store(name)
             .await
             .unwrap();
-        Config::with_defaults(handle.store_id(), self.directory(handle.store_id()))
-            .save_preferences()
-            .unwrap();
+        std::fs::create_dir_all(self.directory(handle.store_id()).join("cache")).unwrap();
         handle
     }
 
@@ -198,10 +197,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
         crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network)
     );
     assert_eq!(handle.store_name().await.unwrap(), "Library");
-    assert!(home
-        .directory(id)
-        .join(crate::config::PREFERENCES_FILENAME)
-        .exists());
+    assert!(home.directory(id).join("cache").exists());
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -435,9 +431,7 @@ async fn files_without_a_removal_record_are_left_alone() {
     let home = Home::new();
     let kept = home.library("Kept").await;
     let hidden = coven::StoreId(uuid::Uuid::new_v4());
-    Config::with_defaults(hidden, home.directory(hidden))
-        .save_preferences()
-        .unwrap();
+    std::fs::create_dir_all(home.directory(hidden).join("cache")).unwrap();
     home.point_at(hidden);
     let removed = home.library("Removed").await;
     home.stop_removal_after(

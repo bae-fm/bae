@@ -128,6 +128,9 @@ pub enum CastError {
     /// reported where it was caught.
     #[error("{0}")]
     Internal(TaskFailed),
+    /// Whether casting is on couldn't be read.
+    #[error("couldn't read whether casting is on: {0}")]
+    Setting(bae_core::db::DbError),
 }
 
 /// Where the ephemeral server listens, and the address its URLs name.
@@ -251,9 +254,10 @@ impl EphemeralServer {
 /// on its own.
 ///
 /// The whole of it is gated on the library's `cast_enabled` setting, which the
-/// controller reads from config at each entry point rather than mirroring: while
-/// casting is off nothing browses the network and no session can start. A
-/// watcher applies a change to that setting to the running machinery.
+/// controller reads from the preferences row at each entry point rather than
+/// mirroring: while casting is off nothing browses the network and no session
+/// can start. A watcher follows the row and applies a change to the running
+/// machinery.
 pub struct CastController {
     runtime: Handle,
     services: AppServices,
@@ -262,6 +266,14 @@ pub struct CastController {
     /// them from the library's `cast_device` table, which the device list
     /// writer keeps.
     discovery: Mutex<RendererDiscovery>,
+    /// Whether the picker asked for browsing and has not stopped it since.
+    /// Set before the setting is read, and checked again under the discovery
+    /// lock, so a stop that comes while the read is out is never undone.
+    browsing_asked: AtomicBool,
+    /// Whether browsing runs: asked for while casting was on, and neither
+    /// stopped nor turned off since. Changed under the discovery lock; a
+    /// renderer a host reports is taken only while it holds.
+    browsing: AtomicBool,
     /// The ephemeral server, once a cast has started one.
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
@@ -273,6 +285,10 @@ pub struct CastController {
     /// a test can wait for the watcher to act on a change it wrote.
     #[cfg(test)]
     setting_applied: tokio::sync::watch::Sender<Option<bool>>,
+    /// How many asks to browse have been decided, so a test can wait for
+    /// the one it made.
+    #[cfg(test)]
+    browsing_decided: tokio::sync::watch::Sender<u64>,
 }
 
 impl CastController {
@@ -308,11 +324,15 @@ impl CastController {
             runtime: runtime.clone(),
             services,
             discovery: Mutex::new(discovery),
+            browsing_asked: AtomicBool::new(false),
+            browsing: AtomicBool::new(false),
             server: Arc::new(Mutex::new(None)),
             serving,
             diagnostics,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
+            #[cfg(test)]
+            browsing_decided: tokio::sync::watch::Sender::new(0),
         });
         controller.spawn_device_list_writer(receivers);
         controller.spawn_status_follower();
@@ -374,17 +394,21 @@ impl CastController {
     /// Follow the library's `cast_enabled` setting: turning casting off stops
     /// browsing and ends any session in flight, so the machinery is idle rather
     /// than merely hidden; turning it on starts nothing by itself, since browsing
-    /// follows the picker. A panic applying one change is reported, and the
-    /// next change is applied.
+    /// follows the picker. The first value is where the setting stood as the
+    /// controller started, when nothing browsed or cast; only a turn from on
+    /// to off after it is applied. A panic applying one change is reported,
+    /// and the next change is applied.
     fn spawn_setting_watcher(self: &Arc<Self>) {
-        let mut config_rx = self.services.subscribe_config_changes();
+        let setting = self.services.follow_preferences(|prefs| prefs.cast_enabled);
         let controller = self.clone();
         self.runtime.spawn(async move {
+            let mut was_enabled = None;
             loop {
-                match config_rx.changed().await {
-                    Ok(()) => {
-                        let enabled = config_rx.borrow().prefs.cast_enabled;
-                        if !enabled {
+                match setting.next().await {
+                    Ok(enabled) => {
+                        let turned_off = was_enabled == Some(true) && !enabled;
+                        was_enabled = Some(enabled);
+                        if turned_off {
                             let applied = caught_sync("turn casting off", || {
                                 controller.stop_discovery();
                                 controller.stop_casting();
@@ -396,8 +420,11 @@ impl CastController {
                         #[cfg(test)]
                         controller.setting_applied.send_replace(Some(enabled));
                     }
-                    Err(error) => {
-                        debug!("cast setting watcher stopped: {error}");
+                    Err(bae_core::library::LiveValuesError::Query(error)) => {
+                        warn!("couldn't read whether casting is on: {error}");
+                    }
+                    Err(bae_core::library::LiveValuesError::Cancelled) => {
+                        debug!("cast setting watcher stopped: the library closed");
                         break;
                     }
                 }
@@ -448,41 +475,64 @@ impl CastController {
         ))
     }
 
-    /// Whether the library has casting turned on. Read from config on demand:
-    /// config is the one authority, so there is no copy here to fall out of step
-    /// with a change made on this device or synced from another.
-    fn enabled(&self) -> bool {
-        self.services.get_config().prefs.cast_enabled
+    /// Whether the library has casting turned on, read from the preferences
+    /// row on demand: the row is the one authority, so there is no copy here
+    /// to fall out of step with it.
+    async fn enabled(&self) -> Result<bool, CastError> {
+        Ok(self
+            .services
+            .preferences()
+            .await
+            .map_err(CastError::Setting)?
+            .cast_enabled)
     }
 
     /// Start browsing for devices (the picker opened). Idempotent, and a no-op
     /// while casting is off — this is the gate that keeps the network quiet, not
-    /// the picker's visibility.
-    pub fn start_discovery(&self) {
-        if !self.enabled() {
-            debug!("cast discovery not started: casting is off");
-            return;
-        }
-        self.with_discovery(|discovery| discovery.start(&self.diagnostics));
+    /// the picker's visibility. The setting is read off the caller's thread;
+    /// browsing starts once it is, unless the picker closed meanwhile.
+    pub fn start_discovery(self: &Arc<Self>) {
+        self.browsing_asked.store(true, Ordering::Release);
+        let controller = self.clone();
+        self.runtime.spawn(async move {
+            match controller.enabled().await {
+                Ok(true) => controller.with_discovery(|discovery| {
+                    if controller.browsing_asked.load(Ordering::Acquire) {
+                        discovery.start(&controller.diagnostics);
+                        controller.browsing.store(true, Ordering::Release);
+                    }
+                }),
+                Ok(false) => debug!("cast discovery not started: casting is off"),
+                Err(error) => warn!("cast discovery not started: {error}"),
+            }
+            #[cfg(test)]
+            controller
+                .browsing_decided
+                .send_modify(|decided| *decided += 1);
+        });
     }
 
-    /// Stop browsing (the picker closed).
+    /// Stop browsing (the picker closed, or casting was turned off).
     pub fn stop_discovery(&self) {
-        self.with_discovery(RendererDiscovery::stop);
+        self.browsing_asked.store(false, Ordering::Release);
+        self.with_discovery(|discovery| {
+            self.browsing.store(false, Ordering::Release);
+            discovery.stop();
+        });
     }
 
     /// Take a renderer service a host's browser resolved, on the hosts that
     /// browse for bae rather than letting it read the network itself. Refused
-    /// while casting is off, like every other entry point.
+    /// while bae is not browsing, which it never is while casting is off.
     pub fn renderer_found(&self, service: ReportedRenderer) {
-        if !self.enabled() {
-            debug!("reported renderer ignored: casting is off");
-            return;
-        }
         // Mapping a service runs over what a host browser read off the
         // network; one that panics is reported and skipped, and the panic
         // stays inside the lock's hold, so it poisons nothing.
         let reported = self.with_discovery(|discovery| {
+            if !self.browsing.load(Ordering::Acquire) {
+                debug!("reported renderer ignored: bae is not browsing");
+                return Ok(());
+            }
             caught_sync("take a reported renderer", || discovery.report(service))
         });
         if let Err(failed) = reported {
@@ -506,7 +556,7 @@ impl CastController {
     /// serving, and hand the playback service the channel plus the media source
     /// the device fetches each track through.
     pub async fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
-        if !self.enabled() {
+        if !self.enabled().await? {
             return Err(CastError::Disabled);
         }
         let device = self

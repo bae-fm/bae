@@ -5,16 +5,6 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    pub fn subscribe_config(
-        &self,
-        callback: Box<dyn crate::types::ConfigCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_config_changes(),
-            move |value| callback.on_value(BridgeConfig::from_core(value)),
-        )
-    }
-
     pub fn subscribe_sync_status(
         &self,
         callback: Box<dyn crate::types::SyncStatusCallback>,

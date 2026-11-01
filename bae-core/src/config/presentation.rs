@@ -1,4 +1,4 @@
-use super::Config;
+use super::Preferences;
 use crate::import::{CatalogAvailability, SourceAvailability};
 
 /// A catalog choice and whether changing it would leave a usable source.
@@ -7,7 +7,7 @@ pub struct LookupCatalogSetting {
     pub can_change: bool,
 }
 
-impl Config {
+impl Preferences {
     pub fn lookup_catalog_settings(&self) -> Vec<LookupCatalogSetting> {
         let catalogs = self.metadata_sources();
         catalogs

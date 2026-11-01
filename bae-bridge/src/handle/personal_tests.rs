@@ -43,7 +43,10 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         };
         assert!(!metadata.carries_s3_key);
         assert_eq!(scanned.library_id, metadata.library_id);
-        assert_eq!(metadata.library_id, app.get_config().library_id);
+        assert_eq!(
+            metadata.library_id,
+            app.subscribe_config().next().await.unwrap().library_id
+        );
         assert_eq!(metadata.provider, BridgeCloudProvider::S3);
         assert_eq!(
             Some(metadata.location),

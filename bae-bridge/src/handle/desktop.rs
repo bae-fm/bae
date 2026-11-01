@@ -139,23 +139,19 @@ forward! {
         fn get_discogs_token() -> Option<String> {
             Ok(this.services.get_discogs_token().await?)
         }
-    }
-}
 
-forward! {
-    #[cfg(feature = "desktop")]
-    sync this => {
         /// Start re-identifying an existing library release. Extraction resolves
         /// the release's disc ID and artwork from the library. Events stream
         /// through the same identify channel — the UI consumes them by candidate
-        /// key the same way it does for folder imports.
+        /// key the same way it does for folder imports. Fails, starting
+        /// nothing, when the sources to ask can't be read.
         ///
         /// A library release is not a scanned candidate, so core holds what
         /// its runs ask about for the session, from this first run until
         /// `end_release_identification`. Its events come under the key
         /// `bridge_reidentify_key` gives for the release.
-        fn auto_identify_release(release_id: String) {
-            this.services.identify_release_for_lookup(release_id);
+        fn auto_identify_release(release_id: String) -> () {
+            Ok(this.services.identify_release_for_lookup(release_id).await?)
         }
 
         /// Make one change to what a library release's session asks about, and
@@ -163,11 +159,18 @@ forward! {
         fn edit_release_lookup_choices(
             release_id: String,
             edit: crate::types::BridgeLookupChoiceEdit,
-        ) {
-            this.services
-                .edit_release_lookup_choices(release_id, edit.into_core());
+        ) -> () {
+            Ok(this
+                .services
+                .edit_release_lookup_choices(release_id, edit.into_core())
+                .await?)
         }
+    }
+}
 
+forward! {
+    #[cfg(feature = "desktop")]
+    sync this => {
         /// Identify a folder candidate again, over what the candidate says its
         /// lookup asks about and the sources the library asks now. A run reads
         /// its inputs once, at its start, so this cancels whatever is going for

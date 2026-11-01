@@ -74,7 +74,7 @@ import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastDevicesSubscription
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
-import uniffi.bae_bridge.ConfigCallback
+import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.InvitesCallback
@@ -151,7 +151,7 @@ internal open class FakeAppHandle(
 
     override suspend fun savePlaybackState() {}
 
-    override fun subscribeConfig(callback: ConfigCallback): LiveSubscription = liveSubscription()
+    override fun subscribeConfig(): ConfigSubscription = FakeConfigSubscription()
 
     override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
 
@@ -472,8 +472,6 @@ internal open class FakeAppHandle(
     override fun subscribeArtistBrowse(sortCriteria: List<BridgeArtistSortCriterion>): ArtistBrowseSubscription =
         unfaked("subscribeArtistBrowse")
 
-    override fun getConfig(): BridgeConfig = unfaked("getConfig")
-
     override suspend fun lockActiveLibrary() {
         unfaked("lockActiveLibrary")
     }
@@ -790,6 +788,21 @@ internal class FakeCastDevicesSubscription : CastDevicesSubscription(NoHandle) {
 
     override fun close() {
         devices.close(BridgeException.Cancelled())
+    }
+}
+
+/** Preferences nothing delivers: each pull waits until cancelled. */
+internal class FakeConfigSubscription : ConfigSubscription(NoHandle) {
+    private val values = Channel<BridgeConfig>(Channel.UNLIMITED)
+
+    override suspend fun next(): BridgeConfig = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
     }
 }
 

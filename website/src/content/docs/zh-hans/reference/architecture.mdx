@@ -16,15 +16,14 @@ bae 是一个 Rust 核心外加四个原生应用。定义产品的一切，即�
 
 ## 磁盘上的一个资料库
 
-资料库位于两个目录中（移动端上是平台数据目录）：coven 的存储库，以及旁边 bae 自己的设置。
+资料库位于两个目录中（移动端上是平台数据目录）：coven 的存储库，以及旁边 bae 自己的缓存。
 
 ```
 ~/.bae/stores/<id>/       # coven 的存储库，只通过 coven 打开
-  store.db                # SQLite：目录、署名、播放规格、coven 的记账
+  store.db                # SQLite：目录、署名、播放规格、本设备的设置、coven 的记账
   files/                  # coven 保存的 bae 自有文件副本（封面、艺人图像、头像）
   cache/                  # 已上传文件的缓存副本和固定副本
 ~/.bae/libraries/<id>/    # bae 自己的目录；从不同步
-  preferences.toml        # bae 的设置
   cache/                  # 从目录服务获取的图像
 ```
 

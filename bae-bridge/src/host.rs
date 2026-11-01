@@ -428,7 +428,13 @@ mod tests {
         let id = opened.library_id();
         drop(opened);
         drop(host);
-        assert_eq!(app.get_config().library_id, id);
+        assert_eq!(
+            caller
+                .block_on(app.subscribe_config().next())
+                .unwrap()
+                .library_id,
+            id
+        );
         assert_eq!(
             caller.block_on(app.clone().library_name()).unwrap(),
             "Session Library"

@@ -1,5 +1,5 @@
-//! How identification runs, as `preferences.toml`'s `identification` table
-//! carries it: whether it starts on its own, whether what a run picks
+//! How identification runs, as the `preferences` row carries it: whether it
+//! starts on its own, whether what a run picks
 //! unattended is imported, and which catalogs it asks. The first two are
 //! independent: one decides which runs start, the other what any run's
 //! unattended pick goes on to do.
@@ -38,8 +38,8 @@ impl Default for IdentificationPreferences {
 /// [`Catalog::LOOKUP`](bae_catalogs::catalog::Catalog::LOOKUP) member, all on by
 /// default.
 ///
-/// The TOML table needs a name per catalog, so the fields are named — but
-/// nothing reads them by name: [`Self::enabled`] and [`Self::set`] are total
+/// The row has a column per catalog, so the fields are named — but nothing
+/// outside the row's reader and writer reads them by name: [`Self::enabled`] and [`Self::set`] are total
 /// over the asked catalogs, so adding one fails the build here rather than
 /// silently defaulting. Neither is the main one; a catalog switched off is not
 /// asked by anything that asks the catalogs together.

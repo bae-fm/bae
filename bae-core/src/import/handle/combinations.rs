@@ -196,6 +196,11 @@ impl ImportServiceHandle {
                     self.library_manager.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
+                let automatic = self
+                    .library_manager
+                    .identifies_automatically()
+                    .await
+                    .map_err(crate::library::LibraryError::from)?;
                 self.event_tx
                     .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                         candidate_key: key.clone(),
@@ -206,7 +211,7 @@ impl ImportServiceHandle {
                         // combining finds the release it makes.
                         ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {
                             candidate,
-                            found_while_automatic: self.library_manager.identifies_automatically(),
+                            found_while_automatic: automatic,
                         },
                         ScanItem::Discovered(candidate) => {
                             ScanEvent::CandidateDiscovered { candidate }
@@ -237,11 +242,15 @@ impl ImportServiceHandle {
                     candidate_key: candidate_key.clone(),
                 }));
         }
+        let automatic = self
+            .library_manager
+            .identifies_automatically()
+            .await
+            .map_err(crate::library::LibraryError::from)?;
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {
-                    found_while_automatic: regrouped.found.contains(&candidate.key())
-                        && self.library_manager.identifies_automatically(),
+                    found_while_automatic: regrouped.found.contains(&candidate.key()) && automatic,
                     candidate,
                 },
                 ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),

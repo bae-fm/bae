@@ -122,6 +122,7 @@ mod membership;
 mod people;
 mod playback;
 mod playback_now;
+mod preferences;
 pub use playback_now::PlaybackNowRow;
 mod playback_timeline;
 pub use playback_timeline::PlaybackTimelineRow;

@@ -618,7 +618,7 @@ object AppSessionHolder {
             withContext(NonCancellable + Dispatchers.IO) { handle.close() }
             throw e
         }
-        val config: BridgeConfig = handle.getConfig()
+        val config: BridgeConfig = handle.currentConfig()
         val initialUploadsPaused = handle.getUploadsPaused()
         val initialDownloads = handle.getDownloadCounts()
         val previous = current
@@ -685,3 +685,6 @@ object AppSessionHolder {
             cast = CastStore(),
         )
 }
+
+/** The library's preferences now: the first value a config pull answers; releasing the pull ends it. */
+private suspend fun AppHandle.currentConfig(): BridgeConfig = subscribeConfig().use { it.next() }

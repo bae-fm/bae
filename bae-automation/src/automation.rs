@@ -7,12 +7,17 @@ impl Automation {
     }
 
     pub async fn config_get(&self) -> Result<AutomationConfig, AutomationError> {
-        let config = self.services.get_config();
         Ok(AutomationConfig {
-            library_id: config.store_id.to_string(),
+            library_id: self.services.store_id().to_string(),
             library_name: self.services.library_name().await?,
-            library_path: config.library_path().to_string_lossy().to_string(),
-            mcp: config.prefs.mcp.into(),
+            library_path: self.services.library_path().to_string_lossy().to_string(),
+            mcp: self
+                .services
+                .preferences()
+                .await
+                .map_err(bae_core::library::LibraryError::from)?
+                .mcp
+                .into(),
         })
     }
 

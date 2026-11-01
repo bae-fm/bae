@@ -76,6 +76,7 @@ extension PlaybackValuesSubscription: PulledSubscription {}
 extension PlaybackTimelineSubscription: PulledSubscription {}
 extension QueueAdditionsSubscription: PulledSubscription {}
 extension CastDevicesSubscription: PulledSubscription {}
+extension ConfigSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}

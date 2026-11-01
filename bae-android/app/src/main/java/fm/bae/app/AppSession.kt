@@ -42,10 +42,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.QueueCallback
@@ -160,15 +158,12 @@ class OpenLibrary internal constructor(
     }
 
     private fun subscribeToValues(scope: CoroutineScope) {
-        valueSubscriptions +=
-            appHandle.subscribeConfig(
-                object : ConfigCallback {
-                    override fun onValue(config: BridgeConfig) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.setConfig(config)
-                        }
-                    }
-                },
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeConfig().pulled(),
+                scope,
+                onValue = stores.config::setConfig,
+                onError = { error -> messages.show(subscriptionFailed("settings", error)) },
             )
         valueSubscriptions +=
             appHandle.subscribeSyncStatus(

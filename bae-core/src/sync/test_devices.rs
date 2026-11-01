@@ -6,7 +6,7 @@ use std::time::Duration;
 use coven::Storage;
 use tempfile::TempDir;
 
-use crate::config::{AppDir, Config, ConfigHandle};
+use crate::config::AppDir;
 use crate::db::Database;
 use crate::library::LibraryManager;
 
@@ -16,10 +16,9 @@ const SETTLE: Duration = Duration::from_secs(20);
 pub(crate) struct TestDevice {
     library: RunningLibrary,
     /// What opening the device's store again needs: its keychain, its app
-    /// directory, its settings and its connection to the shared storage.
+    /// directory and its connection to the shared storage.
     installation: coven::TestCoven,
     app: AppDir,
-    config: Config,
     storage: Arc<coven::MemoryStorage>,
     _dir: TempDir,
 }
@@ -199,12 +198,8 @@ impl Library {
         .await
         .unwrap()
         .unwrap();
-        let config = Config::with_defaults(
-            handle.store_id(),
-            app.registered_library(&handle.store_id().to_string()),
-        );
         Self {
-            first: device(dir, app, config, handle, installation, storage.clone()),
+            first: device(dir, app, handle, installation, storage.clone()),
             storage,
         }
     }
@@ -237,11 +232,7 @@ impl Library {
         )
         .await
         .unwrap();
-        let config = Config::with_defaults(
-            handle.store_id(),
-            app.registered_library(&handle.store_id().to_string()),
-        );
-        let device = device(dir, app, config, handle, installation, storage);
+        let device = device(dir, app, handle, installation, storage);
         device.database().start_sync().await.unwrap();
         device
     }
@@ -401,7 +392,7 @@ impl TestDevice {
                 .open(store, |_| ())
                 .await
                 .expect("open the device's store again");
-        self.library = RunningLibrary::new(self.app.clone(), self.config.clone(), handle);
+        self.library = RunningLibrary::new(self.app.clone(), handle);
         self.database().start_sync().await.unwrap();
     }
 
@@ -445,30 +436,27 @@ fn record_cycles(
 fn device(
     dir: TempDir,
     app: AppDir,
-    config: Config,
     handle: coven::CovenHandle,
     installation: coven::TestCoven,
     storage: Arc<coven::MemoryStorage>,
 ) -> TestDevice {
     TestDevice {
-        library: RunningLibrary::new(app.clone(), config.clone(), handle),
+        library: RunningLibrary::new(app.clone(), handle),
         installation,
         app,
-        config,
         storage,
         _dir: dir,
     }
 }
 
 impl RunningLibrary {
-    fn new(app_dir: AppDir, config: Config, handle: coven::CovenHandle) -> Self {
+    fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
         let database = Database::from_handle(handle, clock.clone(), ids.clone());
         let manager = LibraryManager::new(
             database.clone(),
             app_dir,
-            Arc::new(ConfigHandle::new(config)),
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),

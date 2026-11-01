@@ -16,15 +16,14 @@ bae ایک Rust مرکز ہے جس پر چار مقامی ایپیں ہیں۔ م
 
 ## Disk پر ایک لائبریری
 
-لائبریری دو ڈائریکٹریوں میں رہتی ہے (موبائل پر پلیٹ فارم کی ڈیٹا ڈائریکٹریاں): coven کا store، اور اس کے ساتھ bae کی اپنی ترتیبات۔
+لائبریری دو ڈائریکٹریوں میں رہتی ہے (موبائل پر پلیٹ فارم کی ڈیٹا ڈائریکٹریاں): coven کا store، اور اس کے ساتھ bae کا اپنا کیش۔
 
 ```
 ~/.bae/stores/<id>/       # coven کا store، صرف coven کے ذریعے کھلتا ہے
-  store.db                # SQLite: catalog، credits، playback specs، coven کا حساب
+  store.db                # SQLite: catalog، credits، playback specs، اس آلے کی ترتیبات، coven کا حساب
   files/                  # bae کی اپنی فائلوں کی coven نقول (غلاف، فنکار کی تصاویر، avatars)
   cache/                  # اپ لوڈ شدہ فائلوں کی کیش اور pinned نقول
 ~/.bae/libraries/<id>/    # bae کا اپنا؛ کبھی ہم آہنگ نہیں ہوتا
-  preferences.toml        # bae کی ترتیبات
   cache/                  # فہرست ناموں سے لائی گئی تصاویر
 ```
 

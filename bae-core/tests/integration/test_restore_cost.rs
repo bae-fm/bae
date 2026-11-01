@@ -13,7 +13,7 @@
 //! the snapshots past retention's week of grace restore from the floor, as on
 //! an older library; the others restore from the first slot.
 
-use bae_core::config::{AppDir, Config, ConfigHandle};
+use bae_core::config::AppDir;
 use bae_core::library::{FixtureAlbum, LibraryFixture, LibraryManager};
 use coven::{Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncStatus, TestCoven};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -118,10 +118,6 @@ async fn restore_cost(library: Library) {
         .await
         .unwrap();
     handle.start_sync().await.unwrap();
-    let config = Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let manager = LibraryManager::new(
         bae_core::db::Database::from_handle(
             handle.clone(),
@@ -129,7 +125,6 @@ async fn restore_cost(library: Library) {
             std::sync::Arc::new(coven::UuidIds),
         ),
         app_dir.clone(),
-        Arc::new(ConfigHandle::new(config)),
         clock.clone(),
         Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -184,7 +179,6 @@ async fn restore_cost(library: Library) {
             .builder(device_app_dir.store_layout())
             .clock(clock.clone())
             .storage_connector(Arc::new(storage.for_device())),
-        &device_app_dir,
         &code,
         None,
         "Ana's phone",

@@ -16,15 +16,14 @@ Uygulamaların yanında: `bae-mcp` (MCP sunucusu) ve `bae-automation`.
 
 ## Diskte tek kitaplık
 
-Bir kitaplık iki dizinde yaşar (mobilde platform veri dizinleri): coven'in deposu ve yanında bae'in kendi ayarları.
+Bir kitaplık iki dizinde yaşar (mobilde platform veri dizinleri): coven'in deposu ve yanında bae'in kendi önbelleği.
 
 ```
 ~/.bae/stores/<id>/       # coven'in deposu, yalnızca coven üzerinden açılır
-  store.db                # SQLite: katalog, krediler, çalma özellikleri, coven muhasebesi
+  store.db                # SQLite: katalog, krediler, çalma özellikleri, bu aygıtın ayarları, coven muhasebesi
   files/                  # bae'in kendi dosyalarının coven kopyaları (kapaklar, sanatçı görselleri, avatarlar)
   cache/                  # yüklenen dosyaların önbellekteki ve sabitlenmiş kopyaları
 ~/.bae/libraries/<id>/    # bae'in kendisine ait; asla eşzamanlanmaz
-  preferences.toml        # bae ayarları
   cache/                  # kataloglardan alınan görseller
 ```
 

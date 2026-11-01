@@ -145,14 +145,9 @@ mod tests {
             crate::db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
                 .await
                 .unwrap();
-        let config = crate::config::Config::with_defaults(
-            database.store_id(),
-            directory.path().join("preferences"),
-        );
         let manager = crate::library::LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(directory.path()).unwrap(),
-            Arc::new(crate::config::ConfigHandle::new(config)),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),

@@ -560,7 +560,15 @@ impl PlaybackService {
                 return;
             }
         };
-        let prefs = self.library_manager.get_config().prefs;
+        let prefs = match self.library_manager.preferences().await {
+            Ok(prefs) => prefs,
+            Err(e) => {
+                error!("remote: failed to read the preferences to load track {track_id}: {e}");
+                self.fail_remote(PlaybackError::database(e).ui_reason())
+                    .await;
+                return;
+            }
+        };
         let prepared = finalize_playback_track(
             track_id.to_string(),
             &resolved,

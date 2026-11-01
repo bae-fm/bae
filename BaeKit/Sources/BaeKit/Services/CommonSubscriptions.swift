@@ -1,16 +1,5 @@
 import Foundation
 
-private final class ConfigValueSink: ConfigCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeConfig) -> Void
-
-    init(apply: @escaping @MainActor @Sendable (BridgeConfig) -> Void) {
-        self.apply = apply
-    }
-
-    func onValue(config: BridgeConfig) {
-        Task { @MainActor in apply(config) }
-    }
-}
 private final class SyncStatusValueSink: SyncStatusCallback,
     @unchecked Sendable
 {
@@ -109,6 +98,7 @@ final class CommonSubscriptions {
         ScreenSubscription<PlaybackTimelineSubscription>?
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     private var castDevices: ScreenSubscription<CastDevicesSubscription>?
+    private var config: ScreenSubscription<ConfigSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -164,6 +154,13 @@ final class CommonSubscriptions {
             onValue: { [castStore] devices in castStore.devices = devices },
             onError: onError
         )
+        config = ScreenSubscription(
+            appHandle.subscribeConfig(),
+            onValue: { [configStore] config in
+                configStore.applyConfigSnapshot(config)
+            },
+            onError: onError
+        )
         feeds = [
             outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
@@ -199,11 +196,6 @@ final class CommonSubscriptions {
                     },
                     fail: onError
                 )
-            ),
-            appHandle.subscribeConfig(
-                callback: ConfigValueSink { [configStore] config in
-                    configStore.applyConfigSnapshot(config)
-                }
             ),
             appHandle.subscribeSyncStatus(
                 callback: SyncStatusValueSink { [syncStatusStore] value in

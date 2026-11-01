@@ -2363,7 +2363,8 @@ the library in bae's iCloud container, `iCloud.fm.bae.desktop`.
 
 A device can hold several libraries, each its own coven store, and remembers
 which it last opened. coven keeps each store under `~/.bae/stores/`; bae keeps
-a library's settings in `~/.bae/libraries/<library id>/`. One library whose
+a library's cache in `~/.bae/libraries/<library id>/`, and this device's
+settings for it in its database (Appendix C). One library whose
 storage settings can't be read never hides the others: the list carries each
 library with its settings or why they can't be read, shows that reason in
 place of the account, and offers no Open for it. Launch and switching
@@ -3319,9 +3320,9 @@ and make and edit playlists.
 
 ### 9.6 Settings
 
-`ConfigHandle` holds the library's settings. Each change edits a copy,
-writes it to disk, then publishes it to subscribers, so a UI follows a change
-with no restart. Appendix C lists the settings.
+This device's settings for the library are the `preferences` row. Each
+change edits the stored row in one write, and a UI follows it with no restart
+through the row's live query. Appendix C lists the settings.
 
 ### 9.7 Errors
 
@@ -3832,6 +3833,14 @@ write commits, so the release and the row naming it land in either order.
 No transfer outlives the process that ran it, so the library opens with every
 queue empty and running, and no release in a storage transition.
 
+### A.10 Settings
+
+| Table | Holds |
+|---|---|
+| `preferences` | the one row of this device's settings for the library (Appendix C) |
+| `save_preset` | save preset, in the order listed: its name, codec and bit depth or bitrate, where pregaps go, the levels it applies to, and whether it embeds the cover (§4.6) |
+| `save_preset_filename_token` | token of a preset's filename pattern, in order |
+
 ---
 
 ## Appendix B. Synced tables
@@ -3886,37 +3895,43 @@ the transfer queues (A.9) are not declared, so they never sync.
 
 ## Appendix C. Settings
 
-Each library's settings are `preferences.toml` in
-`~/.bae/libraries/<library id>/`, apart from coven's store (§6.2). They are
-device-local. Every key is written; a file
-missing one fails to load, and only a missing file means every default.
-Unknown keys are ignored. The file can be edited by hand; enum values use
-their Rust spelling, such as `replay_gain_mode = "Album"`. TOML has no null
-value, so `discogs = "NotConfigured"` means no stored key; the other values
-are `"Unvalidated"`, `"Valid"`, and `"Rejected"`.
-The [default preferences file](../bae-core/test-fixtures/preferences/default.toml)
-shows the complete TOML layout.
+This device's settings for a library are one row of the library's
+device-local `preferences` table, with its save presets as rows of
+`save_preset` and their filename tokens as rows of
+`save_preset_filename_token`. They are never synced. A copy of the library new
+to this device — created, added from another device, joined, or restored or
+reset over this device's copy — starts at the defaults below; nothing carries
+the settings of a copy it replaces. Each setter writes the row in one write,
+and what a setting decides reads the row when it acts: playback as it loads a
+track or reaches a side's end, an import as it starts, an identification run
+as it starts and as it settles, casting as the picker opens or a cast starts,
+the MCP and Subsonic servers as the row changes, and the store's transfer
+limits as the library opens and as either limit changes. The settings screens
+pull the row with the library's id and directory from a live query. The schema
+refuses what no setter writes: a default preset that names no preset, an
+enabled Subsonic server with no username, a preset its codec can't write.
+Replay gain and the decode check at import have no control in the apps.
 
 | Setting | Default | What it decides |
 |---|---|---|
-| `discogs` | none | the stored Discogs key's state: unvalidated, valid or rejected; the key is in the keyring |
+| `discogs_key` | none | the stored Discogs key's state: unvalidated, valid or rejected; the key is in the keyring |
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
-| `save_presets` | FLAC 24-bit, MP3 320 | the save presets (§4.6) |
+| `save_preset` rows | FLAC 24-bit, MP3 320 | the save presets (§4.6), in order |
 | `default_track_save_preset`, `default_release_save_preset` | FLAC | which preset a save starts with |
 | `pause_between_sides` | on | pausing between sides and discs (§7.3) |
-| `side_pause_countdown` | off | when such a pause ends on its own |
-| `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage under the download limit, a library new to the device at the default |
+| `side_pause_countdown_seconds` | none | when such a pause ends on its own: 5, 15, 30, 45 or 60 seconds, or none to wait for Play |
+| `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
 | `library_full_width` | off | the library page spans the window |
 | `verify_decode_on_import` | on | the decode check at import (§3.7) |
-| `import_storage.cloud`, `import_storage.pinned` | on, on | where an import goes, and whether it stays here |
-| `identification.automatic` | on | identifying found releases on their own |
-| `identification.import_when_identified` | off | importing what any run picks unattended |
-| `identification.catalogs` | both on | which catalogs are asked |
+| `import_to_cloud`, `import_pinned` | on, on | where an import goes, and whether it stays here |
+| `identify_automatically` | on | identifying found releases on their own |
+| `import_when_identified` | off | importing what any run picks unattended |
+| `ask_musicbrainz`, `ask_discogs` | both on | which catalogs are asked |
 | `cast_enabled` | off | casting to receivers |
 | `cast_transcode_format` | MP3 | what a receiver gets when a track needs converting |
-| `mcp.enabled`, `mcp.port` | off, 47777 | the MCP server; its token is in the keyring |
-| `subsonic.enabled`, `.port`, `.username`, `.bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
+| `mcp_enabled`, `mcp_port` | off, 47777 | the MCP server; its token is in the keyring |
+| `subsonic_enabled`, `_port`, `_username`, `_bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
 
 A save preset holds a codec (FLAC, WAV or AIFF at 16, 24 or 32 bits; MP3, AAC
 or Opus at a bitrate), a filename pattern of tokens (title, artist, album, year,

@@ -1,10 +1,8 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
-use tracing::info;
 
 mod app_dir;
-mod handle;
 mod identification;
 mod import_storage;
 mod keyring;
@@ -13,7 +11,6 @@ mod save;
 mod server;
 
 pub use app_dir::AppDir;
-pub use handle::ConfigHandle;
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
@@ -23,12 +20,14 @@ pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
 };
 
-use coven::write_atomic;
+#[cfg(any(test, feature = "test-utils"))]
 use save::default_save_presets;
 
-/// File transfers bae runs at once, per direction, on a fresh library. Serial
-/// (1) is safe but slow; a small burst keeps a single stalled transfer from
-/// holding up the rest.
+/// File transfers bae runs at once, per direction, on a fresh library, the
+/// `preferences` row's default, and what adding this device, joining or
+/// restoring reads the library from storage under, before the library's row
+/// exists. Serial (1) is safe but slow; a small burst keeps a single stalled
+/// transfer from holding up the rest.
 pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
 
 /// The largest transfer concurrency the UI offers and the setters accept.
@@ -36,6 +35,16 @@ pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
 
 fn default_transfer_concurrency() -> NonZeroU32 {
     NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
+}
+
+/// The file transfers a library runs at once before its own preferences can
+/// be read: while it is loaded from storage by adding this device, a join or
+/// a restore.
+pub fn default_transfer_limits() -> coven::TransferLimits {
+    coven::TransferLimits {
+        uploads: usize_bound(default_transfer_concurrency()),
+        downloads: usize_bound(default_transfer_concurrency()),
+    }
 }
 
 /// A file-transfer concurrency setting must be at least 1 — coven's drain admits
@@ -86,8 +95,7 @@ pub enum DiscogsValidation {
 ///
 /// The gain is derived at playback from the stored loudness measurements and a
 /// constant target; this only selects which measurement (track vs album) drives
-/// it. Defaults to `Off`. Set by editing `preferences.toml`; there is no UI
-/// picker yet.
+/// it. Defaults to `Off`. No settings screen offers it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReplayGainMode {
     Off,
@@ -164,11 +172,11 @@ impl DiscogsTokenStatus {
     }
 }
 
-impl Config {
+impl Preferences {
     /// The Discogs key's state for display: not configured, or the stored key's
     /// validation state.
     pub fn discogs_token_status(&self) -> DiscogsTokenStatus {
-        match self.prefs.discogs {
+        match self.discogs {
             None => DiscogsTokenStatus::NotConfigured,
             Some(DiscogsValidation::Valid) => DiscogsTokenStatus::Valid,
             Some(DiscogsValidation::Unvalidated) => DiscogsTokenStatus::Unvalidated,
@@ -187,9 +195,9 @@ impl Config {
     /// credential reports `NotConfigured` rather than `Off`, and the surface
     /// says which of the two to fix.
     ///
-    /// A fact about the stored config and nothing else, which is why it lives
-    /// here: the bridge builds the list a surface renders out of the same
-    /// value it reads every other setting off.
+    /// A fact about the stored preferences and nothing else, which is why it
+    /// lives here: the bridge builds the list a surface renders out of the
+    /// same value it reads every other setting off.
     pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
         bae_catalogs::catalog::Catalog::LOOKUP
             .into_iter()
@@ -197,7 +205,7 @@ impl Config {
                 catalog,
                 state: if !self.source_is_configured(catalog) {
                     crate::import::SourceAvailability::NotConfigured
-                } else if !self.prefs.identification.catalogs.enabled(catalog) {
+                } else if !self.identification.catalogs.enabled(catalog) {
                     crate::import::SourceAvailability::Off
                 } else {
                     crate::import::SourceAvailability::On
@@ -223,8 +231,6 @@ impl Config {
 pub enum ConfigError {
     #[error("invalid configuration: {0}")]
     Config(String),
-    #[error("serialize configuration: {0}")]
-    Serialization(String),
     #[error("configuration file: {0}")]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -233,74 +239,32 @@ pub enum ConfigError {
     Stores(#[from] coven::StoreLayoutError),
     #[error(transparent)]
     Storage(#[from] coven::StorageError),
-    /// The write ran apart from its caller and gave no result: it panicked,
-    /// which the caller reports as a bug, or its runtime is shutting down.
+    /// The preferences row could not be read or written.
     #[error(transparent)]
-    Unfinished(#[from] bae_util::task_failure::TaskFailed),
+    Database(#[from] crate::db::DbError),
 }
 
 impl ConfigError {
-    /// The class the person is shown: a write that never finished is
-    /// something that went wrong in bae, not a setting to fix.
+    /// The class the person is shown: a row that can't be read or written
+    /// is the database's failure, not a setting to fix.
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
-            Self::Config(_)
-            | Self::Serialization(_)
-            | Self::Io(_)
-            | Self::File(_)
-            | Self::Stores(_)
-            | Self::Storage(_) => crate::ui::UiErrorCategory::Config,
-            Self::Unfinished(_) => crate::ui::UiErrorCategory::Internal,
+            Self::Config(_) | Self::Io(_) | Self::File(_) | Self::Stores(_) | Self::Storage(_) => {
+                crate::ui::UiErrorCategory::Config
+            }
+            Self::Database(_) => crate::ui::UiErrorCategory::Database,
         }
     }
 }
 
-/// TOML has no null value. Spell the no-key state explicitly so every
-/// preference remains present in the file, including an unset Discogs key.
-fn serialize_discogs<S>(value: &Option<DiscogsValidation>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(validation) => validation.serialize(serializer),
-        None => DiscogsTokenStatus::NotConfigured.serialize(serializer),
-    }
-}
-
-/// Require the key even when no Discogs token is configured; a missing key
-/// must fail the load instead of implicitly selecting `None`.
-fn deserialize_discogs<'de, D>(deserializer: D) -> Result<Option<DiscogsValidation>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(match DiscogsTokenStatus::deserialize(deserializer)? {
-        DiscogsTokenStatus::NotConfigured => None,
-        DiscogsTokenStatus::Unvalidated => Some(DiscogsValidation::Unvalidated),
-        DiscogsTokenStatus::Valid => Some(DiscogsValidation::Valid),
-        DiscogsTokenStatus::Rejected => Some(DiscogsValidation::Rejected),
-    })
-}
-
-/// bae's preferences in its own per-library directory. A missing file means
-/// the person has not changed any preferences on this device.
-pub const PREFERENCES_FILENAME: &str = "preferences.toml";
-
-/// bae's own per-library settings: `preferences.toml`.
-/// Device-local, like the rest of the library directory; nothing here syncs.
-///
-/// No field carries a `serde` default — serialization always emits every key,
-/// so a file missing a key fails the load rather than silently taking an
-/// implicit value. Only a missing file means defaults (see
-/// [`PREFERENCES_FILENAME`]).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// This device's settings for the library: its `preferences` row and save
+/// presets (Appendix C), never synced, since a concurrency limit reflects one
+/// machine's link and CPU and a server one machine's network.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
-    #[serde(
-        serialize_with = "serialize_discogs",
-        deserialize_with = "deserialize_discogs"
-    )]
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
@@ -319,16 +283,12 @@ pub struct Preferences {
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long it is. Defaults to `Off`: the pause waits for Play.
     pub side_pause_countdown: SidePauseCountdown,
-    /// How many file uploads coven's upload drain runs at once. Device-local: a
-    /// concurrency limit reflects one machine's link and CPU, so unlike most
-    /// preferences it does not follow the user across devices.
+    /// How many file uploads coven's upload drain runs at once.
     pub max_concurrent_uploads: NonZeroU32,
-    /// How many file downloads a pin fetches at once. Device-local, like uploads.
+    /// How many file downloads a pin fetches at once.
     pub max_concurrent_downloads: NonZeroU32,
     /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. Defaults to `false` (elapsed). Kept
-    /// here rather than in each platform's own store, so every app on this
-    /// device reads the same choice.
+    /// instead of showing the time elapsed. Defaults to `false` (elapsed).
     pub show_remaining_time: bool,
     /// Whether the library page spans the window's full width instead of
     /// centering its content in a width-capped column. Defaults to `false`
@@ -371,6 +331,9 @@ impl Preferences {
     }
 }
 
+/// The preferences a new library's row starts with, as the schema writes
+/// them, for tests that build preferences without a library.
+#[cfg(any(test, feature = "test-utils"))]
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -422,62 +385,27 @@ pub enum LibraryState {
     ReplacementUnfinished(coven::ReplacedBy),
 }
 
-/// Device-local preferences and the store they belong to. Store names, device
-/// identity and storage settings are owned and read by coven.
-#[derive(Clone, Debug)]
+/// This device's preferences for an open library, with the library they
+/// belong to and bae's directory for it, as the settings screens read them.
+/// Store names, device identity and storage settings are owned and read by
+/// coven.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
     pub store_id: coven::StoreId,
-    library_path: PathBuf,
+    pub library_path: PathBuf,
     pub prefs: Preferences,
 }
 
+/// The library a registered id names: a UUID, never a path.
+pub fn parse_library_id(library_id: &str) -> Result<coven::StoreId, ConfigError> {
+    Ok(coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(
+        |error| ConfigError::Config(format!("invalid library id {library_id}: {error}")),
+    )?))
+}
+
 impl Config {
-    /// bae's directory for preferences and caches, outside coven's store.
-    pub fn library_path(&self) -> &std::path::Path {
-        &self.library_path
-    }
-
-    pub fn load_registered_library(
-        app_dir: &AppDir,
-        library_id: &str,
-    ) -> Result<Self, ConfigError> {
-        let store_id = coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(|error| {
-            ConfigError::Config(format!("invalid library id {library_id}: {error}"))
-        })?);
-        Self::load(app_dir, store_id)
-    }
-
-    /// The preferences this device keeps for `store_id`: the defaults for a
-    /// library it has none for yet, such as one being restored or joined.
-    pub fn load(app_dir: &AppDir, store_id: coven::StoreId) -> Result<Self, ConfigError> {
-        let library_path = app_dir.registered_library(&store_id.to_string());
-        let prefs = read_preferences(&library_path)?;
-        Ok(Self {
-            store_id,
-            library_path,
-            prefs,
-        })
-    }
-
-    pub fn save_active_library(&self, app_dir: &AppDir) -> Result<(), ConfigError> {
-        write_atomic(
-            &app_dir.active_library_pointer(),
-            self.store_id.to_string().as_bytes(),
-        )?;
-        Ok(())
-    }
-
-    pub fn save_preferences(&self) -> Result<(), ConfigError> {
-        std::fs::create_dir_all(&self.library_path)?;
-        let serialized = toml::to_string_pretty(&self.prefs)
-            .map_err(|error| ConfigError::Serialization(error.to_string()))?;
-        write_atomic(
-            &self.library_path.join(PREFERENCES_FILENAME),
-            serialized.as_bytes(),
-        )?;
-        Ok(())
-    }
-
+    /// The default preferences for `store_id`, kept in `library_path`, for
+    /// tests that build a value without a library.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
         Self {
@@ -534,22 +462,6 @@ impl Config {
             .map_err(|error| ConfigError::Config(format!("{}: {error}", pointer_path.display())))?;
         Ok(Some(parsed.to_string()))
     }
-}
-
-/// Read bae's preferences from a library directory. A directory with no
-/// `preferences.toml` is one bae has recorded no preference in yet, so every
-/// preference is at its default.
-fn read_preferences(library_dir: &std::path::Path) -> Result<Preferences, ConfigError> {
-    let path = library_dir.join(PREFERENCES_FILENAME);
-    let Some(content) = read_optional_file(&path)? else {
-        info!(
-            "no {} yet; preferences start at their defaults",
-            path.display()
-        );
-        return Ok(Preferences::default());
-    };
-    toml::from_str(&content)
-        .map_err(|e| ConfigError::Serialization(format!("{}: {e}", path.display())))
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {

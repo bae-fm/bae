@@ -310,7 +310,7 @@ impl LibraryManager {
             }
         }
 
-        let pin = self.get_config().prefs.import_storage.pinned;
+        let pin = self.preferences().await?.import_storage.pinned;
         let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
         let mut failures = Vec::new();
         for release_id in release_ids {

@@ -33,8 +33,12 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// reach. A projection of `metadata_sources()`, read once when the run starts,
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
-fn run_providers(library_manager: &LibraryManager) -> Vec<Catalog> {
-    crate::import::asked_sources(&library_manager.metadata_sources())
+async fn run_providers(
+    library_manager: &LibraryManager,
+) -> Result<Vec<Catalog>, crate::db::DbError> {
+    Ok(crate::import::asked_sources(
+        &library_manager.metadata_sources().await?,
+    ))
 }
 
 /// What one provider's lookup came to: the provider's answer, or how bae
@@ -175,9 +179,8 @@ impl IdentifyServiceHandle {
     /// that never happened. The candidate is left as it was; what to do about
     /// it is a settings question, and the surface reads the availability list
     /// to say so. Nothing will report on `run`, so a caller waiting on it
-    /// stops waiting.
-    #[must_use]
-    pub(crate) fn start(
+    /// stops waiting. Fails, starting nothing, when the sources can't be read.
+    pub(crate) async fn start(
         &self,
         run: IdentifyRunId,
         key: crate::import::CandidateKey,
@@ -186,15 +189,18 @@ impl IdentifyServiceHandle {
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
-    ) -> bool {
+    ) -> Result<bool, crate::db::DbError> {
+        // Read before the prior run is cancelled, so nothing comes between
+        // the cancel and the start.
+        let providers = run_providers(&self.inner.library_manager).await?;
         // A restart (the user re-selects after a scan refresh, or changes what
         // the run asks about) supersedes the prior run — a candidate is
         // identified once at a time.
         self.cancel(&key);
 
-        if run_providers(&self.inner.library_manager).is_empty() {
+        if providers.is_empty() {
             debug!("identify: {key} has no source to ask; not starting a run");
-            return false;
+            return Ok(false);
         }
 
         let inner = self.inner.clone();
@@ -212,6 +218,7 @@ impl IdentifyServiceHandle {
                         subject,
                         generation,
                         priority,
+                        providers,
                         choices,
                         title_search,
                         token,
@@ -245,7 +252,7 @@ impl IdentifyServiceHandle {
                 );
             },
         );
-        true
+        Ok(true)
     }
 
     /// Whether a run is in flight for `key`. A run that reached its verdict
@@ -296,6 +303,7 @@ async fn run_driver(
     // superseded cannot deregister its successor.
     generation: u64,
     priority: CallPriority,
+    providers: Vec<Catalog>,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
     token: CancellationToken,
@@ -318,7 +326,7 @@ async fn run_driver(
     // already said: a snapshot taken in `Idle` leaves the run there, which is
     // what a cancelled run looks like.
     let mut start = Some(IdentifyEvent::Started {
-        providers: run_providers(&driver.inner.library_manager),
+        providers,
         choices,
         title_search,
     });

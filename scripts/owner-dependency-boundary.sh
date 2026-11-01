@@ -61,7 +61,6 @@ capability_types=(
   CancellationToken
   CandidateRuntime
   CastController
-  ConfigHandle
   CoverUrlProvider
   CovenHandle
   Database

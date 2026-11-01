@@ -1,5 +1,4 @@
 use super::*;
-use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::identify::IdentifyState;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
@@ -13,12 +12,9 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         .await
         .unwrap();
 
-    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
-
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
@@ -177,15 +173,18 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
-    assert!(handle.start(
-        handle.new_run(),
-        crate::import::CandidateKey::test("k"),
-        RunSubject::Release,
-        CallPriority::Interactive,
-        LookupChoices::default(),
-        None,
-        watch,
-    ));
+    assert!(handle
+        .start(
+            handle.new_run(),
+            crate::import::CandidateKey::test("k"),
+            RunSubject::Release,
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            None,
+            watch,
+        )
+        .await
+        .unwrap());
     // Feed the signals over the watch, as the extraction service would.
     snapshots.send_replace(Some(settled_snapshot()));
 
@@ -227,15 +226,18 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
     snapshots.send_replace(Some(scanning_snapshot()));
     snapshots.send_replace(Some(settled_snapshot()));
-    assert!(handle.start(
-        handle.new_run(),
-        crate::import::CandidateKey::test("k"),
-        RunSubject::Release,
-        CallPriority::Interactive,
-        LookupChoices::default(),
-        None,
-        watch,
-    ));
+    assert!(handle
+        .start(
+            handle.new_run(),
+            crate::import::CandidateKey::test("k"),
+            RunSubject::Release,
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            None,
+            watch,
+        )
+        .await
+        .unwrap());
 
     assert!(
         await_state(&mut bus_rx, |state| {
@@ -259,15 +261,18 @@ async fn an_extraction_ending_does_not_end_the_run() {
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
-    assert!(handle.start(
-        handle.new_run(),
-        crate::import::CandidateKey::test("k"),
-        RunSubject::Release,
-        CallPriority::Interactive,
-        LookupChoices::default(),
-        None,
-        watch,
-    ));
+    assert!(handle
+        .start(
+            handle.new_run(),
+            crate::import::CandidateKey::test("k"),
+            RunSubject::Release,
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            None,
+            watch,
+        )
+        .await
+        .unwrap());
     snapshots.send_replace(Some(scanning_snapshot()));
     drop(snapshots);
 
@@ -303,15 +308,18 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     let mut bus_rx = inner.event_tx.every_event();
 
     let (_snapshots, watch) = tokio::sync::watch::channel(None);
-    assert!(handle.start(
-        handle.new_run(),
-        crate::import::CandidateKey::test("k"),
-        RunSubject::Release,
-        CallPriority::Interactive,
-        LookupChoices::default(),
-        None,
-        watch,
-    ));
+    assert!(handle
+        .start(
+            handle.new_run(),
+            crate::import::CandidateKey::test("k"),
+            RunSubject::Release,
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            None,
+            watch,
+        )
+        .await
+        .unwrap());
     assert!(
         handle.is_running(&crate::import::CandidateKey::test("k")),
         "the run is in flight"

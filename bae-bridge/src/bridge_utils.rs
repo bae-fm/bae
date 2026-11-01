@@ -181,8 +181,8 @@ impl BridgeSavePreset {
 
 impl BridgeConfig {
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
-        let discogs_status = config.discogs_token_status();
-        let catalogs = config.lookup_catalog_settings();
+        let discogs_status = config.prefs.discogs_token_status();
+        let catalogs = config.prefs.lookup_catalog_settings();
         let lookup_catalogs = catalogs
             .into_iter()
             .map(BridgeLookupCatalogSetting::from_core)
@@ -215,7 +215,7 @@ impl BridgeConfig {
         let bae_core::config::IdentificationPreferences {
             automatic,
             import_when_identified,
-            // Read through `Config::metadata_sources()` above, which folds this
+            // Read through `Preferences::metadata_sources()` above, which folds this
             // raw preference together with each catalog's credentials into the
             // one answer a surface renders.
             catalogs: _,
@@ -231,7 +231,7 @@ impl BridgeConfig {
 
         BridgeConfig {
             library_id: config.store_id.to_string(),
-            library_path: config.library_path().to_string_lossy().to_string(),
+            library_path: config.library_path.to_string_lossy().to_string(),
             pause_between_sides: *pause_between_sides,
             side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
             max_concurrent_uploads: max_concurrent_uploads.get(),

@@ -40,16 +40,9 @@ async fn setup_test_manager_over(
     )
     .await
     .unwrap();
-    let config_handle = Arc::new(crate::config::ConfigHandle::new(
-        crate::config::Config::with_defaults(
-            database.store_id(),
-            temp_dir.path().join("preferences"),
-        ),
-    ));
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         diagnostics,

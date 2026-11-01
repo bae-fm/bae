@@ -63,22 +63,25 @@ impl AppServices {
     /// identification queue: there is no candidate folder to key a stored
     /// verdict by. Its runs go under the release's re-identify key
     /// ([`crate::import::CandidateKey::reidentify`]).
-    pub fn identify_release_for_lookup(&self, release_id: String) {
+    pub async fn identify_release_for_lookup(
+        &self,
+        release_id: String,
+    ) -> Result<(), crate::library::LibraryError> {
         let choices = self
             .release_lookup_choices()
             .entry(crate::import::CandidateKey::reidentify(&release_id))
             .or_default()
             .clone();
-        self.start_release_identification(release_id, choices);
+        self.start_release_identification(release_id, choices).await
     }
 
     /// Make one change to what a library release's session asks about, and
     /// identify it again from the changed choices.
-    pub fn edit_release_lookup_choices(
+    pub async fn edit_release_lookup_choices(
         &self,
         release_id: String,
         edit: crate::import::LookupChoiceEdit,
-    ) {
+    ) -> Result<(), crate::library::LibraryError> {
         let choices = {
             let mut held = self.release_lookup_choices();
             let choices = held
@@ -87,7 +90,7 @@ impl AppServices {
             *choices = choices.clone().edited(edit);
             choices.clone()
         };
-        self.start_release_identification(release_id, choices);
+        self.start_release_identification(release_id, choices).await
     }
 
     /// End a library release's re-identify session: stop its identification
@@ -113,31 +116,36 @@ impl AppServices {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    fn start_release_identification(
+    async fn start_release_identification(
         &self,
         release_id: String,
         choices: crate::import::LookupChoices,
-    ) {
+    ) -> Result<(), crate::library::LibraryError> {
         let candidate_key = crate::import::CandidateKey::reidentify(&release_id);
         let run = self.inner.import.new_identification_run();
-        // The sheet names a release, not a draft, and reading its title back
-        // is a database round trip this synchronous command does not take: a
+        // The sheet names a release, not a draft, so no title is read back: a
         // re-identify run searches by words the person typed, else asks its
         // identifiers and stops there.
         let title_search = choices
             .search_words
             .as_ref()
             .and_then(|words| crate::identify::TitleSearch::of(&words.album, &words.artist));
-        if !self.inner.import.start_identification(
-            run,
-            candidate_key.clone(),
-            crate::signals::ExtractionSource::Release { release_id },
-            bae_catalogs::rate_limiter::CallPriority::Interactive,
-            choices,
-            title_search,
-        ) {
+        if !self
+            .inner
+            .import
+            .start_identification(
+                run,
+                candidate_key.clone(),
+                crate::signals::ExtractionSource::Release { release_id },
+                bae_catalogs::rate_limiter::CallPriority::Interactive,
+                choices,
+                title_search,
+            )
+            .await?
+        {
             tracing::warn!("re-identify for {candidate_key} has no source to ask; no run started");
         }
+        Ok(())
     }
 
     /// Identify a folder candidate again, reading what the candidate says its

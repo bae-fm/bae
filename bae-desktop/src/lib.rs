@@ -52,8 +52,6 @@ impl DesktopServices {
             }),
             diagnostics.clone(),
         );
-        let initial = services.get_config().prefs.mcp;
-        controller.apply_config(initial).await;
 
         // The Subsonic server's runtime credential is the config username plus
         // the keyring password; the provider supplies the password, and the
@@ -72,26 +70,31 @@ impl DesktopServices {
             }),
             diagnostics.clone(),
         );
-        let initial_subsonic = services.get_config().prefs.subsonic;
-        subsonic_controller.apply_config(initial_subsonic).await;
+        // The servers' settings now, applied before this returns, then each
+        // change to them as its write commits.
+        let settings = services.follow_preferences(|prefs| (prefs.mcp, prefs.subsonic));
+        match settings.next().await {
+            Ok((mcp, subsonic)) => {
+                controller.apply_config(mcp).await;
+                subsonic_controller.apply_config(subsonic).await;
+            }
+            Err(error) => {
+                tracing::warn!("the servers start off: their settings couldn't be read: {error}")
+            }
+        }
 
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
-        let mut config_rx = services.subscribe_config_changes();
         let watcher_diagnostics = diagnostics.clone();
         // Each change is applied under its own catch, so a panic applying one
         // is reported and the next change is still applied.
         drop(diagnostics.spawn_reported(
             &runtime,
-            "watch the server config",
+            "follow the servers' settings",
             async move {
                 loop {
-                    match config_rx.changed().await {
-                        Ok(()) => {
-                            let (mcp, subsonic) = {
-                                let config = config_rx.borrow();
-                                (config.prefs.mcp, config.prefs.subsonic.clone())
-                            };
+                    match settings.next().await {
+                        Ok((mcp, subsonic)) => {
                             if let Err(failed) = caught("apply a changed server config", async {
                                 config_controller.apply_config(mcp).await;
                                 config_subsonic_controller.apply_config(subsonic).await;
@@ -101,16 +104,19 @@ impl DesktopServices {
                                 watcher_diagnostics.bug(failed);
                             }
                         }
-                        Err(error) => {
-                            tracing::debug!("config watcher stopped: {error}");
+                        Err(bae_core::library::LiveValuesError::Query(error)) => {
+                            tracing::warn!("the servers' settings couldn't be read: {error}");
+                        }
+                        Err(bae_core::library::LiveValuesError::Cancelled) => {
+                            tracing::debug!("server settings follower stopped: the library closed");
                             break;
                         }
                     }
                 }
             },
-            // Each change is caught above; what is left to panic is the watch
-            // itself, and with it the servers keep the config they last
-            // applied.
+            // Each change is caught above; what is left to panic is the
+            // follower itself, and with it the servers keep the config they
+            // last applied.
             |_| {},
         ));
 
@@ -133,7 +139,7 @@ impl DesktopServices {
         apply_service_config(
             "MCP",
             config,
-            self.services.get_config().prefs.mcp,
+            self.stored_preferences().await?.mcp,
             |config| self.mcp_controller.apply_config(config),
             |config| self.services.set_mcp_config(config),
         )
@@ -152,7 +158,7 @@ impl DesktopServices {
         apply_service_config(
             "Subsonic",
             config,
-            self.services.get_config().prefs.subsonic,
+            self.stored_preferences().await?.subsonic,
             |config| self.subsonic_controller.apply_config(config),
             |config| self.services.set_subsonic_config(config),
         )
@@ -171,13 +177,24 @@ impl DesktopServices {
             .set_subsonic_password(password.to_string())
             .await
             .map_err(|e| DesktopConfigError::Config(ConfigError::Config(e.to_string())))?;
-        let config = self.services.get_config().prefs.subsonic;
+        let config = self.stored_preferences().await?.subsonic;
         if let SubsonicServerStatus::Error { error } =
             self.subsonic_controller.restart(config).await
         {
             return Err(DesktopConfigError::Server(error));
         }
         Ok(())
+    }
+
+    /// The preferences as stored now, whose server settings a change rolls
+    /// back to.
+    async fn stored_preferences<E: ServerError>(
+        &self,
+    ) -> Result<bae_core::config::Preferences, DesktopConfigError<E>> {
+        self.services
+            .preferences()
+            .await
+            .map_err(|error| DesktopConfigError::Config(ConfigError::Database(error)))
     }
 
     /// Stop both hosted servers. They start and stop together with the app, and
@@ -301,7 +318,7 @@ mod tests {
         let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = occupied.local_addr().unwrap().port();
 
-        let before = services.get_config().prefs.subsonic;
+        let before = runtime.block_on(services.preferences()).unwrap().subsonic;
         let result = runtime.block_on(apply_service_config(
             "Subsonic",
             SubsonicConfig {
@@ -320,7 +337,7 @@ mod tests {
             "a failed bind must surface as a server error, got {result:?}"
         );
         assert_eq!(
-            services.get_config().prefs.subsonic,
+            runtime.block_on(services.preferences()).unwrap().subsonic,
             before,
             "a runtime apply failure must not persist the new config"
         );

@@ -183,7 +183,10 @@ impl PlaybackService {
     pub(super) async fn side_pause_for_queue_front(
         &mut self,
     ) -> Result<Option<SidePauseDecision>, ()> {
-        if !self.side_pause_enabled() {
+        let enabled = self.side_pause_enabled().await.map_err(|error| {
+            error!("failed to read whether playback pauses between sides: {error}");
+        })?;
+        if !enabled {
             return Ok(None);
         }
 
@@ -213,25 +216,39 @@ impl PlaybackService {
                      {current_id} and {next_track_id}: {error}"
                 );
             })?;
-        Ok(boundary.map(|boundary| SidePauseDecision {
+        let Some(boundary) = boundary else {
+            return Ok(None);
+        };
+        let resumes_at = self
+            .side_pause_countdown_from_now()
+            .await
+            .map_err(|error| {
+                error!("failed to read how long a side pause lasts: {error}");
+            })?;
+        Ok(Some(SidePauseDecision {
             track_id: next_track_id,
             boundary,
-            resumes_at: self.side_pause_countdown_from_now(),
+            resumes_at,
         }))
     }
 
     /// When a side pause starting now ends on its own, per the countdown
     /// setting — `None` when it waits for Play.
-    fn side_pause_countdown_from_now(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        let length = self
+    async fn side_pause_countdown_from_now(
+        &self,
+    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::db::DbError> {
+        let Some(length) = self
             .library_manager
-            .get_config()
-            .prefs
+            .preferences()
+            .await?
             .side_pause_countdown
-            .duration()?;
+            .duration()
+        else {
+            return Ok(None);
+        };
         let length =
             chrono::Duration::from_std(length).expect("a side-pause countdown fits a duration");
-        Some(self.clock.now() + length)
+        Ok(Some(self.clock.now() + length))
     }
 
     /// The side or disc boundary playback pauses at between `current_id` and
@@ -242,7 +259,7 @@ impl PlaybackService {
         current_id: &str,
         next_id: &str,
     ) -> Result<Option<SideBoundary>, crate::library::LibraryError> {
-        if !self.side_pause_enabled() {
+        if !self.side_pause_enabled().await? {
             return Ok(None);
         }
         let current = self
@@ -256,9 +273,13 @@ impl PlaybackService {
         Ok(side_boundary_between(&current, &next))
     }
 
-    pub(super) fn side_pause_enabled(&self) -> bool {
-        self.library_manager.get_config().prefs.pause_between_sides
-            && self.playback_queue.repeat_mode() != RepeatMode::Track
+    pub(super) async fn side_pause_enabled(&self) -> Result<bool, crate::db::DbError> {
+        Ok(self
+            .library_manager
+            .preferences()
+            .await?
+            .pause_between_sides
+            && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }
 
     /// Re-run the staging decision for the preloaded next track after
@@ -299,10 +320,13 @@ impl PlaybackService {
         if [&current.track_id, &next.track_id] != [&crossing[0], &crossing[1]] {
             return;
         }
-        let boundary = if self.side_pause_enabled() {
-            side_boundary_between(current, next)
-        } else {
-            None
+        let boundary = match self.side_pause_enabled().await {
+            Ok(true) => side_boundary_between(current, next),
+            Ok(false) => None,
+            Err(error) => {
+                error!("failed to read whether playback pauses between sides: {error}");
+                return;
+            }
         };
         self.hold_staged_crossing_for(boundary).await;
     }

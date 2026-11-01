@@ -60,6 +60,12 @@ impl AppDir {
         self.path.join("active-library")
     }
 
+    /// Name `store` as the library this device last opened.
+    pub fn save_active_library(&self, store: coven::StoreId) -> Result<(), super::ConfigError> {
+        coven::write_atomic(&self.active_library_pointer(), store.to_string().as_bytes())?;
+        Ok(())
+    }
+
     /// The directory of removal records: one file per library whose removal
     /// from this device has started and not finished, named by its id.
     pub(crate) fn removal_records(&self) -> PathBuf {

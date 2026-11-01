@@ -8,7 +8,6 @@ use std::{sync::Arc, time::Instant};
 
 use tracing::{info, warn};
 
-use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::library::AppServices;
 use coven::{ClockRef, SystemClock};
@@ -159,16 +158,18 @@ where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
+    let store = registered_store(&library_id)?;
     bootstrap_opening(
         Opening::Stored,
         app_dir,
-        library_id,
+        store.to_string(),
         position_update_interval_ms,
         restore_playback,
         audio_focus,
         diagnostics,
         crate::library::manager::LibraryOpening::Registered {
             builder,
+            store,
             on_progress: Box::new(on_open_progress),
         },
         compose,
@@ -230,20 +231,31 @@ where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
+    let store = registered_store(&library_id)?;
     bootstrap_opening(
         Opening::Fixture(fixture),
         app_dir,
-        library_id,
+        store.to_string(),
         position_update_interval_ms,
         restore_playback,
         audio_focus,
         diagnostics,
         crate::library::manager::LibraryOpening::Registered {
             builder,
+            store,
             on_progress: Box::new(on_open_progress),
         },
         compose,
     )
+}
+
+/// The library a registered id names; an id that is no library's is not
+/// found.
+fn registered_store(library_id: &str) -> Result<coven::StoreId, BootstrapError> {
+    crate::config::parse_library_id(library_id).map_err(|error| {
+        warn!(%library_id, %error, "no library is registered under this id");
+        BootstrapError::LibraryNotFound(library_id.to_string())
+    })
 }
 
 /// What the library holds as it is brought up.
@@ -332,18 +344,6 @@ where
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdSourceRef = Arc::new(UuidIds);
 
-    let config = timing
-        .stage(&library_id, "load config", || {
-            Config::load_registered_library(&app_dir, &library_id)
-        })
-        .map_err(|error| match error {
-            crate::config::ConfigError::Config(_) => {
-                BootstrapError::LibraryNotFound(library_id.clone())
-            }
-            other => BootstrapError::Config(other.to_string()),
-        })?;
-    let library_id = config.store_id.to_string();
-
     let install_id = app_dir
         .install_id(ids.as_ref())
         .map_err(|error| BootstrapError::Config(error.to_string()))?;
@@ -368,8 +368,6 @@ where
         bae_util::open_file_limit::raise_open_file_limit()
     });
 
-    let config_handle = Arc::new(ConfigHandle::new(config));
-
     // The one transport every outbound request goes out on, and the providers
     // that ask over it: each keeps its own rate limit and answers for as long
     // as this library is open.
@@ -382,14 +380,13 @@ where
         .stage(&library_id, "open library manager", || {
             runtime.block_on(crate::library::LibraryManager::open(
                 app_dir.clone(),
-                Arc::clone(&config_handle),
                 Arc::clone(&clock),
                 ids,
                 diagnostics.clone(),
                 runtime.handle().clone(),
                 builder,
                 bae_catalogs::remote_image::RemoteImageCache::new(
-                    config_handle.config().library_path(),
+                    &app_dir.registered_library(&library_id),
                     http,
                 ),
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -397,6 +394,8 @@ where
             ))
         })
         .map_err(classify_open_error)?;
+
+    let store = library_manager.store_id();
 
     // From here the library is open on `runtime`. A step that fails closes it
     // before the runtime ends, so nothing of it is left running for the
@@ -520,7 +519,7 @@ where
     if advance_active_pointer {
         timing
             .stage(&library_id, "save active-library pointer", || {
-                config_handle.config().save_active_library(&app_dir)
+                app_dir.save_active_library(store)
             })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }

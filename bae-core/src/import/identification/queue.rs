@@ -466,13 +466,12 @@ pub(super) async fn withdraw(context: &Context, key: &crate::import::CandidateKe
 }
 
 /// Run the queue until the token is cancelled. A setting changing puts nothing
-/// on the queue and takes nothing off it, so `config` is only read.
+/// on the queue and takes nothing off it, so the preferences are only read.
 pub(super) async fn run(
     context: &Context,
     token: &CancellationToken,
     bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
     commands: &mut mpsc::UnboundedReceiver<Command>,
-    config: &watch::Receiver<crate::config::Config>,
 ) {
     let mut queue = Queue::default();
     #[cfg(any(test, feature = "test-utils"))]
@@ -557,7 +556,7 @@ pub(super) async fn run(
             // A settle catches its own panic, so only its runtime ending can
             // fail its join.
             Some(result) = settling.join_next() => match result {
-                Ok(done) => finish(context, &mut queue, config, done).await,
+                Ok(done) => finish(context, &mut queue, done).await,
                 Err(error) => {
                     context.library_manager.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
                 }
@@ -633,20 +632,35 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             queued
         );
         let run = context.import.new_identification_run();
-        if !context.import.start_identification(
-            run,
-            key.clone(),
-            ExtractionSource::Candidate {
-                candidate: candidate.clone(),
-            },
-            priority,
-            choices,
-            title_search,
-        ) {
+        match context
+            .import
+            .start_identification(
+                run,
+                key.clone(),
+                ExtractionSource::Candidate {
+                    candidate: candidate.clone(),
+                },
+                priority,
+                choices,
+                title_search,
+            )
+            .await
+        {
+            Ok(true) => {}
             // No source to ask: no run will report, so the job cannot hold a slot.
-            warn!("identification: no source to ask about {key}; leaving its job unanswered");
-            queue.retire(context, &identity).await;
-            continue;
+            Ok(false) => {
+                warn!("identification: no source to ask about {key}; leaving its job unanswered");
+                queue.retire(context, &identity).await;
+                continue;
+            }
+            Err(error) => {
+                warn!(
+                    "identification: cannot read the sources to ask about {key} ({error}); \
+                     leaving its job unanswered"
+                );
+                queue.retire(context, &identity).await;
+                continue;
+            }
         }
         let index = queue
             .index_of_identity(&identity)

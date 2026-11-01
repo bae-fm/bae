@@ -16,15 +16,14 @@ Junto a las apps: `bae-mcp` (el servidor MCP) y `bae-automation`.
 
 ## Una biblioteca en disco
 
-Una biblioteca vive en dos directorios (directorios de datos de plataforma en móvil): el almacén de coven y, a su lado, los ajustes propios de bae.
+Una biblioteca vive en dos directorios (directorios de datos de plataforma en móvil): el almacén de coven y, a su lado, la caché propia de bae.
 
 ```
 ~/.bae/stores/<id>/       # almacén de coven, abierto solo mediante coven
-  store.db                # SQLite: catálogo, créditos, datos de reproducción, contabilidad de coven
+  store.db                # SQLite: catálogo, créditos, datos de reproducción, ajustes de este dispositivo, contabilidad de coven
   files/                  # copias de coven de los archivos propios de bae (portadas, imágenes de artistas, avatares)
   cache/                  # copias en caché y fijadas de archivos subidos
 ~/.bae/libraries/<id>/    # propio de bae; nunca se sincroniza
-  preferences.toml        # ajustes de bae
   cache/                  # imágenes obtenidas de los catálogos
 ```
 

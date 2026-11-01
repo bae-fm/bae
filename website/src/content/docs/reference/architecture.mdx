@@ -16,15 +16,14 @@ Alongside the apps: `bae-mcp` (the MCP server) and `bae-automation`.
 
 ## One library on disk
 
-A library lives in two directories (platform data directories on mobile): coven's store, and bae's own settings beside it.
+A library lives in two directories (platform data directories on mobile): coven's store, and bae's own cache beside it.
 
 ```
 ~/.bae/stores/<id>/       # coven's store, opened only through coven
-  store.db                # SQLite: catalog, credits, playback specs, coven's bookkeeping
+  store.db                # SQLite: catalog, credits, playback specs, this device's settings, coven's bookkeeping
   files/                  # coven's copies of bae's own files (covers, artist images, avatars)
   cache/                  # cached and pinned copies of uploaded files
 ~/.bae/libraries/<id>/    # bae's own; never synced
-  preferences.toml        # bae's settings
   cache/                  # artwork fetched from the catalogs
 ```
 

@@ -16,15 +16,14 @@ Apps સાથે: `bae-mcp` (MCP server) અને `bae-automation`.
 
 ## Disk પર એક library
 
-લાઇબ્રેરી બે directories માં રહે છે (mobile પર platform data directories): coven નો store, અને તેની બાજુમાં bae ની પોતાની settings.
+લાઇબ્રેરી બે directories માં રહે છે (mobile પર platform data directories): coven નો store, અને તેની બાજુમાં bae ની પોતાની cache.
 
 ```
 ~/.bae/stores/<id>/       # coven નો store, ફક્ત coven મારફતે ખોલાય છે
-  store.db                # SQLite: catalog, credits, playback specs, coven નો હિસાબ
+  store.db                # SQLite: catalog, credits, playback specs, આ ઉપકરણની settings, coven નો હિસાબ
   files/                  # bae ની પોતાની files ની coven નકલો (covers, કલાકારની છબીઓ, avatars)
   cache/                  # upload થયેલી files ની cache અને pinned નકલો
 ~/.bae/libraries/<id>/    # bae નું પોતાનું; ક્યારેય sync થતું નથી
-  preferences.toml        # bae ની settings
   cache/                  # catalogs માંથી લાવેલું artwork
 ```
 

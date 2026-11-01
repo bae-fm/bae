@@ -108,9 +108,9 @@ baeium needs nothing proprietary to build, run, or distribute.
 ## Configuration
 
 Secrets live in the system keyring. coven keeps each library's store, its
-database and files, under `~/.bae/stores/<library-id>/`; bae keeps its own
-`preferences.toml` in `~/.bae/libraries/<library-id>/`. Preferences can be
-edited by hand; see [the settings reference](spec/bae.md#appendix-c-settings).
+database and files, under `~/.bae/stores/<library-id>/`; bae keeps its cache
+in `~/.bae/libraries/<library-id>/`. This device's settings for a library are
+a row in its database; see [the settings reference](spec/bae.md#appendix-c-settings).
 The Discogs API key is entered in the app's settings.
 
 ## Logging

@@ -27,10 +27,9 @@
 //! device. A code that carries no S3 key takes one from
 //! `BAE_RESTORE_S3_KEY_ID` and `BAE_RESTORE_S3_SECRET`.
 //!
-//! With `--downloads <n>`, each new device keeps the library's download
-//! setting at `n` before it restores, as Settings would set it there, so the
-//! restore reads the library's history from storage `n` requests at a time.
-//! Without it, the new device restores at a new library's default.
+//! With `--downloads <n>`, each new device restores reading the library's
+//! history from storage `n` requests at a time. Without it, the new device
+//! restores at the default bae loads a library at.
 //!
 //! Usage: restore_bench [--runs 3] [--keep-devices] [--downloads <n>]
 
@@ -56,7 +55,7 @@ fn main() {
             "--downloads" => {
                 downloads = Some(
                     args.next()
-                        .and_then(|value| value.parse::<std::num::NonZeroU32>().ok())
+                        .and_then(|value| value.parse::<std::num::NonZeroUsize>().ok())
                         .unwrap_or_else(|| {
                             eprintln!("--downloads requires a number of at least 1");
                             std::process::exit(2);
@@ -138,7 +137,7 @@ async fn bench(
     app_dir: &bae_core::config::AppDir,
     store_id: coven::StoreId,
     runs: usize,
-    downloads: Option<std::num::NonZeroU32>,
+    downloads: Option<std::num::NonZeroUsize>,
     remove_devices: bool,
 ) -> Result<(), String> {
     let opening = Instant::now();
@@ -177,47 +176,54 @@ async fn bench(
     source.close().await.map_err(|error| error.to_string())
 }
 
-/// Restore `code` `runs` times, each on a new temporary device keeping the
-/// library's download setting at `downloads` when given, removing each new
+/// Restore `code` `runs` times, each on a new temporary device reading at
+/// `downloads` at a time when given, removing each new
 /// device through `source` when given.
 async fn restore_runs(
     code: &str,
     s3: Option<coven::S3Credentials>,
     runs: usize,
-    downloads: Option<std::num::NonZeroU32>,
+    downloads: Option<std::num::NonZeroUsize>,
     source: Option<&coven::CovenHandle>,
 ) -> Result<(), String> {
-    let store_id = coven::decode_code_info(code)
-        .map_err(|error| format!("read the restore code: {error}"))?
-        .metadata()
-        .store_id;
     let mut times = Vec::new();
     for run in 1..=runs {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
         let new_app_dir = bae_core::config::AppDir::under_home(directory.path())
             .map_err(|error| error.to_string())?;
-        if let Some(downloads) = downloads {
-            let mut config = bae_core::config::Config::load(&new_app_dir, store_id)
-                .map_err(|error| error.to_string())?;
-            config.prefs.max_concurrent_downloads = downloads;
-            config
-                .save_preferences()
-                .map_err(|error| error.to_string())?;
-        }
         let installation = coven::TestCoven::new();
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
-        let restored = bae_core::library::restore_from_code(
-            installation.builder(new_app_dir.store_layout()),
-            &new_app_dir,
-            code,
-            s3.clone(),
-            &format!("Restore bench {run}"),
-            |status| eprintln!("run {run}: {status:?} at {:?}", started.elapsed()),
-            &cancel,
-        )
-        .await
-        .map_err(|error| format!("run {run}: restore failed: {error}"))?;
+        let builder = installation.builder(new_app_dir.store_layout());
+        let device_name = format!("Restore bench {run}");
+        let on_status = |status| eprintln!("run {run}: {status:?} at {:?}", started.elapsed());
+        let restored = match downloads {
+            // bae loads a library from storage at the default limits; a run
+            // at another download limit asks coven directly, configured as
+            // bae configures its store.
+            Some(downloads) => coven::restore_from_code(
+                bae_core::library::configure_store(builder)
+                    .max_concurrent_uploads(crate_default_uploads())
+                    .max_concurrent_downloads(downloads),
+                code,
+                s3.clone(),
+                &device_name,
+                on_status,
+                &cancel,
+            )
+            .await
+            .map_err(|error| format!("run {run}: restore failed: {error}"))?,
+            None => bae_core::library::restore_from_code(
+                builder,
+                code,
+                s3.clone(),
+                &device_name,
+                on_status,
+                &cancel,
+            )
+            .await
+            .map_err(|error| format!("run {run}: restore failed: {error}"))?,
+        };
         let restoring = started.elapsed();
         let tracks = restored
             .read(|sql| {
@@ -250,4 +256,9 @@ async fn restore_runs(
     }
     eprintln!("restores: {times:?}");
     Ok(())
+}
+
+/// The upload limit bae loads a library from storage at.
+fn crate_default_uploads() -> std::num::NonZeroUsize {
+    bae_core::config::default_transfer_limits().uploads
 }

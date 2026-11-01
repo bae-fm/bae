@@ -16,15 +16,14 @@ Naast de apps: `bae-mcp` (de MCP-server) en `bae-automation`.
 
 ## Een bibliotheek op schijf
 
-Een bibliotheek staat in twee mappen (platformdatamappen op mobiel): de store van coven, en daarnaast de eigen instellingen van bae.
+Een bibliotheek staat in twee mappen (platformdatamappen op mobiel): de store van coven, en daarnaast de eigen cache van bae.
 
 ```
 ~/.bae/stores/<id>/       # store van coven, alleen via coven geopend
-  store.db                # SQLite: catalogus, credits, afspeelspecificaties, boekhouding van coven
+  store.db                # SQLite: catalogus, credits, afspeelspecificaties, instellingen van dit apparaat, boekhouding van coven
   files/                  # kopieën door coven van de eigen bestanden van bae (hoezen, artiestafbeeldingen, avatars)
   cache/                  # gecachete en vastgezette kopieën van geüploade bestanden
 ~/.bae/libraries/<id>/    # van bae zelf; nooit gesynchroniseerd
-  preferences.toml        # instellingen van bae
   cache/                  # artwork opgehaald uit de catalogi
 ```
 

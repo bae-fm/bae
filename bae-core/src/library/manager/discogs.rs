@@ -2,8 +2,8 @@
 //!
 //! The client for the stored key and its validation callback stay inside a
 //! [`DiscogsSession`]. Callers ask the manager for search results, payloads,
-//! covers, or images; no caller receives the client or the config handle the
-//! callback updates.
+//! covers, or images; no caller receives the client or the database the
+//! callback writes to.
 
 use super::*;
 use crate::config::DiscogsValidation;
@@ -13,23 +13,6 @@ use bae_catalogs::discogs::client::{
 };
 #[cfg(desktop)]
 use bae_catalogs::rate_limiter::CallPriority;
-
-/// The client cached for the stored key, locked. The cache is rebuilt from the
-/// keyring whenever it is empty, so a panic that poisoned the lock (one
-/// reported where it was caught) costs only the cached client: it is dropped,
-/// and the next call that needs Discogs builds it again.
-#[cfg(desktop)]
-fn lock_discogs_client(
-    cache: &std::sync::Mutex<Option<Arc<DiscogsClient>>>,
-) -> std::sync::MutexGuard<'_, Option<Arc<DiscogsClient>>> {
-    cache.lock().unwrap_or_else(|poisoned| {
-        warn!("a panic interrupted a Discogs key change; the cached client is rebuilt");
-        cache.clear_poison();
-        let mut client = poisoned.into_inner();
-        *client = None;
-        client
-    })
-}
 
 /// One operation's view of Discogs: the client for the stored key, when there
 /// is one Discogs may be asked with, and the other providers a release fetch
@@ -144,34 +127,30 @@ impl DiscogsSession {
 
 /// Fold one Discogs call's outcome into the stored key's validation: a 401
 /// rejects it, and a success confirms a key nothing had confirmed yet.
-/// Blocking — it persists the change — so the client's observer runs it on a
-/// blocking thread.
+/// Decided in the write against the state it finds, so a signal racing a key
+/// change applies to the key it finds. A failure to write it is logged; the
+/// next call's outcome is recorded again.
 #[cfg(desktop)]
-fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
-    let next_of = |current: Option<DiscogsValidation>| match (current, &signal) {
-        (None, _) => None,
-        (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
-        (Some(DiscogsValidation::Unvalidated), DiscogsKeySignal::Accepted) => {
-            Some(DiscogsValidation::Valid)
-        }
-        (Some(_), DiscogsKeySignal::Accepted) => None,
-    };
-    let current = config_handle.config().prefs.discogs;
-    let Some(next) = next_of(current) else {
-        debug!("discogs validation signal changes nothing");
-        return;
-    };
-    if current == Some(next) {
-        return;
-    }
-    // Re-decided under the writer lock against the value it edits, so a
-    // signal racing a key change applies to the key it finds.
-    if let Err(error) = config_handle.update_preferences_now(|prefs| {
-        if let Some(next) = next_of(prefs.discogs) {
-            prefs.discogs = Some(next);
-        }
-    }) {
-        warn!("failed to persist discogs validation {next:?}: {error}");
+async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKeySignal) {
+    let recorded = database
+        .edit_preferences(move |prefs| {
+            let next = match (prefs.discogs, &signal) {
+                (None, _) => None,
+                (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
+                (Some(DiscogsValidation::Unvalidated), DiscogsKeySignal::Accepted) => {
+                    Some(DiscogsValidation::Valid)
+                }
+                (Some(_), DiscogsKeySignal::Accepted) => None,
+            };
+            match next {
+                Some(next) => prefs.discogs = Some(next),
+                None => debug!("discogs validation signal changes nothing"),
+            }
+            Ok(())
+        })
+        .await;
+    if let Err(error) = recorded {
+        warn!("failed to record the Discogs key's validation: {error}");
     }
 }
 
@@ -221,65 +200,52 @@ impl LibraryManager {
         self.host_secret(crate::keys::DISCOGS_API_KEY).await
     }
 
-    /// Store the keyring bytes before recording the config state. A failure
+    /// Store the keyring bytes before recording the key's state. A failure
     /// between those writes leaves Discogs disabled until the caller retries;
-    /// config never claims a key that the keyring lacks. Both writes block,
-    /// so they run on a blocking thread.
+    /// the preferences never claim a key that the keyring lacks. The keyring
+    /// write blocks, so it runs on a blocking thread.
     pub async fn set_discogs_key(
         &self,
         token: &str,
         validation: DiscogsValidation,
     ) -> Result<(), LibraryError> {
+        // Held across the writes, so no call builds a client from a key
+        // halfway through being replaced.
+        let mut client = self.discogs_client.lock().await;
         let database = self.database.clone();
-        let config_handle = Arc::clone(&self.config_handle);
-        #[cfg(desktop)]
-        let discogs_client = Arc::clone(&self.discogs_client);
         let token = token.to_string();
-        blocking(
-            "store the Discogs key",
-            move || -> Result<(), LibraryError> {
-                // Held across the writes, so no call builds a client from a key
-                // halfway through being replaced.
-                #[cfg(desktop)]
-                let mut client = lock_discogs_client(&discogs_client);
-                database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)?;
-                // The cached client asks with the key just replaced.
-                #[cfg(desktop)]
-                {
-                    *client = None;
-                }
-                config_handle.update_preferences_now(|prefs| prefs.discogs = Some(validation))?;
-                Ok(())
-            },
-        )
+        blocking("store the Discogs key", move || {
+            database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)
+        })
         .await
-        .map_err(|failed| self.bug(failed))?
+        .map_err(|failed| self.bug(failed))??;
+        // The cached client asks with the key just replaced.
+        *client = None;
+        self.update_preferences(move |prefs| {
+            prefs.discogs = Some(validation);
+            Ok(())
+        })
+        .await?;
+        Ok(())
     }
 
-    /// Clear the config state before deleting the keyring bytes, so a failure
+    /// Clear the key's state before deleting the keyring bytes, so a failure
     /// between the writes leaves Discogs disabled rather than half-enabled.
     pub async fn clear_discogs_key(&self) -> Result<(), LibraryError> {
+        let mut client = self.discogs_client.lock().await;
+        self.update_preferences(|prefs| {
+            prefs.discogs = None;
+            Ok(())
+        })
+        .await?;
+        *client = None;
         let database = self.database.clone();
-        let config_handle = Arc::clone(&self.config_handle);
-        #[cfg(desktop)]
-        let discogs_client = Arc::clone(&self.discogs_client);
-        blocking(
-            "clear the Discogs key",
-            move || -> Result<(), LibraryError> {
-                #[cfg(desktop)]
-                let mut client = lock_discogs_client(&discogs_client);
-                config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
-                #[cfg(desktop)]
-                {
-                    *client = None;
-                }
-                #[cfg(desktop)]
-                database.delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
-                Ok(())
-            },
-        )
+        blocking("clear the Discogs key", move || {
+            database.delete_host_secret(crate::keys::DISCOGS_API_KEY)
+        })
         .await
-        .map_err(|failed| self.bug(failed))?
+        .map_err(|failed| self.bug(failed))??;
+        Ok(())
     }
 
     pub async fn set_discogs_validation(
@@ -290,12 +256,15 @@ impl LibraryManager {
             if prefs.discogs.is_some() {
                 prefs.discogs = Some(validation);
             }
+            Ok(())
         })
         .await
     }
 
-    pub fn discogs_validation(&self) -> Option<DiscogsValidation> {
-        self.config_handle.config().prefs.discogs
+    pub async fn discogs_validation(
+        &self,
+    ) -> Result<Option<DiscogsValidation>, crate::db::DbError> {
+        Ok(self.preferences().await?.discogs)
     }
 
     #[cfg(desktop)]
@@ -304,7 +273,7 @@ impl LibraryManager {
         params: DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        self.discogs_session()?.search(params, priority).await
+        self.discogs_session().await?.search(params, priority).await
     }
 
     #[cfg(desktop)]
@@ -314,7 +283,8 @@ impl LibraryManager {
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.release_read_session(release)?
+        self.release_read_session(release)
+            .await?
             .fetch_payloads(release, depth, priority)
             .await
     }
@@ -327,7 +297,8 @@ impl LibraryManager {
         answered: &crate::import::payloads::DiscIdRelease,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.release_read_session(answered.release())?
+        self.release_read_session(answered.release())
+            .await?
             .read_disc_id_release(answered, priority)
             .await
     }
@@ -336,11 +307,11 @@ impl LibraryManager {
     /// release whose session cannot be had is read without its Discogs
     /// cross-reference, as it is without a key.
     #[cfg(desktop)]
-    fn release_read_session(
+    async fn release_read_session(
         &self,
         release: &crate::import::MetadataRef,
     ) -> Result<DiscogsSession, crate::import::ImportError> {
-        match self.discogs_session() {
+        match self.discogs_session().await {
             Ok(session) => Ok(session),
             Err(error) if release.catalog == bae_catalogs::catalog::Catalog::MusicBrainz => {
                 warn!(
@@ -376,7 +347,8 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session()?
+        self.discogs_session()
+            .await?
             .release_covers(release_id, priority)
             .await
     }
@@ -387,7 +359,8 @@ impl LibraryManager {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session()?
+        self.discogs_session()
+            .await?
             .master_covers(master_id, priority)
             .await
     }
@@ -404,7 +377,7 @@ impl LibraryManager {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let session = self.discogs_session()?;
+        let session = self.discogs_session().await?;
         let mut answers = Vec::with_capacity(ids.len());
         for discogs_artist_id in ids {
             let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
@@ -475,10 +448,15 @@ impl LibraryManager {
     /// is told rather than shown the same state again.
     #[cfg(desktop)]
     pub(crate) async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        if self.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
+        if self
+            .discogs_validation()
+            .await
+            .map_err(LibraryError::from)?
+            != Some(DiscogsValidation::Unvalidated)
+        {
             return Ok(());
         }
-        let check = self.discogs_session()?.validate().await?;
+        let check = self.discogs_session().await?.validate().await?;
         self.set_discogs_validation(check.validation())
             .await
             .map_err(LibraryError::from)?;
@@ -489,18 +467,13 @@ impl LibraryManager {
     }
 
     #[cfg(all(test, desktop))]
-    pub(super) fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
-        Ok(self.discogs_session()?.client.is_some())
+    pub(super) async fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
+        Ok(self.discogs_session().await?.client.is_some())
     }
 
     #[cfg(all(test, desktop))]
     pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
-        let config_handle = Arc::clone(&self.config_handle);
-        blocking("record a Discogs validation signal", move || {
-            record_discogs_validation_signal(&config_handle, signal);
-        })
-        .await
-        .expect("recording a validation signal does not panic");
+        record_discogs_validation_signal(&self.database, signal).await;
     }
 
     /// Discogs as this library may ask it right now. No client while no key is
@@ -511,24 +484,26 @@ impl LibraryManager {
     /// Whether a release on `catalog` can be fetched now: MusicBrainz always
     /// can, and Discogs can when this library holds a key it may ask with.
     #[cfg(desktop)]
-    pub(crate) fn can_fetch_releases_from(
+    pub(crate) async fn can_fetch_releases_from(
         &self,
         catalog: bae_catalogs::catalog::Catalog,
     ) -> Result<bool, LibraryError> {
         match catalog {
             bae_catalogs::catalog::Catalog::MusicBrainz => Ok(true),
-            bae_catalogs::catalog::Catalog::Discogs => Ok(self.discogs_session()?.client.is_some()),
+            bae_catalogs::catalog::Catalog::Discogs => {
+                Ok(self.discogs_session().await?.client.is_some())
+            }
             other => unreachable!("nothing fetches releases from {}", other.as_str()),
         }
     }
 
     #[cfg(desktop)]
-    fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
+    async fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
         let providers = self.providers.clone();
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
-        let mut cached = lock_discogs_client(&self.discogs_client);
-        let validation = self.config_handle.config().prefs.discogs;
+        let mut cached = self.discogs_client.lock().await;
+        let validation = self.preferences().await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(DiscogsSession {
                 client: None,
@@ -536,20 +511,21 @@ impl LibraryManager {
             });
         }
         if cached.is_none() {
-            let config_handle = Arc::clone(&self.config_handle);
+            let database = self.database.clone();
             let diagnostics = self.diagnostics.clone();
             let runtime = self.runtime_handle.clone();
-            // The client reports from its request path; persisting the
-            // signal is a file write, so it goes to a blocking thread, and a
-            // failure to persist is logged there. Nothing waits on it, so a
-            // panic in it is reported here.
+            // The client reports from its request path; recording the signal
+            // is a write, so it runs as its own task, and a failure to write
+            // is logged there. Nothing waits on it, so a panic in it is
+            // reported here.
             let observer = Arc::new(move |signal| {
-                let config_handle = Arc::clone(&config_handle);
+                let database = database.clone();
                 let diagnostics = diagnostics.clone();
                 runtime.spawn(async move {
-                    let recorded = blocking("record a Discogs validation signal", move || {
-                        record_discogs_validation_signal(&config_handle, signal);
-                    })
+                    let recorded = caught(
+                        "record a Discogs validation signal",
+                        record_discogs_validation_signal(&database, signal),
+                    )
                     .await;
                     if let Err(failed) = recorded {
                         diagnostics.bug(failed);

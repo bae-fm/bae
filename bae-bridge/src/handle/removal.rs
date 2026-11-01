@@ -126,7 +126,7 @@ mod tests {
             .build()
             .unwrap();
         let (manager, root) = bae_test_support::setup_fresh_library(&runtime);
-        manager.get_config().save_preferences().unwrap();
+        std::fs::create_dir_all(manager.library_path().join("cache")).unwrap();
         let services = runtime.block_on(AppServices::for_test(manager)).unwrap();
         let app = Arc::new(
             AppHandle::start(

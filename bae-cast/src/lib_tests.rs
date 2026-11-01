@@ -18,6 +18,17 @@ fn browsing(controller: &CastController) -> bool {
     })
 }
 
+/// Ask `controller` to browse, and wait until the ask is decided: browsing
+/// starts once the setting is read.
+fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastController>) {
+    let mut decided = controller.browsing_decided.subscribe();
+    decided.mark_unchanged();
+    controller.start_discovery();
+    runtime
+        .block_on(decided.changed())
+        .expect("the controller is alive");
+}
+
 /// A controller over a fresh library, on the runtime it returns, serving
 /// casts on loopback. The `TempDir` owns that library's files, so it must
 /// outlive the controller.
@@ -76,10 +87,13 @@ fn discovery_and_casting_follow_the_cast_setting() {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
     assert!(
-        !services.get_config().prefs.cast_enabled,
+        !runtime
+            .block_on(services.preferences())
+            .unwrap()
+            .cast_enabled,
         "casting is opt-in"
     );
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     assert!(!browsing(&controller), "casting is off: nothing may browse");
     assert!(
         matches!(
@@ -90,7 +104,7 @@ fn discovery_and_casting_follow_the_cast_setting() {
     );
 
     runtime.block_on(services.set_cast_enabled(true)).unwrap();
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     assert!(browsing(&controller), "casting is on: browsing may run");
     // No device was reported, so the request reaches the device lookup and
     // fails there rather than at the gate.
@@ -102,6 +116,23 @@ fn discovery_and_casting_follow_the_cast_setting() {
     controller.stop_discovery();
 }
 
+/// The picker closing while the setting is still being read leaves nothing
+/// browsing: the stop is not undone by the read that finishes after it.
+#[test]
+fn a_stop_before_the_setting_is_read_wins() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    runtime.block_on(services.set_cast_enabled(true)).unwrap();
+
+    let mut decided = controller.browsing_decided.subscribe();
+    decided.mark_unchanged();
+    controller.start_discovery();
+    controller.stop_discovery();
+    runtime
+        .block_on(decided.changed())
+        .expect("the controller is alive");
+    assert!(!browsing(&controller), "the picker closed: nothing browses");
+}
+
 /// Turning the setting off while browsing stops it, rather than leaving the
 /// browse running until the picker happens to close. The controller's own
 /// watcher does this, so writing the setting is all a caller has to do.
@@ -110,10 +141,13 @@ fn turning_casting_off_stops_browsing() {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
     runtime.block_on(services.set_cast_enabled(true)).unwrap();
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     assert!(browsing(&controller));
 
     let mut applied = controller.setting_applied.subscribe();
+    runtime
+        .block_on(applied.wait_for(|applied| *applied == Some(true)))
+        .expect("the setting watcher runs while the controller is alive");
     runtime.block_on(services.set_cast_enabled(false)).unwrap();
     runtime
         .block_on(applied.wait_for(|applied| *applied == Some(false)))
@@ -133,7 +167,7 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
     let port = refusing_loopback_port();
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
     assert!(
         controller.devices().is_empty(),
@@ -141,7 +175,7 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
     );
 
     runtime.block_on(services.set_cast_enabled(true)).unwrap();
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
     controller.renderer_found(reported_cast_service("Study", "cast-2", port));
     assert_eq!(
@@ -196,7 +230,7 @@ fn the_picker_lists_the_devices_from_the_library() {
     until_listed(&[]);
 
     runtime.block_on(services.set_cast_enabled(true)).unwrap();
-    controller.start_discovery();
+    start_discovery(&runtime, &controller);
     let port = refusing_loopback_port();
     controller.renderer_found(reported_cast_service("Study", "cast-2", port));
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));

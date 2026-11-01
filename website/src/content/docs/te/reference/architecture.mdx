@@ -16,15 +16,14 @@ bae అంటే నాలుగు స్థానిక యాప్‌లు 
 
 ## డిస్క్ మీద ఒక గ్రంథాలయం
 
-గ్రంథాలయం రెండు డైరెక్టరీల్లో ఉంటుంది (mobile లో వేదిక డేటా డైరెక్టరీలు): coven store, దాని పక్కన bae స్వంత సెట్టింగ్‌లు.
+గ్రంథాలయం రెండు డైరెక్టరీల్లో ఉంటుంది (mobile లో వేదిక డేటా డైరెక్టరీలు): coven store, దాని పక్కన bae స్వంత తాత్కాలిక నిల్వ.
 
 ```
 ~/.bae/stores/<id>/       # coven store, coven ద్వారా మాత్రమే తెరవబడుతుంది
-  store.db                # SQLite: catalog, credits, playback specs, coven లెక్క
+  store.db                # SQLite: catalog, credits, playback specs, ఈ పరికరపు సెట్టింగ్‌లు, coven లెక్క
   files/                  # bae స్వంత దస్త్రాల coven కాపీలు (కవర్లు, కళాకారుల చిత్రాలు, avatars)
   cache/                  # పంపిన దస్త్రాల cache మరియు pinned కాపీలు
 ~/.bae/libraries/<id>/    # bae సొంతం; ఎప్పుడూ సమకాలీకరించబడదు
-  preferences.toml        # bae సెట్టింగ్‌లు
   cache/                  # catalogs నుంచి తెచ్చిన చిత్రకళ
 ```
 

@@ -16,15 +16,14 @@ Uz aplikacije: `bae-mcp` (MCP poslužitelj) i `bae-automation`.
 
 ## Jedna biblioteka na disku
 
-Biblioteka živi u dva direktorija (podatkovni direktoriji platforme na mobilnim uređajima): covenovo spremište i, uz njega, vlastite postavke bae.
+Biblioteka živi u dva direktorija (podatkovni direktoriji platforme na mobilnim uređajima): covenovo spremište i, uz njega, vlastita predmemorija bae.
 
 ```
 ~/.bae/stores/<id>/       # covenovo spremište, otvara se samo kroz coven
-  store.db                # SQLite: katalog, zasluge, specifikacije reprodukcije, covenovo knjigovodstvo
+  store.db                # SQLite: katalog, zasluge, specifikacije reprodukcije, postavke ovog uređaja, covenovo knjigovodstvo
   files/                  # covenove kopije vlastitih datoteka bae (omoti, slike izvođača, avatari)
   cache/                  # predmemorirane i prikvačene kopije prenesenih datoteka
 ~/.bae/libraries/<id>/    # vlastiti direktorij bae; nikad se ne sinkronizira
-  preferences.toml        # postavke za bae
   cache/                  # grafika dohvaćena iz kataloga
 ```
 

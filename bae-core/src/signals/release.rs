@@ -222,7 +222,6 @@ mod tests {
 
     #[tokio::test]
     async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
-        use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbRelease, NewReleaseFile};
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
@@ -249,13 +248,9 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let config = Config::with_defaults(database.store_id(), library_root.join("preferences"));
-        let config_handle = Arc::new(ConfigHandle::new(config));
-
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
-            config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),
@@ -333,7 +328,6 @@ mod tests {
     /// would have computed.
     #[tokio::test]
     async fn test_resolve_release_identity_local() {
-        use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewReleaseFile};
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
@@ -380,13 +374,9 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let config = Config::with_defaults(database.store_id(), library_root.join("preferences"));
-        let config_handle = Arc::new(ConfigHandle::new(config));
-
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
-            config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),

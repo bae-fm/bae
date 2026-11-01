@@ -9,14 +9,14 @@ use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog,
     BridgeComposerDetail, BridgeComposerSortCriterion, BridgeComposerSummary,
-    BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection, BridgeError, BridgeFile,
-    BridgeGalleryItem, BridgeGallerySource, BridgePreviewTarget, BridgeQueueSnapshot,
-    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
-    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
-    BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState,
-    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
-    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeComposerWorkGroup, BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem,
+    BridgeGallerySource, BridgePreviewTarget, BridgeQueueSnapshot, BridgeRelease,
+    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
+    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow,
+    BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState, BridgeSyncStatusSnapshot,
+    BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult,
+    BridgeUploadReleasesOutcome, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
+    BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
@@ -406,7 +406,7 @@ impl Drop for AppHandle {
             },
             |thread| {
                 if let Some(host) = &self._host {
-                    host.library_closing(self.services.get_config().store_id, thread);
+                    host.library_closing(self.services.store_id(), thread);
                 }
             },
         );

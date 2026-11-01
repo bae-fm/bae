@@ -43,9 +43,9 @@ private struct ImportOperations: Sendable {
     let clearCandidateMetadata: @Sendable (Data) async throws -> UInt64
     let setSheetDisc:
         @Sendable (Data, String, BridgeSheetDisc) async throws -> Void
-    let autoIdentifyRelease: @Sendable (String) -> Void
+    let autoIdentifyRelease: @Sendable (String) async throws -> Void
     let editReleaseLookupChoices:
-        @Sendable (String, BridgeLookupChoiceEdit) -> Void
+        @Sendable (String, BridgeLookupChoiceEdit) async throws -> Void
     let endReleaseIdentification: @Sendable (String) async throws -> Void
     let startCandidateSearch:
         @Sendable (Data, BridgeSearchQuery) async throws -> Void
@@ -158,10 +158,13 @@ extension ImportOperations {
                 )
             },
             autoIdentifyRelease: {
-                handle.autoIdentifyRelease(releaseId: $0)
+                try await handle.autoIdentifyRelease(releaseId: $0)
             },
             editReleaseLookupChoices: {
-                handle.editReleaseLookupChoices(releaseId: $0, edit: $1)
+                try await handle.editReleaseLookupChoices(
+                    releaseId: $0,
+                    edit: $1
+                )
             },
             endReleaseIdentification: {
                 try await handle.endReleaseIdentification(releaseId: $0)
@@ -363,12 +366,11 @@ final class Importer: Sendable, Observable {
         setSheetDisc:
             @escaping @Sendable (Data, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
-        autoIdentifyRelease: @escaping @Sendable (String) -> Void = { _ in },
+        autoIdentifyRelease:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         editReleaseLookupChoices:
-            @escaping @Sendable (String, BridgeLookupChoiceEdit) -> Void = {
-                _,
-                _ in
-            },
+            @escaping @Sendable (String, BridgeLookupChoiceEdit) async throws
+            -> Void = { _, _ in },
         endReleaseIdentification:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         startCandidateSearch:
@@ -616,8 +618,8 @@ extension Importer {
 
     /// Re-identify a library release, asking about what core holds for this
     /// session.
-    func autoIdentifyRelease(_ releaseId: String) {
-        operations.autoIdentifyRelease(releaseId)
+    func autoIdentifyRelease(_ releaseId: String) async throws {
+        try await operations.autoIdentifyRelease(releaseId)
     }
 
     /// Make one change to what a library release's session asks about; core
@@ -625,8 +627,8 @@ extension Importer {
     func editReleaseLookupChoices(
         _ releaseId: String,
         _ edit: BridgeLookupChoiceEdit
-    ) {
-        operations.editReleaseLookupChoices(releaseId, edit)
+    ) async throws {
+        try await operations.editReleaseLookupChoices(releaseId, edit)
     }
 
     /// End a library release's re-identify session: its identification stops

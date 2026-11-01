@@ -1,7 +1,7 @@
 /// Upload one real file and evict its cache so the release needs a download.
 async fn insert_pinnable_release(manager: &TestManager) -> String {
     connect_test_cloud(manager).await;
-    let source = manager.get_config().library_path().join("pin-source");
+    let source = manager.library_path().join("pin-source");
     let release = uploaded_release(manager, &source, "Test Album", false).await;
     let file = release_files(manager, &release).await.remove(0);
     manager
@@ -83,7 +83,7 @@ async fn download_queue_skips_already_pinned() {
 async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let first = insert_pinnable_release(&manager).await;
-    let source = manager.get_config().library_path().join("second-source");
+    let source = manager.library_path().join("second-source");
     let second = uploaded_release(&manager, &source, "Album Title", false).await;
     manager.set_downloads_paused(true).await.unwrap();
 
@@ -192,7 +192,7 @@ async fn download_queue_failed_pin_retries() {
 async fn pinning_a_failed_download_queues_it_again_in_its_place() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let failed = insert_pinnable_release(&manager).await;
-    let source = manager.get_config().library_path().join("second-source");
+    let source = manager.library_path().join("second-source");
     let later = uploaded_release(&manager, &source, "Album Title", false).await;
 
     manager.storage.set_online(false);
@@ -378,13 +378,8 @@ async fn opening_a_library_empties_its_transfer_queues() {
     .unwrap();
     left.set_release_queue_paused::<()>(true).await.unwrap();
 
-    let config = Config::with_defaults(
-        handle.store_id(),
-        app_dir.registered_library(&handle.store_id().to_string()),
-    );
     let manager = LibraryManager::open(
         app_dir,
-        Arc::new(ConfigHandle::new(config)),
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),

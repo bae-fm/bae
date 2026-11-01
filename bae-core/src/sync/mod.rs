@@ -324,6 +324,10 @@ mod tests {
         "playback_state",
         "playback_now",
         "playback_timeline",
+        // This device's settings for the library.
+        "preferences",
+        "save_preset",
+        "save_preset_filename_token",
         // The releases this device is downloading, exporting or saving, one
         // at a time.
         "release_queues",

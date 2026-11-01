@@ -172,7 +172,13 @@ struct ReleaseEditorView: View {
     /// Open the search and start identifying the release from its files.
     private func identifyAutomatically() {
         openSearch(.automatic)
-        importer.autoIdentifyRelease(session.releaseId)
+        let importer = importer
+        let uiStore = uiStore
+        let releaseId = session.releaseId
+        Task {
+            do { try await importer.autoIdentifyRelease(releaseId) }
+            catch { uiStore.showError(error) }
+        }
     }
 
     /// Open the search on `section`, starting nothing.

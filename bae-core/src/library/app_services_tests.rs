@@ -1,5 +1,4 @@
 use super::*;
-use crate::config::{Config, ConfigHandle};
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use tempfile::TempDir;
 
@@ -53,13 +52,9 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         track_ids.push(track_id);
     }
 
-    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
-    let config_handle = Arc::new(ConfigHandle::new(config));
-
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        config_handle,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
@@ -282,14 +277,23 @@ async fn a_release_session_keeps_its_choices_in_core() {
     let key = crate::import::CandidateKey::reidentify("release-1");
     let release = "release-1".to_string();
 
-    services.edit_release_lookup_choices(release.clone(), LookupChoiceEdit::ToggleDiscId);
-    services.edit_release_lookup_choices(
-        release.clone(),
-        LookupChoiceEdit::ToggleCatalog {
-            number: "WPCR-80001".to_string(),
-        },
-    );
-    services.identify_release_for_lookup(release.clone());
+    services
+        .edit_release_lookup_choices(release.clone(), LookupChoiceEdit::ToggleDiscId)
+        .await
+        .unwrap();
+    services
+        .edit_release_lookup_choices(
+            release.clone(),
+            LookupChoiceEdit::ToggleCatalog {
+                number: "WPCR-80001".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+    services
+        .identify_release_for_lookup(release.clone())
+        .await
+        .unwrap();
 
     let held = services.release_lookup_choices().get(&key).cloned();
     let held = held.expect("the session's choices are held");

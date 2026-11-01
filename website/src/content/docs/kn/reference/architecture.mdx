@@ -16,15 +16,14 @@ bae ನಾಲ್ಕು native ಆಪ್‌ಗಳನ್ನು ಧರಿಸಿರ�
 
 ## Disk ಮೇಲೆ ಒಂದು ಗ್ರಂಥಾಲಯ
 
-ಗ್ರಂಥಾಲಯ ಎರಡು ಕಡತಕೋಶಗಳಲ್ಲಿ ಇರುತ್ತದೆ (mobile ನಲ್ಲಿ ವೇದಿಕೆಯ ದತ್ತಾಂಶ ಕಡತಕೋಶಗಳು): coven ನ store, ಮತ್ತು ಅದರ ಪಕ್ಕದಲ್ಲಿ bae ನ ಸ್ವಂತ ಸೆಟ್ಟಿಂಗ್‌ಗಳು.
+ಗ್ರಂಥಾಲಯ ಎರಡು ಕಡತಕೋಶಗಳಲ್ಲಿ ಇರುತ್ತದೆ (mobile ನಲ್ಲಿ ವೇದಿಕೆಯ ದತ್ತಾಂಶ ಕಡತಕೋಶಗಳು): coven ನ store, ಮತ್ತು ಅದರ ಪಕ್ಕದಲ್ಲಿ bae ನ ಸ್ವಂತ ಕ್ಯಾಶ್.
 
 ```
 ~/.bae/stores/<id>/       # coven ನ store, coven ಮೂಲಕ ಮಾತ್ರ ತೆರೆಯಲ್ಪಡುತ್ತದೆ
-  store.db                # SQLite: catalog, credits, playback specs, coven ನ ಲೆಕ್ಕ
+  store.db                # SQLite: catalog, credits, playback specs, ಈ ಸಾಧನದ ಸೆಟ್ಟಿಂಗ್‌ಗಳು, coven ನ ಲೆಕ್ಕ
   files/                  # bae ನ ಸ್ವಂತ ಕಡತಗಳ coven ಪ್ರತಿಗಳು (ಮುಖಪುಟ ಚಿತ್ರಗಳು, ಕಲಾವಿದರ ಚಿತ್ರಗಳು, avatars)
   cache/                  # ಅಪ್‌ಲೋಡ್ ಆದ ಕಡತಗಳ ಕ್ಯಾಶ್ ಮತ್ತು pinned ಪ್ರತಿಗಳು
 ~/.bae/libraries/<id>/    # bae ನದೇ; ಎಂದಿಗೂ ಸಮನ್ವಯ ಆಗುವುದಿಲ್ಲ
-  preferences.toml        # bae ಸೆಟ್ಟಿಂಗ್‌ಗಳು
   cache/                  # ಸೂಚಿಗಳಿಂದ ತಂದ ಕಲೆಚಿತ್ರ
 ```
 

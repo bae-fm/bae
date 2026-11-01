@@ -308,8 +308,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
     let token = CancellationToken::new();
     let loop_token = token.clone();
     let queue = tokio::spawn(async move {
-        let config = context.library_manager.subscribe_config_changes();
-        super::queue::run(&context, &loop_token, &mut bus, &mut asked, &config).await;
+        super::queue::run(&context, &loop_token, &mut bus, &mut asked).await;
     });
     tokio::time::timeout(Duration::from_secs(30), answered)
         .await

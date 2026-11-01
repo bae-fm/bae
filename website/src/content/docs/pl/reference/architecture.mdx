@@ -16,15 +16,14 @@ Obok aplikacji: `bae-mcp` (serwer MCP) i `bae-automation`.
 
 ## Jedna biblioteka na dysku
 
-Biblioteka żyje w dwóch katalogach (na mobile w katalogach danych platformy): magazynie coven i obok w ustawieniach samego bae.
+Biblioteka żyje w dwóch katalogach (na mobile w katalogach danych platformy): magazynie coven i obok w cache samego bae.
 
 ```
 ~/.bae/stores/<id>/       # magazyn coven, otwierany tylko przez coven
-  store.db                # SQLite: katalog, przypisania, specyfikacje odtwarzania, księgowość coven
+  store.db                # SQLite: katalog, przypisania, specyfikacje odtwarzania, ustawienia tego urządzenia, księgowość coven
   files/                  # kopie coven własnych plików bae (okładki, obrazy wykonawców, awatary)
   cache/                  # kopie w cache i przypięte kopie wysłanych plików
 ~/.bae/libraries/<id>/    # własny katalog bae; nigdy niesynchronizowany
-  preferences.toml        # ustawienia bae
   cache/                  # grafiki pobrane z katalogów
 ```
 

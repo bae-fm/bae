@@ -16,9 +16,9 @@ pub enum SaveFilenameToken {
     TrackTotal,
 }
 
-/// The default filename pattern a new preset starts with: the zero-padded track
-/// number, then the title. Only [`default_save_presets`] uses it now — the
-/// global filename-token config is gone.
+/// The filename pattern the schema's default presets start with: the
+/// zero-padded track number, then the title.
+#[cfg(any(test, feature = "test-utils"))]
 fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
@@ -80,6 +80,7 @@ pub enum SavePregapPlacement {
     SingleFileWithCue,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 fn default_export_pregap_placement() -> SavePregapPlacement {
     SavePregapPlacement::AppendToPreviousExceptHtoa
 }
@@ -162,6 +163,9 @@ impl SavePreset {
     }
 }
 
+/// The presets the schema writes into a new library, for tests that build
+/// preferences without one.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn default_save_presets() -> Vec<SavePreset> {
     vec![
         SavePreset {

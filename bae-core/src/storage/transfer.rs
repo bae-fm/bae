@@ -410,15 +410,9 @@ mod tests {
         )
         .expect("diagnostics starts");
 
-        let config = crate::config::Config::with_defaults(
-            database.store_id(),
-            home.path().join("preferences"),
-        );
-
         let manager = LibraryManager::new(
             database,
             crate::config::AppDir::under_home(home.path()).unwrap(),
-            Arc::new(crate::config::ConfigHandle::new(config)),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             diagnostics.clone(),

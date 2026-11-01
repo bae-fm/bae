@@ -150,3 +150,11 @@ pulled_values! {
     },
     built by cast_devices
 }
+
+pulled_values! {
+    /// This device's preferences for the library, as the settings screens
+    /// show them.
+    ConfigSubscription: bae_core::config::Config => crate::types::BridgeConfig,
+    converted by |config: bae_core::config::Config| crate::types::BridgeConfig::from_core(&config),
+    built by config
+}

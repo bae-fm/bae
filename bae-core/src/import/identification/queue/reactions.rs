@@ -191,12 +191,7 @@ async fn advance(
 }
 
 /// What one settled answer does to the job it answered.
-pub(super) async fn finish(
-    context: &Context,
-    queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
-    done: Finished,
-) {
+pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished) {
     let Some(index) = queue.settling_job(&done.identity, &done.representative_key, done.run) else {
         debug!(
             "identification: {} settled for a job the queue has moved off",
@@ -234,8 +229,7 @@ pub(super) async fn finish(
             // A stored row with no pick, its read having failed, imports
             // nothing, whoever asked.
             if picked_unattended {
-                import_when_identified(context, config, &done.representative_key, import_asked)
-                    .await;
+                import_when_identified(context, &done.representative_key, import_asked).await;
             } else if import_asked {
                 info!(
                     "identification: {} stored no pick; the Import asked of it is dropped",
@@ -297,12 +291,21 @@ pub(super) async fn finish(
 /// person asked for it does not matter.
 async fn import_when_identified(
     context: &Context,
-    config: &watch::Receiver<crate::config::Config>,
     key: &crate::import::CandidateKey,
     import_asked: bool,
 ) {
-    if !import_asked && !config.borrow().prefs.identification.import_when_identified {
-        return;
+    if !import_asked {
+        match context.library_manager.preferences().await {
+            Ok(prefs) if prefs.identification.import_when_identified => {}
+            Ok(_) => return,
+            Err(error) => {
+                warn!(
+                    "identification: {key} is not imported once identified: the setting \
+                     could not be read ({error})"
+                );
+                return;
+            }
+        }
     }
     match context.import.import_identified(key).await {
         Ok(crate::import::ImportStart::Queued { import_id }) => {

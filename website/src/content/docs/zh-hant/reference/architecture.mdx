@@ -16,15 +16,14 @@ App 旁邊還有：`bae-mcp`（MCP 伺服器）和 `bae-automation`。
 
 ## 磁碟上的一個資料庫
 
-資料庫位於兩個目錄中（行動裝置上為平台資料目錄）：coven 的存放區，以及旁邊 bae 自己的設定。
+資料庫位於兩個目錄中（行動裝置上為平台資料目錄）：coven 的存放區，以及旁邊 bae 自己的快取。
 
 ```
 ~/.bae/stores/<id>/       # coven 的存放區，只透過 coven 開啟
-  store.db                # SQLite：目錄、名單、播放規格、coven 的簿記
+  store.db                # SQLite：目錄、名單、播放規格、此裝置的設定、coven 的簿記
   files/                  # coven 保存的 bae 自有檔案副本（封面、藝人圖片、頭像）
   cache/                  # 已上傳檔案的快取副本與釘選副本
 ~/.bae/libraries/<id>/    # bae 自己的目錄；從不同步
-  preferences.toml        # bae 的設定
   cache/                  # 從目錄服務抓取的圖片
 ```
 

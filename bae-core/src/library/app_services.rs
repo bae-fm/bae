@@ -250,8 +250,19 @@ impl AppServices {
         Ok(Self::new(manager, playback, import))
     }
 
-    pub fn subscribe_config_changes(&self) -> tokio::sync::watch::Receiver<crate::config::Config> {
-        self.inner.manager.subscribe_config_changes()
+    /// The library's preferences as the settings screens read them: the
+    /// first value at once, then one after each write that changes them.
+    pub fn subscribe_config(&self) -> crate::library::LiveValues<crate::config::Config> {
+        self.inner.manager.subscribe_config()
+    }
+
+    /// The part of the preferences `part` takes: the first value at once,
+    /// then one after each write that changes it.
+    pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
+        &self,
+        part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
+    ) -> crate::library::LiveValues<T> {
+        self.inner.manager.follow_preferences(part)
     }
 
     pub fn subscribe_album_browse(
@@ -359,7 +370,9 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
+    delegate_async!(manager, preferences => preferences() -> Result<crate::config::Preferences, crate::db::DbError>);
+    delegate_sync!(manager, library_path => library_path() -> std::path::PathBuf);
+    delegate_sync!(manager, store_id => store_id() -> coven::StoreId);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_mcp_config => set_mcp_config(config: crate::config::McpConfig) -> Result<(), crate::config::ConfigError>);
@@ -419,9 +432,8 @@ impl AppServices {
                 // one of them, not only the candidate whose pane the switch was
                 // flicked on, because a background run waiting on a source
                 // nobody asks is exactly as wrong as the open one. A candidate
-                // that already settled has no run to supersede; the automatic
-                // admission reads those again when its own config watcher
-                // fires.
+                // that already settled has no run to supersede; its next run
+                // reads the list as it stands then.
                 for key in self.inner.import.identifying_keys() {
                     self.inner.identification.rerun_identify(key);
                 }

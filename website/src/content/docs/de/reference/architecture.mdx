@@ -16,15 +16,14 @@ Neben den Apps: `bae-mcp` (der MCP-Server) und `bae-automation`.
 
 ## Eine Mediathek auf der Festplatte
 
-Eine Mediathek lebt in zwei Verzeichnissen (auf Mobilgeräten in Plattform-Datenverzeichnissen): covens Store und daneben die eigenen Einstellungen von bae.
+Eine Mediathek lebt in zwei Verzeichnissen (auf Mobilgeräten in Plattform-Datenverzeichnissen): covens Store und daneben der eigene Cache von bae.
 
 ```
 ~/.bae/stores/<id>/       # covens Store, nur über coven geöffnet
-  store.db                # SQLite: Katalog, Mitwirkende, Wiedergabedaten, covens Buchhaltung
+  store.db                # SQLite: Katalog, Mitwirkende, Wiedergabedaten, Einstellungen dieses Geräts, covens Buchhaltung
   files/                  # covens Kopien der eigenen Dateien von bae (Cover, Künstlerbilder, Avatare)
   cache/                  # gecachte und angeheftete Kopien hochgeladener Dateien
 ~/.bae/libraries/<id>/    # gehört bae; wird nie synchronisiert
-  preferences.toml        # Einstellungen von bae
   cache/                  # aus den Katalogen geladenes Artwork
 ```
 
