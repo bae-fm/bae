@@ -113,11 +113,11 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     let app = open_library(&root);
     let members = app.subscribe_members();
     let caller = tokio::runtime::Runtime::new().unwrap();
+    // The timeout's timer is made on the runtime, inside the future it runs.
     caller
-        .block_on(tokio::time::timeout(
-            Duration::from_secs(20),
-            members.clone().next(),
-        ))
+        .block_on(async {
+            tokio::time::timeout(Duration::from_secs(20), members.clone().next()).await
+        })
         .expect("the first pull answers")
         .expect("the subscription reads the library's members");
 
