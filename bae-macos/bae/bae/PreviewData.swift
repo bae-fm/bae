@@ -10,7 +10,7 @@
         private var rows: [BridgeQueueEntry] = []
         private var windows: [BridgeLibraryPageWindow] = []
         private var changed = false
-        /// Whether a value is due that `next` has not taken yet.
+        /// Whether a value is due that `take` has not taken yet.
         private var due = true
         private var waiter:
             CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>?
@@ -26,7 +26,8 @@
             deliver { self.windows = windows }
         }
 
-        func next() async -> BridgeQueueUpcomingSnapshot {
+        /// The next value, once one is due.
+        func take() async -> BridgeQueueUpcomingSnapshot {
             await withCheckedContinuation { continuation in
                 let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
                     guard due else {
@@ -441,8 +442,7 @@
                     subscribeUpcoming: { [feed = model.upcomingFeed] in
                         QueueUpcomingQuery(
                             setWindows: { feed.setWindows($0) },
-                            next: { await feed.next() },
-                            cancel: {}
+                            values: PulledValues(read: { await feed.take() })
                         )
                     }
                 )

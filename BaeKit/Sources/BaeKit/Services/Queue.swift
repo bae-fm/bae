@@ -6,19 +6,15 @@ import Foundation
 /// the windows moved.
 public struct QueueUpcomingQuery: Sendable {
     public let setWindows: @Sendable ([BridgeLibraryPageWindow]) throws -> Void
-    public let next: @Sendable () async throws -> BridgeQueueUpcomingSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeQueueUpcomingSnapshot>
 
     public init(
         setWindows:
             @escaping @Sendable ([BridgeLibraryPageWindow]) throws -> Void,
-        next:
-            @escaping @Sendable () async throws -> BridgeQueueUpcomingSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeQueueUpcomingSnapshot>
     ) {
         self.setWindows = setWindows
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 }
 
@@ -92,8 +88,7 @@ public final class Queue: Sendable, Observable {
                 let subscription = handle.subscribeQueueUpcoming()
                 return QueueUpcomingQuery(
                     setWindows: { try subscription.setWindows(windows: $0) },
-                    next: { try await subscription.next() },
-                    cancel: { try? await subscription.cancel() }
+                    values: PulledValues(subscription)
                 )
             }
         )

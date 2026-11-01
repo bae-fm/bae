@@ -83,15 +83,13 @@ struct HostedAlbumGrid {
         let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(albums)
         return LibraryBrowseQuery(
             setWindows: fixed.setWindows,
-            next: {
-                let page = try await fixed.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(fixed.values) { page in
+                LibraryBrowseDelivery(
                     windows: page.windows,
                     totalCount: page.totalCount,
                     sections: sections
                 )
-            },
-            cancel: fixed.cancel
+            }
         )
     }
 

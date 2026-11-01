@@ -37,11 +37,12 @@ public final class LibraryProjectionStore {
     @ObservationIgnored
     private var workReader: DetailReader<BridgeWorkDetail>?
     /// The one live search the search field drives while it is open, and
-    /// the loop taking its values.
+    /// the pulls taking its values.
     @ObservationIgnored
     private var liveSearch: LibrarySearch?
     @ObservationIgnored
-    private var searchDeliveries: Task<Void, Never>?
+    private var searchDeliveries:
+        ScreenSubscription<PulledValues<BridgeLibrarySearchSnapshot>>?
     /// Waits out typing before the query moves, so a burst of keystrokes is
     /// one query change.
     @ObservationIgnored
@@ -147,39 +148,33 @@ public final class LibraryProjectionStore {
         if let liveSearch { return liveSearch }
         let live = library.librarySearch()
         liveSearch = live
-        searchDeliveries = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await live.next()
-                    guard let self else {
-                        await live.cancel()
-                        return
-                    }
-                    guard !snapshot.query.isEmpty,
-                        self.searchQuery == snapshot.query
-                    else { continue }
-                    self.search = LibraryProjectionState(
-                        value: SearchResults(
-                            bridge: snapshot.results,
-                            query: snapshot.query
-                        ),
-                        delivered: true
-                    )
-                }
-                catch BridgeError.Cancelled {
-                    return
-                }
-                catch {
-                    guard let self else { return }
-                    self.search = LibraryProjectionState(
-                        value: self.search.value,
-                        delivered: self.search.delivered,
-                        error: DisplayError(error)
-                    )
-                }
-            }
-        }
+        searchDeliveries = ScreenSubscription(
+            live.values,
+            onValue: { [weak self] snapshot in self?.applySearch(snapshot) },
+            onError: { [weak self] error in self?.searchFailed(error) }
+        )
         return live
+    }
+
+    private func applySearch(_ snapshot: BridgeLibrarySearchSnapshot) {
+        guard !snapshot.query.isEmpty, searchQuery == snapshot.query else {
+            return
+        }
+        search = LibraryProjectionState(
+            value: SearchResults(
+                bridge: snapshot.results,
+                query: snapshot.query
+            ),
+            delivered: true
+        )
+    }
+
+    private func searchFailed(_ error: any Error) {
+        search = LibraryProjectionState(
+            value: search.value,
+            delivered: search.delivered,
+            error: DisplayError(error)
+        )
     }
 
     private func setSearchQuery(_ query: String, on live: LibrarySearch) {
@@ -210,12 +205,9 @@ public final class LibraryProjectionStore {
     public func deactivateSearch() {
         searchDebounce?.cancel()
         searchDebounce = nil
-        searchDeliveries?.cancel()
+        searchDeliveries?.stop()
         searchDeliveries = nil
         searchQuery = nil
-        if let live = liveSearch {
-            liveSearch = nil
-            Task { await live.cancel() }
-        }
+        liveSearch = nil
     }
 }

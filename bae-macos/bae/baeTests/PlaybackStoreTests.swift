@@ -61,7 +61,7 @@ private final class UpcomingFeed: @unchecked Sendable {
             setWindows: { [self] windows in
                 lock.withLock { requests.append(windows) }
             },
-            next: { [self] in
+            values: PulledValues(read: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
                         askedCount += 1
@@ -73,8 +73,7 @@ private final class UpcomingFeed: @unchecked Sendable {
                     }
                     if let ready { continuation.resume(returning: ready) }
                 }
-            },
-            cancel: {}
+            })
         )
     }
 

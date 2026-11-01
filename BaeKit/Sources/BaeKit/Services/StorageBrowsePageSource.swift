@@ -43,21 +43,17 @@ public struct StorageListValue: Sendable {
 /// window at once, named with the sort, filter and search it was read under.
 public struct StorageBrowseQuery: Sendable {
     public let setView: @Sendable (StorageBrowseView) throws -> Void
-    public let next: @Sendable () async throws -> BridgeStorageBrowseSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeStorageBrowseSnapshot>
 
     public init(
         setView: @escaping @Sendable (StorageBrowseView) throws -> Void,
-        next:
-            @escaping @Sendable () async throws -> BridgeStorageBrowseSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeStorageBrowseSnapshot>
     ) {
         self.setView = setView
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 
-    init(_ subscription: any StorageBrowseSubscriptionProtocol) {
+    init(_ subscription: StorageBrowseSubscription) {
         self.init(
             setView: {
                 try subscription.setView(
@@ -68,8 +64,7 @@ public struct StorageBrowseQuery: Sendable {
                     selected: Array($0.selected)
                 )
             },
-            next: { try await subscription.next() },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription)
         )
     }
 }
@@ -106,9 +101,10 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
     /// cancels late cannot take a window the current list registered.
     private var generation = 0
     private var sinks: [WindowKey: Sink] = [:]
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<BridgeStorageBrowseSnapshot>>?
     /// The read failure this source died of, kept so a page registered after
-    /// it hears about it instead of waiting on a loop that already returned.
+    /// it hears about it instead of waiting on reads that already stopped.
     private var failure: (any Error)?
 
     public init(
@@ -126,9 +122,14 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         self.search = search
         self.selected = selected
         self.onListValue = onListValue
-        deliveries = Task { [weak self] in
-            await self?.deliver()
-        }
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] snapshot in self?.deliver(snapshot) },
+            onError: { [weak self] error in
+                self?.failEveryPage(with: error)
+                self?.deliveries?.stop()
+            }
+        )
     }
 
     public convenience init(
@@ -150,16 +151,10 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         )
     }
 
-    deinit {
-        close()
-    }
-
     /// End the read: no value is delivered after this, and core drops the
     /// query.
     public func close() {
-        deliveries?.cancel()
-        let query = self.query
-        Task { await query.cancel() }
+        deliveries?.stop()
     }
 
     /// Show the list under `sort`, `filter` and the `search` text, with no
@@ -260,52 +255,46 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         }
     }
 
-    private func deliver() async {
-        while !Task.isCancelled {
-            do {
-                let snapshot = try await query.next()
-                let sinks: [WindowKey: Sink]? = lock.withLock {
-                    guard snapshot.sort == sort, snapshot.filter == filter,
-                        snapshot.search == search
-                    else { return nil }
-                    return self.sinks
-                }
-                guard let sinks else { continue }
-                let onListValue = onListValue
-                await MainActor.run {
-                    // In the same main-actor turn as the rows, so the
-                    // selection's answer never lags or leads the rows shown.
-                    onListValue(
-                        StorageListValue(
-                            searching: snapshot.searching,
-                            totalSize: snapshot.totalSize,
-                            selected: snapshot.selected,
-                            selectionActions: snapshot.selectionActions,
-                            queues: snapshot.queues
-                        )
-                    )
-                    for window in snapshot.windows {
-                        let key = WindowKey(
-                            offset: window.window.offset,
-                            limit: window.window.limit
-                        )
-                        sinks[key]?.value(window.rows, Int(snapshot.totalCount))
-                    }
-                }
-            }
-            catch {
-                if Task.isCancelled { return }
-                failEveryPage(with: error)
-                return
-            }
+    /// Hand on `snapshot` if it was read under the view shown now.
+    @MainActor
+    private func deliver(_ snapshot: BridgeStorageBrowseSnapshot) {
+        let sinks: [WindowKey: Sink]? = lock.withLock {
+            guard snapshot.sort == sort, snapshot.filter == filter,
+                snapshot.search == search
+            else { return nil }
+            return self.sinks
+        }
+        guard let sinks else { return }
+        // In the same main-actor turn as the rows, so the selection's answer
+        // never lags or leads the rows shown.
+        onListValue(
+            StorageListValue(
+                searching: snapshot.searching,
+                totalSize: snapshot.totalSize,
+                selected: snapshot.selected,
+                selectionActions: snapshot.selectionActions,
+                queues: snapshot.queues
+            )
+        )
+        for window in snapshot.windows {
+            let key = WindowKey(
+                offset: window.window.offset,
+                limit: window.window.limit
+            )
+            sinks[key]?.value(window.rows, Int(snapshot.totalCount))
         }
     }
 
+    /// Tell every page the source died of `error`. Only the first failure
+    /// is told: a later one, such as a request to the stopped read, follows
+    /// from it.
     private func failEveryPage(with error: any Error) {
-        let sinks = lock.withLock {
+        let sinks: [WindowKey: Sink]? = lock.withLock {
+            guard failure == nil else { return nil }
             failure = error
             return self.sinks
         }
+        guard let sinks else { return }
         Task { @MainActor in
             for sink in sinks.values {
                 sink.error(error)

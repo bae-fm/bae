@@ -321,11 +321,10 @@ extension LibraryArtworkBrowserTests {
         let library = Library(releaseDetail: {
             DetailQuery(
                 setId: { _ in },
-                next: {
+                values: PulledValues(read: {
                     try await Task.sleep(for: .seconds(86_400))
                     throw CancellationError()
-                },
-                cancel: {}
+                })
             )
         })
         return try await SnapshotTestSupport.withHostedWindow(

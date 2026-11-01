@@ -18,8 +18,7 @@ private final class AlbumBrowseProbe: @unchecked Sendable {
             setWindows: { [self] windows in
                 lock.withLock { self.windows = windows }
             },
-            next: { [self] in try await nextDelivery() },
-            cancel: {}
+            values: PulledValues(read: { [self] in try await nextDelivery() })
         )
     }
 
@@ -81,8 +80,7 @@ private final class SearchProbe: @unchecked Sendable {
             setQuery: { [self] query in
                 lock.withLock { queries.append(query) }
             },
-            next: { [self] in try await nextValue() },
-            cancel: {}
+            values: PulledValues(read: { [self] in try await nextValue() })
         )
     }
 
@@ -373,21 +371,24 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
             setAlbums: { [self] ids in
                 lock.withLock { requests.append(ids) }
             },
-            next: { [self] in
-                try await withCheckedThrowingContinuation { continuation in
-                    let ready: BridgeAlbumSelectionSnapshot? = lock.withLock {
-                        if pending.isEmpty {
-                            waiter = continuation
-                            return nil
+            values: PulledValues(
+                read: { [self] in
+                    try await withCheckedThrowingContinuation { continuation in
+                        let ready: BridgeAlbumSelectionSnapshot? = lock.withLock
+                        {
+                            if pending.isEmpty {
+                                waiter = continuation
+                                return nil
+                            }
+                            return pending.removeFirst()
                         }
-                        return pending.removeFirst()
+                        if let ready { continuation.resume(returning: ready) }
                     }
-                    if let ready { continuation.resume(returning: ready) }
+                },
+                cancel: { [self] in
+                    lock.withLock { wasCancelled = true }
                 }
-            },
-            cancel: { [self] in
-                lock.withLock { wasCancelled = true }
-            }
+            )
         )
     }
 

@@ -3487,7 +3487,9 @@ release's or track's id as UTF-8, or a candidate's key.
   an error and the next pull waits for the read after it; `cancel()`, or
   closing the library, answers a waiting pull and every later one that it was
   cancelled. Each app reads them through one helper, `ScreenSubscription`,
-  with the same name and shape in BaeKit and in Android's data layer. What
+  with the same name and shape in BaeKit and in Android's data layer. On
+  macOS every pulled subscription below goes through it too, and nothing
+  else in the app calls a subscription's `next()`. What
   playback is doing is one (§9.4); so are the settings, the sync status and
   activity, the queue, the download counts, whether uploads are paused, the
   members, this device's open invites, the device that joins from Add

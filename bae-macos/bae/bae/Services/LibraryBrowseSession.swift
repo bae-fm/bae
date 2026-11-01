@@ -12,7 +12,8 @@ private final class SelectedAlbums {
     private let uiStore: UiStore
     private weak var selection: AlbumGridSelection?
     private var query: AlbumSelectionQuery?
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<BridgeAlbumSelectionSnapshot>>?
 
     init(library: Library, uiStore: UiStore) {
         self.library = library
@@ -41,22 +42,11 @@ private final class SelectedAlbums {
     private func open() -> AlbumSelectionQuery {
         let query = library.albumSelection()
         self.query = query
-        deliveries = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await query.next()
-                    guard let self else { return }
-                    self.deliver(snapshot)
-                }
-                catch BridgeError.Cancelled {
-                    return
-                }
-                catch {
-                    if !Task.isCancelled { self?.uiStore.showError(error) }
-                    return
-                }
-            }
-        }
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] snapshot in self?.deliver(snapshot) },
+            onError: { [weak self] error in self?.readFailed(error) }
+        )
         return query
     }
 
@@ -65,11 +55,12 @@ private final class SelectedAlbums {
         selection?.remove(snapshot.gone)
     }
 
-    deinit {
-        deliveries?.cancel()
-        if let query {
-            Task { await query.cancel() }
-        }
+    /// A failed read ends it; the next selection opens another.
+    private func readFailed(_ error: any Error) {
+        uiStore.showError(error)
+        deliveries?.stop()
+        deliveries = nil
+        query = nil
     }
 }
 

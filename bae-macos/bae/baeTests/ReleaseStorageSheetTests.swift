@@ -28,8 +28,7 @@ struct ReleaseStorageSheetTests {
             releaseDetail: {
                 DetailQuery(
                     setId: { _ in },
-                    next: { try await delivered.next() },
-                    cancel: {}
+                    values: PulledValues(read: { try await delivered.next() })
                 )
             },
             releaseFiles: { .fixed([]) }

@@ -7,28 +7,22 @@ private let logger = Logger.bae("ReleaseFilesReader")
 /// order change in place, and each value names the request it answers.
 public struct ReleaseFilesQuery: Sendable {
     public let setRequest: @Sendable (BridgeReleaseFilesRequest?) throws -> Void
-    public let next: @Sendable () async throws -> BridgeReleaseFilesSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeReleaseFilesSnapshot>
 
     public init(
         setRequest:
             @escaping @Sendable (BridgeReleaseFilesRequest?) throws -> Void,
-        next:
-            @escaping @Sendable () async throws
-            -> BridgeReleaseFilesSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeReleaseFilesSnapshot>
     ) {
         self.setRequest = setRequest
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 
     #if os(macOS)
-        init(_ subscription: any ReleaseFilesSubscriptionProtocol) {
+        init(_ subscription: ReleaseFilesSubscription) {
             self.init(
                 setRequest: { try subscription.setRequest(request: $0) },
-                next: { try await subscription.next() },
-                cancel: { try? await subscription.cancel() }
+                values: PulledValues(subscription)
             )
         }
     #endif
@@ -43,7 +37,8 @@ public final class ReleaseFilesReader {
     private let onFiles: @MainActor ([BridgeFile]?) -> Void
     private let onError: @MainActor (any Error) -> Void
     private var query: ReleaseFilesQuery?
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<BridgeReleaseFilesSnapshot>>?
     /// The release and order shown now, or `nil` before the first `show`
     /// and after `close`.
     public private(set) var request: BridgeReleaseFilesRequest?
@@ -58,13 +53,6 @@ public final class ReleaseFilesReader {
         self.open = open
         self.onFiles = onFiles
         self.onError = onError
-    }
-
-    deinit {
-        deliveries?.cancel()
-        if let query {
-            Task { await query.cancel() }
-        }
     }
 
     /// Show `request`, opening the read on first use.
@@ -93,46 +81,35 @@ public final class ReleaseFilesReader {
     }
 
     private func closeRead() {
-        deliveries?.cancel()
+        deliveries?.stop()
         deliveries = nil
-        if let query {
-            self.query = nil
-            Task { await query.cancel() }
-        }
+        query = nil
     }
 
     private func openRead() -> ReleaseFilesQuery {
         let query = open()
         self.query = query
-        deliveries = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await query.next()
-                    guard let self else { return }
-                    guard let answered = snapshot.request,
-                        answered == self.request
-                    else { continue }
-                    self.onFiles(snapshot.files)
-                }
-                catch BridgeError.Cancelled {
-                    return
-                }
-                catch is CancellationError {
-                    return
-                }
-                catch {
-                    guard let self else { return }
-                    if self.request != nil {
-                        self.onError(error)
-                    }
-                    else {
-                        logger.warning(
-                            "release files read failed while showing nothing: \(String(reflecting: error))"
-                        )
-                    }
-                }
-            }
-        }
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] snapshot in
+                guard let self, let answered = snapshot.request,
+                    answered == self.request
+                else { return }
+                self.onFiles(snapshot.files)
+            },
+            onError: { [weak self] error in self?.readFailed(error) }
+        )
         return query
+    }
+
+    private func readFailed(_ error: any Error) {
+        if request != nil {
+            onError(error)
+        }
+        else {
+            logger.warning(
+                "release files read failed while showing nothing: \(String(reflecting: error))"
+            )
+        }
     }
 }

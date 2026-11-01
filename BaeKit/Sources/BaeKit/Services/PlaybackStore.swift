@@ -13,7 +13,7 @@ private let maximumUpcomingWindows = 3
 /// read `trackPositions` each display frame.
 ///
 /// Not `@MainActor` as a whole; only the upcoming-read methods are, since
-/// the `Task` they start captures `self`.
+/// the read they open hands its values to `self` on the main actor.
 @Observable
 public class PlaybackStore {
     public private(set) var nowPlaying: NowPlaying = .stopped
@@ -45,7 +45,8 @@ public class PlaybackStore {
     @ObservationIgnored
     private var upcomingQuery: QueueUpcomingQuery?
     @ObservationIgnored
-    private var upcomingDeliveries: Task<Void, Never>?
+    private var upcomingDeliveries:
+        ScreenSubscription<PulledValues<BridgeQueueUpcomingSnapshot>>?
     /// The tail ranges the upcoming read covers, at most
     /// `maximumUpcomingWindows`; loading one past that drops the one farthest
     /// from it.
@@ -82,13 +83,6 @@ public class PlaybackStore {
         -> LatestSource<BridgeTrackPosition>?
     {
         trackId.map { trackPositions.source(for: $0) }
-    }
-
-    deinit {
-        upcomingDeliveries?.cancel()
-        if let upcomingQuery {
-            Task { await upcomingQuery.cancel() }
-        }
     }
 
     public var presentedSidePausePrompt: BridgeSidePausePrompt? {
@@ -251,7 +245,11 @@ extension PlaybackStore {
             logger.warning(
                 "upcoming range [\(offset), \(end)) was not requested: \(String(reflecting: error))"
             )
-            upcomingFailure = DisplayError(error)
+            // A request to a read a failure already stopped fails because of
+            // it, so the failure shown stays the first one.
+            if upcomingFailure == nil {
+                upcomingFailure = DisplayError(error)
+            }
         }
     }
 
@@ -275,13 +273,10 @@ extension PlaybackStore {
     /// Stop the upcoming read and forget the windows it covered.
     @MainActor
     private func closeUpcomingQuery() {
-        upcomingDeliveries?.cancel()
+        upcomingDeliveries?.stop()
         upcomingDeliveries = nil
         upcomingWindows = []
-        if let upcomingQuery {
-            self.upcomingQuery = nil
-            Task { await upcomingQuery.cancel() }
-        }
+        upcomingQuery = nil
     }
 
     @MainActor
@@ -291,24 +286,17 @@ extension PlaybackStore {
         }
         let query = queue.subscribeUpcoming()
         upcomingQuery = query
-        upcomingDeliveries = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await query.next()
-                    guard let self else { return }
-                    self.applyUpcoming(snapshot)
-                }
-                catch {
-                    if !Task.isCancelled {
-                        logger.warning(
-                            "upcoming queue read failed: \(String(reflecting: error))"
-                        )
-                        self?.upcomingFailure = DisplayError(error)
-                    }
-                    return
-                }
+        upcomingDeliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] snapshot in self?.applyUpcoming(snapshot) },
+            onError: { [weak self] error in
+                logger.warning(
+                    "upcoming queue read failed: \(String(reflecting: error))"
+                )
+                self?.upcomingFailure = DisplayError(error)
+                self?.upcomingDeliveries?.stop()
             }
-        }
+        )
         return query
     }
 

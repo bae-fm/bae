@@ -286,12 +286,11 @@ public final class Library: Sendable, Observable {
 }
 
 extension LibraryBrowseQuery where Row == BridgeAlbum {
-    init(_ subscription: any AlbumBrowseSubscriptionProtocol) {
+    init(_ subscription: AlbumBrowseSubscription) {
         self.init(
             setWindows: { try subscription.setWindows(windows: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(subscription) { snapshot in
+                LibraryBrowseDelivery(
                     windows: snapshot.windows.map {
                         .init(window: $0.window, rows: $0.rows)
                     },
@@ -299,109 +298,94 @@ extension LibraryBrowseQuery where Row == BridgeAlbum {
                     itemCount: Int(snapshot.totalCount),
                     sections: snapshot.sections
                 )
-            },
-            cancel: { try? await subscription.cancel() }
+            }
         )
     }
 }
 
 extension LibraryBrowseQuery where Row == BridgeComposerSummary {
-    init(_ subscription: any ComposerBrowseSubscriptionProtocol) {
+    init(_ subscription: ComposerBrowseSubscription) {
         self.init(
             setWindows: { try subscription.setWindows(windows: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(subscription) { snapshot in
+                LibraryBrowseDelivery(
                     windows: snapshot.windows.map {
                         .init(window: $0.window, rows: $0.rows)
                     },
                     totalCount: Int(snapshot.totalCount)
                 )
-            },
-            cancel: { try? await subscription.cancel() }
+            }
         )
     }
 }
 
 extension LibraryBrowseQuery where Row == BridgeArtistSummary {
-    init(_ subscription: any ArtistBrowseSubscriptionProtocol) {
+    init(_ subscription: ArtistBrowseSubscription) {
         self.init(
             setWindows: { try subscription.setWindows(windows: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(subscription) { snapshot in
+                LibraryBrowseDelivery(
                     windows: snapshot.windows.map {
                         .init(window: $0.window, rows: $0.rows)
                     },
                     totalCount: Int(snapshot.totalCount)
                 )
-            },
-            cancel: { try? await subscription.cancel() }
+            }
         )
     }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeAlbumDetail {
-    init(_ subscription: any AlbumDetailSubscriptionProtocol) {
+    init(_ subscription: AlbumDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return DetailDelivery(id: snapshot.id, value: snapshot.value)
-            },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
         )
     }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeRelease {
-    init(_ subscription: any ReleaseDetailSubscriptionProtocol) {
+    init(_ subscription: ReleaseDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return DetailDelivery(id: snapshot.id, value: snapshot.value)
-            },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
         )
     }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeArtistDetail {
-    init(_ subscription: any ArtistDetailSubscriptionProtocol) {
+    init(_ subscription: ArtistDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return DetailDelivery(id: snapshot.id, value: snapshot.value)
-            },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
         )
     }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeComposerDetail {
-    init(_ subscription: any ComposerDetailSubscriptionProtocol) {
+    init(_ subscription: ComposerDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return DetailDelivery(id: snapshot.id, value: snapshot.value)
-            },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
         )
     }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeWorkDetail {
-    init(_ subscription: any WorkDetailSubscriptionProtocol) {
+    init(_ subscription: WorkDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
-            next: {
-                let snapshot = try await subscription.next()
-                return DetailDelivery(id: snapshot.id, value: snapshot.value)
-            },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
         )
     }
 }
@@ -410,17 +394,12 @@ extension KeyedDetailQuery where Id == String, Value == BridgeWorkDetail {
 #if os(macOS)
     extension KeyedDetailQuery
     where Id == String, Value == BridgeStorageInspector {
-        init(_ subscription: any StorageInspectorSubscriptionProtocol) {
+        init(_ subscription: StorageInspectorSubscription) {
             self.init(
                 setId: { try subscription.setId(id: $0) },
-                next: {
-                    let snapshot = try await subscription.next()
-                    return DetailDelivery(
-                        id: snapshot.id,
-                        value: snapshot.value
-                    )
-                },
-                cancel: { try? await subscription.cancel() }
+                values: PulledValues(subscription) {
+                    DetailDelivery(id: $0.id, value: $0.value)
+                }
             )
         }
     }
@@ -431,25 +410,20 @@ extension KeyedDetailQuery where Id == String, Value == BridgeWorkDetail {
 /// still in the library, beside the ids it was asked for.
 public struct AlbumSelectionQuery: Sendable {
     public let setAlbums: @Sendable ([String]) throws -> Void
-    public let next: @Sendable () async throws -> BridgeAlbumSelectionSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeAlbumSelectionSnapshot>
 
     public init(
         setAlbums: @escaping @Sendable ([String]) throws -> Void,
-        next:
-            @escaping @Sendable () async throws -> BridgeAlbumSelectionSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeAlbumSelectionSnapshot>
     ) {
         self.setAlbums = setAlbums
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 
-    init(_ subscription: any AlbumSelectionSubscriptionProtocol) {
+    init(_ subscription: AlbumSelectionSubscription) {
         self.init(
             setAlbums: { try subscription.setAlbums(albumIds: $0) },
-            next: { try await subscription.next() },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription)
         )
     }
 }
@@ -458,25 +432,20 @@ public struct AlbumSelectionQuery: Sendable {
 /// take each value it delivers, which names the query it answers.
 public struct LibrarySearch: Sendable {
     public let setQuery: @Sendable (String) throws -> Void
-    public let next: @Sendable () async throws -> BridgeLibrarySearchSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeLibrarySearchSnapshot>
 
     public init(
         setQuery: @escaping @Sendable (String) throws -> Void,
-        next:
-            @escaping @Sendable () async throws -> BridgeLibrarySearchSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeLibrarySearchSnapshot>
     ) {
         self.setQuery = setQuery
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 
-    init(_ subscription: any LibrarySearchSubscriptionProtocol) {
+    init(_ subscription: LibrarySearchSubscription) {
         self.init(
             setQuery: { _ = try subscription.setQuery(query: $0) },
-            next: { try await subscription.next() },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription)
         )
     }
 }

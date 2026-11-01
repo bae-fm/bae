@@ -23,7 +23,7 @@ private final class StorageFeed: @unchecked Sendable {
             setView: { [self] view in
                 lock.withLock { views.append(view) }
             },
-            next: { [self] in
+            values: PulledValues(read: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: BridgeStorageBrowseSnapshot? = lock.withLock {
                         if pending.isEmpty {
@@ -34,8 +34,7 @@ private final class StorageFeed: @unchecked Sendable {
                     }
                     if let ready { continuation.resume(returning: ready) }
                 }
-            },
-            cancel: {}
+            })
         )
     }
 

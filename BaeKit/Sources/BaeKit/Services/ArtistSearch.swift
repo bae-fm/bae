@@ -8,26 +8,22 @@ public struct ArtistSearchQuery: Sendable {
     public let setView:
         @Sendable (_ text: String, _ windows: [BridgeLibraryPageWindow]) throws
             -> UInt64
-    public let next: @Sendable () async throws -> BridgeArtistSearchSnapshot
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<BridgeArtistSearchSnapshot>
 
     public init(
         setView:
             @escaping @Sendable (String, [BridgeLibraryPageWindow]) throws
             -> UInt64,
-        next: @escaping @Sendable () async throws -> BridgeArtistSearchSnapshot,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<BridgeArtistSearchSnapshot>
     ) {
         self.setView = setView
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 
-    init(_ subscription: any ArtistSearchSubscriptionProtocol) {
+    init(_ subscription: ArtistSearchSubscription) {
         self.init(
             setView: { try subscription.setView(query: $0, windows: $1) },
-            next: { try await subscription.next() },
-            cancel: { try? await subscription.cancel() }
+            values: PulledValues(subscription)
         )
     }
 }
@@ -65,28 +61,28 @@ public final class ArtistSearchPageSource: PageSource, @unchecked Sendable {
     /// late cannot take a window the current list registered.
     private var generation = 0
     private var sinks: [WindowKey: Sink] = [:]
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<BridgeArtistSearchSnapshot>>?
     /// The read failure this source died of, kept so a page registered after
-    /// it hears about it instead of waiting on a loop that already returned.
+    /// it hears about it instead of waiting on reads that already stopped.
     private var failure: (any Error)?
 
     public init(query: ArtistSearchQuery) {
         self.query = query
-        deliveries = Task { [weak self] in
-            await self?.deliver()
-        }
-    }
-
-    deinit {
-        close()
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] snapshot in self?.deliver(snapshot) },
+            onError: { [weak self] error in
+                self?.failEveryPage(with: error)
+                self?.deliveries?.stop()
+            }
+        )
     }
 
     /// End the read: no value is delivered after this, and core drops the
     /// query.
     public func close() {
-        deliveries?.cancel()
-        let query = self.query
-        Task { await query.cancel() }
+        deliveries?.stop()
     }
 
     /// Search for `text`, with no pages until its list registers them.
@@ -172,40 +168,33 @@ public final class ArtistSearchPageSource: PageSource, @unchecked Sendable {
         }
     }
 
-    private func deliver() async {
-        while !Task.isCancelled {
-            do {
-                let snapshot = try await query.next()
-                let sinks: [WindowKey: Sink]? = lock.withLock {
-                    guard snapshot.requestRevision >= textRevision else {
-                        return nil
-                    }
-                    return self.sinks
-                }
-                guard let sinks else { continue }
-                await MainActor.run {
-                    for window in snapshot.windows {
-                        let key = WindowKey(
-                            offset: window.window.offset,
-                            limit: window.window.limit
-                        )
-                        sinks[key]?.value(window.rows, Int(snapshot.totalCount))
-                    }
-                }
-            }
-            catch {
-                if Task.isCancelled { return }
-                failEveryPage(with: error)
-                return
-            }
+    /// Hand on `snapshot` if it was read for the text shown now.
+    @MainActor
+    private func deliver(_ snapshot: BridgeArtistSearchSnapshot) {
+        let sinks: [WindowKey: Sink]? = lock.withLock {
+            guard snapshot.requestRevision >= textRevision else { return nil }
+            return self.sinks
+        }
+        guard let sinks else { return }
+        for window in snapshot.windows {
+            let key = WindowKey(
+                offset: window.window.offset,
+                limit: window.window.limit
+            )
+            sinks[key]?.value(window.rows, Int(snapshot.totalCount))
         }
     }
 
+    /// Tell every page the source died of `error`. Only the first failure
+    /// is told: a later one, such as a request to the stopped read, follows
+    /// from it.
     private func failEveryPage(with error: any Error) {
-        let sinks = lock.withLock {
+        let sinks: [WindowKey: Sink]? = lock.withLock {
+            guard failure == nil else { return nil }
             failure = error
             return self.sinks
         }
+        guard let sinks else { return }
         Task { @MainActor in
             for sink in sinks.values {
                 sink.error(error)

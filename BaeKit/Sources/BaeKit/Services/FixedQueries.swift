@@ -14,14 +14,16 @@
             let requests = FixedRequests<Id?>()
             return KeyedDetailQuery(
                 setId: { requests.request($0) },
-                next: {
-                    let id = try await requests.next()
-                    return KeyedDetailDelivery(
-                        id: id,
-                        value: id.flatMap(lookup)
-                    )
-                },
-                cancel: { requests.close() }
+                values: PulledValues(
+                    read: {
+                        let id = try await requests.take()
+                        return KeyedDetailDelivery(
+                            id: id,
+                            value: id.flatMap(lookup)
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
             )
         }
     }
@@ -33,21 +35,26 @@
             let requests = FixedRequests<[BridgeLibraryPageWindow]>()
             return LibraryBrowseQuery(
                 setWindows: { requests.request($0) },
-                next: {
-                    let windows = try await requests.next()
-                    return LibraryBrowseDelivery(
-                        windows: windows.map { window in
-                            let start = min(Int(window.offset), rows.count)
-                            let end = min(start + Int(window.limit), rows.count)
-                            return .init(
-                                window: window,
-                                rows: Array(rows[start..<end])
-                            )
-                        },
-                        totalCount: rows.count
-                    )
-                },
-                cancel: { requests.close() }
+                values: PulledValues(
+                    read: {
+                        let windows = try await requests.take()
+                        return LibraryBrowseDelivery(
+                            windows: windows.map { window in
+                                let start = min(Int(window.offset), rows.count)
+                                let end = min(
+                                    start + Int(window.limit),
+                                    rows.count
+                                )
+                                return .init(
+                                    window: window,
+                                    rows: Array(rows[start..<end])
+                                )
+                            },
+                            totalCount: rows.count
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
             )
         }
     }
@@ -73,7 +80,8 @@
             waiter?.resume(returning: request)
         }
 
-        func next() async throws -> Request {
+        /// The next request, once there is one.
+        func take() async throws -> Request {
             try await withCheckedThrowingContinuation { continuation in
                 let result: Result<Request, any Error>? = lock.withLock {
                     if closed { return .failure(CancellationError()) }
@@ -111,42 +119,57 @@
             let requests = FixedRequests<StorageBrowseView>()
             return StorageBrowseQuery(
                 setView: { requests.request($0) },
-                next: {
-                    let view = try await requests.next()
-                    let selected = rows.filter { view.selected.contains($0.id) }
-                    return BridgeStorageBrowseSnapshot(
-                        sort: view.sort,
-                        filter: view.filter,
-                        search: view.search,
-                        // The fixture's stand-in for core's answer: any text
-                        // narrows the list.
-                        searching: !view.search.isEmpty,
-                        windows: view.windows.map { window in
-                            let start = min(Int(window.offset), rows.count)
-                            let end = min(start + Int(window.limit), rows.count)
-                            return BridgeStorageBrowseWindow(
-                                window: window,
-                                rows: Array(rows[start..<end])
-                            )
-                        },
-                        totalCount: UInt64(rows.count),
-                        totalSize: UInt64(
-                            rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
-                        ),
-                        selected: selected,
-                        // The fixture's stand-in for core's answer: the actions
-                        // every selected row lists.
-                        selectionActions: selected.first.map { first in
-                            first.release.storageActions.filter { action in
-                                selected.allSatisfy {
-                                    $0.release.storageActions.contains(action)
-                                }
-                            }
-                        } ?? [],
-                        queues: queues
+                values: PulledValues(
+                    read: {
+                        snapshot(
+                            for: try await requests.take(),
+                            rows: rows,
+                            queues: queues
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
+            )
+        }
+
+        /// What the fixture answers `view` with: its windows' slices of
+        /// `rows`, beside `queues`.
+        private static func snapshot(
+            for view: StorageBrowseView,
+            rows: [BridgeStorageRow],
+            queues: BridgeStorageQueues
+        ) -> BridgeStorageBrowseSnapshot {
+            let selected = rows.filter { view.selected.contains($0.id) }
+            return BridgeStorageBrowseSnapshot(
+                sort: view.sort,
+                filter: view.filter,
+                search: view.search,
+                // The fixture's stand-in for core's answer: any text narrows
+                // the list.
+                searching: !view.search.isEmpty,
+                windows: view.windows.map { window in
+                    let start = min(Int(window.offset), rows.count)
+                    let end = min(start + Int(window.limit), rows.count)
+                    return BridgeStorageBrowseWindow(
+                        window: window,
+                        rows: Array(rows[start..<end])
                     )
                 },
-                cancel: { requests.close() }
+                totalCount: UInt64(rows.count),
+                totalSize: UInt64(
+                    rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
+                ),
+                selected: selected,
+                // The fixture's stand-in for core's answer: the actions every
+                // selected row lists.
+                selectionActions: selected.first.map { first in
+                    first.release.storageActions.filter { action in
+                        selected.allSatisfy {
+                            $0.release.storageActions.contains(action)
+                        }
+                    }
+                } ?? [],
+                queues: queues
             )
         }
     }
@@ -166,25 +189,30 @@
                     requests.request((revision, windows))
                     return revision
                 },
-                next: {
-                    let (revision, windows) = try await requests.next()
-                    return BridgeArtistSearchSnapshot(
-                        windows: windows.map { window in
-                            let start = min(Int(window.offset), results.count)
-                            let end = min(
-                                start + Int(window.limit),
-                                results.count
-                            )
-                            return BridgeArtistSearchWindow(
-                                window: window,
-                                rows: Array(results[start..<end])
-                            )
-                        },
-                        totalCount: UInt64(results.count),
-                        requestRevision: revision
-                    )
-                },
-                cancel: { requests.close() }
+                values: PulledValues(
+                    read: {
+                        let (revision, windows) = try await requests.take()
+                        return BridgeArtistSearchSnapshot(
+                            windows: windows.map { window in
+                                let start = min(
+                                    Int(window.offset),
+                                    results.count
+                                )
+                                let end = min(
+                                    start + Int(window.limit),
+                                    results.count
+                                )
+                                return BridgeArtistSearchWindow(
+                                    window: window,
+                                    rows: Array(results[start..<end])
+                                )
+                            },
+                            totalCount: UInt64(results.count),
+                            requestRevision: revision
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
             )
         }
     }
@@ -268,13 +296,15 @@
             let requests = FixedRequests<BridgeReleaseFilesRequest?>()
             return ReleaseFilesQuery(
                 setRequest: { requests.request($0) },
-                next: {
-                    BridgeReleaseFilesSnapshot(
-                        request: try await requests.next(),
-                        files: files
-                    )
-                },
-                cancel: { requests.close() }
+                values: PulledValues(
+                    read: {
+                        BridgeReleaseFilesSnapshot(
+                            request: try await requests.take(),
+                            files: files
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
             )
         }
     }

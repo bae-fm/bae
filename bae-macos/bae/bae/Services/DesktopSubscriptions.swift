@@ -32,14 +32,9 @@ final class ImportSelectionObservation {
                 let subscription = appHandle.subscribeImportCandidate()
                 return KeyedDetailQuery(
                     setId: { try subscription.setId(id: $0) },
-                    next: {
-                        let snapshot = try await subscription.next()
-                        return KeyedDetailDelivery(
-                            id: snapshot.id,
-                            value: snapshot.value
-                        )
-                    },
-                    cancel: { try? await subscription.cancel() }
+                    values: PulledValues(subscription) {
+                        KeyedDetailDelivery(id: $0.id, value: $0.value)
+                    }
                 )
             },
             importStore: importStore,
@@ -121,14 +116,9 @@ final class InvalidCandidateSelectionObservation {
                 let subscription = appHandle.subscribeInvalidCandidate()
                 return KeyedDetailQuery(
                     setId: { try subscription.setId(id: $0) },
-                    next: {
-                        let snapshot = try await subscription.next()
-                        return KeyedDetailDelivery(
-                            id: snapshot.id,
-                            value: snapshot.value
-                        )
-                    },
-                    cancel: { try? await subscription.cancel() }
+                    values: PulledValues(subscription) {
+                        KeyedDetailDelivery(id: $0.id, value: $0.value)
+                    }
                 )
             },
             importStore: importStore,

@@ -34,7 +34,7 @@ private final class ArtistSearchFeed: @unchecked Sendable {
                     return UInt64(views.count)
                 }
             },
-            next: { [self] in
+            values: PulledValues(read: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: BridgeArtistSearchSnapshot? = lock.withLock {
                         if pending.isEmpty {
@@ -45,8 +45,7 @@ private final class ArtistSearchFeed: @unchecked Sendable {
                     }
                     if let ready { continuation.resume(returning: ready) }
                 }
-            },
-            cancel: {}
+            })
         )
     }
 

@@ -26,8 +26,7 @@ private final class RecordingBrowse: @unchecked Sendable {
                 lock.withLock { requests.append(windows) }
                 try fixed.setWindows(windows)
             },
-            next: { try await fixed.next() },
-            cancel: { await fixed.cancel() }
+            values: fixed.values
         )
     }
 }
@@ -41,15 +40,13 @@ struct LibraryBrowsePageSourceTests {
         let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed([album, album])
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
-            next: {
-                let page = try await fixed.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(fixed.values) { page in
+                LibraryBrowseDelivery(
                     windows: page.windows,
                     totalCount: 2,
                     itemCount: 1
                 )
-            },
-            cancel: fixed.cancel
+            }
         )
         var total: Int?
         let list = AlbumList(
@@ -84,15 +81,13 @@ struct LibraryBrowsePageSourceTests {
         let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(rows)
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
-            next: {
-                let page = try await fixed.next()
-                return LibraryBrowseDelivery(
+            values: PulledValues(fixed.values) { page in
+                LibraryBrowseDelivery(
                     windows: page.windows,
                     totalCount: page.totalCount,
                     sections: sections
                 )
-            },
-            cancel: fixed.cancel
+            }
         )
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(query: query),

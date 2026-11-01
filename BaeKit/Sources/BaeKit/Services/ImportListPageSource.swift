@@ -154,7 +154,8 @@ import Foundation
         private var sinks: [WindowKey: Sink] = [:]
         private var viewWaiters: [UUID: ViewWaiterState] = [:]
         private var latestSummary: DeliveredSummary?
-        private var deliveries: Task<Void, Never>?
+        private var deliveries:
+            ScreenSubscription<PulledValues<BridgeImportListSnapshot>>?
         /// The last view change asked for — a view, a fold — which the next
         /// one waits on, so they reach core in the order they were made.
         private var viewWrite: Task<Void, Never>?
@@ -165,13 +166,13 @@ import Foundation
         /// The read failure this source died of, kept so a page registered
         /// after it hears about it.
         ///
-        /// The delivery task starts with this object, before the list has
-        /// registered its first page, so a read that fails immediately — a
-        /// database this build cannot read — fails with nothing to tell. That
-        /// error used to be dropped, and the page that registered a moment
-        /// later then waited on a delivery loop that had already returned: no
-        /// rows, no summary, no alert, and an import tab that renders its
-        /// "add a folder" prompt as though the library simply had none.
+        /// The pulls start with this object, before the list has registered
+        /// its first page, so a read that fails immediately — a database this
+        /// build cannot read — fails with nothing to tell. That error used to
+        /// be dropped, and the page that registered a moment later then
+        /// waited on reads that had already stopped: no rows, no summary, no
+        /// alert, and an import tab that renders its "add a folder" prompt as
+        /// though the library simply had none.
         private var failure: (any Error)?
 
         public init(
@@ -190,15 +191,16 @@ import Foundation
             self.onSummary = onSummary
             self.onPendingFilterEntries = onPendingFilterEntries
             self.onSelection = onSelection
-            deliveries = Task { [weak self] in
-                await self?.deliver()
-            }
-        }
-
-        deinit {
-            deliveries?.cancel()
-            let subscription = self.subscription
-            Task { try? await subscription.cancel() }
+            deliveries = ScreenSubscription(
+                PulledValues(subscription),
+                onValue: { [weak self] snapshot in self?.deliver(snapshot) },
+                onError: { [weak self] error in
+                    self?.failEveryPage(with: error)
+                    // A failed read leaves nothing to wait on; the list
+                    // rebuilds itself from the error its pages just received.
+                    self?.deliveries?.stop()
+                }
+            )
         }
 
         /// This source's pages, with the view control the list drives it by.
@@ -311,48 +313,34 @@ import Foundation
             return sinks
         }
 
-        private func deliver() async {
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await subscription.next()
-                    let sinks = registeredSinks()
-                    let onSummary = self.onSummary
-                    let onPendingFilterEntries = self.onPendingFilterEntries
-                    let onSelection = self.onSelection
-                    let summary = snapshot.summary
-                    await MainActor.run {
-                        onSummary(summary)
-                        onPendingFilterEntries(snapshot.pendingFilterEntries)
-                        for window in snapshot.windows {
-                            let key = WindowKey(
-                                offset: window.window.offset,
-                                limit: window.window.limit
-                            )
-                            sinks[key]?
-                                .value(window.items, Int(snapshot.totalCount))
-                        }
-                        onSelection(
-                            snapshot.selection,
-                            snapshot.selectionRevision
-                        )
-                    }
-                    fulfillViewWaiters(
-                        revision: snapshot.viewRevision,
-                        summary: summary
-                    )
-                }
-                catch {
-                    if Task.isCancelled { return }
-                    failEveryPage(with: error)
-                    // A failed read leaves nothing to wait on; the list rebuilds
-                    // itself from the error its pages just received.
-                    return
-                }
+        @MainActor
+        private func deliver(_ snapshot: BridgeImportListSnapshot) {
+            let sinks = registeredSinks()
+            onSummary(snapshot.summary)
+            onPendingFilterEntries(snapshot.pendingFilterEntries)
+            for window in snapshot.windows {
+                let key = WindowKey(
+                    offset: window.window.offset,
+                    limit: window.window.limit
+                )
+                sinks[key]?.value(window.items, Int(snapshot.totalCount))
             }
+            onSelection(snapshot.selection, snapshot.selectionRevision)
+            fulfillViewWaiters(
+                revision: snapshot.viewRevision,
+                summary: snapshot.summary
+            )
         }
 
+        /// Tell every page and every view waiter the source died of `error`.
+        /// Only the first failure is told: a later one, such as a request to
+        /// the stopped read, follows from it.
         private func failEveryPage(with error: any Error) {
             lock.lock()
+            guard failure == nil else {
+                lock.unlock()
+                return
+            }
             failure = error
             let sinks = self.sinks
             let waiters: [(UUID, ViewWaiter)] = viewWaiters.compactMap {
@@ -413,14 +401,20 @@ import Foundation
             }
         }
 
-        /// `changeView`, under the lock.
+        /// `changeView`, under the lock. Once the source has failed, a write
+        /// that fails answers with that failure, which it follows from.
         private func changeViewLocked(
             _ write: @escaping @Sendable () async throws -> UInt64
         ) -> Task<UInt64, any Error> {
             let previous = viewWrite
             let task = Task {
                 await previous?.value
-                return try await write()
+                do {
+                    return try await write()
+                }
+                catch {
+                    throw lock.withLock { failure } ?? error
+                }
             }
             viewWrite = Task { _ = await task.result }
             return task

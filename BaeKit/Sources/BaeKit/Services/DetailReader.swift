@@ -28,20 +28,14 @@ public struct KeyedDetailQuery<Value: Sendable, Id: Hashable & Sendable>:
     Sendable
 {
     public let setId: @Sendable (Id?) throws -> Void
-    public let next: @Sendable () async throws -> KeyedDetailDelivery<Value, Id>
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<KeyedDetailDelivery<Value, Id>>
 
     public init(
         setId: @escaping @Sendable (Id?) throws -> Void,
-        next:
-            @escaping @Sendable () async throws -> KeyedDetailDelivery<
-                Value, Id
-            >,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<KeyedDetailDelivery<Value, Id>>
     ) {
         self.setId = setId
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 }
 
@@ -59,7 +53,8 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     /// The text a log line names an id by.
     private let idText: (Id) -> String
     private var query: KeyedDetailQuery<Value, Id>?
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<KeyedDetailDelivery<Value, Id>>>?
     /// The item shown now, or `nil` before the first `show` and after
     /// `clear` or `close`.
     public private(set) var id: Id?
@@ -74,13 +69,6 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
         self.onValue = onValue
         self.onError = onError
         self.idText = idText
-    }
-
-    deinit {
-        deliveries?.cancel()
-        if let query {
-            Task { await query.cancel() }
-        }
     }
 
     /// Show `id`, opening the read on first use.
@@ -133,44 +121,35 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     private func openRead() -> KeyedDetailQuery<Value, Id> {
         let query = open()
         self.query = query
-        deliveries = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let delivery = try await query.next()
-                    guard let self else { return }
-                    guard let id = delivery.id, id == self.id else { continue }
-                    self.onValue(id, delivery.value)
-                }
-                catch BridgeError.Cancelled {
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] delivery in
+                guard let self, let id = delivery.id, id == self.id else {
                     return
                 }
-                catch is CancellationError {
-                    return
-                }
-                catch {
-                    guard let self else { return }
-                    if let id = self.id {
-                        self.onError(id, error)
-                    }
-                    else {
-                        // Nothing is shown to report it on; the read goes on.
-                        logger.warning(
-                            "detail read failed while showing nothing: \(String(reflecting: error))"
-                        )
-                    }
-                }
-            }
-        }
+                self.onValue(id, delivery.value)
+            },
+            onError: { [weak self] error in self?.readFailed(error) }
+        )
         return query
     }
 
-    private func closeRead() {
-        deliveries?.cancel()
-        deliveries = nil
-        if let query {
-            self.query = nil
-            Task { await query.cancel() }
+    private func readFailed(_ error: any Error) {
+        if let id {
+            onError(id, error)
         }
+        else {
+            // Nothing is shown to report it on; the read goes on.
+            logger.warning(
+                "detail read failed while showing nothing: \(String(reflecting: error))"
+            )
+        }
+    }
+
+    private func closeRead() {
+        deliveries?.stop()
+        deliveries = nil
+        query = nil
     }
 }
 

@@ -45,19 +45,16 @@ public struct LibraryBrowseDelivery<Row: Sendable>: Sendable {
 /// value it delivers answers every window it was asked for at once.
 public struct LibraryBrowseQuery<Row: Sendable>: Sendable {
     public let setWindows: @Sendable ([BridgeLibraryPageWindow]) throws -> Void
-    public let next: @Sendable () async throws -> LibraryBrowseDelivery<Row>
-    public let cancel: @Sendable () async -> Void
+    public let values: PulledValues<LibraryBrowseDelivery<Row>>
 
     public init(
         setWindows:
             @escaping @Sendable ([BridgeLibraryPageWindow]) throws
             -> Void,
-        next: @escaping @Sendable () async throws -> LibraryBrowseDelivery<Row>,
-        cancel: @escaping @Sendable () async -> Void
+        values: PulledValues<LibraryBrowseDelivery<Row>>
     ) {
         self.setWindows = setWindows
-        self.next = next
-        self.cancel = cancel
+        self.values = values
     }
 }
 
@@ -89,22 +86,22 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     public var itemCount: Int? { sectionStore.itemCount }
     private let lock = NSLock()
     private var sinks: [WindowKey: Sink] = [:]
-    private var deliveries: Task<Void, Never>?
+    private var deliveries:
+        ScreenSubscription<PulledValues<LibraryBrowseDelivery<Row>>>?
     /// The read failure this source died of, kept so a page registered after
-    /// it hears about it instead of waiting on a loop that already returned.
+    /// it hears about it instead of waiting on reads that already stopped.
     private var failure: (any Error)?
 
     public init(query: LibraryBrowseQuery<Row>) {
         self.query = query
-        deliveries = Task { [weak self] in
-            await self?.deliver()
-        }
-    }
-
-    deinit {
-        deliveries?.cancel()
-        let query = self.query
-        Task { await query.cancel() }
+        deliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] delivery in self?.deliver(delivery) },
+            onError: { [weak self] error in
+                self?.failEveryPage(with: error)
+                self?.deliveries?.stop()
+            }
+        )
     }
 
     public func subscribe(
@@ -161,36 +158,30 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
         }
     }
 
-    private func deliver() async {
-        while !Task.isCancelled {
-            do {
-                let delivery = try await query.next()
-                let sinks = lock.withLock { self.sinks }
-                await MainActor.run {
-                    sectionStore.values = delivery.sections
-                    sectionStore.itemCount = delivery.itemCount
-                    for window in delivery.windows {
-                        let key = WindowKey(
-                            offset: window.window.offset,
-                            limit: window.window.limit
-                        )
-                        sinks[key]?.value(window.rows, delivery.totalCount)
-                    }
-                }
-            }
-            catch {
-                if Task.isCancelled { return }
-                failEveryPage(with: error)
-                return
-            }
+    @MainActor
+    private func deliver(_ delivery: LibraryBrowseDelivery<Row>) {
+        let sinks = lock.withLock { self.sinks }
+        sectionStore.values = delivery.sections
+        sectionStore.itemCount = delivery.itemCount
+        for window in delivery.windows {
+            let key = WindowKey(
+                offset: window.window.offset,
+                limit: window.window.limit
+            )
+            sinks[key]?.value(window.rows, delivery.totalCount)
         }
     }
 
+    /// Tell every page the source died of `error`. Only the first failure
+    /// is told: a later one, such as a request to the stopped read, follows
+    /// from it.
     private func failEveryPage(with error: any Error) {
-        let sinks = lock.withLock {
+        let sinks: [WindowKey: Sink]? = lock.withLock {
+            guard failure == nil else { return nil }
             failure = error
             return self.sinks
         }
+        guard let sinks else { return }
         Task { @MainActor in
             for sink in sinks.values {
                 sink.error(error)

@@ -398,30 +398,32 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
         lock.withLock { reads.append(read) }
         return KeyedDetailQuery(
             setId: { [self] id in lock.withLock { ids.append(id) } },
-            next: { [self] in
-                try await withCheckedThrowingContinuation { continuation in
-                    let ready:
-                        Result<KeyedDetailDelivery<Value, Id>, any Error>? =
-                            lock.withLock {
-                                read.asks += 1
-                                if read.pending.isEmpty {
-                                    read.waiter = continuation
-                                    return nil
+            values: PulledValues(
+                read: { [self] in
+                    try await withCheckedThrowingContinuation { continuation in
+                        let ready:
+                            Result<KeyedDetailDelivery<Value, Id>, any Error>? =
+                                lock.withLock {
+                                    read.asks += 1
+                                    if read.pending.isEmpty {
+                                        read.waiter = continuation
+                                        return nil
+                                    }
+                                    return read.pending.removeFirst()
                                 }
-                                return read.pending.removeFirst()
-                            }
-                    if let ready { continuation.resume(with: ready) }
+                        if let ready { continuation.resume(with: ready) }
+                    }
+                },
+                cancel: { [self] in
+                    let waiter = lock.withLock {
+                        read.cancelled = true
+                        let waiter = read.waiter
+                        read.waiter = nil
+                        return waiter
+                    }
+                    waiter?.resume(throwing: BridgeError.Cancelled)
                 }
-            },
-            cancel: { [self] in
-                let waiter = lock.withLock {
-                    read.cancelled = true
-                    let waiter = read.waiter
-                    read.waiter = nil
-                    return waiter
-                }
-                waiter?.resume(throwing: BridgeError.Cancelled)
-            }
+            )
         )
     }
 
