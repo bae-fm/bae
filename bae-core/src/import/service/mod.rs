@@ -35,6 +35,7 @@ mod root_backend;
 mod root_scan_cause;
 mod scanning;
 mod watch_batches;
+mod worker;
 
 use active_roots::{ActiveRoots, FolderReadingRequest, RemovalOutcome, RootPass};
 use folder_watcher::FolderWatchSnapshot;
