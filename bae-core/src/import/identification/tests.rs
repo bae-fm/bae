@@ -844,6 +844,7 @@ impl Fixture {
                             },
                         }
                     }),
+                    releases: Vec::new(),
                 },
             )
             .await

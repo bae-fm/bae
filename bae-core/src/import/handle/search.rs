@@ -242,7 +242,7 @@ impl ImportServiceHandle {
                     .await?
                     .ok_or_else(|| crate::import::ImportError::Internal {
                         detail: format!(
-                            "{key} names {} release {} that nothing fetched",
+                            "{key} names {} release {} that is not stored",
                             claimed.catalog.as_str(),
                             claimed.key
                         ),
@@ -330,7 +330,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
-    ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
+    ) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
             self.library_manager
                 .load_source_release(release)

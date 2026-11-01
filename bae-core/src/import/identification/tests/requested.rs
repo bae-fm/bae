@@ -404,6 +404,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
                 verdict,
                 signals: settled_signals(),
                 pick: None,
+                releases: Vec::new(),
             },
         )
         .await

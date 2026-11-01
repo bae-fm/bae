@@ -268,6 +268,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
             &pane_candidate_key(),
             &seed,
             Some(&release_pick("rel-1")),
+            &[],
         )
         .await
         .unwrap();
@@ -334,6 +335,7 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
             &pane_candidate_key(),
             &metadata_draft("Album Title", "Artist Name"),
             Some(&release_pick("rel-1")),
+            &[],
         )
         .await
         .unwrap();
@@ -441,6 +443,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
             &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-1")),
+            &[],
         )
         .await
         .unwrap();
@@ -475,6 +478,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
             &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-1")),
+            &[],
         )
         .await
         .unwrap();
@@ -562,6 +566,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
             &pane_candidate_key(),
             &old_draft,
             Some(&release_pick("rel-1")),
+            &[],
         )
         .await
         .unwrap();
@@ -612,6 +617,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
             &pane_candidate_key(),
             &new_draft,
             Some(&release_pick("rel-2")),
+            &[],
         )
         .await
         .unwrap();
@@ -657,7 +663,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let mut blank = crate::import::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     blank.tracks.truncate(1);
     let cleared_revision = crate::import::CandidatePreparations::new(db.clone())
-        .replace_metadata(&hash, &pane_candidate_key(), &blank, None)
+        .replace_metadata(&hash, &pane_candidate_key(), &blank, None, &[])
         .await
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -696,6 +702,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
                 &pane_candidate_key(),
                 &metadata_draft("Album", "Artist"),
                 Some(&release_pick("rel-1")),
+                &[],
             )
             .await
             .unwrap(),
@@ -755,6 +762,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
             &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-chosen")),
+            &[],
         )
         .await
         .unwrap();
@@ -779,6 +787,7 @@ file_edit_revision: 0,
                 assets: crate::import::CandidatePreparedAssets::default(),
             },
             }),
+            releases: Vec::new(),
         })
         .await
         .unwrap());
@@ -824,6 +833,7 @@ file_edit_revision: 0,
                 assets: crate::import::CandidatePreparedAssets::default(),
             },
             }),
+            releases: Vec::new(),
         })
         .await
         .unwrap());
@@ -848,6 +858,7 @@ file_edit_revision: 0,
                 assets: crate::import::CandidatePreparedAssets::default(),
             },
             }),
+            releases: Vec::new(),
         })
         .await
         .unwrap());

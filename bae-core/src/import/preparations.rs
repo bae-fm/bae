@@ -156,6 +156,7 @@ impl CandidatePreparations {
         };
         let extras = CandidateSaveExtras {
             pane,
+            releases: verdict.releases.clone(),
             ..CandidateSaveExtras::default()
         };
         Ok(Some((prep, expected, extras)))
@@ -217,10 +218,8 @@ impl CandidatePreparations {
         prep.signals = None;
         prep.metadata.draft = draft;
         let extras = CandidateSaveExtras {
-            file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
-            pane: CandidatePaneWrite::Keep,
-            ends_identification: false,
+            ..CandidateSaveExtras::default()
         };
         match self
             .database
@@ -236,8 +235,9 @@ impl CandidatePreparations {
     }
 
     /// Replace the candidate's draft and its provenance as one transaction,
-    /// laying the new tracks over the stored rows' audio. File decisions
-    /// about the folder itself and the release link are untouched.
+    /// laying the new tracks over the stored rows' audio, and storing the
+    /// release the provenance names from `releases`. File decisions about the
+    /// folder itself and the release link are untouched.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn replace_metadata(
         &self,
@@ -245,6 +245,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
+        releases: &[crate::import::source_release::SourceRelease],
     ) -> Result<u64, LibraryError> {
         let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             crate::library::LibraryError::Refused(
@@ -258,18 +259,20 @@ impl CandidatePreparations {
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.apply_metadata(prep, None, candidate_key, metadata, None)
+        self.apply_metadata(prep, None, candidate_key, metadata, None, releases.to_vec())
             .await
     }
 
     /// Link the candidate to `link`, or to nothing, leaving everything else
     /// as it is: the state a pick or an unlink leaves the link in, without
-    /// fetching or reading any release.
+    /// fetching or reading any release. The releases the link names come
+    /// from `releases` where nothing stores them yet.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn replace_link(
         &self,
         content_hash: &str,
         link: Option<&crate::import::ReleaseLink>,
+        releases: &[crate::import::source_release::SourceRelease],
     ) -> Result<(), LibraryError> {
         let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             crate::library::LibraryError::Refused(
@@ -282,9 +285,13 @@ impl CandidatePreparations {
             metadata_revision: prep.metadata_revision,
             scanned: None,
         };
+        let extras = CandidateSaveExtras {
+            releases: releases.to_vec(),
+            ..CandidateSaveExtras::default()
+        };
         match self
             .database
-            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .save_candidate_preparation(prep, expected, extras)
             .await?
         {
             CandidateSaved::Landed(_) => Ok(()),
@@ -306,8 +313,15 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_path_buf(),
             candidate_path: candidate_key.clone(),
         };
-        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None)
-            .await
+        self.apply_metadata(
+            prep,
+            Some(scanned),
+            candidate_key,
+            metadata.clone(),
+            None,
+            Vec::new(),
+        )
+        .await
     }
 
     /// A person's pick: the candidate is linked to `link`, the draft read
@@ -317,6 +331,12 @@ impl CandidatePreparations {
     ///
     /// A person's chosen release is stored as a result like a run's, unless a
     /// run's result already stands. The read and the write share this load.
+    /// `releases` are the pick's releases as read, primary and partners,
+    /// stored in the same write.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one write's inputs, each a different part of the pick"
+    )]
     pub(crate) async fn apply_pick(
         &self,
         watched_folder_path: &std::path::Path,
@@ -325,6 +345,7 @@ impl CandidatePreparations {
         link: &crate::import::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
+        releases: Vec<crate::import::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
@@ -343,8 +364,15 @@ impl CandidatePreparations {
                 })
             }
         }
-        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None)
-            .await
+        self.apply_metadata(
+            prep,
+            Some(scanned),
+            candidate_key,
+            metadata.clone(),
+            None,
+            releases,
+        )
+        .await
     }
 
     /// The person could not tell which of the pressings the stored verdict
@@ -352,7 +380,9 @@ impl CandidatePreparations {
     /// pressings are of, and `draft` — the draft with what they agree on in
     /// it — replaces the draft, in one write. What the draft was read from
     /// stays as it is: the fields the pressings disagree on are still read
-    /// from there.
+    /// from there. `releases` are the pressings as the person's choice read
+    /// them, which replace the copies stored for the verdict's rows where
+    /// they read more.
     pub(crate) async fn apply_shared_album(
         &self,
         watched_folder_path: &std::path::Path,
@@ -360,6 +390,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         link: &crate::import::AlbumLink,
         draft: crate::import::CandidateDraft,
+        releases: Vec<crate::import::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
@@ -389,6 +420,7 @@ impl CandidatePreparations {
         // identification ends in the same write.
         let extras = CandidateSaveExtras {
             ends_identification: true,
+            releases,
             ..CandidateSaveExtras::default()
         };
         match self
@@ -484,6 +516,7 @@ impl CandidatePreparations {
             candidate_path,
             metadata,
             Some(snapshot.clone()),
+            Vec::new(),
         )
         .await
     }
@@ -504,7 +537,8 @@ impl CandidatePreparations {
     /// A source's projection becomes the candidate's metadata: the person
     /// applied it — a pick, their files' tags, or a cleared draft — so they
     /// are its author. The release link is the caller's to set; the draft
-    /// never changes it.
+    /// never changes it. `releases` are the catalog releases the link and the
+    /// provenance may name, as read, stored in the same write.
     async fn apply_metadata(
         &self,
         mut prep: CandidatePreparation,
@@ -512,6 +546,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+        releases: Vec<crate::import::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {
@@ -531,6 +566,7 @@ impl CandidatePreparations {
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
             ends_identification: true,
+            releases,
         };
         match self
             .database

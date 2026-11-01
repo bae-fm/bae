@@ -136,6 +136,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(),
         pick: None,
+        releases: Vec::new(),
     };
 
     assert!(

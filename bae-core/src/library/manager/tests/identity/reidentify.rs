@@ -161,8 +161,8 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 }
 
 /// Saving the applied release writes its records, the applied one first, and
-/// every value it gives: the tracks take its titles. The picked release is
-/// stored under its own key with its release group.
+/// every value it gives: the tracks take its titles. No row names the picked
+/// release, so it is read and never stored.
 #[tokio::test]
 async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -202,11 +202,11 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
         .map(|track| track.title)
         .collect();
     assert_eq!(titles, ["Track 1", "Track 2", "Track 3"]);
-    let stored = stored_for(&manager, Catalog::MusicBrainz, new_release_id)
-        .await
-        .expect("the picked release is stored");
-    assert_eq!(stored.source_group_id.as_deref(), Some(new_group_id));
-    assert!(stored.unfetched.is_empty(), "{:?}", stored.unfetched);
+    assert_eq!(
+        stored_for(&manager, Catalog::MusicBrainz, new_release_id).await,
+        None,
+        "nothing names the picked release, so nothing stores it"
+    );
 }
 
 /// A release whose tracks the picked release cannot lay out is refused with
@@ -754,12 +754,15 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     );
     assert_eq!(discogs.key(), discogs_release_id);
 
-    // The partner is stored under its own key, so a later reset or read of
-    // that record needs no network.
-    assert!(
-        stored_for(&manager, Catalog::Discogs, discogs_release_id)
-            .await
-            .is_some(),
-        "the partner's own release is stored by the re-identify"
-    );
+    // No row names the applied releases, so neither is stored.
+    for (catalog, release_id) in [
+        (Catalog::MusicBrainz, mb_release_id),
+        (Catalog::Discogs, discogs_release_id),
+    ] {
+        assert_eq!(
+            stored_for(&manager, catalog, release_id).await,
+            None,
+            "a re-identify stores none of the releases it reads"
+        );
+    }
 }

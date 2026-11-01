@@ -134,7 +134,7 @@ impl CandidateRuntime {
         let outcome = super::published_outcome(key, run, state)?;
         let moved = self
             .database
-            .start_candidate_run(key, files, run, &outcome)
+            .start_candidate_run(key, files, run, &outcome, state.read_releases())
             .await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;

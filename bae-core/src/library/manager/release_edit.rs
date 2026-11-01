@@ -185,20 +185,25 @@ impl LibraryManager {
         link: &crate::import::PressingLink,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         let release_id = session.release_id();
+        // Nothing names these releases, so they are read and never stored.
         let release = crate::import::service::prepare_release(
             self,
             &link.record,
             crate::import::payloads::ReadDepth::Complete,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
-        .await?;
-        let partners = crate::import::service::prepare_partners(
+        .await?
+        .release;
+        let partners: Vec<_> = crate::import::service::prepare_partners(
             self,
             &link.record,
             &link.partners,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
-        .await?;
+        .await?
+        .into_iter()
+        .map(|partner| partner.release)
+        .collect();
         let audio = self.release_read_audio(release_id).await?;
         let values = release
             .read(&audio)

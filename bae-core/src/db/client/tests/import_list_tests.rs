@@ -108,6 +108,7 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
                 track_titles: Vec::new(),
             },
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap());
@@ -217,6 +218,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
                     "mb-picked".to_string(),
                 ),
             }),
+            &[],
         )
         .await
         .unwrap();
@@ -229,6 +231,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
                     partners: vec![],
                 },
             )),
+            &[],
         )
         .await
         .unwrap();
@@ -271,6 +274,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
                     "mb-never-fetched".to_string(),
                 ),
             }),
+            &[],
         )
         .await
         .expect_err("a pick of a release nothing stored is refused");
@@ -405,6 +409,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
                 track_titles: Vec::new(),
             },
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap());
@@ -704,6 +709,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &crate::import::pane::blank_candidate_draft(&candidate.files).release_edit(),
             None,
+            &[],
         )
         .await
         .unwrap();

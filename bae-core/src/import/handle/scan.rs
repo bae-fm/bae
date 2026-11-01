@@ -429,7 +429,8 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let release = self.release_for_pick(&candidate_key, &link.record).await?;
+        let prepared = self.release_for_pick(&candidate_key, &link.record).await?;
+        let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
         self.land_picked(&candidate_key, release.release(), release.album_links())
@@ -455,9 +456,26 @@ impl ImportServiceHandle {
         )
         .await?;
         for partner in &prepared_partners {
-            self.land_picked(&candidate_key, partner.release(), partner.album_links())
-                .await?;
+            self.land_picked(
+                &candidate_key,
+                partner.release.release(),
+                partner.release.album_links(),
+            )
+            .await?;
         }
+        // The pick's releases as read, stored in the pick's write, which
+        // names them.
+        let releases: Vec<_> = std::iter::once(prepared.stored.clone())
+            .chain(
+                prepared_partners
+                    .iter()
+                    .map(|partner| partner.stored.clone()),
+            )
+            .collect();
+        let prepared_partners: Vec<_> = prepared_partners
+            .into_iter()
+            .map(|partner| partner.release)
+            .collect();
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
         let detail = release.detail(&prepared_partners);
@@ -484,7 +502,7 @@ impl ImportServiceHandle {
         );
         let metadata = self
             .external_candidate_metadata(
-                &release,
+                release,
                 values,
                 prepared_partners,
                 &current.draft,
@@ -513,6 +531,7 @@ impl ImportServiceHandle {
                 &link,
                 &metadata,
                 settled_by_choice,
+                releases,
             )
             .await?)
     }

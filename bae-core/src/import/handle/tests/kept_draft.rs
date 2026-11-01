@@ -32,6 +32,7 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
                 track_titles: Vec::new(),
             },
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap();

@@ -137,11 +137,15 @@ fn new_candidate_row(
         verdict: verdict.clone(),
         signals: sample_signals(),
         pick: None,
+        releases: Vec::new(),
     }
 }
 
 #[path = "verdict_round_trips.rs"]
 mod verdict_round_trips;
+
+#[path = "catalog_release_retention.rs"]
+mod catalog_release_retention;
 
 /// Resizing a file changes `content_hash`, so the new hash finds no row and the
 /// old row stays under its own key.
@@ -179,8 +183,8 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     );
 }
 
-/// Store MusicBrainz release `release_id` as a fetch would, so a pick can name
-/// it.
+/// Store MusicBrainz release `release_id` as the setup of a write that names
+/// it, which then finds it stored.
 async fn fetched(db: &Database, release_id: &str) {
     db.save_source_release(&fetched_release(release_id))
         .await
@@ -266,6 +270,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
                 &key,
                 &metadata_draft("Album", "Artist"),
                 Some(provenance),
+                &[],
             )
             .await
             .unwrap();
@@ -348,6 +353,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
             &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("mb-rel-chosen")),
+            &[],
         )
         .await
         .unwrap();
@@ -454,6 +460,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
             &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("mb-rel-chosen")),
+            &[],
         )
         .await
         .unwrap();

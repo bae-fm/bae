@@ -401,6 +401,9 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         notes: Vec::new(),
         links: Vec::new(),
         album_links: AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
+        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+            MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        )),
     };
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
     let driver = Driver {

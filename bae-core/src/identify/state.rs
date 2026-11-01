@@ -115,6 +115,22 @@ impl IdentifyState {
             .unwrap_or_default()
     }
 
+    /// The releases this run read the documents of, as their read stores
+    /// them: what a write of the rows naming them stores beside those rows.
+    pub(crate) fn read_releases(&self) -> Vec<crate::import::source_release::SourceRelease> {
+        self.context()
+            .map(|context| {
+                context
+                    .documents
+                    .read()
+                    .iter()
+                    .filter_map(|reading| reading.document.as_ref().ok())
+                    .map(|document| document.stored.as_ref().clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Whether the run has nothing left in flight.
     pub fn is_terminal(&self) -> bool {
         match self {

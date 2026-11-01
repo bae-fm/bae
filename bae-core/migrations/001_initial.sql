@@ -2979,10 +2979,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     release_id   TEXT,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id),
+    -- The release is stored in the write that names it here, in either order,
+    -- so the key is checked as the write commits.
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+        DEFERRABLE INITIALLY DEFERRED,
     CHECK ((kind = 'external_release') = (source IS NOT NULL)),
     CHECK ((kind = 'external_release') = (release_id IS NOT NULL))
 ) STRICT;
+
+-- The drafts read from a catalog release, which keep it stored.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_draft_provenance_release
+    ON import_candidate_draft_provenance (source, release_id);
 
 -- What the candidate is linked to in the catalogs: the pressing picked for its
 -- folder ('pressing', naming the release the pick names first), or the album
@@ -3000,10 +3007,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_release_link (
     UNIQUE (content_hash, kind),
     FOREIGN KEY (content_hash)
         REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id),
+    -- Checked as the write commits, as the provenance's is.
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+        DEFERRABLE INITIALLY DEFERRED,
     CHECK ((kind = 'pressing') = (source IS NOT NULL)),
     CHECK ((kind = 'pressing') = (release_id IS NOT NULL))
 ) STRICT;
+
+-- The candidates linked to a catalog release, which keep it stored.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_release_link_release
+    ON import_candidate_release_link (source, release_id);
 
 -- The releases in the other catalogs the linked pressing paired with.
 CREATE TABLE IF NOT EXISTS import_candidate_release_link_partner (
@@ -3014,8 +3027,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_release_link_partner (
     PRIMARY KEY (content_hash, source),
     FOREIGN KEY (content_hash, kind)
         REFERENCES import_candidate_release_link (content_hash, kind) ON DELETE CASCADE,
+    -- Checked as the write commits, as the provenance's is.
     FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+        DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
+
+-- The linked pressings a catalog release partners, which keep it stored.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_release_link_partner_release
+    ON import_candidate_release_link_partner (source, release_id);
 
 -- The linked album in each catalog that files it: its MusicBrainz release
 -- group, its Discogs master.
@@ -3573,6 +3592,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- A search's release states its album only once a pick read it.
     CHECK (picked IS NOT 0 OR album_links = 'not_asked')
 ) STRICT;
+
+-- The rows naming a catalog release, which keep it stored where it was read.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_match_release
+    ON import_candidate_match (source, release_id);
 
 -- Every label a matched record is on, in its order, each stating a name, a
 -- catalog number or both.
@@ -5440,7 +5463,13 @@ END;
 
 -- One catalog release bae fetched, with every fact the import reads from it
 -- extracted at fetch time. Device-local, since any device can fetch it; a new
--- fetch replaces every row under it at once.
+-- fetch replaces every row under it at once. A release is stored only while
+-- something names it: a match row of a verdict, a run or a search
+-- (import_candidate_match), a draft read from it
+-- (import_candidate_draft_provenance), a link (import_candidate_release_link)
+-- or a linked pressing's partner (import_candidate_release_link_partner). It
+-- is stored in the write that writes the first row naming it, and the
+-- triggers below delete it in the write that drops the last.
 CREATE TABLE IF NOT EXISTS source_release (
     catalog            TEXT NOT NULL CHECK (catalog IN ('musicbrainz', 'discogs')),
     release_id         TEXT NOT NULL CHECK (release_id <> ''),
@@ -5824,6 +5853,132 @@ CREATE TABLE IF NOT EXISTS source_release_unfetched (
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
+
+-- A row that stops naming a catalog release, deleted or renamed, deletes the
+-- release when no other row names it.
+CREATE TRIGGER IF NOT EXISTS source_release_unnamed_by_match
+AFTER DELETE ON import_candidate_match
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_renamed_by_match
+AFTER UPDATE OF source, release_id ON import_candidate_match
+WHEN OLD.source IS NOT NEW.source OR OLD.release_id IS NOT NEW.release_id
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_unnamed_by_provenance
+AFTER DELETE ON import_candidate_draft_provenance
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_renamed_by_provenance
+AFTER UPDATE OF source, release_id ON import_candidate_draft_provenance
+WHEN OLD.source IS NOT NEW.source OR OLD.release_id IS NOT NEW.release_id
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_unnamed_by_link
+AFTER DELETE ON import_candidate_release_link
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_renamed_by_link
+AFTER UPDATE OF source, release_id ON import_candidate_release_link
+WHEN OLD.source IS NOT NEW.source OR OLD.release_id IS NOT NEW.release_id
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_unnamed_by_link_partner
+AFTER DELETE ON import_candidate_release_link_partner
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_release_renamed_by_link_partner
+AFTER UPDATE OF source, release_id ON import_candidate_release_link_partner
+WHEN OLD.source IS NOT NEW.source OR OLD.release_id IS NOT NEW.release_id
+BEGIN
+    DELETE FROM source_release
+    WHERE catalog = OLD.source AND release_id = OLD.release_id
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
+                      WHERE source = OLD.source AND release_id = OLD.release_id)
+      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
+                      WHERE source = OLD.source AND release_id = OLD.release_id);
+END;
 
 -- Profiles retain the stable member id even after membership removal.
 -- `avatar_id` is the profile picture's coven file (`coven_files`); NULL is

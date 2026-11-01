@@ -251,11 +251,12 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     .unwrap();
     assert!(
         !read_by_the_run
+            .release
             .records()
             .iter()
             .any(|record| record.catalog() == bae_catalogs::catalog::Catalog::MusicBrainz),
         "the run's read asks MusicBrainz nothing: {:?}",
-        read_by_the_run.records()
+        read_by_the_run.release.records()
     );
 
     handle
@@ -301,7 +302,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "linked-mb-rel-1"
             ))));
-    assert_eq!(picked, complete);
+    assert_eq!(picked, complete.release);
 }
 
 /// A two-track Discogs release with no master, seeded into the release cache.

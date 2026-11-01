@@ -474,6 +474,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
         signals: settled_signals(),
         pick: None,
+        releases: Vec::new(),
     };
 
     // The run's terminal state is what puts the key on a pending save.

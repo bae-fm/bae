@@ -43,6 +43,10 @@ pub struct NewImportCandidateVerdict {
     /// release picks one, and the pick replaces whatever link and draft
     /// stand.
     pub pick: Option<VerdictPick>,
+    /// The catalog releases the run read, and the pick's as its settle read
+    /// them: each one the verdict's rows or the pick name is stored in the
+    /// verdict's write.
+    pub releases: Vec<crate::import::source_release::SourceRelease>,
 }
 
 /// The release an identification run picked unattended, and the draft it

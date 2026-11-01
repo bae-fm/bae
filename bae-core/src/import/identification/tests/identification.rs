@@ -381,7 +381,10 @@ fn a_document_lists_its_tracks_titles() {
     );
     let release = payloads.extract().unwrap();
     let document = crate::identify::documents::ReleaseDocument::of(
-        &release,
+        crate::import::source_release::PreparedRelease {
+            stored: release.clone(),
+            release,
+        },
         &crate::import::catalog_reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
     assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });

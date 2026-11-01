@@ -3,9 +3,10 @@
 //! A search result states less than its release's document: a Discogs result
 //! names only its first label, no lookup's answer lists the tracklist read
 //! against the folder's audio, and a result may leave out the barcode its
-//! document states. Every record of every offered row is read and stored
-//! where a pick reads it (see `crate::import::service::prepare_release`), as
-//! far as what is read here needs: the release's own page, its album's page,
+//! document states. Every record of every offered row is read where a pick
+//! reads it (see `crate::import::service::prepare_release`), as far as what
+//! is read here needs, and held with the run until the write of the rows
+//! naming it stores it: the release's own page, its album's page,
 //! and for a MusicBrainz release the Wikidata items and Discogs releases its
 //! album statements read. A release a Disc ID lookup returned is read from
 //! that answer, which lists everything here but the annotation: its notes are
@@ -96,14 +97,18 @@ pub struct ReleaseDocument {
     /// What its documents state its album is on the other lookup catalog;
     /// `NotAsked` for a Discogs release, whose documents state none.
     pub album_links: AlbumLinks,
+    /// The release as its read stores it, which the write of the run's rows
+    /// naming it stores.
+    pub(crate) stored: std::sync::Arc<crate::import::source_release::SourceRelease>,
 }
 
 impl ReleaseDocument {
-    /// What `release` states, read against the audio being identified.
+    /// What `prepared` states, read against the audio being identified.
     pub(crate) fn of(
-        release: &crate::import::source_release::SourceRelease,
+        prepared: crate::import::source_release::PreparedRelease,
         audio: &crate::import::catalog_reading::ReadAudio,
     ) -> Self {
+        let release = &prepared.release;
         let reading = release.read(audio);
         Self {
             labels: release.pressing().labels.clone(),
@@ -117,6 +122,7 @@ impl ReleaseDocument {
             notes: release.notes.clone(),
             links: release.links(),
             album_links: release.album_links(),
+            stored: std::sync::Arc::new(prepared.stored),
         }
     }
 }

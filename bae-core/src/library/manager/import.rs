@@ -311,8 +311,8 @@ impl LibraryManager {
         )
     }
 
-    /// The fetched release `release` names, as its extraction stored it, or
-    /// `None` when nothing has fetched it.
+    /// The stored release `release` names, as import surfaces read it, or
+    /// `None` when no row names it.
     pub(crate) async fn load_source_release(
         &self,
         release: &crate::import::MetadataRef,
@@ -320,6 +320,26 @@ impl LibraryManager {
         Ok(self.database.load_source_release(release).await?)
     }
 
+    /// The stored release `release` names, as its rows hold it beside how
+    /// import surfaces read it, or `None` when no row names it.
+    pub(crate) async fn load_prepared_release(
+        &self,
+        release: &crate::import::MetadataRef,
+    ) -> Result<Option<crate::import::source_release::PreparedRelease>, LibraryError> {
+        Ok(self.database.load_prepared_release(release).await?)
+    }
+
+    /// `stored`, a release just fetched, beside how import surfaces read it.
+    pub(crate) async fn prepared_release(
+        &self,
+        stored: crate::import::source_release::SourceRelease,
+    ) -> Result<crate::import::source_release::PreparedRelease, LibraryError> {
+        Ok(self.database.prepared_release(stored).await?)
+    }
+
+    /// Store `release` with no row naming it, which only a test's setup
+    /// does.
+    #[cfg(test)]
     pub(crate) async fn save_source_release(
         &self,
         release: &crate::import::source_release::SourceRelease,

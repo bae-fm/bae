@@ -75,6 +75,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
                     partners: vec![],
                 },
             )),
+            &[],
         )
         .await
         .unwrap();

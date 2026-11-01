@@ -64,6 +64,11 @@ pub(crate) struct CandidateSaveExtras {
     /// ends its identification in the same write: no read sees the decision
     /// beside the identification it answers.
     pub ends_identification: bool,
+    /// The catalog releases the save's rows may name, as they were read:
+    /// each one a row names once the save's rows are written is stored in
+    /// the same write, and the rest are not (a release is stored only while
+    /// something names it).
+    pub releases: Vec<crate::import::source_release::SourceRelease>,
 }
 
 /// What this save does to where the candidate's pane stands.
@@ -84,6 +89,7 @@ impl Default for CandidateSaveExtras {
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
             ends_identification: false,
+            releases: Vec::new(),
         }
     }
 }
@@ -388,6 +394,9 @@ pub(super) fn save_preparation_on(
             )));
         }
     }
+    // The verdict, link and provenance written above name these, or some
+    // of them; the rows naming a release that are gone took it with them.
+    super::super::source_releases::store_named_releases_on(sql, &extras.releases)?;
     if extras.ends_identification {
         super::change_identification_on(
             sql,

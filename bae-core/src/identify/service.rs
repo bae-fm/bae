@@ -739,7 +739,7 @@ fn dispatch_effect(
                             return;
                         };
                         let document = stored.map(|stored| {
-                            crate::identify::documents::ReleaseDocument::of(&stored, &audio)
+                            crate::identify::documents::ReleaseDocument::of(stored, &audio)
                         });
                         read.push(crate::identify::documents::ReleaseReading {
                             release: release.release().clone(),
@@ -770,9 +770,13 @@ fn dispatch_effect(
                             else {
                                 return;
                             };
+                            // Read, not held: the documents read for the
+                            // rows the run offers hold what it stores.
                             stored
                                 .map(|stored| {
-                                    vec![crate::import::search::MetadataResult::of_release(&stored)]
+                                    vec![crate::import::search::MetadataResult::of_release(
+                                        &stored.release,
+                                    )]
                                 })
                                 .map_err(Failure::Lookup)
                         }
@@ -861,15 +865,15 @@ fn dispatch_effect(
     }
 }
 
-/// `read`'s release from storage or read where `read` says and stored now, as
-/// far as ranking it needs, or why its catalog could not give it. `None` when
-/// bae broke reading it: the run has then been told, and ends.
+/// `read`'s release from storage or read where `read` says, as far as ranking
+/// it needs, or why its catalog could not give it. `None` when bae broke
+/// reading it: the run has then been told, and ends.
 async fn read_release(
     library_manager: &LibraryManager,
     read: &ReleaseToRead,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
-) -> Option<Result<crate::import::source_release::SourceRelease, crate::signals::LookupFailure>> {
+) -> Option<Result<crate::import::source_release::PreparedRelease, crate::signals::LookupFailure>> {
     let prepared = match read {
         ReleaseToRead::ReleaseLookup(release) => {
             crate::import::service::prepare_release(

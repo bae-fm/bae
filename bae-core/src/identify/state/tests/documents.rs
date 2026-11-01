@@ -53,6 +53,9 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
         notes: Vec::new(),
         links: Vec::new(),
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
+        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "release-1"),
+        )),
     }
 }
 

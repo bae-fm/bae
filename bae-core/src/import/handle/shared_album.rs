@@ -68,20 +68,23 @@ impl ImportServiceHandle {
         // whole, leaving the candidate as it was.
         let mut offered = Vec::with_capacity(shared.leads.len());
         let mut records = Vec::with_capacity(shared.leads.len());
+        let mut releases = Vec::with_capacity(shared.leads.len());
         for lead in &shared.leads {
-            let release = crate::import::service::prepare_release(
+            let prepared = crate::import::service::prepare_release(
                 &self.library_manager,
                 lead,
                 crate::import::payloads::ReadDepth::Complete,
                 CallPriority::Interactive,
             )
             .await?;
-            records.push(crate::import::search::MetadataResult::of_release(&release));
+            let release = &prepared.release;
+            records.push(crate::import::search::MetadataResult::of_release(release));
             offered.push(crate::import::shared_album::OfferedReading::of(
                 &release
                     .read(&audio)
                     .map_err(crate::import::ImportError::from)?,
             ));
+            releases.push(prepared.stored);
         }
         let draft = crate::import::shared_album::shared_draft(
             &current.draft,
@@ -108,6 +111,7 @@ impl ImportServiceHandle {
                 &candidate_key,
                 &shared.link,
                 draft,
+                releases,
             )
             .await?)
     }

@@ -444,6 +444,7 @@ async fn a_cancelled_candidate_writes_no_row() {
                 track_titles: Vec::new(),
             },
             None,
+            Vec::new(),
         )
         .await,
         Settled::Abandoned

@@ -51,6 +51,7 @@ file_edit_revision: 0,
             verdict: sample_verdict(),
             signals,
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap()
@@ -389,6 +390,7 @@ file_edit_revision: 0,
                 verdict: sample_verdict(),
                 signals: scanning,
                 pick: None,
+                releases: Vec::new(),
             })
             .await
             .expect_err("a scanning signal is not storable");

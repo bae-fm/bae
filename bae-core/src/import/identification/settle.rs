@@ -46,6 +46,9 @@ enum SettledLead {
         link: crate::import::PressingLink,
         release: crate::import::source_release::SourceRelease,
         partners: Vec<crate::import::source_release::SourceRelease>,
+        /// The primary and the partners as their read stores them, which the
+        /// verdict's write stores beside the link naming them.
+        stored: Vec<crate::import::source_release::SourceRelease>,
         /// The year the draft's pressing takes where the release states none.
         pressing_year: Option<i32>,
     },
@@ -153,6 +156,8 @@ async fn settle_verdict(
     // The text the run judged its rows against, which the verdict does not
     // keep: what the pick's year falls back on.
     let text = state.candidate_text();
+    // The releases the run read, which its verdict's rows name.
+    let mut releases = state.read_releases();
     let mut verdict =
         TerminalVerdict::try_from(state).expect("the queue settles only terminal identify states");
 
@@ -188,6 +193,7 @@ async fn settle_verdict(
             link,
             release,
             partners,
+            stored,
             pressing_year,
         } => match lead_metadata(
             context,
@@ -200,11 +206,19 @@ async fn settle_verdict(
         )
         .await
         {
-            Ok(metadata) => metadata.map(|metadata| crate::db::VerdictPick { link, metadata }),
+            Ok(metadata) => {
+                // Read in full, so stored over the run's copies where those
+                // stopped short.
+                releases.extend(stored);
+                metadata.map(|metadata| crate::db::VerdictPick { link, metadata })
+            }
             Err(settled) => return settled,
         },
     };
-    save(context, token, run, candidate, &verdict, signals, pick).await
+    save(
+        context, token, run, candidate, &verdict, signals, pick, releases,
+    )
+    .await
 }
 
 /// The draft the picked release reads into, with the cover it is read with,
@@ -299,7 +313,12 @@ async fn lead_metadata(
     )))
 }
 
-/// Write one row, unless the answer was given up right before the write.
+/// Write one row, with the catalog releases it may name, unless the answer
+/// was given up right before the write.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the parts of one verdict write, each from a different step of the settle"
+)]
 pub(super) async fn save(
     context: &Context,
     token: &CancellationToken,
@@ -308,6 +327,7 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     pick: Option<crate::db::VerdictPick>,
+    releases: Vec<crate::import::source_release::SourceRelease>,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;
@@ -323,6 +343,7 @@ pub(super) async fn save(
         verdict: verdict.clone(),
         signals,
         pick,
+        releases,
     };
     match context
         .import
@@ -346,9 +367,8 @@ pub(super) async fn save(
     }
 }
 
-/// Settle a candidate's lead: the stored releases of the pressing the verdict
-/// picks unattended, primary and partners, which the run already fetched and
-/// stored. A verdict that picks none stands as the run found it, for the
+/// Settle a candidate's lead: the releases of the pressing the verdict picks
+/// unattended, primary and partners, read in full. A verdict that picks none stands as the run found it, for the
 /// person to pick from or not. A provider that fails to answer for the lead
 /// fails the verdict as a lookup; anything else that stops the settle is what
 /// becomes of the answer.
@@ -418,10 +438,21 @@ async fn settle_lead(
             return Ok(SettledLead::NoExternalRelease);
         }
     };
+    let stored = std::iter::once(release.stored)
+        .chain(
+            prepared_partners
+                .iter()
+                .map(|partner| partner.stored.clone()),
+        )
+        .collect();
     Ok(SettledLead::ExternalRelease {
         link: pressing.pick(),
-        release,
-        partners: prepared_partners,
+        release: release.release,
+        partners: prepared_partners
+            .into_iter()
+            .map(|partner| partner.release)
+            .collect(),
+        stored,
         pressing_year,
     })
 }

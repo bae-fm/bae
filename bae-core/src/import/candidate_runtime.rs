@@ -327,7 +327,7 @@ impl CandidateRuntime {
     ) -> Result<bool, DbError> {
         let outcome = published_outcome(key, run, state)?;
         self.database
-            .publish_candidate_run(key, run, &outcome, signals)
+            .publish_candidate_run(key, run, &outcome, state.read_releases(), signals)
             .await
     }
 
@@ -345,7 +345,7 @@ impl CandidateRuntime {
             None => self.database.end_release_run(key, run).await,
             Some(outcome) => {
                 self.database
-                    .publish_release_run(key, run, &outcome, signals)
+                    .publish_release_run(key, run, &outcome, state.read_releases(), signals)
                     .await
             }
         }

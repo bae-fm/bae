@@ -668,17 +668,18 @@ fn spawn_root_scan(
 }
 
 /// The release `release_ref` names, read to `depth`, from storage or fetched
-/// and stored now. A stored release is fetched again only when that could add
-/// what its fetch missed at this depth: a complete read of a release an
-/// identify run read reads the rest before anything applies it. Takes the
-/// bare `LibraryManager` because the sweep and library re-identification do
-/// not hold an `ImportServiceHandle`.
+/// now. A stored release is fetched again only when that could add what its
+/// fetch missed at this depth: a complete read of a release an identify run
+/// read reads the rest before anything applies it. Nothing is stored here:
+/// the write that names the release stores it. Takes the bare
+/// `LibraryManager` because the sweep and library re-identification do not
+/// hold an `ImportServiceHandle`.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
     depth: crate::import::payloads::ReadDepth,
     priority: CallPriority,
-) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
+) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
     prepare(
         library_manager,
         release_ref,
@@ -689,14 +690,14 @@ pub(crate) async fn prepare_release(
 }
 
 /// The release a Disc ID lookup returned, read as far as an identify run
-/// ranks it: from storage, or read from `answered` and stored now, where
+/// ranks it: from storage, or read from `answered`, where
 /// [`prepare_release`] would fetch it. Only the documents its pages link are
 /// asked for; a complete read of it fetches its own document as well.
 pub(crate) async fn prepare_disc_id_release(
     library_manager: &LibraryManager,
     answered: &crate::import::payloads::DiscIdRelease,
     priority: CallPriority,
-) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
+) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
     prepare(
         library_manager,
         answered.release(),
@@ -707,7 +708,7 @@ pub(crate) async fn prepare_disc_id_release(
 }
 
 /// `release_ref` from storage, unless reading it again at `depth` could add
-/// what its stored read missed; otherwise `read`, stored and read back.
+/// what its stored read missed; otherwise what `read` extracts.
 async fn prepare(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
@@ -715,29 +716,18 @@ async fn prepare(
     read: impl std::future::Future<
         Output = Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError>,
     >,
-) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
-    if let Some(stored) = library_manager.load_source_release(release_ref).await? {
+) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+    if let Some(stored) = library_manager.load_prepared_release(release_ref).await? {
         let discogs_configured =
             library_manager.can_fetch_releases_from(bae_catalogs::catalog::Catalog::Discogs)?;
-        if !stored.fetch_could_add(depth, discogs_configured) {
+        if !stored.stored.fetch_could_add(depth, discogs_configured) {
             return Ok(stored);
         }
     }
     let payloads = read.await?;
-    library_manager
-        .save_source_release(&payloads.extract()?)
-        .await?;
-    // Read back: the stored records carry what its album's group added.
-    library_manager
-        .load_source_release(release_ref)
-        .await?
-        .ok_or_else(|| crate::import::ImportError::Internal {
-            detail: format!(
-                "{} release {} was stored and did not read back",
-                release_ref.catalog.as_str(),
-                release_ref.key
-            ),
-        })
+    Ok(library_manager
+        .prepared_release(payloads.extract()?)
+        .await?)
 }
 
 /// Prepare every partner release of this pick: other catalogs' releases of the
@@ -748,7 +738,7 @@ pub(crate) async fn prepare_partners(
     primary: &MetadataRef,
     partners: &[MetadataRef],
     priority: CallPriority,
-) -> Result<Vec<crate::import::source_release::SourceRelease>, crate::import::ImportError> {
+) -> Result<Vec<crate::import::source_release::PreparedRelease>, crate::import::ImportError> {
     let mut claimed = vec![primary.catalog];
     let mut prepared = Vec::with_capacity(partners.len());
     for partner in partners {

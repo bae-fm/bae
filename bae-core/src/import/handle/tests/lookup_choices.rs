@@ -259,6 +259,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 track_titles: Vec::new(),
             },
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap();

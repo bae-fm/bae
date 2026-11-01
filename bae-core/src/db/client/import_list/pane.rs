@@ -360,7 +360,7 @@ fn claimed_releases_on(
         .map(|release| {
             load_source_release_on(sql, release)?.ok_or_else(|| {
                 DbError::Message(format!(
-                    "{} is claimed for {} but nothing fetched it",
+                    "{} is claimed for {} but is not stored",
                     release.key,
                     candidate.key()
                 ))

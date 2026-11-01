@@ -927,7 +927,7 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    lookup returned is read from that answer, which lists its tracks, its
    mediums and their Disc IDs, its labels, barcode, links and release group,
    but not its annotation: until a pick reads it, its notes are its
-   disambiguation alone. The release is stored naming every other document
+   disambiguation alone. The release is read naming every other document
    its pages link as one the read stopped short of, and its own page too
    where the read took it from a Disc ID answer; a pick, an unattended pick
    included, reads the rest, that page included, before it applies anything.
@@ -1072,8 +1072,19 @@ sets one pressing's notes apart, which the folder's text also states, ranks
 that pressing first among otherwise equal ones.
 
 A run's answers are kept with its verdict, so they re-rank without being
-fetched again, and a fetched release is stored on the device (`source_release`
-and its tables, Appendix A). So is the run as the pane lays it out: how each
+fetched again, and a release whose document it read is stored on the device
+(`source_release` and its tables, Appendix A) for as long as something names
+it. A catalog release is stored only while a row names it: a match of a
+verdict, of a run in flight or of a typed search, a draft read from it, a link
+to it, or a linked pressing it partners. A fetched release is held in memory
+until the write that writes the first such row, which stores it; a fetch whose
+release no row names, such as a library release's re-identify applying a
+release, stores nothing. The write that drops the last row naming a release —
+a verdict replaced or cleared, a run ending, a search replaced, a pick of
+another release, an unlink, an import, a folder leaving the queue — deletes
+it. A write that names a release already stored replaces it only where its
+copy read a document the stored one could not, so a copy read earlier never
+overwrites a fuller one. So is the run as the pane lays it out: how each
 clue stood, its rows, and each catalog's answer to each row — the releases it
 found, nothing, a failure, or why nobody was asked. Every release a lookup
 found is kept, also one no list shows because its tracklist doesn't fit or it
@@ -3722,7 +3733,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3), or those a run in flight last read (A.5) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
 | `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict. Owned by a candidate's files, or by a run in flight (A.5), whose row may be `running`; this table, its matches and its ledger rows name their owner the same way |
-| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), so a later fetch of it shows |
+| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), as that release is stored now |
 | `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from |
 | `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
@@ -3743,12 +3754,17 @@ standings.
 
 ### A.8 Catalog releases
 
-Device-local: any device can fetch a release. A new fetch replaces every row
-under it.
+Device-local: any device can fetch a release. A release is stored in the
+write that writes the first row naming it (a match, a draft's provenance, a
+link or a linked pressing's partner), and triggers on those four tables delete
+it in the write that drops the last; a later write's copy replaces every row
+under it only where it read a document the stored copy lists as unfetched
+(§3.4). The provenance, link and partner rows name it by a key checked as the
+write commits, so the release and the row naming it land in either order.
 
 | Table | Holds |
 |---|---|
-| `source_release` | one fetched catalog release and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
+| `source_release` | one catalog release a row names, as fetched, and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
 | `source_release_label`, `source_release_barcode` | its labels, each with its catalog number and the label's catalog ids, and its barcodes, in order |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |

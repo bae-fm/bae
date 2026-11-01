@@ -22,6 +22,7 @@ use super::*;
 use crate::identify::{IdentifyRunId, PublishedRun, RunOutcome};
 use crate::import::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
 use crate::import::candidates::CandidateFiles;
+use crate::import::source_release::SourceRelease;
 use crate::signals::Signals;
 use std::collections::BTreeMap;
 
@@ -116,13 +117,15 @@ fn load_stored_runtimes_on(
     Ok(runtimes)
 }
 
-/// Store `outcome` as how `run` of `key` stands, and `signals`, where given,
-/// as what extraction last read for it.
+/// Store `outcome` as how `run` of `key` stands, with each of `releases`
+/// its rows name, and `signals`, where given, as what extraction last read
+/// for it.
 fn store_run_on(
     sql: &SqlContext<'_, '_>,
     key: &CandidateKey,
     run: i64,
     outcome: &RunOutcome,
+    releases: &[SourceRelease],
     signals: Option<&Signals>,
 ) -> Result<(), DbError> {
     let stored_key: Option<CandidateKey> = sql
@@ -142,19 +145,22 @@ fn store_run_on(
     }
     let owner = Owner::Run(run);
     store_outcome(sql, owner, Outcome::of(outcome), false)?;
+    super::super::source_releases::store_named_releases_on(sql, releases)?;
     if let Some(signals) = signals {
         store_signals(sql, owner, signals)?;
     }
     Ok(())
 }
 
-/// Store how `run` of the folder candidate `key` stands, and the signals it
-/// last read, if its standing names that run; whether it did.
+/// Store how `run` of the folder candidate `key` stands, with the releases
+/// its rows name, and the signals it last read, if its standing names that
+/// run; whether it did.
 fn publish_candidate_run_on(
     sql: &SqlContext<'_, '_>,
     key: &CandidateKey,
     run: IdentifyRunId,
     outcome: &RunOutcome,
+    releases: &[SourceRelease],
     signals: Option<&Signals>,
 ) -> Result<bool, DbError> {
     let run = to_i64(run.number(), "an identify run")?;
@@ -165,7 +171,7 @@ fn publish_candidate_run_on(
         |row| row.get::<_, bool>(0),
     )?;
     if named {
-        store_run_on(sql, key, run, outcome, signals)?;
+        store_run_on(sql, key, run, outcome, releases, signals)?;
     }
     Ok(named)
 }
@@ -236,14 +242,15 @@ impl Database {
     }
 
     /// Start `run` from `key`'s wait for `files`, with `outcome` as the first
-    /// thing it published, in one write: the run is stored only if the
-    /// standing moves to it.
+    /// thing it published and the `releases` it read, in one write: the run
+    /// is stored only if the standing moves to it.
     pub(crate) async fn start_candidate_run(
         &self,
         key: &CandidateKey,
         files: &CandidateFiles,
         run: IdentifyRunId,
         outcome: &RunOutcome,
+        releases: Vec<SourceRelease>,
     ) -> Result<IdentificationMove, DbError> {
         let key = key.clone();
         let change = IdentificationChange::RunStarted {
@@ -253,43 +260,49 @@ impl Database {
         let outcome = outcome.clone();
         self.call(move |sql| {
             let moved = change_identification_on(sql, &key, &change)?;
-            publish_candidate_run_on(sql, &key, run, &outcome, None)?;
+            publish_candidate_run_on(sql, &key, run, &outcome, &releases, None)?;
             Ok(moved)
         })
         .await
     }
 
-    /// Store how `run` of the folder candidate `key` stands, and the signals
-    /// it last read where it read new ones, if its standing still names the
-    /// run; whether it did.
+    /// Store how `run` of the folder candidate `key` stands, with each of the
+    /// `releases` it read that its rows name, and the signals it last read
+    /// where it read new ones, if its standing still names the run; whether
+    /// it did.
     pub(crate) async fn publish_candidate_run(
         &self,
         key: &CandidateKey,
         run: IdentifyRunId,
         outcome: &RunOutcome,
+        releases: Vec<SourceRelease>,
         signals: Option<&Signals>,
     ) -> Result<bool, DbError> {
         let key = key.clone();
         let outcome = outcome.clone();
         let signals = signals.cloned();
-        self.call(move |sql| publish_candidate_run_on(sql, &key, run, &outcome, signals.as_ref()))
-            .await
+        self.call(move |sql| {
+            publish_candidate_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
+        })
+        .await
     }
 
     /// Store how `run` of the library release whose re-identify key is `key`
-    /// stands, and the signals it last read where it read new ones.
+    /// stands, with each of the `releases` it read that its rows name, and
+    /// the signals it last read where it read new ones.
     pub(crate) async fn publish_release_run(
         &self,
         key: &CandidateKey,
         run: IdentifyRunId,
         outcome: &RunOutcome,
+        releases: Vec<SourceRelease>,
         signals: Option<&Signals>,
     ) -> Result<(), DbError> {
         let key = key.clone();
         let outcome = outcome.clone();
         let signals = signals.cloned();
         let run = to_i64(run.number(), "an identify run")?;
-        self.call(move |sql| store_run_on(sql, &key, run, &outcome, signals.as_ref()))
+        self.call(move |sql| store_run_on(sql, &key, run, &outcome, &releases, signals.as_ref()))
             .await
     }
 

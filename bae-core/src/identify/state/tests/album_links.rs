@@ -15,6 +15,9 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
         notes: notes.iter().map(|note| note.to_string()).collect(),
         links: Vec::new(),
         album_links: AlbumLinks::NotAsked,
+        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "release-1"),
+        )),
     }
 }
 

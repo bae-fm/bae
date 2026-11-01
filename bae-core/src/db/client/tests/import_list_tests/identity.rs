@@ -45,6 +45,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
                     "mb-linked".to_string(),
                 ),
             }),
+            &[],
         )
         .await
         .unwrap();
@@ -57,6 +58,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
                     partners: vec![],
                 },
             )),
+            &[],
         )
         .await
         .unwrap();

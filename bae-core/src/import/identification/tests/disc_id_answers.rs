@@ -159,7 +159,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
     )
     .await
     .unwrap();
-    assert_eq!(picked, complete);
+    assert_eq!(picked, complete.release);
 }
 
 /// A release only a barcode found has no Disc ID answer to be read from: the

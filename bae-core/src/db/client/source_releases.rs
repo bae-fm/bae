@@ -1,18 +1,22 @@
-//! The `source_release` tables: every catalog release bae fetched, as its
+//! The `source_release` tables: every catalog release a row names — a match,
+//! a draft read from it, a link or a linked pressing's partner — as its
 //! extraction left it.
 //!
-//! A release is written whole when it is fetched and read whole by every
-//! import surface but the import list's rows, which read only the records it
-//! names. Writing it again replaces every row under it in one transaction, so
-//! a reader sees one extraction or the other, never a mix.
+//! A fetched release is held in memory until the write that writes the first
+//! row naming it, which stores it whole ([`store_named_releases_on`]); the
+//! schema's triggers delete it in the write that drops the last such row. It
+//! is read whole by every import surface but the import list's rows, which
+//! read only the records it names. Writing it again replaces every row under
+//! it in one transaction, so a reader sees one extraction or the other, never
+//! a mix.
 
 use super::*;
 use crate::import::album_links::AlbumLinks;
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
-    ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork, SourceWorkEvent,
-    TracklistEntry, UnfetchedDocument, UnfetchedReason,
+    PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
+    SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
 use crate::import::{MetadataRef, ReleaseRecord};
 use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
@@ -415,19 +419,10 @@ fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<crate::import::Art
     })
 }
 
-/// The stored release `release` names, read whole, or `None` when nothing
-/// has fetched it.
-///
-/// An album a kept statement joins to one of the release's own — one its
-/// documents never reach — is derived here, on every read, from the statement
-/// and the stored release together: its record, and for a MusicBrainz release
-/// group the archive's images of it. Nothing about it is stored with the
-/// release, so the release reads the same whether it was fetched before the
-/// statement was read or after, and stops naming the album when a later
-/// reading stops stating it. The album's own text — its title, credits and
-/// year — lives in documents a statement does not carry, so a joined album
-/// contributes none; the release's own album documents state those.
-pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
+/// The stored release `release` names as its rows hold it — what its own
+/// documents state, which is what a write that names it stores — or `None`
+/// when no row names it.
+fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &MetadataRef,
 ) -> Result<Option<SourceRelease>, DbError> {
@@ -603,39 +598,9 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         },
         other => return Err(unreadable("catalog", other.as_str())),
     };
-    let mut other_records: Vec<ReleaseRecord> = sql
-        .query(
-            "SELECT record_catalog, kind, key, album_key FROM source_release_record \
-             WHERE catalog = ? AND release_id = ?",
-            params![catalog, key],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                ))
-            },
-        )?
-        .into_iter()
-        .map(|(record_catalog, kind, record_key, album_key)| {
-            let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
-            match kind.as_str() {
-                "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
-                "album" => Ok(ReleaseRecord::album(&reference)),
-                other => Err(unreadable("record kind", other)),
-            }
-        })
-        .collect::<Result<_, DbError>>()?;
-    let joined = super::album_link_rows::joined_albums_on(
-        sql,
-        release.catalog,
-        source_group_id.as_deref(),
-        &other_records,
-    )?;
-    other_records.extend(joined.iter().map(ReleaseRecord::album));
-    other_records
-        .sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
+    // The record rows keep no order: they read in the order surfaces list
+    // catalogs.
+    let other_records = with_joined_records(own_records_on(sql, release)?, &[]);
     let mut covers = ReleaseCovers {
         release: Vec::new(),
         album: Vec::new(),
@@ -680,26 +645,12 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             other => return Err(unreadable("cover scope", other)),
         }
     }
-    let mut archive_groups: Vec<String> = sql.query(
+    let archive_groups: Vec<String> = sql.query(
         "SELECT group_id FROM source_release_archive_group \
          WHERE catalog = ? AND release_id = ? ORDER BY position",
         params![catalog, key],
         |row| row.get(0),
     )?;
-    // A joined release group's images, addressed by its id as the extraction
-    // addresses a group its documents reach.
-    for group in joined
-        .iter()
-        .filter(|album| album.catalog == Catalog::MusicBrainz)
-    {
-        bae_catalogs::remote_image::push_unique_cover(
-            &mut covers.album,
-            RemoteCover::musicbrainz_release_group(&group.key),
-        );
-        if !archive_groups.contains(&group.key) {
-            archive_groups.push(group.key.clone());
-        }
-    }
     let mediums = load_mediums(sql, catalog, key)?;
     pressing.facts.media = catalog_facts.stated_media(&mediums).counts();
     let unfetched = sql
@@ -754,49 +705,146 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     }))
 }
 
-/// The records the stored release `release`, filed under `source_group_id`,
-/// names past its own — what the other catalogs say it is, and the albums its
-/// album's statements join to it — in the order surfaces list catalogs, and
-/// those joined albums.
-fn other_records_on<S: QueryOne + QueryRows>(
+/// What the other catalogs say the stored release `release`, or its album,
+/// is, as its rows hold it.
+fn own_records_on<S: QueryRows>(
     sql: &S,
     release: &MetadataRef,
-    source_group_id: Option<&str>,
-) -> Result<(Vec<ReleaseRecord>, Vec<MetadataRef>), DbError> {
-    let mut other_records: Vec<ReleaseRecord> = sql
-        .query(
-            "SELECT record_catalog, kind, key, album_key FROM source_release_record \
-             WHERE catalog = ? AND release_id = ?",
-            params![release.catalog.as_str(), release.key],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                ))
-            },
-        )?
-        .into_iter()
-        .map(|(record_catalog, kind, record_key, album_key)| {
-            let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
-            match kind.as_str() {
-                "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
-                "album" => Ok(ReleaseRecord::album(&reference)),
-                other => Err(unreadable("record kind", other)),
-            }
-        })
-        .collect::<Result<_, DbError>>()?;
+) -> Result<Vec<ReleaseRecord>, DbError> {
+    sql.query(
+        "SELECT record_catalog, kind, key, album_key FROM source_release_record \
+         WHERE catalog = ? AND release_id = ?",
+        params![release.catalog.as_str(), release.key],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    )?
+    .into_iter()
+    .map(|(record_catalog, kind, record_key, album_key)| {
+        let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
+        match kind.as_str() {
+            "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
+            "album" => Ok(ReleaseRecord::album(&reference)),
+            other => Err(unreadable("record kind", other)),
+        }
+    })
+    .collect()
+}
+
+/// `own` and the `joined` albums, in the order surfaces list catalogs.
+fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> Vec<ReleaseRecord> {
+    own.extend(joined.iter().map(ReleaseRecord::album));
+    own.sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
+    own
+}
+
+/// `release` as import surfaces read it: with every album a kept statement
+/// joins to one of the release's own — one its documents never reach.
+///
+/// The joined album is derived on every read, from the statement and the
+/// release together: its record, and for a MusicBrainz release group the
+/// archive's images of it. Nothing about it is stored with the release, so
+/// the release reads the same whether it was fetched before the statement was
+/// read or after, held in memory or stored, and stops naming the album when a
+/// later reading stops stating it. The album's own text — its title, credits
+/// and year — lives in documents a statement does not carry, so a joined
+/// album contributes none; the release's own album documents state those.
+fn with_joined_albums_on<S: QueryRows>(
+    sql: &S,
+    stored: &SourceRelease,
+) -> Result<SourceRelease, DbError> {
     let joined = super::album_link_rows::joined_albums_on(
         sql,
-        release.catalog,
-        source_group_id,
-        &other_records,
+        stored.release.catalog,
+        stored.source_group_id.as_deref(),
+        &stored.other_records,
     )?;
-    other_records.extend(joined.iter().map(ReleaseRecord::album));
-    other_records
-        .sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
-    Ok((other_records, joined))
+    let mut release = stored.clone();
+    release.other_records = with_joined_records(release.other_records, &joined);
+    // A joined release group's images, addressed by its id as the extraction
+    // addresses a group its documents reach.
+    for group in joined
+        .iter()
+        .filter(|album| album.catalog == Catalog::MusicBrainz)
+    {
+        bae_catalogs::remote_image::push_unique_cover(
+            &mut release.covers.album,
+            RemoteCover::musicbrainz_release_group(&group.key),
+        );
+        if !release.archive_groups.contains(&group.key) {
+            release.archive_groups.push(group.key.clone());
+        }
+    }
+    Ok(release)
+}
+
+/// The stored release `release` names, as import surfaces read it, or
+/// `None` when no row names it.
+pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
+    sql: &S,
+    release: &MetadataRef,
+) -> Result<Option<SourceRelease>, DbError> {
+    load_source_release_rows_on(sql, release)?
+        .map(|stored| with_joined_albums_on(sql, &stored))
+        .transpose()
+}
+
+/// Store each of `releases` that a row names, in the write that wrote the
+/// row: insert one not stored yet, and replace a stored one only where this
+/// copy read a document the stored one lists as unfetched — a copy read
+/// before the stored one was would otherwise overwrite a fuller read. A
+/// release no row names is not stored: a catalog release is stored only while
+/// something names it.
+pub(super) fn store_named_releases_on(
+    sql: &SqlContext<'_, '_>,
+    releases: &[SourceRelease],
+) -> Result<(), DbError> {
+    for release in releases {
+        let catalog = release.release.catalog.as_str();
+        let key = release.release.key.as_str();
+        let named = sql.query_row(
+            "SELECT EXISTS (SELECT 1 FROM import_candidate_match \
+                            WHERE source = ?1 AND release_id = ?2) \
+                 OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance \
+                            WHERE source = ?1 AND release_id = ?2) \
+                 OR EXISTS (SELECT 1 FROM import_candidate_release_link \
+                            WHERE source = ?1 AND release_id = ?2) \
+                 OR EXISTS (SELECT 1 FROM import_candidate_release_link_partner \
+                            WHERE source = ?1 AND release_id = ?2)",
+            params![catalog, key],
+            |row| row.get::<_, bool>(0),
+        )?;
+        if !named {
+            continue;
+        }
+        let stored = sql.query_row(
+            "SELECT EXISTS (SELECT 1 FROM source_release WHERE catalog = ? AND release_id = ?)",
+            params![catalog, key],
+            |row| row.get::<_, bool>(0),
+        )?;
+        let reads_more = || -> Result<bool, DbError> {
+            let stored_unfetched = sql.query(
+                "SELECT document, key FROM source_release_unfetched \
+                 WHERE catalog = ? AND release_id = ?",
+                params![catalog, key],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )?;
+            Ok(stored_unfetched.iter().any(|(document, document_key)| {
+                !release.unfetched.iter().any(|unfetched| {
+                    unfetched.document.as_str() == document && unfetched.key == *document_key
+                })
+            }))
+        };
+        if !stored || reads_more()? {
+            replace_source_release_on(sql, release)?;
+        }
+    }
+    Ok(())
 }
 
 /// Every record the stored release `release` names, its own first — what
@@ -817,17 +865,23 @@ pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
     else {
         return Ok(None);
     };
-    let (others, _) = other_records_on(sql, release, source_group_id.as_deref())?;
+    let own = own_records_on(sql, release)?;
+    let joined = super::album_link_rows::joined_albums_on(
+        sql,
+        release.catalog,
+        source_group_id.as_deref(),
+        &own,
+    )?;
     Ok(Some(crate::import::source_release::release_records(
         release,
         source_group_id,
-        others,
+        with_joined_records(own, &joined),
     )))
 }
 
 impl Database {
-    /// The stored release `release` names, or `None` when nothing has
-    /// fetched it.
+    /// The stored release `release` names, as import surfaces read it, or
+    /// `None` when no row names it.
     pub async fn load_source_release(
         &self,
         release: &MetadataRef,
@@ -837,7 +891,43 @@ impl Database {
             .await
     }
 
-    /// Store a fetched release, replacing whatever was stored for it.
+    /// The stored release `release` names, as its rows hold it beside how
+    /// import surfaces read it, or `None` when no row names it.
+    pub(crate) async fn load_prepared_release(
+        &self,
+        release: &MetadataRef,
+    ) -> Result<Option<PreparedRelease>, DbError> {
+        let release = release.clone();
+        self.read(move |sql| {
+            load_source_release_rows_on(&sql, &release)?
+                .map(|stored| {
+                    Ok(PreparedRelease {
+                        release: with_joined_albums_on(&sql, &stored)?,
+                        stored,
+                    })
+                })
+                .transpose()
+        })
+        .await
+    }
+
+    /// `stored`, a release just fetched, beside how import surfaces read it.
+    pub(crate) async fn prepared_release(
+        &self,
+        stored: SourceRelease,
+    ) -> Result<PreparedRelease, DbError> {
+        self.read(move |sql| {
+            Ok(PreparedRelease {
+                release: with_joined_albums_on(&sql, &stored)?,
+                stored,
+            })
+        })
+        .await
+    }
+
+    /// Store `release` with no row naming it, which only a test's setup
+    /// does: every other write stores a release in the write that names it.
+    #[cfg(test)]
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
         self.call(move |sql| replace_source_release_on(sql, &release))

@@ -76,6 +76,7 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
                 track_titles: Vec::new(),
             },
             pick: None,
+            releases: Vec::new(),
         })
         .await
         .unwrap();

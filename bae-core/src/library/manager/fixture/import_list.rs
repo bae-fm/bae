@@ -173,10 +173,6 @@ impl LibraryManager {
                 )
                 .extract()
                 .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
-                self.database
-                    .save_source_release(&release)
-                    .await
-                    .map_err(LibraryError::from)?;
                 // The draft as a pick reads it from the release: titled as it.
                 let mut draft = self
                     .database
@@ -194,6 +190,8 @@ impl LibraryManager {
                         Some(&crate::import::MetadataProvenance::ExternalRelease {
                             record: record.clone(),
                         }),
+                        // Stored in the write whose provenance names it.
+                        std::slice::from_ref(&release),
                     )
                     .await?;
                 self.preparations
@@ -205,6 +203,7 @@ impl LibraryManager {
                                 partners: Vec::new(),
                             },
                         )),
+                        &[],
                     )
                     .await?;
                 Ok(())
@@ -256,6 +255,7 @@ impl LibraryManager {
                     track_titles: Vec::new(),
                 },
                 pick: None,
+                releases: Vec::new(),
             })
             .await?;
         if !stored {

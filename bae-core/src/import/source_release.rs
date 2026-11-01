@@ -63,6 +63,19 @@ pub struct SourceRelease {
     pub(crate) unfetched: Vec<UnfetchedDocument>,
 }
 
+/// A catalog release read for a write that may name it: as it is stored,
+/// and as import surfaces read it. A release is stored only in the write that
+/// names it, so whoever read it holds it until then.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct PreparedRelease {
+    /// What the release's own documents state, which the write that names
+    /// it stores.
+    pub(crate) stored: SourceRelease,
+    /// `stored` with the albums kept album statements join to it (see
+    /// [`crate::import::album_links`]), which is what every surface reads.
+    pub(crate) release: SourceRelease,
+}
+
 /// One document a fetch followed a link to, or started from an answer in
 /// place of, and did not get.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,6 +295,49 @@ pub(crate) enum SourceWorkEvent {
 pub(crate) enum PartDirection {
     Forward,
     Backward,
+}
+
+#[cfg(test)]
+impl SourceRelease {
+    /// An imaginary release `release` names, titled and credited with
+    /// nothing else stated.
+    pub(crate) fn for_test(release: MetadataRef) -> Self {
+        let catalog = match release.catalog {
+            Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
+                links: Vec::new(),
+                album_links: crate::import::album_links::AlbumLinks::Read(Vec::new()),
+            },
+            Catalog::Discogs => CatalogFacts::Discogs {
+                media: StatedMedia::Undescribed,
+                release_roles: Vec::new(),
+            },
+            other => unreachable!("no release is fetched from {}", other.as_str()),
+        };
+        Self {
+            release,
+            source_group_id: None,
+            metadata: ReleaseMetadata {
+                album: crate::import::release_metadata::AlbumMetadata {
+                    title: "Album Title".to_string(),
+                    artists: Vec::new(),
+                    year: None,
+                    first_year: None,
+                },
+                pressing: Pressing::blank(),
+            },
+            other_records: Vec::new(),
+            covers: ReleaseCovers {
+                release: Vec::new(),
+                album: Vec::new(),
+            },
+            archive_release: None,
+            archive_groups: Vec::new(),
+            mediums: Vec::new(),
+            catalog,
+            notes: Vec::new(),
+            unfetched: Vec::new(),
+        }
+    }
 }
 
 impl SourceRelease {
