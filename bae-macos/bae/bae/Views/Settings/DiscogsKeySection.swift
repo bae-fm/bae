@@ -164,7 +164,8 @@ struct DiscogsKeySection: View {
 // MARK: - DiscogsSettingsContent (pure leaf)
 
 /// One Form row: the state of the stored key with the buttons that state
-/// offers, any error from the last action, and what the key is for.
+/// offers, the check with Discogs while it runs, any error from the last
+/// action, and what the key is for.
 struct DiscogsSettingsContent: View {
     @Binding
     var draft: String
@@ -181,6 +182,18 @@ struct DiscogsSettingsContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             statusRow
+            if isValidating {
+                HStack(spacing: ThemeSpace.compact) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(
+                        "Checking the key with Discogs…",
+                        comment:
+                            "Import settings, Discogs key: while bae asks Discogs whether the key works, after a save or a re-check."
+                    )
+                    .foregroundStyle(.secondary)
+                }
+            }
             if let saveError {
                 ErrorDetailDisclosure(error: saveError)
             }
@@ -227,9 +240,6 @@ struct DiscogsSettingsContent: View {
                 await Task.yield()
                 keyFieldIsFocused = true
             }
-            if isValidating {
-                ProgressView().controlSize(.small)
-            }
             Button("Save", action: onSave)
                 .disabled(draft.isEmpty || isValidating)
         }
@@ -248,13 +258,8 @@ struct DiscogsSettingsContent: View {
 
     private var unvalidatedRow: some View {
         HStack(spacing: ThemeSpace.compact) {
-            if isValidating {
-                ProgressView().controlSize(.small)
-            }
-            else {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(Theme.warning)
-            }
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(Theme.warning)
             Text("Saved. Couldn't validate yet (offline). Will retry.")
                 .foregroundStyle(.secondary)
             Spacer()

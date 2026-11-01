@@ -906,7 +906,9 @@ itself and at its own pace:
 | catalog numbers | both: a number the person picked as it stands; one a found release carries as it stands on MusicBrainz, under the offered releases' artists on Discogs |
 | album and artist title | both, only when every clue above came back empty |
 
-Discogs needs an API key; without one it is not asked. A Discogs label name
+Discogs needs an API key; without one it is not asked. Saving a key, or
+checking a stored one again, asks Discogs whether it works, and the key's
+setting says so while it asks. A Discogs label name
 loses the " (2)" Discogs adds to tell two labels of one name apart: the
 label's id tells them apart, and the name is what a release prints. Either catalog can be
 switched off. MusicBrainz is asked no more than once every 1.2 seconds, under
