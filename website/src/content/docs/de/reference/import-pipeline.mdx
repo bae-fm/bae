@@ -37,7 +37,7 @@ MusicBrainz wird anonym mit einem strikten Takt von einer Anfrage pro Sekunde ab
 
 Die Bestätigung eines Imports läuft in dieser Reihenfolge:
 
-1. **Dekodierprüfung**: Jeder Track wird von Anfang bis Ende dekodiert; ein Rip, der nicht vollständig dekodiert werden kann, lässt den Import fehlschlagen, bevor etwas geschrieben wird (ein Konfigurationsflag kann dies deaktivieren).
+1. **Dekodierprüfung**: Jeder Track wird von Anfang bis Ende dekodiert; ein Rip, der nicht vollständig dekodiert werden kann, lässt den Import fehlschlagen, bevor etwas geschrieben wird.
 2. **Lautheitsanalyse**: Integrierte Lautheit und True Peak werden pro Track und pro Album während desselben Dekodierdurchgangs gemessen und für Replay-Gain-Nutzung gespeichert.
 3. **Cover-Auswahl**: Das gewählte Artwork (remote, Ordnerbild oder eingebettet) wird zu einem Anzeige-Thumbnail neu gerendert; das Original wird unter den Dateien des Releases behalten, wenn es aus dem Ordner kam.
 4. **Atomarer Schreibvorgang**: Release, Tracks, Mitwirkende, Identitäten, Formate, Segmente, Dateien und Cover werden in einer Transaktion festgeschrieben. Es gibt keinen halb importierten Zustand.

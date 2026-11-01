@@ -37,7 +37,7 @@ MusicBrainz est interrogé anonymement avec un rythme strict d’une requête pa
 
 Confirmer une importation exécute, dans l’ordre :
 
-1. **Vérification du décodage** : chaque piste est décodée de bout en bout ; un rip qui ne peut pas se décoder entièrement fait échouer l’importation avant toute écriture (un indicateur de configuration peut désactiver cela).
+1. **Vérification du décodage** : chaque piste est décodée de bout en bout ; un rip qui ne peut pas se décoder entièrement fait échouer l’importation avant toute écriture.
 2. **Analyse du niveau sonore** : le niveau sonore intégré et le pic vrai sont mesurés par piste et par album pendant cette même passe de décodage, stockés pour l’usage du replay gain.
 3. **Sélection de la pochette** : l’illustration choisie (distante, image du dossier ou intégrée) est rerendue en vignette d’affichage ; l’original est conservé parmi les fichiers de la sortie s’il venait du dossier.
 4. **Écriture atomique** : la sortie, les pistes, les crédits, les identités, les formats, les segments, les fichiers et la pochette sont validés dans une transaction. Il n’existe aucun état à moitié importé.

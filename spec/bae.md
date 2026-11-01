@@ -1333,7 +1333,6 @@ Ana clicks Import. bae:
    stored.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
-   This check is a setting, on by default.
 6. **Finds the album.** The album the person picked on the pane, if any,
    else the album the release's records name: the record the draft was read
    from decides, then the other catalog's record — the first naming a
@@ -4147,7 +4146,7 @@ limits as the library opens and as either limit changes. The settings screens
 pull the row with the library's id and directory from a live query. The schema
 refuses what no setter writes: a default preset that names no preset, an
 enabled Subsonic server with no username, a preset its codec can't write.
-Replay gain and the decode check at import have no control in the apps.
+Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |
 |---|---|---|
@@ -4160,7 +4159,6 @@ Replay gain and the decode check at import have no control in the apps.
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
 | `library_full_width` | off | the library page spans the window |
-| `verify_decode_on_import` | on | the decode check at import (§3.7) |
 | `import_to_cloud`, `import_pinned` | on, on | where an import goes, and whether it stays here |
 | `identify_automatically` | on | identifying found releases on their own |
 | `import_when_identified` | off | importing what any run picks unattended |

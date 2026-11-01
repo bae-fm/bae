@@ -37,7 +37,7 @@ MusicBrainz strict one-request-per-second pace உடன் anonymously queried 
 
 Import உறுதிப்படுத்தினால், வரிசையாக நடப்பவை:
 
-1. **Decode verification**: ஒவ்வொரு பாதை end to end குறிமாற்றப்பட்டது செய்யப்படும்; முழுமையாக குறிமாற்று ஆகாத rip எதுவும் எழுதப்படும் முன் இறக்குமதி ஐ fail செய்கிறது (config flag இதை disable செய்யலாம்).
+1. **Decode verification**: ஒவ்வொரு பாதை end to end குறிமாற்றப்பட்டது செய்யப்படும்; முழுமையாக குறிமாற்று ஆகாத rip எதுவும் எழுதப்படும் முன் இறக்குமதி ஐ fail செய்கிறது.
 2. **ஒலி-அளவு பகுப்பாய்வு**: அதே குறிமாற்று pass இல் per பாதை மற்றும் per ஆல்பம் integrated loudness மற்றும் true peak அளக்கப்பட்டு, replay-gain பயன்பாட்டுக்காக stored.
 3. **Cover selection**: தேர்ந்தெடுத்த art (remote, கோப்புறை image, அல்லது embedded) display thumbnail ஆக மீண்டும் rendered செய்யப்படும்; அது கோப்புறை இலிருந்து வந்திருந்தால் அசல் வெளியீடு கோப்புகள் இடையில் வைக்கப்படும்.
 4. **அணுக்கமான எழுத்து**: வெளியீடு, பாதைகள், credits, identities, வடிவங்கள், segments, கோப்புகள், அட்டை அனைத்தும் ஒரே transaction இல் commit ஆகும். half-imported state இல்லை.

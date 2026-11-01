@@ -47,7 +47,7 @@ MusicBrainz is queried anonymously with a strict one-request-per-second pace. Di
 
 Confirming an import runs, in order:
 
-1. **Decode verification**: every track is decoded end to end; a rip that cannot fully decode fails the import before anything is written (a config flag can disable this).
+1. **Decode verification**: every track is decoded end to end; a rip that cannot fully decode fails the import before anything is written.
 2. **Loudness analysis**: integrated loudness and true peak are measured per track and per album during that same decode pass, stored for replay-gain use.
 3. **Cover selection**: the chosen art (remote, folder image, or embedded) is re-rendered to a display thumbnail; the original is kept among the release's files if it came from the folder.
 4. **Atomic write**: the release, tracks, credits, identities, formats, segments, files, and cover commit in one transaction. There is no half-imported state.

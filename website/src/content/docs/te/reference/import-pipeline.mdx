@@ -37,7 +37,7 @@ MusicBrainz anonymous గా strict one-request-per-second pace తో query అ
 
 Import confirm చేస్తే, క్రమంగా ఇవి నడుస్తాయి:
 
-1. **Decode verification**: ప్రతి ట్రాక్ end to end డీకోడ్ అవుతుంది; పూర్తిగా డీకోడ్ కాని rip ఏదీ రాయడానికి ముందు దిగుమతి fail చేస్తుంది (config flag దీన్ని disable చేయగలదు).
+1. **Decode verification**: ప్రతి ట్రాక్ end to end డీకోడ్ అవుతుంది; పూర్తిగా డీకోడ్ కాని rip ఏదీ రాయడానికి ముందు దిగుమతి fail చేస్తుంది.
 2. **శబ్దస్థాయి విశ్లేషణ**: అదే డీకోడ్ pass లో ప్రతి ట్రాక్ మరియు ఆల్బమ్ కు integrated loudness, true peak కొలుస్తుంది, replay-gain కోసం store చేస్తుంది.
 3. **Cover selection**: ఎంచుకున్న art (remote, ఫోల్డర్ image, లేదా embedded) display thumbnail గా re-render అవుతుంది; అది ఫోల్డర్ నుంచి వచ్చినదైతే అసలు విడుదల ఫైల్లలో ఉంచబడుతుంది.
 4. **అణు వ్రాత**: విడుదల, ట్రాక్‌లు, credits, identities, ఆకృతులు, segments, ఫైళ్లు, కవర్ ఒక transaction లో commit అవుతాయి. Half-imported state ఉండదు.

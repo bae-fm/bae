@@ -37,7 +37,7 @@ MusicBrainz strict ਇੱਕ-request-per-second pace ਨਾਲ ਗੁਮਨਾ�
 
 ਆਯਾਤ confirm ਕਰਨ ਨਾਲ, ਕ੍ਰਮ ਵਿੱਚ:
 
-1. **Decode verification**: ਹਰ ਟ੍ਰੈਕ end to end decoded ਹੁੰਦਾ ਹੈ; ਜੋ rip ਪੂਰੀ ਤਰ੍ਹਾਂ decode ਨਹੀਂ ਹੋ ਸਕਦਾ ਉਹ ਕੁਝ ਵੀ ਲਿਖਿਆ ਹੋਣ ਤੋਂ ਪਹਿਲਾਂ ਆਯਾਤ fail ਕਰਦਾ ਹੈ (ਸੰਰਚਨਾ ਝੰਡਾ ਇਸਨੂੰ ਬੰਦ ਕਰ ਸਕਦਾ ਹੈ)।
+1. **Decode verification**: ਹਰ ਟ੍ਰੈਕ end to end decoded ਹੁੰਦਾ ਹੈ; ਜੋ rip ਪੂਰੀ ਤਰ੍ਹਾਂ decode ਨਹੀਂ ਹੋ ਸਕਦਾ ਉਹ ਕੁਝ ਵੀ ਲਿਖਿਆ ਹੋਣ ਤੋਂ ਪਹਿਲਾਂ ਆਯਾਤ fail ਕਰਦਾ ਹੈ।
 2. **Loudness analysis**: ਇਕੱਠੀ loudness ਅਤੇ true peak ਉਸੇ decode pass ਦੌਰਾਨ per ਟ੍ਰੈਕ ਅਤੇ per album ਮਾਪੇ ਜਾਂਦੇ ਹਨ, ਮੁੜ-ਚਲਾਉਣਾ-gain ਵਰਤੋਂ ਲਈ ਰੱਖੀ।
 3. **Cover selection**: ਚੁਣੀ art (ਦੂਰਲਾ, ਫੋਲਡਰ image, ਜਾਂ embedded) ਦਿਖਾਵਾ ਛੋਟੀ ਤਸਵੀਰ ਵਜੋਂ re-ਬਣਨਾ ਹੁੰਦੀ ਹੈ; original ਰਿਲੀਜ਼ ਦੀਆਂ ਫਾਈਲਾਂ ਵਿੱਚ kept ਹੈ ਜੇ ਇਹ ਫੋਲਡਰ ਤੋਂ ਆਈ।
 4. **Atomic write**: ਰਿਲੀਜ਼, ਟ੍ਰੈਕ, credits, ਪਛਾਣਾਂ, ਫਾਰਮੈਟ, ਖੰਡ, ਫਾਈਲਾਂ, ਅਤੇ cover ਇੱਕ ਲੈਣ-ਦੇਣ ਵਿੱਚ commit ਹੁੰਦੇ ਹਨ। Half-imported ਹਾਲਤ ਨਹੀਂ।

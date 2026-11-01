@@ -37,7 +37,7 @@ MusicBrainz se upituje anonimno uz strogi ritam jednog zahtjeva u sekundi. Disco
 
 Potvrda uvoza izvodi, redom:
 
-1. **Provjera dekodiranja**: svaka se pjesma dekodira od početka do kraja; rip koji se ne može potpuno dekodirati ruši uvoz prije ikakvog pisanja (konfiguracijska zastavica to može isključiti).
+1. **Provjera dekodiranja**: svaka se pjesma dekodira od početka do kraja; rip koji se ne može potpuno dekodirati ruši uvoz prije ikakvog pisanja.
 2. **Analiza glasnoće**: integrirana glasnoća i true peak mjere se po pjesmi i po albumu tijekom istog prolaza dekodiranja, spremaju se za upotrebu replay gaina.
 3. **Odabir omota**: odabrana grafika (udaljena, slika iz mape ili ugrađena) ponovno se renderira u prikaznu sličicu; izvornik se čuva među datotekama izdanja ako je došao iz mape.
 4. **Atomski zapis**: izdanje, pjesme, zasluge, identiteti, formati, segmenti, datoteke i omot zapisuju se u jednoj transakciji. Ne postoji napola uvezeno stanje.

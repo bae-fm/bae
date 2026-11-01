@@ -37,7 +37,7 @@ MusicBrainz se dotazuje anonymně s přísným tempem jeden požadavek za sekund
 
 Potvrzení importu spustí v pořadí:
 
-1. **Ověření dekódování**: každá stopa se dekóduje od začátku do konce; rip, který nelze plně dekódovat, selže před jakýmkoli zápisem (konfigurační přepínač to může vypnout).
+1. **Ověření dekódování**: každá stopa se dekóduje od začátku do konce; rip, který nelze plně dekódovat, selže před jakýmkoli zápisem.
 2. **Analýza hlasitosti**: integrovaná hlasitost a true peak se měří pro každou stopu a album během stejného průchodu dekódování, ukládají se pro použití replay gain.
 3. **Výběr obalu**: zvolený obrázek (vzdálený, obrázek ze složky nebo vložený) se znovu vykreslí na náhled pro zobrazení; originál zůstane mezi soubory vydání, pokud přišel ze složky.
 4. **Atomický zápis**: vydání, stopy, kredity, identity, formáty, segmenty, soubory a obal se uloží v jedné transakci. Neexistuje napůl importovaný stav.

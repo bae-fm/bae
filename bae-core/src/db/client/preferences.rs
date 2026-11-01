@@ -26,20 +26,6 @@ impl Database {
             .subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
     }
 
-    /// Edit the preferences as a test sets them up, for a setting no setter
-    /// writes.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn edit_preferences_for_test(
-        &self,
-        edit: impl FnOnce(&mut Preferences) + Send + 'static,
-    ) -> Result<(), ConfigError> {
-        self.edit_preferences(|prefs| {
-            edit(prefs);
-            Ok(())
-        })
-        .await
-    }
-
     /// Edit the preferences in one write. `edit` is handed the stored
     /// preferences and may refuse the change, which then writes nothing; a
     /// change that leaves them as they were writes nothing either.
@@ -101,7 +87,6 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
             max_concurrent_downloads: concurrency("max_concurrent_downloads")?,
             show_remaining_time: flag("show_remaining_time")?,
             library_full_width: flag("library_full_width")?,
-            verify_decode_on_import: flag("verify_decode_on_import")?,
             import_storage: ImportStoragePreferences {
                 cloud: flag("import_to_cloud")?,
                 pinned: flag("import_pinned")?,
@@ -272,7 +257,6 @@ fn write_preferences_on(
         max_concurrent_downloads,
         show_remaining_time,
         library_full_width,
-        verify_decode_on_import,
         import_storage,
         identification,
         cast_enabled,
@@ -285,7 +269,7 @@ fn write_preferences_on(
              default_track_save_preset = ?, default_release_save_preset = ?, \
              pause_between_sides = ?, side_pause_countdown_seconds = ?, \
              max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
-             show_remaining_time = ?, library_full_width = ?, verify_decode_on_import = ?, \
+             show_remaining_time = ?, library_full_width = ?, \
              import_to_cloud = ?, import_pinned = ?, identify_automatically = ?, \
              import_when_identified = ?, ask_musicbrainz = ?, ask_discogs = ?, \
              cast_enabled = ?, cast_transcode_format = ?, mcp_enabled = ?, mcp_port = ?, \
@@ -312,7 +296,6 @@ fn write_preferences_on(
             max_concurrent_downloads.get(),
             show_remaining_time,
             library_full_width,
-            verify_decode_on_import,
             import_storage.cloud,
             import_storage.pinned,
             identification.automatic,

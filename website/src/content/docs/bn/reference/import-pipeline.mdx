@@ -37,7 +37,7 @@ MusicBrainz নাম না দিয়ে strict one-request-per-second গ�
 
 ইম্পোর্ট confirm করলে, ক্রমে চলে:
 
-1. **Decode verification**: প্রতিটি ট্র্যাক শুরু থেকে শেষ পর্যন্ত ডিকোড হয়; পুরো ডিকোড না হওয়া rip কিছু লেখার আগে ইম্পোর্ট fail করে (config flag দিয়ে এটি disable করা যায়)।
+1. **Decode verification**: প্রতিটি ট্র্যাক শুরু থেকে শেষ পর্যন্ত ডিকোড হয়; পুরো ডিকোড না হওয়া rip কিছু লেখার আগে ইম্পোর্ট fail করে।
 2. **Loudness মাপা**: একই ডিকোড pass-এ প্রতি ট্র্যাক ও প্রতি অ্যালবাম integrated loudness এবং true peak মাপা হয়, replay-gain ব্যবহারের জন্য stored।
 3. **কভার নির্বাচন**: chosen art (remote, ফোল্ডার image, বা embedded) display thumbnail-এ re-rendered হয়; ফোল্ডার থেকে এলে মূল রিলিজের ফাইলের মধ্যে রাখা হয়।
 4. **এক লেনদেনে লেখা**: রিলিজ, ট্র্যাক, কৃতিত্ব, পরিচয়, ফরম্যাট, segment, ফাইল, এবং কভার এক transaction-এ commit হয়। Half-imported state নেই।

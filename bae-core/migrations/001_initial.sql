@@ -2328,9 +2328,8 @@ CREATE TABLE IF NOT EXISTS preferences (
     -- How many files this device uploads, and downloads, at once.
     max_concurrent_uploads   INTEGER NOT NULL CHECK (max_concurrent_uploads BETWEEN 1 AND 8),
     max_concurrent_downloads INTEGER NOT NULL CHECK (max_concurrent_downloads BETWEEN 1 AND 8),
-    show_remaining_time     INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
-    library_full_width      INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
-    verify_decode_on_import INTEGER NOT NULL CHECK (verify_decode_on_import IN (0, 1)),
+    show_remaining_time INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
+    library_full_width  INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
     -- Where an import goes: to the cloud home when the library has one, and
     -- whether it stays downloaded here.
     import_to_cloud INTEGER NOT NULL CHECK (import_to_cloud IN (0, 1)),
@@ -2403,12 +2402,12 @@ INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, default_track_save_preset,
     default_release_save_preset, pause_between_sides, side_pause_countdown_seconds,
     max_concurrent_uploads, max_concurrent_downloads, show_remaining_time,
-    library_full_width, verify_decode_on_import, import_to_cloud, import_pinned,
-    identify_automatically, import_when_identified, ask_musicbrainz, ask_discogs,
-    cast_enabled, cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled,
-    subsonic_port, subsonic_username, subsonic_bind_address)
+    library_full_width, import_to_cloud, import_pinned, identify_automatically,
+    import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
+    cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
+    subsonic_username, subsonic_bind_address)
 VALUES (
-    1, NULL, 'off', 'flac', 'flac', 1, NULL, 3, 3, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 'flac', 1, NULL, 3, 3, 0, 0, 1, 1, 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', '127.0.0.1');
 
 -- ── Watched folders and their scans ───────────────────────────────────────────

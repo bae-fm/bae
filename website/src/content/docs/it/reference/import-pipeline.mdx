@@ -37,7 +37,7 @@ MusicBrainz viene interrogato anonimamente con un ritmo rigido di una richiesta 
 
 Confermare un'importazione esegue, in ordine:
 
-1. **Verifica di decodifica**: ogni traccia viene decodificata da inizio a fine; un rip che non può essere decodificato completamente fa fallire l'importazione prima che venga scritto qualcosa (un flag di configurazione può disattivarlo).
+1. **Verifica di decodifica**: ogni traccia viene decodificata da inizio a fine; un rip che non può essere decodificato completamente fa fallire l'importazione prima che venga scritto qualcosa.
 2. **Analisi della sonorità**: sonorità integrata e true peak vengono misurati per traccia e per album durante lo stesso passaggio di decodifica, salvati per l'uso replay-gain.
 3. **Scelta della copertina**: la grafica scelta (remota, immagine della cartella o incorporata) viene renderizzata di nuovo in una miniatura di visualizzazione; l'originale viene conservato tra i file della release se proveniva dalla cartella.
 4. **Scrittura atomica**: release, tracce, crediti, identità, formati, segmenti, file e copertina vengono salvati in una transazione. Non esiste uno stato importato a metà.

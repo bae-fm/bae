@@ -37,7 +37,7 @@ MusicBrainz wordt anoniem bevraagd met een strak tempo van een verzoek per secon
 
 Een import bevestigen draait, op volgorde:
 
-1. **Decodecontrole**: elke track wordt van begin tot eind gedecodeerd; een rip die niet volledig kan decoderen faalt de import voordat iets wordt geschreven (een config flag kan dit uitschakelen).
+1. **Decodecontrole**: elke track wordt van begin tot eind gedecodeerd; een rip die niet volledig kan decoderen faalt de import voordat iets wordt geschreven.
 2. **Loudnessanalyse**: integrated loudness en true peak worden per track en per album gemeten tijdens dezelfde decodepass, opgeslagen voor replay-gain-gebruik.
 3. **Hoesselectie**: de gekozen art (remote, mapafbeelding, of ingesloten) wordt opnieuw gerenderd naar een displaythumbnail; het origineel wordt bij de bestanden van de release bewaard als het uit de map kwam.
 4. **Atomaire write**: de release, tracks, credits, identities, formats, segments, files en cover committen in een transactie. Er is geen half-geimporteerde toestand.

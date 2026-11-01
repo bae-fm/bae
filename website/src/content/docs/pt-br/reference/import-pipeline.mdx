@@ -37,7 +37,7 @@ MusicBrainz é consultado anonimamente com ritmo estrito de uma solicitação po
 
 Confirmar uma importação roda, em ordem:
 
-1. **Verificação de decodificação**: toda faixa é decodificada do começo ao fim; um rip que não consegue decodificar completamente falha a importação antes de qualquer coisa ser escrita (uma flag de configuração pode desativar isso).
+1. **Verificação de decodificação**: toda faixa é decodificada do começo ao fim; um rip que não consegue decodificar completamente falha a importação antes de qualquer coisa ser escrita.
 2. **Análise de intensidade sonora**: loudness integrado e pico verdadeiro são medidos por faixa e por álbum durante a mesma passada de decodificação, armazenados para uso de replay gain.
 3. **Seleção de capa**: a arte escolhida (remota, imagem da pasta ou embutida) é renderizada novamente para uma miniatura de exibição; a original é mantida entre os arquivos do lançamento se veio da pasta.
 4. **Escrita atômica**: lançamento, faixas, créditos, identidades, formatos, segmentos, arquivos e capa são gravados em uma transação. Não existe estado meio importado.

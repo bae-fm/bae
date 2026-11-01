@@ -37,7 +37,7 @@ MusicBrainz strict one-request-per-second pace સાથે anonymously queried 
 
 Import confirm કરવાથી, ક્રમમાં:
 
-1. **Decode verification**: દરેક track end to end decoded થાય છે; સંપૂર્ણ decode ન થઈ શકે તે rip કશું write થાય પહેલાં import fail કરે છે (config flag આ disable કરી શકે છે).
+1. **Decode verification**: દરેક track end to end decoded થાય છે; સંપૂર્ણ decode ન થઈ શકે તે rip કશું write થાય પહેલાં import fail કરે છે.
 2. **Loudness analysis**: integrated loudness અને true peak એ જ decode pass દરમિયાન per track અને per album માપાય છે, replay-gain use માટે stored.
 3. **Cover selection**: પસંદ કરેલું art (remote, folder image, અથવા embedded) display thumbnail માં re-render થાય છે; original release ની files વચ્ચે રાખવામાં આવે છે જો તે folder માંથી આવ્યું હોય.
 4. **Atomic write**: release, tracks, credits, identities, formats, segments, files, અને cover એક transaction માં commit થાય છે. Half-imported state નથી.

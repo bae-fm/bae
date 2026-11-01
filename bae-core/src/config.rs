@@ -294,11 +294,6 @@ pub struct Preferences {
     /// centering its content in a width-capped column. Defaults to `false`
     /// (capped).
     pub library_full_width: bool,
-    /// Whether import fully decodes each track to verify it (fatal-error / frame
-    /// shortfall), failing the import for a broken track rather than importing it
-    /// and failing at play time. Rides the loudness decode, so it adds no work.
-    /// Defaults to `true`.
-    pub verify_decode_on_import: bool,
     /// Where an import puts its release: the cloud or this device, and whether
     /// a cloud release stays downloaded here.
     pub import_storage: ImportStoragePreferences,
@@ -348,7 +343,6 @@ impl Default for Preferences {
             max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,
             library_full_width: false,
-            verify_decode_on_import: true,
             import_storage: ImportStoragePreferences::default(),
             identification: IdentificationPreferences::default(),
             cast_enabled: false,

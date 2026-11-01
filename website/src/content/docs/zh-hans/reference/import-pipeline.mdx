@@ -37,7 +37,7 @@ MusicBrainz 以匿名方式查询，并严格保持每秒一个请求的节奏�
 
 确认导入会按顺序运行：
 
-1. **解码验证**：每一轨从头到尾解码；无法完整解码的抓轨会在写入任何内容前导入失败（一个 config flag 可以禁用此项）。
+1. **解码验证**：每一轨从头到尾解码；无法完整解码的抓轨会在写入任何内容前导入失败。
 2. **响度分析**：在同一次解码遍历中测量每轨和每专辑的 integrated loudness 与 true peak，并存储以供 replay-gain 使用。
 3. **封面选择**：所选图像（远程、文件夹图片或内嵌图像）重新渲染为显示缩略图；如果原图来自文件夹，它会保留在发行文件中。
 4. **原子写入**：release、tracks、credits、identities、formats、segments、files 和 cover 在一个 transaction 中提交。不存在半导入状态。

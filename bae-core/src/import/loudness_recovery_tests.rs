@@ -77,7 +77,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     let event_tx =
         crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
 
-    let result = measure_loudness(
+    measure_loudness(
         &event_tx,
         NonZeroUsize::MIN,
         &mut formats,
@@ -91,7 +91,5 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         &crate::diagnostics::Diagnostics::noop(),
     )
     .await
-    .unwrap();
-
-    assert!(result.broken.is_empty());
+    .expect("complete audio with an invalid terminal packet passes the decode check");
 }

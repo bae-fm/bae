@@ -204,8 +204,6 @@ impl BridgeConfig {
             identification,
             show_remaining_time,
             library_full_width,
-            // Import-time decode verification; not surfaced on the config screen.
-            verify_decode_on_import: _,
             cast_enabled,
             cast_transcode_format,
             mcp,

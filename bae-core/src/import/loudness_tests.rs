@@ -315,10 +315,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
     assert!(audio_formats[0].track_loudness_lufs.is_none());
     match result {
         Err(error) => error,
-        Ok(result) => panic!(
-            "an unreadable source must fail the pass, not report {:?} broken",
-            result.broken
-        ),
+        Ok(_) => panic!("an unreadable source must fail the pass"),
     }
 }
 
@@ -380,8 +377,8 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
 }
 
 /// A read of a track's source that panics is a bug: it is reported, and the
-/// track comes back as a read that panicked, which fails the import, never
-/// as a broken or unmeasured track the import would commit.
+/// track comes back as a read that panicked, which fails the import as a bug,
+/// never as a broken track or as an unmeasured one the import would commit.
 /// Sabotage: let `decode_track` treat `ReadPanicked` as any other decode
 /// error, and the track comes back broken with nothing reported.
 #[tokio::test]
@@ -458,7 +455,12 @@ async fn measure_loudness_computes_track_and_album_values() {
     let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
     let source_file_sizes =
         HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
-    let tracks = vec![standalone_track("track-0", &path)];
+    // The whole-file track's stored length is the probe's, as an import
+    // measures it: the decode is checked against it.
+    let probe = bae_audio::probe_audio_from_path(&path).expect("fixture probe");
+    let mut tracks = vec![standalone_track("track-0", &path)];
+    tracks[0].db_track.duration_ms =
+        u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
 
     let result = measure(
         &event_tx,
@@ -586,7 +588,7 @@ async fn peak_open_sources(
         .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
         .collect();
     let sampler = crate::open_files_peak::OpenFilesPeak::start(dir);
-    let result = measure_loudness(
+    measure_loudness(
         &event_tx,
         NonZeroUsize::new(parallelism).unwrap(),
         audio_formats,
@@ -603,7 +605,6 @@ async fn peak_open_sources(
     .expect("the pass measures every track");
     let peak = sampler.finish();
     coven::assert_no_open_files_under(dir);
-    assert!(result.broken.is_empty(), "{:?}", result.broken);
     peak
 }
 

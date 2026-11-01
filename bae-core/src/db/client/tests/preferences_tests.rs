@@ -107,7 +107,6 @@ async fn every_preference_reads_back_as_set() {
         max_concurrent_downloads: NonZeroU32::new(4).unwrap(),
         show_remaining_time: true,
         library_full_width: true,
-        verify_decode_on_import: false,
         import_storage: ImportStoragePreferences {
             cloud: false,
             pinned: false,

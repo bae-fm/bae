@@ -37,7 +37,7 @@ MusicBrainz jest odpytywany anonimowo w ścisłym tempie jednego żądania na se
 
 Potwierdzenie importu uruchamia po kolei:
 
-1. **Weryfikację dekodowania**: każdy utwór jest dekodowany od początku do końca; rip, którego nie da się w pełni zdekodować, przerywa import, zanim cokolwiek zostanie zapisane (flaga konfiguracji może to wyłączyć).
+1. **Weryfikację dekodowania**: każdy utwór jest dekodowany od początku do końca; rip, którego nie da się w pełni zdekodować, przerywa import, zanim cokolwiek zostanie zapisane.
 2. **Analizę głośności**: zintegrowana głośność i true peak są mierzone dla utworu i dla albumu podczas tego samego przebiegu dekodowania, przechowywane do użycia przez replay gain.
 3. **Wybór okładki**: wybrana grafika (zdalna, obraz z folderu albo osadzona) jest ponownie renderowana do miniatury wyświetlania; oryginał zostaje wśród plików wydania, jeśli pochodził z folderu.
 4. **Atomowy zapis**: wydanie, utwory, przypisania, tożsamości, formaty, segmenty, pliki i okładka zapisują się w jednej transakcji. Nie istnieje stan częściowo zaimportowany.

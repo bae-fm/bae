@@ -689,23 +689,6 @@ impl ImportService {
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;
         db_release.album_peak_linear = loudness.album_peak_linear;
 
-        // A track that didn't decode fully (fatal errors, a truncated body) would
-        // import fine and then fail at play time. With verify on, fail now —
-        // before finalize commits anything to the library.
-        if self
-            .library_manager
-            .preferences()
-            .await
-            .map_err(crate::library::LibraryError::from)?
-            .verify_decode_on_import
-            && !loudness.broken.is_empty()
-        {
-            return Err(crate::import::ImportError::DecodeVerification {
-                broken: loudness.broken,
-            }
-            .into());
-        }
-
         // The candidate's stored cover selection is what it commits with, and
         // the only thing: the image a person chose, the one its
         // identification fetched, or the folder's own cover the scan stored

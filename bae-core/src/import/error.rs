@@ -207,7 +207,7 @@ pub enum ImportError {
     #[error("cover art failed: {detail}")]
     LocalCover { detail: String },
 
-    /// verify_decode_on_import found tracks that would import but not play.
+    /// The import's decode found tracks that would import but not play.
     #[cfg(desktop)]
     #[error("decode verification failed for {} track(s): {}", broken.len(), broken.join("; "))]
     DecodeVerification { broken: Vec<String> },

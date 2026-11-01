@@ -16,37 +16,15 @@ fn truncate_flac_body(path: &Path) {
     fs::write(path, &bytes[..keep]).expect("write truncated flac");
 }
 
-/// Import a one-track album whose FLAC is truncated, with
-/// `verify_decode_on_import` set to `verify`.
-async fn import_truncated_album(verify: bool) -> Result<(String, String), String> {
-    let temp = TempDir::new().unwrap();
-    let db_dir = temp.path().join("db");
-    fs::create_dir_all(&db_dir).unwrap();
-    let db = Database::new_test(
-        db_dir.join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
-    db.edit_preferences_for_test(move |prefs| prefs.verify_decode_on_import = verify)
-        .await
-        .unwrap();
-    let library_manager = LibraryManager::new(
-        db.clone(),
-        bae_core::config::AppDir::under_home(temp.path()).unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        bae_core::providers::Providers::offline(),
-    );
-    let handle = library_manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .expect("import service starts");
+/// A track that doesn't decode fully fails its import before anything is
+/// written: a FLAC whose body is cut in half under an intact header would
+/// import and then fail at play time.
+#[tokio::test]
+async fn a_track_that_does_not_decode_fully_fails_its_import() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
 
-    let album_dir = temp.path().join("album");
+    let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -61,40 +39,26 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     );
     truncate_flac_body(&album_dir.join("01.flac"));
 
-    let import_id = uuid::Uuid::new_v4().to_string();
-    handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::DraftSource::FileTags,
-        ))
-        .await
-        .unwrap();
-    let mut progress_rx = handle.subscribe_import(import_id);
-    let result = support::try_wait_for_import_complete(&mut progress_rx).await;
-    // The files must outlive the import.
-    drop(temp);
-    result
-}
-
-/// The same truncated FLAC imports with `verify_decode_on_import` off and fails
-/// decode verification with it on, so the flag decides the outcome.
-#[tokio::test]
-async fn verify_decode_on_import_gates_a_broken_track() {
-    support::tracing_init();
-
-    let off = import_truncated_album(false).await;
+    let err = import_folder(
+        &f,
+        &album_dir,
+        None,
+        ImportDestination::Local,
+        support::DraftSource::FileTags,
+    )
+    .await
+    .expect_err("an album with a broken track must fail its import");
     assert!(
-        off.is_ok(),
-        "with verify_decode_on_import off, a broken album must still import, got: {off:?}",
+        err.contains("decode verification failed") && err.contains("Broken Track (track 1)"),
+        "the failure must name the broken track, got: {err}",
     );
-
-    // On is the default.
-    let on = import_truncated_album(true).await;
-    let err = on.expect_err("with verify_decode_on_import on, a broken album must fail the import");
     assert!(
-        err.contains("decode verification failed"),
-        "the failure must come from decode-verify, got: {err}",
+        f.db.get_albums(&[]).await.unwrap().is_empty(),
+        "a failed import writes no album",
+    );
+    assert!(
+        f.db.get_all_track_ids().await.unwrap().is_empty(),
+        "a failed import writes no track",
     );
 }
 

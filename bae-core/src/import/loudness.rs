@@ -19,14 +19,10 @@ use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 
-/// The album loudness/peak, the tracks whose decode looked broken (import
-/// decode-verify), and the scrub points the decodes gave. `broken` carries a
-/// human-readable line per broken track (its path, track number, and reason);
-/// the caller fails the import on it when `verify_decode_on_import` is on.
+/// The album loudness/peak and the scrub points the decodes gave.
 pub(super) struct LoudnessResult {
     pub album_loudness_lufs: Option<f64>,
     pub album_peak_linear: Option<f64>,
-    pub broken: Vec<String>,
     /// The frames a scrub starts its decode at, for every segment whose file
     /// is a FLAC the demuxer can only binary-search or an MP3.
     pub scrub_points: Vec<crate::db::DbScrubPoints>,
@@ -231,7 +227,7 @@ impl LoudnessProgressSink {
     /// output frames far short of the expected window (a valid header over a
     /// truncated body — the decode stops early). Invalid packets are acceptable
     /// only when the decoded frame count proves the window is substantially
-    /// complete. Advisory unless `verify_decode_on_import` is on.
+    /// complete.
     fn broken_reason(&self) -> Option<String> {
         if self.decode_error_count > 0 {
             return Some(format!("{} fatal decode error(s)", self.decode_error_count));
@@ -481,14 +477,16 @@ fn decode_track(
 /// keeps a window ahead of each decode and evicts behind them. At most
 /// `parallelism` source files are open at once however many tracks there are.
 ///
-/// A track whose decode/measure fails, or that is too quiet to have a usable
-/// loudness, keeps NULL loudness/peak and still imports — the skip is logged with
-/// its file path, and a measurement failure never aborts the import.
+/// A track that decodes but can't be measured, or that is too quiet to have a
+/// usable loudness, keeps NULL loudness/peak and still imports — the skip is
+/// logged with its file path, and a measurement failure never aborts the import.
 ///
-/// The full decode doubles as verification: a fatal decode error, or output
-/// frames far short of the expected window (a truncated body under a valid
-/// header), marks the track broken. Broken tracks are always logged and returned;
-/// the caller decides whether to fail the import (per `verify_decode_on_import`).
+/// The full decode doubles as verification: a track whose decode stops, reports
+/// a fatal error, or gives output frames far short of the expected window (a
+/// truncated body under a valid header) would import and then fail at play
+/// time. Each such track is logged, and the pass fails the import with
+/// [`crate::import::ImportError::DecodeVerification`] naming every one, before
+/// anything is committed.
 ///
 /// A source that can't be read is neither: the pass stops admitting tracks at
 /// the first read failure and fails the import with
@@ -688,12 +686,17 @@ pub(super) async fn measure_loudness(
         }
     }
 
+    if !broken_tracks.is_empty() {
+        return Err(crate::import::ImportError::DecodeVerification {
+            broken: broken_tracks,
+        });
+    }
+
     let album_loudness = crate::loudness::album_loudness(&meters);
     let album_peak = crate::loudness::album_peak(&track_peaks);
     Ok(LoudnessResult {
         album_loudness_lufs: album_loudness,
         album_peak_linear: album_peak,
-        broken: broken_tracks,
         scrub_points: all_scrub_points,
     })
 }
