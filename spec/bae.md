@@ -3637,7 +3637,8 @@ release's or track's id as UTF-8, or a candidate's key.
   stopping sync once its running pass ends, ending the library's background
   work, and closing the store. The apps show the step's name while it runs,
   never a bare spinner: on the Mac over a moving bar on the loading screen, on
-  Android under a spinner on its own screen. That covers closing a library, the
+  Android over one on its own screen, which names stopping playback, the
+  close's first step there, until the close reports a step. That covers closing a library, the
   close before restoring or resetting this device's copy, and, on Android, the
   close of the library a newly opened one replaces. Quitting the Mac app, and
   the close after a removal or a failed open, show nothing and report nowhere.
