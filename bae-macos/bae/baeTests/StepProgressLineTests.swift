@@ -5,13 +5,13 @@ import Testing
 
 @testable import bae
 
-/// A step line keeps drawing the step it shows when SwiftUI updates it with
-/// the stream it already follows.
+/// A step line keeps the room the step it shows takes when SwiftUI updates it
+/// with the stream it already follows.
 @MainActor
 @Suite("Step progress line")
 struct StepProgressLineTests {
-    @Test("a running step stays drawn")
-    func runningStepIsDrawn() async throws {
+    @Test("a running step keeps its line's height")
+    func runningStepKeepsItsHeight() async throws {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             StepProgressLine(
@@ -23,6 +23,16 @@ struct StepProgressLineTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
+            let line = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? StepProgressNSView<BridgeClosingStep> }
+                    .first
+            )
+            #expect(line.steppingHeight > 0)
+            #expect(
+                abs(line.frame.height - line.steppingHeight) < 1,
+                "sized \(line.frame.height) for \(line.steppingHeight)"
+            )
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
             let lines = try await SnapshotTestSupport.recognizedText(in: png)
                 .map(\.text)
