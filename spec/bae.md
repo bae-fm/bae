@@ -2371,8 +2371,9 @@ checking the bucket and detecting its settings on S3, preparing iCloud, reading
 the account on Dropbox and OneDrive, connecting and checking the provider,
 creating the library in storage, or loading with loading's own steps, and
 recording changed access. The apps show the step's name over a bar in place of
-a spinner, counted for loading's steps. Listing a provider's folders, and
-making a new OneDrive folder, say so while they run. The dev reset connects its
+a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
+the browser, listing the provider's folders, and making a new OneDrive folder
+each say so while they run, on both apps. The dev reset connects its
 storage without such a stream: it reports connecting storage as its own step.
 
 The key prefix is the folder in the bucket the library lives under. The app

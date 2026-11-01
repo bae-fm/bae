@@ -52,6 +52,14 @@
                             .disabled(browser.isWorking)
                     }
                 }
+                if let work = browser.working {
+                    Section {
+                        FolderBrowserWorkLine(
+                            work: work,
+                            provider: browser.provider
+                        )
+                    }
+                }
                 if let error = browser.error {
                     Section {
                         ErrorDetailDisclosure(error: error)
@@ -109,6 +117,48 @@
                             .disabled(!browser.canCreateFolder)
                     }
                 }
+            }
+        }
+    }
+
+    /// The provider call folder choice is running, named under its spinner: the
+    /// person signing in, the provider listing folders, or OneDrive making one.
+    struct FolderBrowserWorkLine: View {
+        let work: StorageFolderBrowser.Work
+        let provider: StorageFolderBrowser.Provider
+
+        var body: some View {
+            ProgressView(String(localized: title))
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        private var title: LocalizedStringResource {
+            switch (work, provider) {
+            case (.signingIn, _):
+                LocalizedStringResource(
+                    "Signing in…",
+                    comment:
+                        "Cloud setup's folder step, while the person signs in to Dropbox or OneDrive in their browser."
+                )
+            case (.listing, .dropbox):
+                LocalizedStringResource(
+                    "Reading your shared Dropbox folders…",
+                    comment:
+                        "Dropbox setup, while bae lists the person's shared Dropbox folders."
+                )
+            case (.listing, .oneDrive):
+                LocalizedStringResource(
+                    "Reading the folders on your OneDrive…",
+                    comment:
+                        "OneDrive setup, while bae lists the folders inside the one shown."
+                )
+            case (.makingFolder, _):
+                LocalizedStringResource(
+                    "Making the folder…",
+                    comment:
+                        "OneDrive setup, while bae makes the new folder the person named."
+                )
             }
         }
     }

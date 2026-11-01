@@ -67,13 +67,24 @@ public final class StorageFolderBrowser {
         public let folders: [BridgeStorageFolder]
     }
 
+    /// The provider call running, which the step names while it runs.
+    public enum Work: Equatable {
+        /// The person signs in through their browser.
+        case signingIn
+        /// The provider lists the folders to choose from.
+        case listing
+        /// OneDrive makes the folder the person named.
+        case makingFolder
+    }
+
     public let provider: Provider
     /// Nil until sign-in lists the first folders.
     public private(set) var listing: Listing?
     /// The Dropbox shared folder chosen from the list.
     public var selected: BridgeStorageFolder?
     public var newFolderName = ""
-    public private(set) var isWorking = false
+    /// The call running; nil while none is.
+    public private(set) var working: Work?
     public private(set) var error: DisplayError?
 
     @ObservationIgnored
@@ -93,6 +104,8 @@ public final class StorageFolderBrowser {
         return listing?.path.last
     }
 
+    public var isWorking: Bool { working != nil }
+
     public var canOpenParent: Bool { (listing?.path.count ?? 0) > 1 }
 
     public var canCreateFolder: Bool {
@@ -104,8 +117,9 @@ public final class StorageFolderBrowser {
     public func signIn() {
         let operations = operations
         let provider = provider
-        run {
+        run(.signingIn) {
             try await operations.signIn(provider.cloudProvider)
+            self.working = .listing
             switch provider {
             case .dropbox:
                 return Listing(
@@ -126,7 +140,7 @@ public final class StorageFolderBrowser {
     public func lookAgain() {
         let operations = operations
         selected = nil
-        run {
+        run(.listing) {
             Listing(
                 path: [],
                 folders: try await operations.dropboxSharedFolders()
@@ -139,7 +153,7 @@ public final class StorageFolderBrowser {
             preconditionFailure("folders show only after sign-in")
         }
         let operations = operations
-        run {
+        run(.listing) {
             Listing(
                 path: path + [folder],
                 folders: try await operations.oneDriveFolders(folder.location)
@@ -156,7 +170,7 @@ public final class StorageFolderBrowser {
             preconditionFailure("a path below the root has a parent")
         }
         let operations = operations
-        run {
+        run(.listing) {
             Listing(
                 path: parentPath,
                 folders: try await operations.oneDriveFolders(parent.location)
@@ -171,12 +185,13 @@ public final class StorageFolderBrowser {
         }
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         let operations = operations
-        run {
+        run(.makingFolder) {
             let created = try await operations.createOneDriveFolder(
                 parent.location,
                 name
             )
             self.newFolderName = ""
+            self.working = .listing
             return Listing(
                 path: path + [created],
                 folders: try await operations.oneDriveFolders(created.location)
@@ -188,15 +203,18 @@ public final class StorageFolderBrowser {
         task?.cancel()
     }
 
+    /// Run `operation`, which starts as `work` and moves `working` on as
+    /// its calls change.
     private func run(
+        _ work: Work,
         _ operation: @escaping @MainActor () async throws -> Listing
     ) {
         error = nil
-        isWorking = true
+        working = work
         task = Task {
             defer {
                 task = nil
-                isWorking = false
+                working = nil
             }
             do { listing = try await operation() }
             catch is CancellationError {
