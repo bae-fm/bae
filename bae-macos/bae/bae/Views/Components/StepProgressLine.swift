@@ -95,12 +95,19 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         stack.fittingSize.height
     }
 
-    /// Follow `progress`, telling `onStepping` whether a step runs the next
-    /// time the line shows, whatever it last told: a new SwiftUI place, or a
-    /// new open, starts from nothing told.
+    /// Follow `progress`. A new stream tells `onStepping` whether a step
+    /// runs as soon as the line shows what it holds, whatever was told
+    /// before; the stream already followed keeps what was told, which
+    /// SwiftUI's next size of the line reads.
     func follow(_ progress: LatestSource<Step>) {
+        let toldBefore = told
         told = nil
         following.follow(progress)
+        // Following a stream shows what it holds at once, which tells;
+        // the one already followed shows nothing anew.
+        if told == nil {
+            told = toldBefore
+        }
     }
 
     func stopFollowing() {
