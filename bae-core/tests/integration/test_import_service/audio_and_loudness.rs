@@ -495,6 +495,11 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     );
     assert_eq!(
         percents.first().copied(),
+        Some(None),
+        "the step is written as it opens, before the pass counts its frames"
+    );
+    assert_eq!(
+        percents.get(1).copied(),
         Some(Some(0)),
         "a known frame denominator opens at zero"
     );
