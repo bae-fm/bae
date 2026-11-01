@@ -277,6 +277,9 @@ pub struct DbReleaseDetail {
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
+    /// The storage transition this process runs for the release; `None`
+    /// when it runs none.
+    pub transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
 }
@@ -417,6 +420,9 @@ pub struct DbReleaseSummary {
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<DbReleaseUpload>,
+    /// The storage transition this process runs for the release; `None`
+    /// when it runs none.
+    pub transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose

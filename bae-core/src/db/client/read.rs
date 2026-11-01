@@ -179,6 +179,14 @@ pub(super) fn build_release_detail_on(
         |row| row.get(0),
     )?;
     let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
+    let transfer_action = sql.query_row(
+        &format!(
+            "SELECT {} AS transfer_action",
+            super::release_storage_action::transfer_action_sql("?1")
+        ),
+        params![release.id],
+        |row| super::release_storage_action::transfer_action_column(row, "transfer_action"),
+    )?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -191,6 +199,7 @@ pub(super) fn build_release_detail_on(
         remote,
         upload,
         download,
+        transfer_action,
         cover_version,
     })
 }
@@ -359,6 +368,7 @@ pub(super) struct ReleaseDetailRows {
     remote: bool,
     upload: Option<DbReleaseUpload>,
     download: Option<crate::library::DownloadPhase>,
+    transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
     cover_version: Option<String>,
 }
 
@@ -375,6 +385,7 @@ impl ReleaseDetailRows {
             remote: self.remote,
             upload: self.upload,
             download: self.download,
+            transfer_action: self.transfer_action,
             cover_version: self.cover_version,
         }
     }

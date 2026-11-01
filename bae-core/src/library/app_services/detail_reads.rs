@@ -6,19 +6,17 @@ use super::*;
 
 impl AppServices {
     /// The detail view's album as it changes, read for the id the
-    /// subscription is set to: its rows, with each release's pin marker and
-    /// download-queue entry, whether a cloud home is connected, and the
-    /// transfers of its releases — the state it is resolved against. Another
-    /// album is a new id on the same read.
+    /// subscription is set to: its rows, with each release's pin marker,
+    /// download-queue entry and storage transition, and whether a cloud home
+    /// is connected — the state it is resolved against. Another album is a
+    /// new id on the same read.
     pub fn subscribe_album_detail(
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::AlbumDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
+        let manager = self.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
@@ -34,7 +32,6 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            transfers.show(LibraryManager::album_detail_release_ids(&projection));
                             originals.show(LibraryManager::album_detail_originals(&projection));
                             last = Some(projection.clone());
                             manager.resolve_album_detail_projection(projection, originals.seen())
@@ -55,10 +52,7 @@ impl AppServices {
                         query.set(id.clone());
                         continue;
                     }
-                    changed = async { tokio::select! {
-                        value = cloud_home.changed() => value,
-                        value = transfers.changed() => value,
-                    }} => {
+                    changed = cloud_home.changed() => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
                         let Some(projection) = last.clone() else { continue };
@@ -76,19 +70,17 @@ impl AppServices {
     }
 
     /// The detail view's release as it changes, read for the id the
-    /// subscription is set to: its rows, with its pin marker and
-    /// download-queue entry, whether a cloud home is connected, and its
-    /// transfer — the state it is resolved against. Another release is a new
-    /// id on the same read.
+    /// subscription is set to: its rows, with its pin marker, download-queue
+    /// entry and storage transition, and whether a cloud home is connected —
+    /// the state it is resolved against. Another release is a new id on the
+    /// same read.
     pub fn subscribe_release_detail(
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::ReleaseDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
+        let manager = self.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
@@ -112,7 +104,6 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            transfers.show(id.iter().cloned().collect());
                             originals.show(LibraryManager::release_detail_originals(&projection));
                             last = Some(projection.clone());
                             resolve(&id, projection, originals.seen())
@@ -133,10 +124,7 @@ impl AppServices {
                         query.set(id.clone());
                         continue;
                     }
-                    changed = async { tokio::select! {
-                        value = cloud_home.changed() => value,
-                        value = transfers.changed() => value,
-                    }} => {
+                    changed = cloud_home.changed() => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
                         let Some(projection) = last.clone() else { continue };

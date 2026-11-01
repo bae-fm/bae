@@ -3,6 +3,7 @@ pub mod app_services;
 mod artist_search;
 mod bootstrap_auth;
 mod browse;
+pub(crate) mod detach_cancels;
 mod detail;
 pub mod download_snapshot;
 mod file_transfers;
@@ -25,7 +26,6 @@ pub mod search;
 mod storage_browse;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod storage_inspector;
-pub(crate) mod storage_transitions;
 mod sync_activity;
 pub(crate) mod sync_controller;
 mod upload_progress;

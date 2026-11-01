@@ -17,6 +17,7 @@ pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::SelectionWrite;
+pub(crate) use client::StoredTransition;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
     ArtistSearchProjection, ComposerBrowseProjection, ComposerDetailProjection,

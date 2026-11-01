@@ -235,6 +235,9 @@ mod playback_queue_bench;
 mod release_queue_tests;
 
 #[cfg(test)]
+mod release_storage_action_tests;
+
+#[cfg(test)]
 mod personal_order_tests;
 
 #[cfg(test)]

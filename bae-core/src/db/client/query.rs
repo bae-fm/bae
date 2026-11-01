@@ -596,6 +596,10 @@ pub(super) fn row_to_release_summary(
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
         upload: super::queued_uploads::release_upload_in_row(row)?,
+        transfer_action: super::release_storage_action::transfer_action_column(
+            row,
+            "transfer_action",
+        )?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })

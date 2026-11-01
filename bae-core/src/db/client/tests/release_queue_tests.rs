@@ -253,7 +253,7 @@ async fn opening_leaves_the_queues_empty_and_running() {
         .await
         .unwrap();
 
-    db.clear_release_queues().await.unwrap();
+    db.clear_transfers().await.unwrap();
 
     let queue = db.release_queue::<()>().await.unwrap();
     assert!(queue.rows.is_empty());

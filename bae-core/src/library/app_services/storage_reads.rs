@@ -5,9 +5,9 @@ use super::*;
 impl AppServices {
     /// The Storage Manager list as it changes, read in the view the
     /// subscription is asked for: its rows, whose pin markers the query reads
-    /// from the listing's pinned counts and whose uploads from coven's
-    /// upload queue, whether a cloud home is
-    /// connected, and the transfers of the releases shown — the state the
+    /// from the listing's pinned counts, whose uploads from coven's upload
+    /// queue and whose transitions from `release_storage_action` and the
+    /// download queue, and whether a cloud home is connected — the state the
     /// rows are resolved against. One query serves every window: a new view
     /// points it at what that reads.
     pub fn subscribe_storage_browse(
@@ -16,10 +16,8 @@ impl AppServices {
     ) -> crate::library::StorageBrowseSubscription {
         let (view_tx, mut views) = tokio::sync::watch::channel(initial);
         let (tx, rx) = crate::library::live_read_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
+        let manager = self.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("storage browse", task.clone(), tx.clone(), async move {
@@ -42,7 +40,6 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            transfers.show(LibraryManager::storage_browse_release_ids(&projection));
                             originals.show(LibraryManager::storage_browse_originals(&projection));
                             last = Some(projection.clone());
                             Ok(manager.resolve_storage_browse(projection, originals.seen()))
@@ -66,7 +63,7 @@ impl AppServices {
                         }
                         continue;
                     }
-                    changed = async { tokio::select! { value = cloud_home.changed() => value, value = transfers.changed() => value } } => {
+                    changed = cloud_home.changed() => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
                         let Some(projection) = last.clone() else { continue };

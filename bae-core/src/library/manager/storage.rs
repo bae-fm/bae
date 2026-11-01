@@ -196,13 +196,7 @@ impl LibraryManager {
             .await?;
         let mut rows = Vec::with_capacity(raw_rows.len());
         for raw in raw_rows {
-            let transfer_action = self.current_transfer_action(&raw.release.id);
-            rows.push(StorageRow::from_raw(
-                raw,
-                has_cloud_home,
-                transfer_action,
-                &originals,
-            ));
+            rows.push(StorageRow::from_raw(raw, has_cloud_home, &originals));
         }
         Ok(StoragePage { rows, total_count })
     }
@@ -229,15 +223,6 @@ impl LibraryManager {
             .chain(&projection.selected)
     }
 
-    /// The ids of the releases a Storage Manager delivery shows, one per row.
-    pub(crate) fn storage_browse_release_ids(
-        projection: &crate::db::StorageBrowseProjection,
-    ) -> Vec<String> {
-        Self::storage_browse_rows(projection)
-            .map(|row| row.release.id.clone())
-            .collect()
-    }
-
     /// The originals the library records this device holding for the
     /// releases a Storage Manager delivery shows: what the disk is asked about.
     pub(crate) fn storage_browse_originals(
@@ -256,10 +241,8 @@ impl LibraryManager {
         originals: &crate::album_detail::OriginalsSeen,
     ) -> crate::library::StorageBrowseSnapshot {
         let has_cloud_home = self.has_cloud_home();
-        let resolve = |raw: crate::db::DbStorageRow| {
-            let transfer_action = self.current_transfer_action(&raw.release.id);
-            StorageRow::from_raw(raw, has_cloud_home, transfer_action, originals)
-        };
+        let resolve =
+            |raw: crate::db::DbStorageRow| StorageRow::from_raw(raw, has_cloud_home, originals);
         let windows = projection
             .windows
             .into_iter()

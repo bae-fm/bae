@@ -1728,7 +1728,15 @@ being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
-are queued.
+are queued. Which transition a release is in is a device-local row: written
+in the write that admits a move to the cloud, an unpin or making the release
+local, which a release already in one refuses, and deleted as the transition
+ends, however it ends: a move's in the write that queues its files, an
+unpin's or a make-local's in a write after coven's own. A pin in flight is
+the download queue's active entry. The storage rows and the album and
+release detail read the transition in their own query. No transition
+outlives the process that ran it, so the rows are emptied as the library
+opens.
 
 Each row's storage state is the place it sorts by, which core reads with the
 row: Uploading, its chip filled as far as its bytes have come while any file
@@ -3799,10 +3807,11 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
+| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to the cloud being admitted, an unpin, or making it local (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 No transfer outlives the process that ran it, so the library opens with every
-queue empty and running.
+queue empty and running, and no release in a storage transition.
 
 ---
 

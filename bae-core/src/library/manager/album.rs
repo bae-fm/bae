@@ -143,22 +143,6 @@ impl LibraryManager {
             .unwrap_or_default()
     }
 
-    /// The ids of the releases an album-detail delivery shows.
-    pub(crate) fn album_detail_release_ids(
-        projection: &crate::db::AlbumDetailProjection,
-    ) -> Vec<String> {
-        projection
-            .detail
-            .as_ref()
-            .map(|raw| {
-                raw.releases
-                    .iter()
-                    .map(|release| release.release.id.clone())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
     /// Resolve an album-detail delivery with what the disk has said of its
     /// originals (see [`Self::album_detail_originals`]).
     pub(crate) fn resolve_album_detail_projection(
@@ -291,7 +275,6 @@ impl LibraryManager {
                 has_cloud_home,
                 originals,
                 cover: crate::album_detail::cover_ref(&r.release.id, r.cover_version.clone()),
-                transfer_action: self.current_transfer_action(&r.release.id),
                 is_compilation: raw.album.is_compilation,
             };
             let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);

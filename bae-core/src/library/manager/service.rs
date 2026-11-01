@@ -86,8 +86,9 @@ impl LibraryManager {
         };
         let database = Database::from_handle(handle, clock.clone(), ids.clone());
         // No transfer outlives the process that ran it, so the library opens
-        // with its transfer queues empty, before their workers start.
-        database.clear_release_queues().await?;
+        // with its transfer queues empty, before their workers start, and
+        // with no release in a storage transition.
+        database.clear_transfers().await?;
         Ok(Self::assemble(
             database,
             app_dir,
@@ -165,7 +166,7 @@ impl LibraryManager {
             track_deletions: Arc::default(),
             sync,
             sync_status,
-            transitions: crate::library::storage_transitions::StorageTransitions::new(),
+            detach_cancels: Default::default(),
             downloads,
             #[cfg(desktop)]
             outputs,
@@ -382,16 +383,6 @@ impl LibraryManager {
         self.tasks.close().await;
         self.database.close().await?;
         Ok(())
-    }
-
-    pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
-        self.transitions.current(release_id)
-    }
-
-    pub fn subscribe_transfer_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<HashMap<String, ReleaseStorageAction>> {
-        self.transitions.subscribe()
     }
 
     /// Read the injected wall clock without handing its service to callers.

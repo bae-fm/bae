@@ -4,25 +4,92 @@ use super::*;
 
 impl LibraryManager {
     /// Move every file of a release on this device only to the cloud, as one
-    /// move; `pin` keeps each file whole on this device too once stored.
+    /// move; `pin` keeps each file whole on this device too once stored. The
+    /// release shows the move as a transition from the write that admits it
+    /// until the write that queues its files, which ends it; a failure ends
+    /// it in a write of its own. Refused while the release is in another.
     pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
-        let guard = self.admit_transfer_values(
-            std::slice::from_ref(&release_id),
-            ReleaseStorageAction::Upload,
-        )?;
-        // A committed move survives a dismissed view; coven keeps the files
-        // here once stored when `pin` asks it to.
+        // The admission runs to its end on a task of its own, so a dismissed
+        // view leaves neither the move half made nor its transition behind;
+        // coven keeps the files here once stored when `pin` asks it to.
         self.run_file_operation("attach release", move |_closing| async move {
             manager
-                .database
-                .attach_release_files(&release_id, pin)
+                .begin_storage_action(&release_id, crate::db::StoredTransition::Upload)
                 .await?;
-            drop(guard);
-            Ok(())
+            let attached = caught("upload a release", async {
+                Ok(manager
+                    .database
+                    .attach_release_files(&release_id, pin)
+                    .await?)
+            })
+            .await
+            .unwrap_or_else(|failed| Err(manager.bug(failed).into()));
+            match attached {
+                Ok(()) => Ok(()),
+                failed => manager.end_storage_action(&release_id, failed).await,
+            }
         })
         .await
+    }
+
+    /// Run `work` as `release_id`'s transition `action`: its row is written
+    /// before the work starts, refused while the release is in another, and
+    /// deleted once the work ends, whether it succeeds, fails or panics.
+    pub(crate) async fn run_storage_action<T>(
+        &self,
+        release_id: &str,
+        action: crate::db::StoredTransition,
+        work: impl std::future::Future<Output = Result<T, LibraryError>>,
+    ) -> Result<T, LibraryError> {
+        self.begin_storage_action(release_id, action).await?;
+        let outcome = caught("run a release's storage transition", work)
+            .await
+            .unwrap_or_else(|failed| Err(self.bug(failed).into()));
+        self.end_storage_action(release_id, outcome).await
+    }
+
+    async fn begin_storage_action(
+        &self,
+        release_id: &str,
+        action: crate::db::StoredTransition,
+    ) -> Result<(), LibraryError> {
+        match self
+            .database
+            .begin_release_storage_action(release_id, action)
+            .await?
+        {
+            true => Ok(()),
+            false => Err(LibraryError::Storage(format!(
+                "release {release_id} already has an active storage transition"
+            ))),
+        }
+    }
+
+    /// End `release_id`'s transition, which ended in `outcome`. A write that
+    /// fails is reported as a bug and fails the call, beside the work's own
+    /// failure: the row stays until the library next opens.
+    async fn end_storage_action<T>(
+        &self,
+        release_id: &str,
+        outcome: Result<T, LibraryError>,
+    ) -> Result<T, LibraryError> {
+        let Err(error) = self.database.end_release_storage_action(release_id).await else {
+            return outcome;
+        };
+        let cleanup = LibraryError::from(error);
+        self.report_bug(
+            "end a release's storage transition",
+            &bae_util::error_text::CauseChain(&cleanup),
+        );
+        Err(match outcome {
+            Ok(_) => cleanup,
+            Err(operation) => LibraryError::Cleanup {
+                operation: Box::new(operation),
+                cleanup: Box::new(cleanup),
+            },
+        })
     }
 
     /// Make an uploaded release local again into `new_path`, a folder the
@@ -195,14 +262,8 @@ impl LibraryManager {
                     let transfer = TransferService::new(self.clone());
                     let drive_release_id = release_id.clone();
                     let running = transfer.pin_release(release_id, move |progress| async move {
-                        self.drive_transfer(
-                            &drive_release_id,
-                            ReleaseStorageAction::Pin,
-                            progress,
-                            None,
-                        )
-                        .await
-                        .map(|_| ())
+                        self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
+                            .await
                     });
                     Ok((initial_progress, running))
                 },
@@ -218,7 +279,7 @@ impl LibraryManager {
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
-        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx, None)
+        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
             .await
     }
 
@@ -303,22 +364,26 @@ impl LibraryManager {
         new_path: &std::path::Path,
     ) -> Result<(), LibraryError> {
         // The token `cancel_release_transition` fires to stop this transfer
-        // between files; registered with the drive so it is reachable for
-        // exactly as long as the transfer runs.
+        // between files, reachable for exactly as long as the transfer runs:
+        // its task holds the registration.
         let cancel = crate::library::CancellationToken::new();
+        let registration = self
+            .detach_cancels
+            .register(release_id, cancel.clone())
+            .ok_or_else(|| {
+                LibraryError::Storage(format!(
+                    "release {release_id} already has an active storage transition"
+                ))
+            })?;
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.detach_release_audio(
             release_id.to_string(),
             new_path.to_path_buf(),
-            cancel.clone(),
+            cancel,
+            registration,
         );
-        self.drive_transfer(
-            release_id,
-            ReleaseStorageAction::DetachAudio,
-            rx,
-            Some(cancel),
-        )
-        .await
+        self.drive_transfer(release_id, ReleaseStorageAction::DetachAudio, rx)
+            .await
     }
 
     /// Cancel the in-progress transition for a release, whatever it is. The
@@ -326,18 +391,14 @@ impl LibraryManager {
     /// which is running — a release is in at most one transition at a time.
     /// A no-op if nothing is in progress.
     ///
-    /// The transitions this process registered say what they are: a
-    /// audio detachment transfer is stopped by its token, which the registry fires;
-    /// a pin is stopped through the download queue, which also holds the pins
+    /// Making a release local is stopped by its token, which fires here; a
+    /// pin is stopped through the download queue, which also holds the pins
     /// not yet started. Cancelling an upload cancels the release's move to
-    /// the cloud, and its files stay on this device only.
+    /// the cloud, and its files stay on this device only. An unpin can't be
+    /// stopped.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
-        match self.transitions.cancel(release_id) {
-            Some(ReleaseStorageAction::DetachAudio) => return Ok(()),
-            Some(ReleaseStorageAction::Pin) => {
-                self.cancel_download(release_id).await?;
-            }
-            Some(ReleaseStorageAction::Upload | ReleaseStorageAction::Unpin) | None => {}
+        if self.detach_cancels.cancel(release_id) {
+            return Ok(());
         }
         if self.downloads.contains(release_id).await? {
             self.cancel_download(release_id).await?;
@@ -352,31 +413,18 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Admit every foreground transfer action under one lock. Either every
-    /// release becomes active in the value stream or none does.
-    pub(super) fn admit_transfer_values(
-        &self,
-        release_ids: &[String],
-        action: ReleaseStorageAction,
-    ) -> Result<crate::library::storage_transitions::TransitionGuard, LibraryError> {
-        self.transitions.admit(release_ids, action)
-    }
-
-    /// Drain a transfer's progress channel and publish its active action through
-    /// the transfer value stream. On `Failed` the transfer channel's error string
-    /// is wrapped as a `Storage` failure and surfaced to the caller.
+    /// Drain a transfer's progress channel until it says how the transfer
+    /// ended, handing a pin's progress to the download queue. On `Failed` the
+    /// transfer's error is surfaced to the caller. The transfer runs on a
+    /// task of its own, which writes and ends the transition its rows show,
+    /// so dropping this drain stops neither.
     pub(super) async fn drive_transfer(
         &self,
         release_id: &str,
         action: ReleaseStorageAction,
         mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
-        cancel: Option<crate::library::CancellationToken>,
     ) -> Result<(), LibraryError> {
         use crate::storage::transfer::TransferProgress;
-
-        // The bridge transfer future is abortable. The guard clears the
-        // registration whether the channel completes or the future is dropped.
-        let _registration = self.transitions.track(release_id, action, cancel);
 
         let outcome = loop {
             let Some(progress) = rx.recv().await else {
@@ -386,9 +434,6 @@ impl LibraryManager {
                 )));
             };
             match progress {
-                TransferProgress::Started => {
-                    self.transitions.started(release_id, action);
-                }
                 TransferProgress::Progress { progress } => {
                     if matches!(action, ReleaseStorageAction::Pin)
                         && !self.downloads.set_active_progress(release_id, progress)

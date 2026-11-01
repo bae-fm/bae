@@ -328,6 +328,8 @@ mod tests {
         "release_queues",
         "download_queue",
         "output_queue",
+        // The storage transition this process runs for each release.
+        "release_storage_action",
         // What library lists sort, filter and count by, kept from the synced
         // rows by local triggers.
         "artist_shown_as",

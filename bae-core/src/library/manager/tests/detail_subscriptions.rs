@@ -1,28 +1,29 @@
 /// Opening an album while sync runs still shows the album.
 ///
-/// The album detail subscription merges its database query with the config,
-/// sync-status and transfer streams, which re-render the same projection with no
-/// database change behind them. A running sync cycle publishes on those streams
-/// the whole time, and no rate of publication on them may stop the query from
-/// reaching its first value: a subscription that keeps restarting its read
-/// delivers neither a value nor an error, which reads on screen as a spinner
-/// that never resolves. The release detail and the storage page merge their
-/// queries the same way, through the same `reconfigurable_live_query_events`.
+/// A running sync cycle keeps coven's reader busy and writes rows the album
+/// detail's query reads the whole time, and no rate of either may stop the
+/// query from reaching its first value: a subscription that keeps restarting
+/// its read delivers neither a value nor an error, which reads on screen as a
+/// spinner that never resolves. The release detail and the storage page read
+/// the same way, through the same `reconfigurable_live_query_events`.
 ///
 /// The load here is sync-shaped without a sync loop: reads keeping coven's
-/// reader connection busy so the query's read waits its turn behind them, and a
-/// steady stream on one of the three re-render channels. Both are paced by
-/// something other than the CPU — the reads by the connection thread, the stream
-/// by a timer — so this runtime stays able to schedule the deadline below, and a
+/// reader connection busy so the query's read waits its turn behind them, and
+/// a steady stream of writes to a row the query reads, a release of the album
+/// entering and leaving a storage transition. Both are paced by something
+/// other than the CPU — the reads by the connection thread, the writes by a
+/// timer — so this runtime stays able to schedule the deadline below, and a
 /// regression fails on it instead of hanging.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn album_detail_delivers_while_sync_shaped_load_runs() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();
+    let mut releases = Vec::new();
     for _ in 0..25 {
         let release = create_test_release(&album.id);
         insert_release(&manager, &release).await;
+        releases.push(release.id);
     }
 
     let mut load = Vec::new();
@@ -39,10 +40,15 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
             }
         }));
     }
-    let transitions = manager.transitions.clone();
+    let database = manager.database.clone();
+    let transitioning = releases[0].clone();
     load.push(tokio::spawn(async move {
         loop {
-            transitions.republish();
+            database
+                .begin_release_storage_action(&transitioning, crate::db::StoredTransition::Unpin)
+                .await
+                .unwrap();
+            database.end_release_storage_action(&transitioning).await.unwrap();
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         }
     }));

@@ -103,6 +103,7 @@ fn storage_row_select(
             listing.created_at AS date_added, \
             {release_cover} AS release_cover_version, \
             {upload_columns}, \
+            {transfer_action} AS transfer_action, \
             {album_columns}{extra} \
         FROM {listing} \
         JOIN releases r ON r.id = listing.release_id \
@@ -112,6 +113,7 @@ fn storage_row_select(
         release_cover = super::files::cover_version_sql("r.id"),
         release_media = super::pressing_columns::release_media_sql("r.id"),
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
+        transfer_action = super::release_storage_action::transfer_action_sql("r.id"),
         releases_sending = super::queued_uploads::RELEASES_SENDING,
     )
 }

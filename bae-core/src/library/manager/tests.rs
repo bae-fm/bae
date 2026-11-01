@@ -4,7 +4,6 @@
 // for the moniker it replaced, so assertions still read by name.
 const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
 const REL_2: &str = "dcdebf05-2d41-4dfc-8823-024993c9d00f"; // was "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
-const REL_ABORT: &str = "59c56c5f-eee0-4a61-8ecc-fb828ab4c828"; // was "rel-abort"
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
 const REL_X: &str = "e6b79143-6ab2-4358-8f53-460594936d69"; // was "rel-x"
 const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
@@ -304,6 +303,7 @@ mod primary_release;
 mod scrub_points_sync;
 #[cfg(feature = "oauth-providers")]
 mod sign_in;
+mod storage_actions;
 include!("tests/transfer_order.rs");
 include!("tests/upload_pin.rs");
 include!("tests/pin_count_upkeep.rs");

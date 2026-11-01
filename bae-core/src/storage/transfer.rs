@@ -27,7 +27,6 @@ type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 /// the cloud out of reach, its credentials, or this device's own store.
 #[derive(Debug)]
 pub enum TransferProgress {
-    Started,
     Progress {
         progress: DownloadTransferProgress,
     },
@@ -96,7 +95,8 @@ impl TransferService {
     }
 
     /// Unpin a release: move its files from the pinned cache to the evictable
-    /// cache. Returns a receiver for progress updates.
+    /// cache, as the release's transition. Returns a receiver for progress
+    /// updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();
         let unpinned_release_id = release_id.clone();
@@ -108,22 +108,28 @@ impl TransferService {
             ),
             move |_tx| async move {
                 library_manager
-                    .unpin_release_files(&unpinned_release_id)
-                    .await?;
-                Ok(())
+                    .run_storage_action(
+                        &unpinned_release_id,
+                        crate::db::StoredTransition::Unpin,
+                        library_manager.unpin_release_files(&unpinned_release_id),
+                    )
+                    .await
             },
         );
         rx
     }
 
-    /// Make a Remote release Local: coven downloads its files into
-    /// `new_path` and switches them to this device only in one write.
+    /// Make a Remote release Local, as the release's transition: coven
+    /// downloads its files into `new_path` and switches them to this device
+    /// only in one write. `cancel` stops it; the transfer's task holds
+    /// `registration`, which makes `cancel` reachable, until it ends.
     /// Returns a receiver for progress updates.
-    pub fn detach_release_audio(
+    pub(crate) fn detach_release_audio(
         &self,
         release_id: String,
         new_path: std::path::PathBuf,
         cancel: crate::library::CancellationToken,
+        registration: crate::library::detach_cancels::DetachRegistration,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();
         let localized_release_id = release_id.clone();
@@ -134,12 +140,20 @@ impl TransferService {
                 ReleaseStorageAction::DetachAudio,
             ),
             move |_tx| async move {
+                let _registration = registration;
                 // coven removes every copy and folder it made if the call
                 // fails or is cancelled before its write.
                 library_manager
-                    .detach_release_audio_into(&localized_release_id, &new_path, &cancel)
-                    .await?;
-                Ok(())
+                    .run_storage_action(
+                        &localized_release_id,
+                        crate::db::StoredTransition::DetachAudio,
+                        library_manager.detach_release_audio_into(
+                            &localized_release_id,
+                            &new_path,
+                            &cancel,
+                        ),
+                    )
+                    .await
             },
         );
         rx
@@ -151,10 +165,9 @@ impl TransferService {
 ///
 /// Whoever runs a transfer holds one of these from the precondition check
 /// through to the terminal record, so a completion or a failure can only ever
-/// name the transfer that was started. Sits beside
-/// [`crate::library::storage_transitions::StorageTransitions`], which tracks
-/// which release is in a transition at all and how to cancel it; this owns what
-/// one transfer checks, logs, and reports.
+/// name the transfer that was started. Which release is in a transition at
+/// all is its `release_storage_action` row, or for a pin its download queue
+/// entry; this owns what one transfer checks, logs, and reports.
 ///
 /// A pin, unpin, or audio detachment is handed to [`spawn_transfer`], which drives it
 /// on its own task and reports on a progress channel. A upload has no
@@ -269,8 +282,8 @@ impl ReleaseTransfer {
     }
 }
 
-/// Drive one release transfer on its own task: guard its preconditions, announce
-/// its start, run `run`, and record whichever terminal state it reaches. A
+/// Drive one release transfer on its own task: guard its preconditions, run
+/// `run`, and record whichever terminal state it reaches. A
 /// panic in the transfer is reported as a bug and ends it as failed, on the
 /// progress channel like any failure, so a caller that drains the channel
 /// alone still hears how it ended. Returns the progress channel to drain and
@@ -290,7 +303,6 @@ where
     let task = tokio::spawn(async move {
         let result = caught(transfer_operation(transfer.action), async {
             let file_count = transfer.start().await?;
-            send_progress(&tx, TransferProgress::Started);
             info!(
                 action = ?transfer.action,
                 release_id = %transfer.release_id,

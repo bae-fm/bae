@@ -400,7 +400,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert_eq!(ascending().await, resting, "finished");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    manager.database.clear_release_queues().await.unwrap();
+    manager.database.clear_transfers().await.unwrap();
     assert_eq!(ascending().await, resting, "emptied as the library opens");
 }
 

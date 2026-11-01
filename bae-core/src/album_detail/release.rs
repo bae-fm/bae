@@ -14,7 +14,6 @@ pub(crate) struct ReleaseResolveCtx<'a> {
     pub(crate) has_cloud_home: bool,
     pub(crate) originals: &'a OriginalsSeen,
     pub(crate) cover: Option<ImageRef>,
-    pub(crate) transfer_action: Option<ReleaseStorageAction>,
     /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
     /// — the one album-level fact the per-track artist decision needs.
     pub(crate) is_compilation: bool,
@@ -70,7 +69,7 @@ impl ReleaseSummary {
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx<'_>) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote);
         let upload = raw.upload.map(ReleaseUpload::from_raw);
-        let transitioning = upload.is_some() || ctx.transfer_action.is_some();
+        let transitioning = upload.is_some() || raw.transfer_action.is_some();
         ReleaseSummary {
             id: raw.id,
             album_id: raw.album_id,
@@ -87,7 +86,7 @@ impl ReleaseSummary {
                     ctx.has_cloud_home,
                 )
             },
-            transfer_action: ctx.transfer_action,
+            transfer_action: raw.transfer_action,
             upload,
             transitioning,
             file_count: raw.file_count,
@@ -540,6 +539,7 @@ impl ReleaseDetail {
                 remote,
                 pinned: raw.pinned,
                 upload: raw.upload,
+                transfer_action: raw.transfer_action,
                 file_count,
                 total_size,
                 unstored_audio: raw.unstored_audio,
@@ -727,6 +727,7 @@ mod release_edit_display_tests {
             remote: false,
             upload: None,
             download: None,
+            transfer_action: None,
             cover_version: None,
         };
         let tracks = vec![crate::db::DbReleaseEditTrack {

@@ -590,12 +590,14 @@ impl Database {
             .subscribe(|sql| release_queue_counts_on::<P>(&sql).map_err(CovenError::from))
     }
 
-    /// Empty both queues and let them run: what the library opens with, since
-    /// no transfer outlives the process that ran it.
-    pub(crate) async fn clear_release_queues(&self) -> Result<(), DbError> {
+    /// Empty both queues and let them run, and end every storage transition:
+    /// what the library opens with, since no transfer outlives the process
+    /// that ran it.
+    pub(crate) async fn clear_transfers(&self) -> Result<(), DbError> {
         self.call(|sql| {
             sql.execute("DELETE FROM download_queue", [])?;
             sql.execute("DELETE FROM output_queue", [])?;
+            sql.execute("DELETE FROM release_storage_action", [])?;
             sql.execute("UPDATE release_queues SET paused = 0", [])?;
             Ok(())
         })

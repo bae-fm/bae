@@ -427,7 +427,6 @@ impl LibraryManager {
             has_cloud_home,
             originals,
             cover: crate::album_detail::cover_ref(release_id, raw.cover_version.clone()),
-            transfer_action: self.current_transfer_action(release_id),
             is_compilation,
         };
         let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);

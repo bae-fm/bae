@@ -325,16 +325,14 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
         .finish()
         .await
         .expect("pin task completes");
-    let (Some(TransferProgress::Started), Some(TransferProgress::Complete { .. })) =
-        (events.first(), events.last())
-    else {
-        panic!("a pin starts and completes: {events:?}");
+    let Some((TransferProgress::Complete { .. }, before)) = events.split_last() else {
+        panic!("a pin completes: {events:?}");
     };
-    let progress: Vec<_> = events[1..events.len() - 1]
+    let progress: Vec<_> = before
         .iter()
         .map(|event| match event {
             TransferProgress::Progress { progress } => progress,
-            other => panic!("only progress between start and completion: {other:?}"),
+            other => panic!("only progress before completion: {other:?}"),
         })
         .collect();
     assert!(

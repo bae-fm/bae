@@ -698,14 +698,6 @@ impl AppServices {
     delegate_sync!(manager, watch_upload_file_transfers => watch_upload_file_transfers() -> crate::library::FileTransfersWatch);
     delegate_sync!(manager, watch_pin_file_transfers => watch_pin_file_transfers() -> crate::library::FileTransfersWatch);
 
-    pub fn subscribe_transfer_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<
-        std::collections::HashMap<String, crate::album_detail::ReleaseStorageAction>,
-    > {
-        self.inner.manager.subscribe_transfer_values()
-    }
-
     /// Set whether playback pauses between vinyl/cassette sides and CD discs. Turning it on
     /// must take effect at the boundary already staged for gapless playback,
     /// not just the next one: `preload_next_track` decides staging once, at
@@ -739,13 +731,11 @@ mod release_queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;
 mod shown_originals;
-mod shown_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod storage_inspector_reads;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
 use shown_originals::ShownOriginals;
-use shown_transfers::ShownTransfers;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

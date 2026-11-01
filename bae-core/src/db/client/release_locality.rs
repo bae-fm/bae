@@ -15,13 +15,16 @@ impl Database {
     /// move: each original is read whole now, and coven switches every file
     /// to the cloud together once all are stored, changing no row.
     /// `keep_here` keeps each file whole on this device too once stored.
-    /// Until then each file is read from its original here.
+    /// Until then each file is read from its original here. The write that
+    /// queues the files ends the release's storage transition, the move's
+    /// admission.
     pub(crate) async fn attach_release_files(
         &self,
         release_id: &str,
         keep_here: bool,
     ) -> Result<(), DbError> {
-        let files = self.get_files_for_release(release_id).await?;
+        let release_id = release_id.to_string();
+        let files = self.get_files_for_release(&release_id).await?;
         if files.is_empty() {
             return Err(DbError::Message("release has no files".into()));
         }
@@ -48,6 +51,10 @@ impl Database {
             |_| Ok(()),
             move |sql, ()| {
                 sql.move_to_cloud(moving)?;
+                sql.execute(
+                    super::release_storage_action::END_RELEASE_STORAGE_ACTION,
+                    [&release_id],
+                )?;
                 Ok(())
             },
         )

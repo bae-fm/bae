@@ -149,7 +149,6 @@ impl StorageRow {
     pub(crate) fn from_raw(
         raw: DbStorageRow,
         has_cloud_home: bool,
-        transfer_action: Option<ReleaseStorageAction>,
         originals: &OriginalsSeen,
     ) -> StorageRow {
         let cover = cover_ref(&raw.release.id, raw.release_cover_version);
@@ -157,15 +156,15 @@ impl StorageRow {
             has_cloud_home,
             originals,
             cover,
-            transfer_action,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so
             // the per-track compilation flag is never read on this path.
             is_compilation: false,
         };
+        let status = StorageRowStatus::of(raw.place, raw.release.transfer_action);
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album),
-            status: StorageRowStatus::of(raw.place, transfer_action),
+            status,
             date_added: raw.date_added,
         }
     }

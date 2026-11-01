@@ -33,6 +33,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         remote: false,
         upload: None,
         download: None,
+        transfer_action: None,
         cover_version: None,
     };
     let originals = OriginalsSeen::default();
@@ -40,7 +41,6 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         has_cloud_home: false,
         originals: &originals,
         cover: None,
-        transfer_action: None,
         is_compilation: false,
     };
     ReleaseDetail::from_raw(raw, &[], 0, &ctx).0

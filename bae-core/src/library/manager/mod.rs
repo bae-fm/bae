@@ -742,9 +742,9 @@ pub struct LibraryManager {
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.
     sync_status: SyncStatusState,
-    /// Every storage transition in flight, and the stream the storage rows
-    /// read them from.
-    transitions: crate::library::storage_transitions::StorageTransitions,
+    /// How to stop each transfer making a release local that this process
+    /// runs.
+    detach_cancels: crate::library::detach_cancels::DetachCancels,
     /// The "Pin for offline" queue: its table, which the Downloads pane and
     /// the detail views read, and the bytes its active download has moved. A
     /// single serial worker drains it one release at a time. Shared across

@@ -773,7 +773,6 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
                 has_cloud_home: true,
                 originals: &crate::album_detail::OriginalsSeen::default(),
                 cover: None,
-                transfer_action: None,
                 is_compilation: false,
             },
         )

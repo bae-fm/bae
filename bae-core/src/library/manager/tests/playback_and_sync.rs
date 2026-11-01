@@ -182,50 +182,6 @@ async fn discogs_validation_signals_confirm_and_reject() {
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 }
 
-/// Aborting the transfer driver must remove its action from the value stream so
-/// subscribers cannot retain an in-flight transfer after its future is gone.
-#[tokio::test]
-async fn aborted_transfer_clears_the_streamed_action() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let mut values = manager.subscribe_transfer_values();
-
-    // A channel whose sender we hold open: `drive_transfer` parks in
-    // `rx.recv().await` forever, so the only way out is the abort below.
-    let (tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
-
-    let driver = manager.clone();
-    let handle = tokio::spawn(async move {
-        let result = driver
-            .drive_transfer(REL_ABORT, ReleaseStorageAction::Pin, progress_rx, None)
-            .await;
-        panic!("the parked driver must only exit by abort, returned {result:?}");
-    });
-
-    tx.send(crate::storage::transfer::TransferProgress::Started)
-        .expect("the transfer driver is listening");
-    values
-        .changed()
-        .await
-        .expect("the active transfer value must arrive");
-    assert_eq!(
-        values.borrow().get(REL_ABORT),
-        Some(&ReleaseStorageAction::Pin)
-    );
-
-    handle.abort();
-    let join = handle.await;
-    assert!(
-        join.expect_err("the parked driver can only exit by abort")
-            .is_cancelled(),
-        "the driver must end by cancellation, not a panic"
-    );
-    values
-        .changed()
-        .await
-        .expect("the cleared transfer value must arrive");
-    assert!(!values.borrow().contains_key(REL_ABORT));
-}
-
 /// Seed an album with two releases, each holding two tracks inserted in
 /// playing order, so the library order is deterministic.
 async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
