@@ -47,11 +47,25 @@ import uniffi.bae_bridge.bridgeSetupStepKey
 @Composable
 internal fun InProgressScreen(screen: AppScreen.InProgress) {
     when (screen) {
-        is AppScreen.Loading -> LoadingScreen(steps = null, title = screen.work.title())
-        is AppScreen.Opening -> LoadingScreen(steps = screen.steps, title = R.string.loading_opening_library)
-        is AppScreen.Closing -> ClosingScreen(steps = screen.steps)
-        is AppScreen.FinishingRemovals -> SetupStepScreen(steps = screen.steps)
-        is AppScreen.Resetting -> ResettingScreen(status = screen.status)
+        is AppScreen.Loading -> {
+            LoadingScreen(steps = null, title = screen.work.title())
+        }
+
+        is AppScreen.Opening -> {
+            LoadingScreen(steps = screen.steps, title = R.string.loading_opening_library)
+        }
+
+        is AppScreen.Closing -> {
+            ClosingScreen(steps = screen.steps)
+        }
+
+        is AppScreen.FinishingRemovals -> {
+            SetupStepScreen(steps = screen.steps, starting = BridgeSetupStep.FINISHING_REMOVALS)
+        }
+
+        is AppScreen.Resetting -> {
+            ResettingScreen(status = screen.status)
+        }
     }
 }
 
@@ -110,22 +124,25 @@ private fun ClosingScreen(steps: LatestSource<BridgeClosingStep>) {
 
 /**
  * A setup call running: the step it runs, read from [steps] as it changes,
- * over a bar of how much of it is done, counted where the step counts.
+ * over a bar of how much of it is done, counted where the step counts. Until
+ * the call writes its first step, the screen names [starting], the step the
+ * call starts with, over a bar without a count. [stepKey] gives a step's
+ * catalog key.
  */
 @Composable
-private fun SetupStepScreen(steps: LatestSource<BridgeSetupProgress>) {
+internal fun SetupStepScreen(
+    steps: LatestSource<BridgeSetupProgress>,
+    starting: BridgeSetupStep,
+    stepKey: (BridgeSetupStep) -> String = ::bridgeSetupStepKey,
+) {
     val context = LocalContext.current
     val progress by remember(steps) { steps.changes() }.collectAsState(initial = null)
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         val shown = progress
-        if (shown == null) {
-            CircularProgressIndicator()
-        } else {
-            StepBar(
-                title = context.coreString(bridgeSetupStepKey(shown.step)),
-                fraction = stepFraction(shown.done, shown.total),
-            )
-        }
+        StepBar(
+            title = context.coreString(stepKey(shown?.step ?: starting)),
+            fraction = shown?.let { stepFraction(it.done, it.total) },
+        )
     }
 }
 
@@ -157,6 +174,7 @@ private fun FinishingRemovalsPreview() {
                 LatestStream
                     .setupProgress(BridgeSetupProgress(BridgeSetupStep.FINISHING_REMOVALS, 1uL, 2uL))
                     .only,
+            starting = BridgeSetupStep.FINISHING_REMOVALS,
         )
     }
 }
