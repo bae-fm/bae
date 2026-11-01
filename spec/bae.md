@@ -2570,7 +2570,8 @@ coven records on the Mac only until the last of the album's files is stored
 and one write switches them all to the cloud. Until then the phone can't read
 the files, and can't tell an upload still running on the Mac from a release
 the Mac keeps local: either way the release reads as on Ana's Mac (§4.2), and
-a picture whose file isn't readable here shows a plain tile in its place. No
+a picture whose file isn't readable here shows a plain tile in its place, as
+a picture still loading does, with no spinner. No
 album or track is marked as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.

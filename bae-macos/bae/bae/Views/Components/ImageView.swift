@@ -32,16 +32,12 @@ struct ImageView: View {
         self.contentMode = contentMode
         self.pointSize = pointSize
         _lastLoad = State(
-            initialValue: SlotLoad(
-                content: content,
-                state: .initial(content: content)
-            )
+            initialValue: SlotLoad(content: content, state: .pending(.empty))
         )
     }
 
     private var loadState: ImageLoadState {
-        lastLoad.content == content
-            ? lastLoad.state : .initial(content: content)
+        lastLoad.content == content ? lastLoad.state : .pending(.empty)
     }
 
     var body: some View {
@@ -103,10 +99,7 @@ struct ImageView: View {
 
     private func load() async {
         let requested = content
-        lastLoad = SlotLoad(
-            content: requested,
-            state: .initial(content: requested)
-        )
+        lastLoad = SlotLoad(content: requested, state: .pending(.empty))
         guard let requested else {
             return
         }
@@ -119,10 +112,7 @@ struct ImageView: View {
                 lastLoad = SlotLoad(content: requested, state: .loaded(image))
             }
             else {
-                lastLoad = SlotLoad(
-                    content: requested,
-                    state: .pending(.unavailable)
-                )
+                lastLoad = SlotLoad(content: requested, state: .pending(.empty))
             }
         }
         catch is CancellationError {
@@ -157,15 +147,11 @@ private struct SlotLoad {
 enum ImageLoadState {
     case pending(PlaceholderReason)
     case loaded(NSImage)
-
-    static func initial(content: ImageContent?) -> Self {
-        .pending(content == nil ? .unavailable : .loading)
-    }
 }
 
 enum PlaceholderReason {
-    case loading
-    case unavailable
+    /// No image to draw yet, or none to load: a plain tile either way.
+    case empty
     case failed
 }
 
@@ -177,12 +163,7 @@ struct ImagePlaceholderView: View {
 
     var body: some View {
         switch reason {
-        case .loading:
-            Rectangle().fill(Theme.placeholder)
-                .overlay {
-                    ProgressView().controlSize(.small).scaleEffect(loadingScale)
-                }
-        case .unavailable:
+        case .empty:
             Rectangle().fill(Theme.placeholder)
         case .failed:
             Button(action: retry) {
@@ -208,10 +189,6 @@ struct ImagePlaceholderView: View {
 
     private var usesCompactChrome: Bool {
         pointSize < 56
-    }
-
-    private var loadingScale: CGFloat {
-        usesCompactChrome ? 0.75 : 0.85
     }
 
     private var retryIconFont: Font {
