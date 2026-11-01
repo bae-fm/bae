@@ -57,10 +57,11 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
 
 /// Robin's laptop, offline, asks to remove her tablet, and her tablet
 /// removes the laptop first. Once the laptop syncs it applies its own
-/// removal, and the library refuses the change it asked for; the laptop
-/// lists it as refused, naming the tablet, with why.
+/// removal, which ends the change it asked for unmade: nothing refused it,
+/// and the laptop lists it as stopped, naming the tablet, because the
+/// laptop was removed.
 #[test]
-fn a_change_the_library_refuses_is_listed_with_why() {
+fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
     run_two_device_test(async |devices| {
         let (laptop, tablet) = (devices.a(), devices.b());
         let (laptop_id, tablet_id) = (laptop.database().device_id(), tablet.database().device_id());
@@ -96,19 +97,19 @@ fn a_change_the_library_refuses_is_listed_with_why() {
             .await;
 
         laptop.database().start_sync().await.unwrap();
-        let refused = crate::followed::value_matching(&mut changes, |changes| {
+        let stopped = crate::followed::value_matching(&mut changes, |changes| {
             changes
                 .iter()
-                .any(|change| matches!(change.state, AdminChangeState::Refused(_)))
+                .any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
         let [AdminChange {
             change: AdminChangeKind::RemoveDevice { device, name },
-            state: AdminChangeState::Refused(coven::OperationRejection::NotAllowed),
+            state: AdminChangeState::Stopped(coven::DeviceStop::Removed),
             ..
-        }] = refused.as_slice()
+        }] = stopped.as_slice()
         else {
-            panic!("one refused removal: {refused:?}");
+            panic!("one removal, stopped by the laptop's own: {stopped:?}");
         };
         assert_eq!((*device, name.as_str()), (tablet_id, "Device B"));
     });

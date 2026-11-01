@@ -349,6 +349,10 @@
     <string name="operation_rejection_keys_already_used">Die sleutels zijn al in gebruik.</string>
     <string name="operation_rejection_member_keys_changed">De sleutels van die persoon zijn intussen vervangen.</string>
     <string name="operation_rejection_not_allowed">Dit apparaat mag die wijziging niet aanbrengen.</string>
+    <string name="device_stop_removed">Dit apparaat is uit de bibliotheek verwijderd.</string>
+    <string name="device_stop_replaced">Een herstel heeft de kopie van de bibliotheek op dit apparaat vervangen.</string>
+    <string name="device_stop_copied">Een andere kopie van de bibliotheek van dit apparaat synchroniseert als dit apparaat.</string>
+    <string name="device_stop_member_keys_replaced">Je sleutels zijn vervangen op een ander apparaat van je.</string>
     <string name="admin_changes_title">Wijzigingen vanaf deze telefoon</string>
     <string name="admin_change_rename">Bibliotheek hernoemen naar ‘%1$s’</string>
     <string name="admin_change_make_admin">%1$s beheerder maken</string>
@@ -356,6 +360,7 @@
     <string name="admin_change_remove">%1$s verwijderen</string>
     <string name="admin_change_waiting">Wacht op synchronisatie</string>
     <string name="admin_change_refused">Geweigerd</string>
+    <string name="admin_change_stopped">Gestopt</string>
     <string name="dismiss">Sluiten</string>
     <string name="admin_change_approve">%1$s binnenlaten</string>
 </resources>

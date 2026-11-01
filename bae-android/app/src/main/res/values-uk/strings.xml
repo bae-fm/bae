@@ -355,6 +355,10 @@
     <string name="operation_rejection_keys_already_used">Ці ключі вже використовуються.</string>
     <string name="operation_rejection_member_keys_changed">Тим часом ключі цієї людини було замінено.</string>
     <string name="operation_rejection_not_allowed">Цьому пристрою не дозволено вносити цю зміну.</string>
+    <string name="device_stop_removed">Цей пристрій видалено з бібліотеки.</string>
+    <string name="device_stop_replaced">Відновлення замінило копію бібліотеки на цьому пристрої.</string>
+    <string name="device_stop_copied">Інша копія бібліотеки цього пристрою синхронізується як цей пристрій.</string>
+    <string name="device_stop_member_keys_replaced">Ваші ключі замінено на іншому вашому пристрої.</string>
     <string name="admin_changes_title">Зміни з цього телефона</string>
     <string name="admin_change_rename">Перейменувати бібліотеку на «%1$s»</string>
     <string name="admin_change_make_admin">Зробити %1$s адміністратором</string>
@@ -362,6 +366,7 @@
     <string name="admin_change_remove">Вилучити %1$s</string>
     <string name="admin_change_waiting">Очікує синхронізації</string>
     <string name="admin_change_refused">Відхилено</string>
+    <string name="admin_change_stopped">Зупинено</string>
     <string name="dismiss">Закрити</string>
     <string name="admin_change_approve">Впустити %1$s</string>
 </resources>

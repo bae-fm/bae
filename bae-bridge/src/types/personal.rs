@@ -91,6 +91,9 @@ pub enum BridgeRequestedProfileState {
     Refused {
         reason: super::BridgeOperationRejection,
     },
+    /// This device stopped for good before the circle was made; asking
+    /// again asks anew.
+    Stopped { stop: super::BridgeDeviceStop },
 }
 impl BridgeRequestedProfile {
     pub(crate) fn from_core(value: bae_core::people::RequestedProfile) -> Self {
@@ -104,6 +107,11 @@ impl BridgeRequestedProfile {
                 bae_core::people::RequestedProfileState::Refused(reason) => {
                     BridgeRequestedProfileState::Refused {
                         reason: super::BridgeOperationRejection::from_core(reason),
+                    }
+                }
+                bae_core::people::RequestedProfileState::Stopped(stop) => {
+                    BridgeRequestedProfileState::Stopped {
+                        stop: super::BridgeDeviceStop::from_core(stop),
                     }
                 }
             },

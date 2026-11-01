@@ -4,6 +4,7 @@ mod configuration;
 mod conversion;
 #[cfg(feature = "desktop")]
 mod cover;
+mod device_stop;
 mod editing;
 mod events_and_transfers;
 #[cfg(feature = "desktop")]
@@ -26,6 +27,7 @@ pub use admin_change::*;
 pub use configuration::*;
 #[cfg(feature = "desktop")]
 pub use cover::*;
+pub use device_stop::*;
 pub use editing::*;
 pub use events_and_transfers::*;
 #[cfg(feature = "desktop")]

@@ -350,6 +350,10 @@
     <string name="operation_rejection_keys_already_used">Quelle chiavi sono già in uso.</string>
     <string name="operation_rejection_member_keys_changed">Nel frattempo le chiavi di quella persona sono state sostituite.</string>
     <string name="operation_rejection_not_allowed">Questo dispositivo non è autorizzato a fare quella modifica.</string>
+    <string name="device_stop_removed">Questo dispositivo è stato rimosso dalla libreria.</string>
+    <string name="device_stop_replaced">Un ripristino ha sostituito la copia della libreria su questo dispositivo.</string>
+    <string name="device_stop_copied">Un’altra copia della libreria di questo dispositivo si sincronizza come questo dispositivo.</string>
+    <string name="device_stop_member_keys_replaced">Le tue chiavi sono state sostituite su un altro dei tuoi dispositivi.</string>
     <string name="admin_changes_title">Modifiche da questo telefono</string>
     <string name="admin_change_rename">Rinomina la libreria in “%1$s”</string>
     <string name="admin_change_make_admin">Rendi %1$s amministratore</string>
@@ -357,6 +361,7 @@
     <string name="admin_change_remove">Rimuovi %1$s</string>
     <string name="admin_change_waiting">In attesa di sincronizzazione</string>
     <string name="admin_change_refused">Rifiutato</string>
+    <string name="admin_change_stopped">Interrotto</string>
     <string name="dismiss">Ignora</string>
     <string name="admin_change_approve">Fai entrare %1$s</string>
 </resources>

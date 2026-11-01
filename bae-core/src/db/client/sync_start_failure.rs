@@ -68,6 +68,7 @@ impl FailureColumns {
             | C::Credentials
             | C::Network
             | C::InviteJoining
+            | C::StoreOwnerAccount
             | C::Renderer => {
                 return Err(DbError::Message(format!(
                     "a sync start can't fail as {category:?}"

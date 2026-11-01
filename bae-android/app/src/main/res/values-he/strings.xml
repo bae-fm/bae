@@ -352,6 +352,10 @@
     <string name="operation_rejection_keys_already_used">המפתחות האלה כבר בשימוש.</string>
     <string name="operation_rejection_member_keys_changed">המפתחות של האדם הזה הוחלפו בינתיים.</string>
     <string name="operation_rejection_not_allowed">למכשיר הזה אין הרשאה לבצע את השינוי הזה.</string>
+    <string name="device_stop_removed">המכשיר הזה הוסר מהספרייה.</string>
+    <string name="device_stop_replaced">שחזור החליף את עותק הספרייה במכשיר הזה.</string>
+    <string name="device_stop_copied">עותק אחר של הספרייה של המכשיר הזה מסתנכרן בתור המכשיר הזה.</string>
+    <string name="device_stop_member_keys_replaced">המפתחות שלכם הוחלפו במכשיר אחר שלכם.</string>
     <string name="admin_changes_title">שינויים מהטלפון הזה</string>
     <string name="admin_change_rename">שינוי שם הספרייה ל-“%1$s”</string>
     <string name="admin_change_make_admin">להפוך את %1$s למנהל</string>
@@ -359,6 +363,7 @@
     <string name="admin_change_remove">הסר %1$s</string>
     <string name="admin_change_waiting">ממתין לסנכרון</string>
     <string name="admin_change_refused">נדחה</string>
+    <string name="admin_change_stopped">נעצר</string>
     <string name="dismiss">סגור</string>
     <string name="admin_change_approve">להכניס את %1$s</string>
 </resources>

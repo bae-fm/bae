@@ -347,6 +347,10 @@
     <string name="operation_rejection_keys_already_used">Ezek a kulcsok már használatban vannak.</string>
     <string name="operation_rejection_member_keys_changed">Ennek a személynek a kulcsait időközben lecserélték.</string>
     <string name="operation_rejection_not_allowed">Ez az eszköz nem végezheti el ezt a módosítást.</string>
+    <string name="device_stop_removed">Ezt az eszközt eltávolították a könyvtárból.</string>
+    <string name="device_stop_replaced">Egy visszaállítás lecserélte a könyvtár ezen az eszközön lévő példányát.</string>
+    <string name="device_stop_copied">Az eszköz könyvtárának egy másik példánya ezként az eszközként szinkronizál.</string>
+    <string name="device_stop_member_keys_replaced">A kulcsaidat lecserélték egy másik eszközödön.</string>
     <string name="admin_changes_title">Módosítások erről a telefonról</string>
     <string name="admin_change_rename">A könyvtár átnevezése erre: „%1$s”</string>
     <string name="admin_change_make_admin">%1$s legyen adminisztrátor</string>
@@ -354,6 +358,7 @@
     <string name="admin_change_remove">%1$s eltávolítása</string>
     <string name="admin_change_waiting">Szinkronizálásra vár</string>
     <string name="admin_change_refused">Elutasítva</string>
+    <string name="admin_change_stopped">Leállítva</string>
     <string name="dismiss">Bezárás</string>
     <string name="admin_change_approve">%1$s beengedése</string>
 </resources>

@@ -41,6 +41,8 @@ pub enum BridgeAdminChangeState {
     Refused {
         reason: super::BridgeOperationRejection,
     },
+    /// This device stopped for good before the change was made.
+    Stopped { stop: super::BridgeDeviceStop },
 }
 impl BridgeAdminChange {
     pub(crate) fn from_core(value: bae_core::sync::admin_change::AdminChange) -> Self {
@@ -87,6 +89,9 @@ impl BridgeAdminChange {
                 AdminChangeState::Done => BridgeAdminChangeState::Done,
                 AdminChangeState::Refused(reason) => BridgeAdminChangeState::Refused {
                     reason: super::BridgeOperationRejection::from_core(reason),
+                },
+                AdminChangeState::Stopped(stop) => BridgeAdminChangeState::Stopped {
+                    stop: super::BridgeDeviceStop::from_core(stop),
                 },
             },
         }

@@ -346,6 +346,10 @@
     <string name="operation_rejection_keys_already_used">这些密钥已在使用中。</string>
     <string name="operation_rejection_member_keys_changed">在此期间，此人的密钥已被替换。</string>
     <string name="operation_rejection_not_allowed">此设备无权进行该更改。</string>
+    <string name="device_stop_removed">此设备已从资料库中移除。</string>
+    <string name="device_stop_replaced">一次恢复替换了此设备上的资料库副本。</string>
+    <string name="device_stop_copied">此设备资料库的另一个副本正以此设备的身份同步。</string>
+    <string name="device_stop_member_keys_replaced">你的密钥已在你的另一台设备上被替换。</string>
     <string name="admin_changes_title">来自此手机的更改</string>
     <string name="admin_change_rename">将资料库重命名为“%1$s”</string>
     <string name="admin_change_make_admin">将 %1$s 设为管理员</string>
@@ -353,6 +357,7 @@
     <string name="admin_change_remove">移除%1$s</string>
     <string name="admin_change_waiting">等待同步</string>
     <string name="admin_change_refused">已拒绝</string>
+    <string name="admin_change_stopped">已停止</string>
     <string name="dismiss">关闭</string>
     <string name="admin_change_approve">让 %1$s 加入</string>
 </resources>

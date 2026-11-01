@@ -361,6 +361,10 @@
     <string name="operation_rejection_keys_already_used">هذه المفاتيح مستخدمة بالفعل.</string>
     <string name="operation_rejection_member_keys_changed">استُبدلت مفاتيح هذا الشخص في هذه الأثناء.</string>
     <string name="operation_rejection_not_allowed">لا يُسمح لهذا الجهاز بإجراء هذا التغيير.</string>
+    <string name="device_stop_removed">تمت إزالة هذا الجهاز من المكتبة.</string>
+    <string name="device_stop_replaced">استبدلت عملية استعادة نسخة المكتبة على هذا الجهاز.</string>
+    <string name="device_stop_copied">نسخة أخرى من مكتبة هذا الجهاز تتزامن باسم هذا الجهاز.</string>
+    <string name="device_stop_member_keys_replaced">استُبدلت مفاتيحك على جهاز آخر من أجهزتك.</string>
     <string name="admin_changes_title">التغييرات من هذا الهاتف</string>
     <string name="admin_change_rename">إعادة تسمية المكتبة إلى “%1$s”</string>
     <string name="admin_change_make_admin">جعل %1$s مسؤولًا</string>
@@ -368,6 +372,7 @@
     <string name="admin_change_remove">إزالة %1$s</string>
     <string name="admin_change_waiting">في انتظار المزامنة</string>
     <string name="admin_change_refused">مرفوض</string>
+    <string name="admin_change_stopped">متوقّف</string>
     <string name="dismiss">تجاهل</string>
     <string name="admin_change_approve">السماح بدخول %1$s</string>
 </resources>

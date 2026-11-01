@@ -355,6 +355,10 @@
     <string name="operation_rejection_keys_already_used">Te klucze są już używane.</string>
     <string name="operation_rejection_member_keys_changed">Klucze tej osoby zostały w międzyczasie zastąpione.</string>
     <string name="operation_rejection_not_allowed">To urządzenie nie może wprowadzić tej zmiany.</string>
+    <string name="device_stop_removed">To urządzenie zostało usunięte z biblioteki.</string>
+    <string name="device_stop_replaced">Przywracanie zastąpiło kopię biblioteki na tym urządzeniu.</string>
+    <string name="device_stop_copied">Inna kopia biblioteki tego urządzenia synchronizuje się jako to urządzenie.</string>
+    <string name="device_stop_member_keys_replaced">Twoje klucze zostały zastąpione na innym z Twoich urządzeń.</string>
     <string name="admin_changes_title">Zmiany z tego telefonu</string>
     <string name="admin_change_rename">Zmień nazwę biblioteki na „%1$s”</string>
     <string name="admin_change_make_admin">Ustaw %1$s jako administratora</string>
@@ -362,6 +366,7 @@
     <string name="admin_change_remove">Usuń %1$s</string>
     <string name="admin_change_waiting">Oczekuje na synchronizację</string>
     <string name="admin_change_refused">Odrzucono</string>
+    <string name="admin_change_stopped">Zatrzymano</string>
     <string name="dismiss">Zamknij</string>
     <string name="admin_change_approve">Wpuść %1$s</string>
 </resources>

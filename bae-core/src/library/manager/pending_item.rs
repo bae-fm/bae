@@ -94,7 +94,6 @@ fn reports_failure(reason: &coven::PendingReason) -> bool {
         | R::Refused(_)
         | R::WritesRefused { .. }
         | R::ProviderPending { .. }
-        | R::PendingOwner { .. }
         | R::AccountInUse { .. }
         | R::AccessRemains { .. }
         | R::FileUnavailable(_)

@@ -352,6 +352,10 @@
     <string name="operation_rejection_keys_already_used">Ti se ključevi već koriste.</string>
     <string name="operation_rejection_member_keys_changed">Ključevi te osobe u međuvremenu su zamijenjeni.</string>
     <string name="operation_rejection_not_allowed">Ovaj uređaj nema dopuštenje za tu promjenu.</string>
+    <string name="device_stop_removed">Ovaj je uređaj uklonjen iz knjižnice.</string>
+    <string name="device_stop_replaced">Vraćanje je zamijenilo kopiju knjižnice na ovom uređaju.</string>
+    <string name="device_stop_copied">Druga kopija knjižnice ovog uređaja sinkronizira se kao ovaj uređaj.</string>
+    <string name="device_stop_member_keys_replaced">Vaši su ključevi zamijenjeni na drugom vašem uređaju.</string>
     <string name="admin_changes_title">Promjene s ovog telefona</string>
     <string name="admin_change_rename">Preimenuj knjižnicu u „%1$s”</string>
     <string name="admin_change_make_admin">Postavi osobu %1$s za administratora</string>
@@ -359,6 +363,7 @@
     <string name="admin_change_remove">Ukloni %1$s</string>
     <string name="admin_change_waiting">Čeka sinkronizaciju</string>
     <string name="admin_change_refused">Odbijeno</string>
+    <string name="admin_change_stopped">Zaustavljeno</string>
     <string name="dismiss">Odbaci</string>
     <string name="admin_change_approve">Pusti osobu %1$s unutra</string>
 </resources>

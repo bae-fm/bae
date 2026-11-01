@@ -7,7 +7,8 @@ private let logger = Logger.bae("HistorySharingSection")
 /// applies to new plays; earlier plays keep the audience they were recorded
 /// in. A person without a profile yet — a join that couldn't ask for it —
 /// creates one here first; the section says while it is being made, and
-/// why the library refused it.
+/// why it wasn't: the library refused it, or this device stopped syncing for
+/// good first.
 public struct HistorySharingSection: View {
     @Environment(MembershipStore.self)
     private var store
@@ -54,10 +55,8 @@ public struct HistorySharingSection: View {
                     .foregroundStyle(.secondary)
             }
             else if store.members != nil {
-                if let requested = store.requestedProfile,
-                    case .refused(let reason) = requested.state
-                {
-                    ErrorText("Your profile couldn't be made. \(reason.label)")
+                if let why = store.requestedProfile?.state.unmadeReason {
+                    ErrorText("Your profile couldn't be made. \(why)")
                 }
                 Text("Create your profile so the library can show who you are.")
                     .themeText(.detail)
@@ -92,6 +91,18 @@ public struct HistorySharingSection: View {
                 )
                 self.error = DisplayError(error)
             }
+        }
+    }
+}
+
+extension BridgeRequestedProfileState {
+    /// Why the profile asked for wasn't made, as a sentence; nil while it is
+    /// being made.
+    fileprivate var unmadeReason: String? {
+        switch self {
+        case .making: nil
+        case .refused(let reason): reason.label
+        case .stopped(let stop): stop.label
         }
     }
 }

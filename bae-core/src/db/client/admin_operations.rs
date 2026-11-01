@@ -92,6 +92,7 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                 AdminChangeState::Done
             }
             Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+            Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
         };
         Ok(AdminChange {
             operation,

@@ -73,9 +73,9 @@ impl Database {
     /// creates the profile and moves `local_history` into the circle.
     /// Otherwise the write journals the circle with coven and records the
     /// request, offline too; [`Self::finish_profile_requests`] creates the
-    /// profile once the circle's entry lands. A request the library refused
-    /// is acknowledged and replaced by this one; one still running refuses
-    /// another with `CirclePending`.
+    /// profile once the circle's entry lands. A request the library refused,
+    /// or one this device stopped before, is acknowledged and replaced by
+    /// this one; one still running refuses another with `CirclePending`.
     pub async fn create_profile(&self, name: &str) -> Result<(), ProfileError> {
         let name = profile_name(name)?;
         let _creation = self.inner.profile_creation.lock().await;
@@ -106,7 +106,9 @@ impl Database {
                         ProfileRequestState::Making | ProfileRequestState::Made => {
                             return Ok(ProfileWrite::Pending(request.operation));
                         }
-                        ProfileRequestState::Refused(_) => end_profile_request(sql, &request)?,
+                        ProfileRequestState::Refused(_) | ProfileRequestState::Stopped(_) => {
+                            end_profile_request(sql, &request)?
+                        }
                     }
                 }
                 let circle_name = format!("bae-person:{member}");
@@ -141,8 +143,9 @@ impl Database {
     /// made its private circle: follows the request while the library is
     /// open, and when the circle's operation lands, one write creates the
     /// profile, moves `local_history` into the circle and acknowledges the
-    /// outcome. A refused circle waits for the person, who acknowledges it
-    /// by asking again (§5.4).
+    /// outcome. A circle refused, or stopped by this device's stop for
+    /// good, waits for the person, who acknowledges it by asking again
+    /// (§5.4).
     pub async fn finish_profile_requests(&self) -> Result<(), ProfileError> {
         let mut requests = self.subscribe_profile_request();
         while let Some(request) = requests.next().await {

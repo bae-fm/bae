@@ -346,6 +346,10 @@
     <string name="operation_rejection_keys_already_used">這些金鑰已在使用中。</string>
     <string name="operation_rejection_member_keys_changed">在此期間，此人的金鑰已被替換。</string>
     <string name="operation_rejection_not_allowed">此裝置無權進行該變更。</string>
+    <string name="device_stop_removed">此裝置已從資料庫中移除。</string>
+    <string name="device_stop_replaced">一次還原取代了此裝置上的資料庫副本。</string>
+    <string name="device_stop_copied">此裝置資料庫的另一個副本正以此裝置的身分同步。</string>
+    <string name="device_stop_member_keys_replaced">你的金鑰已在你的另一台裝置上被替換。</string>
     <string name="admin_changes_title">來自此手機的變更</string>
     <string name="admin_change_rename">將資料庫重新命名為「%1$s」</string>
     <string name="admin_change_make_admin">將 %1$s 設為管理員</string>
@@ -353,6 +357,7 @@
     <string name="admin_change_remove">移除%1$s</string>
     <string name="admin_change_waiting">等待同步</string>
     <string name="admin_change_refused">已拒絕</string>
+    <string name="admin_change_stopped">已停止</string>
     <string name="dismiss">關閉</string>
     <string name="admin_change_approve">讓 %1$s 加入</string>
 </resources>

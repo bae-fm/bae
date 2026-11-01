@@ -6,7 +6,8 @@ private let logger = Logger.bae("AdminChangesSection")
 
 /// The admin changes this Mac asked for: renaming the library, changing a
 /// role, removing a person or a device. Each shows waiting until sync
-/// publishes it, then done or refused with why, until the person dismisses
+/// publishes it, then done, refused with why, or stopped with why this Mac
+/// stopped syncing for good before it was made, until the person dismisses
 /// it. Shown only while there is one.
 struct AdminChangesSection: View {
     @Environment(MembershipStore.self)
@@ -76,15 +77,27 @@ private struct AdminChangeRow: View {
                 case .refused:
                     StatusChip("Refused", tone: .danger)
                     dismissButton
+                case .stopped:
+                    StatusChip("Stopped", tone: .danger)
+                    dismissButton
                 }
             }
-            if case .refused(let reason) = change.state {
-                Text(reason.label)
+            if let why {
+                Text(why)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, ThemeSpace.line)
+    }
+
+    /// Why a change ended without being made.
+    private var why: String? {
+        switch change.state {
+        case .waiting, .done: nil
+        case .refused(let reason): reason.label
+        case .stopped(let stop): stop.label
+        }
     }
 
     private var dismissButton: some View {

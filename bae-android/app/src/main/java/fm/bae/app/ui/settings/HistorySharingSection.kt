@@ -52,7 +52,7 @@ internal fun HistorySharingSection(
 /**
  * History sharing for this device's person, once read: the choice when they
  * have a profile; without one, the profile they asked for while it is made,
- * or the form to ask for it, saying why the library refused the last one; or
+ * or the form to ask for it, saying why the last one wasn't made; or
  * why the person couldn't be read, with Retry.
  */
 @Composable
@@ -132,11 +132,10 @@ private fun ProfileSetupContent(
                 )
             }
 
-            is BridgeRequestedProfileState.Refused, null -> {
-                if (state is BridgeRequestedProfileState.Refused) {
-                    val reason = stringResource(state.reason.labelRes())
+            is BridgeRequestedProfileState.Refused, is BridgeRequestedProfileState.Stopped, null -> {
+                state?.unmadeRes()?.let { why ->
                     Text(
-                        text = stringResource(R.string.settings_profile_refused, reason),
+                        text = stringResource(R.string.settings_profile_refused, stringResource(why)),
                         style = ThemeText.body.style,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -155,6 +154,14 @@ private fun ProfileSetupContent(
         }
     }
 }
+
+/** Why the profile asked for wasn't made; null while it is being made. */
+private fun BridgeRequestedProfileState.unmadeRes(): Int? =
+    when (this) {
+        BridgeRequestedProfileState.Making -> null
+        is BridgeRequestedProfileState.Refused -> reason.labelRes()
+        is BridgeRequestedProfileState.Stopped -> stop.labelRes()
+    }
 
 @Composable
 private fun HistorySharingContent(

@@ -27,6 +27,7 @@ pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::OAuth(_) => C::Credentials,
         E::SecureStorage(error) => key_category(error),
         E::Removed => C::DeviceRemoved,
+        E::StoreOwner => C::StoreOwnerAccount,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
@@ -61,7 +62,6 @@ pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
         R::KeyUnavailable { .. }
         | R::WritesRefused { .. }
         | R::MemberKeysReplaced { .. }
-        | R::PendingOwner { .. }
         | R::ProviderPending { .. }
         | R::AccountInUse { .. }
         | R::AccessRemains { .. }
@@ -208,6 +208,9 @@ pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Code(_) | E::NoUnfinishedJoin(_) | E::JoinRequestSent => C::Config,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
         E::Store(_) => C::Database,
+        // Restoring as the member whose account holds the store, signed in
+        // with another account.
+        E::Sync(coven::SyncError::StoreOwner) => C::StoreOwnerAccount,
         E::Sync(error) => sync_category(error),
         E::OAuth(_) => C::Credentials,
         E::Cleanup { operation, .. } => bootstrap_category(operation),

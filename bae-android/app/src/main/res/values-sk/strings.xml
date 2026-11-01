@@ -353,6 +353,10 @@
     <string name="operation_rejection_keys_already_used">Tieto kľúče sa už používajú.</string>
     <string name="operation_rejection_member_keys_changed">Kľúče tejto osoby boli medzitým nahradené.</string>
     <string name="operation_rejection_not_allowed">Toto zariadenie nemá povolenie vykonať túto zmenu.</string>
+    <string name="device_stop_removed">Toto zariadenie bolo odstránené z knižnice.</string>
+    <string name="device_stop_replaced">Obnovenie nahradilo kópiu knižnice v tomto zariadení.</string>
+    <string name="device_stop_copied">Iná kópia knižnice tohto zariadenia sa synchronizuje ako toto zariadenie.</string>
+    <string name="device_stop_member_keys_replaced">Vaše kľúče boli nahradené na inom z vašich zariadení.</string>
     <string name="admin_changes_title">Zmeny z tohto telefónu</string>
     <string name="admin_change_rename">Premenovať knižnicu na „%1$s“</string>
     <string name="admin_change_make_admin">Urobiť z používateľa %1$s správcu</string>
@@ -360,6 +364,7 @@
     <string name="admin_change_remove">Odstrániť %1$s</string>
     <string name="admin_change_waiting">Čaká na synchronizáciu</string>
     <string name="admin_change_refused">Odmietnuté</string>
+    <string name="admin_change_stopped">Zastavené</string>
     <string name="dismiss">Zavrieť</string>
     <string name="admin_change_approve">Pustiť používateľa %1$s dnu</string>
 </resources>

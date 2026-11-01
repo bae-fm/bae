@@ -26,6 +26,9 @@ pub(crate) enum ProfileRequestState {
     Made,
     /// The library refused the circle; the request waits for the person.
     Refused(coven::OperationRejection),
+    /// This device stopped for good before the circle was made; the request
+    /// waits for the person.
+    Stopped(coven::DeviceStop),
 }
 
 impl ProfileRequest {
@@ -36,6 +39,7 @@ impl ProfileRequest {
             Some(coven::OperationOutcome::Rejected(reason)) => {
                 Ok(ProfileRequestState::Refused(reason.clone()))
             }
+            Some(coven::OperationOutcome::Stopped(stop)) => Ok(ProfileRequestState::Stopped(*stop)),
             Some(coven::OperationOutcome::Satisfied) => Err(DbError::Message(format!(
                 "making a circle claims a slot, but operation {:?} claimed none",
                 self.operation
@@ -109,6 +113,7 @@ fn requested_profile(request: ProfileRequest) -> Result<crate::people::Requested
     let state = match request.state()? {
         ProfileRequestState::Making | ProfileRequestState::Made => RequestedProfileState::Making,
         ProfileRequestState::Refused(reason) => RequestedProfileState::Refused(reason),
+        ProfileRequestState::Stopped(stop) => RequestedProfileState::Stopped(stop),
     };
     Ok(crate::people::RequestedProfile {
         name: request.name,

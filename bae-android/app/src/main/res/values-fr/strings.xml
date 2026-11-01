@@ -350,6 +350,10 @@
     <string name="operation_rejection_keys_already_used">Ces clés sont déjà utilisées.</string>
     <string name="operation_rejection_member_keys_changed">Les clés de cette personne ont été remplacées entre-temps.</string>
     <string name="operation_rejection_not_allowed">Cet appareil n’est pas autorisé à effectuer cette modification.</string>
+    <string name="device_stop_removed">Cet appareil a été retiré de la bibliothèque.</string>
+    <string name="device_stop_replaced">Une restauration a remplacé la copie de la bibliothèque sur cet appareil.</string>
+    <string name="device_stop_copied">Une autre copie de la bibliothèque de cet appareil se synchronise en tant que cet appareil.</string>
+    <string name="device_stop_member_keys_replaced">Vos clés ont été remplacées sur un autre de vos appareils.</string>
     <string name="admin_changes_title">Modifications depuis ce téléphone</string>
     <string name="admin_change_rename">Renommer la bibliothèque en « %1$s »</string>
     <string name="admin_change_make_admin">Faire de %1$s un administrateur</string>
@@ -357,6 +361,7 @@
     <string name="admin_change_remove">Supprimer %1$s</string>
     <string name="admin_change_waiting">En attente de synchronisation</string>
     <string name="admin_change_refused">Refusé</string>
+    <string name="admin_change_stopped">Arrêté</string>
     <string name="dismiss">Ignorer</string>
     <string name="admin_change_approve">Faire entrer %1$s</string>
 </resources>

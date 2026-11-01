@@ -49,4 +49,8 @@ pub enum AdminChangeState {
     Done,
     /// The library refused it once sync had caught up; nothing changed.
     Refused(coven::OperationRejection),
+    /// This device stopped for good before the change was made, so it never
+    /// will be from here. Nothing refused it: another device may still make
+    /// it.
+    Stopped(coven::DeviceStop),
 }

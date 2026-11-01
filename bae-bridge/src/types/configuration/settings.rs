@@ -192,6 +192,9 @@ pub enum BridgeErrorCategory {
     Membership,
     /// Cancelling an invite came too late: its person is already joining.
     InviteJoining,
+    /// Storage setup or a restore signed in with an account other than the
+    /// one that holds the library's storage.
+    StoreOwnerAccount,
     /// The device playback was sent to refused a command while the link to it
     /// stayed up.
     Renderer,
@@ -377,6 +380,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::SavedRestoreCodeTooLarge => "core.error.keyring.saved_code_too_large",
         BridgeErrorCategory::Membership => "core.error.category.membership",
         BridgeErrorCategory::InviteJoining => "core.error.category.invite_joining",
+        BridgeErrorCategory::StoreOwnerAccount => "core.error.category.store_owner_account",
         BridgeErrorCategory::Renderer => "core.error.category.renderer",
         BridgeErrorCategory::GroupingBlocked { reason } => match reason {
             BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
@@ -570,6 +574,7 @@ mirror_enum! {
         SavedRestoreCodeTooLarge,
         Membership,
         InviteJoining,
+        StoreOwnerAccount,
         Renderer,
     },
 }

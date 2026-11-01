@@ -169,6 +169,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::SavedRestoreCodeTooLarge => "saved_restore_code_too_large".to_string(),
         C::Membership => "membership".to_string(),
         C::InviteJoining => "invite_joining".to_string(),
+        C::StoreOwnerAccount => "store_owner_account".to_string(),
         C::Renderer => "renderer".to_string(),
     }
 }
@@ -304,6 +305,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "saved_restore_code_too_large" => C::SavedRestoreCodeTooLarge,
             "membership" => C::Membership,
             "invite_joining" => C::InviteJoining,
+            "store_owner_account" => C::StoreOwnerAccount,
             "renderer" => C::Renderer,
             _ => return Err(unreadable()),
         },
@@ -584,6 +586,8 @@ mod tests {
             C::SavedRestoreCodesFull,
             C::SavedRestoreCodeTooLarge,
             C::Membership,
+            C::InviteJoining,
+            C::StoreOwnerAccount,
             C::Renderer,
         ];
         for class in classes {

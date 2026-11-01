@@ -299,6 +299,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::SavedRestoreCodeTooLarge,
         BridgeErrorCategory::Membership,
         BridgeErrorCategory::InviteJoining,
+        BridgeErrorCategory::StoreOwnerAccount,
         BridgeErrorCategory::Renderer,
         BridgeErrorCategory::GroupingBlocked {
             reason: BridgeGroupingBlock::SourceChanged,
@@ -396,7 +397,6 @@ fn produced_keys() -> Vec<String> {
         PendingReasonKind::Refused,
         PendingReasonKind::WritesRefused,
         PendingReasonKind::ProviderPending,
-        PendingReasonKind::PendingOwner,
         PendingReasonKind::AccountInUse,
         PendingReasonKind::AccessRemains,
         PendingReasonKind::FileUnavailable,

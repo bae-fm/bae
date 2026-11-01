@@ -350,6 +350,10 @@
     <string name="operation_rejection_keys_already_used">Aceste chei sunt deja folosite.</string>
     <string name="operation_rejection_member_keys_changed">Între timp, cheile acestei persoane au fost înlocuite.</string>
     <string name="operation_rejection_not_allowed">Acest dispozitiv nu are permisiunea să facă această modificare.</string>
+    <string name="device_stop_removed">Acest dispozitiv a fost eliminat din bibliotecă.</string>
+    <string name="device_stop_replaced">O restaurare a înlocuit copia bibliotecii de pe acest dispozitiv.</string>
+    <string name="device_stop_copied">O altă copie a bibliotecii acestui dispozitiv se sincronizează ca acest dispozitiv.</string>
+    <string name="device_stop_member_keys_replaced">Cheile tale au fost înlocuite pe alt dispozitiv al tău.</string>
     <string name="admin_changes_title">Modificări de pe acest telefon</string>
     <string name="admin_change_rename">Redenumește biblioteca în „%1$s”</string>
     <string name="admin_change_make_admin">Fă-l pe %1$s administrator</string>
@@ -357,6 +361,7 @@
     <string name="admin_change_remove">Elimină %1$s</string>
     <string name="admin_change_waiting">Așteaptă sincronizarea</string>
     <string name="admin_change_refused">Refuzat</string>
+    <string name="admin_change_stopped">Oprit</string>
     <string name="dismiss">Închide</string>
     <string name="admin_change_approve">Lasă-l pe %1$s să intre</string>
 </resources>

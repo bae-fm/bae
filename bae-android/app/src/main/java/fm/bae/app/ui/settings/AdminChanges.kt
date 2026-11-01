@@ -22,13 +22,15 @@ import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
 import uniffi.bae_bridge.BridgeAdminChangeState
+import uniffi.bae_bridge.BridgeDeviceStop
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeOperationRejection
 
 /**
  * The admin changes this phone asked for: renaming the library, changing a
  * role, removing a person or a device. Each shows waiting until sync
- * publishes it, then done or refused with why, until the person dismisses it.
+ * publishes it, then done, refused with why, or stopped with why this phone
+ * stopped syncing for good before it was made, until the person dismisses it.
  * Nothing shows while there is none.
  */
 @Composable
@@ -70,20 +72,32 @@ private fun AdminChangeRow(
                 is BridgeAdminChangeState.Refused -> {
                     StatusChip(stringResource(R.string.admin_change_refused), tone = StatusTone.DANGER)
                 }
+
+                is BridgeAdminChangeState.Stopped -> {
+                    StatusChip(stringResource(R.string.admin_change_stopped), tone = StatusTone.DANGER)
+                }
             }
             if (change.state != BridgeAdminChangeState.Waiting) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
             }
         }
-        (change.state as? BridgeAdminChangeState.Refused)?.let { refused ->
+        change.state.whyRes()?.let { why ->
             Text(
-                text = stringResource(refused.reason.labelRes()),
+                text = stringResource(why),
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
+
+/** Why a change ended without being made; null while it waits or once done. */
+private fun BridgeAdminChangeState.whyRes(): Int? =
+    when (this) {
+        BridgeAdminChangeState.Waiting, BridgeAdminChangeState.Done -> null
+        is BridgeAdminChangeState.Refused -> reason.labelRes()
+        is BridgeAdminChangeState.Stopped -> stop.labelRes()
+    }
 
 @Composable
 private fun BridgeAdminChangeKind.description(): String {
@@ -130,6 +144,11 @@ private fun AdminChangesListPreview() {
                         operation = 2,
                         change = BridgeAdminChangeKind.RemovePerson(member = "member", person = "Ben"),
                         state = BridgeAdminChangeState.Refused(BridgeOperationRejection.NO_ADMIN_LEFT),
+                    ),
+                    BridgeAdminChange(
+                        operation = 3,
+                        change = BridgeAdminChangeKind.RemoveDevice(device = 7uL, name = "Tablet"),
+                        state = BridgeAdminChangeState.Stopped(BridgeDeviceStop.REMOVED),
                     ),
                 ),
             onDismiss = {},

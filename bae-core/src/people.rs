@@ -41,7 +41,8 @@ pub struct PersonProfile {
 }
 
 /// The profile this device's person asked for, until it is written: coven
-/// is making their private circle, or the library refused it (§5.4).
+/// is making their private circle, the library refused it, or this device
+/// stopped for good before it was made (§5.4).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RequestedProfile {
     pub name: String,
@@ -56,6 +57,9 @@ pub enum RequestedProfileState {
     /// The library refused the circle. Asking again acknowledges this and
     /// asks anew.
     Refused(coven::OperationRejection),
+    /// This device stopped for good before the circle was made. Asking
+    /// again acknowledges this and asks anew.
+    Stopped(coven::DeviceStop),
 }
 
 /// One of this device's open invites, with the pending record of its

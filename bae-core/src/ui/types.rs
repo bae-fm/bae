@@ -92,6 +92,10 @@ pub enum UiErrorCategory {
     /// Cancelling an invite came too late: the inviting device has begun
     /// letting its person in, or the invite has ended (§5.6).
     InviteJoining,
+    /// Setting up storage or restoring signed in with an account other than
+    /// the one that holds the library's storage, which its member's access
+    /// can't move from (§6.4).
+    StoreOwnerAccount,
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,

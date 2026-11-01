@@ -142,6 +142,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::SavedRestoreCodeTooLarge
             | UiErrorCategory::Membership
             | UiErrorCategory::InviteJoining
+            | UiErrorCategory::StoreOwnerAccount
             | UiErrorCategory::Renderer => Self::Unavailable(detail),
         }
     }

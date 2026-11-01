@@ -2114,17 +2114,20 @@ history setting.
   the operation's outcome to coven and deletes the request. Until then the
   person has no profile and their plays stay in `local_history`, and asking
   again is refused while the circle is being made. A circle the library
-  refused stays recorded until the person asks again, which acknowledges the
-  refusal and asks anew in the same write. A circle already made for the
+  refused, or one this device's stop for good ended unmade, stays recorded
+  until the person asks again, which acknowledges that outcome and asks anew
+  in the same write. A circle already made for the
   person, by a profile write that failed after it, is used at once: asking
   writes the profile in one write.
 - **Settings shows a profile not written yet.** Under listening history, a
   person with no profile gets their name field and **Create Profile**. While
   their circle is being made it says the profile is being made and appears
   once the library syncs, in place of the form, following `profile_request`
-  and coven's outcome as one read. A refused circle shows why the library
-  refused it, as coven gives the reason (the change wasn't allowed from this
-  device, say), above the form, which asks again. Each change of that read
+  and coven's outcome as one read. A circle that wasn't made shows why
+  above the form, which asks again: why the library refused it, as coven
+  gives the reason (one of its people is no longer in the library, say), or
+  why this device stopped syncing for good before it was made (another
+  device removed it, say), as coven names the stop. Each change of that read
   reads the person again, since the request ends in the write that makes
   their profile.
 - **A removed person invited again is a new member.** coven gives them a fresh
@@ -2165,8 +2168,9 @@ editable by every member.
 
 Removing a person or a device, changing a role, renaming the library and
 approving a request are admin changes. Each is one write on the device that asks: coven checks it
-against the library as that device has it and records it, with or without a
-connection, and the call returns once it is recorded. Sync then catches up,
+against the library as that device has it, except an approval, which only sync
+checks, and records it, with or without a connection, and the call returns
+once it is recorded. Sync then catches up,
 checks it again and publishes it; until then the library is unchanged, on that
 device too
 ([coven §11.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#111-the-steps)).
@@ -2180,11 +2184,15 @@ is and how it ended, so the row holds neither. Each change shows, under
 **Changes from this Mac** in Library settings on a Mac and **Changes from this
 phone** in Settings and People on Android, as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
-device's name as they stand: waiting to sync, then done, or refused with why
-the library refused it (Ben is no longer in the library, it would leave the
-library without an admin, or this device isn't allowed to make it, such as
-when another device removed this one first). Done covers a change sync found
-already made. Ana's laptop is offline when she removes Ben's old phone; the
+device's name as they stand: waiting to sync, then done, refused or
+stopped. Refused says why the library refused it (Ben is no longer in the
+library, it would leave the library without an admin, or this device isn't
+allowed to make it, such as an approval after another admin demoted Ana).
+Stopped says why this device stopped syncing for good before the change was
+made: another device removed it, a restore replaced its copy of the library,
+another copy of its library syncs as this device, or another of the person's
+devices replaced their keys. Nothing refused a stopped change, and another
+device may still make it. Done covers a change sync found already made. Ana's laptop is offline when she removes Ben's old phone; the
 row says it waits to sync, Ben's phone stays in the list, and once the
 laptop syncs the phone moves to his removed devices and the row says done.
 A finished change stays until the person dismisses it: one write
@@ -4293,6 +4301,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |
 | `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
+| `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
 | `S3Prefix` | changes the key prefix: it has two slashes in a row, or the folder the line names holds a character other than a–z, A–Z, a digit, `-` or `_`, or runs over 255 characters |
 | `DeviceIdentityMissing` | creates, joins or restores |
 | `Credentials` | fixes the cloud settings |
