@@ -292,7 +292,7 @@ fn playback_service_over(
         volume: OutputVolume::new(),
         preview,
         position_update_interval_ms: 50,
-        file_buffers: FileBuffers::new(),
+        file_buffers: FileBuffers::new(FetchArbiter::new()),
         starvation_episode: None,
         last_position_persist: None,
         first_audio_pending: None,

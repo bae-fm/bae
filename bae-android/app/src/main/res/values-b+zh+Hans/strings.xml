@@ -7,6 +7,7 @@
     <string name="close">关闭</string>
     <string name="play">播放</string>
     <string name="pause">暂停</string>
+    <string name="downloading_the_track">正在下载曲目…</string>
     <string name="search">搜索</string>
     <string name="settings">设置</string>
     <string name="close_search">关闭搜索</string>

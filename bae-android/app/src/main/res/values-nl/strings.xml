@@ -7,6 +7,7 @@
     <string name="close">Sluiten</string>
     <string name="play">Afspelen</string>
     <string name="pause">Pauze</string>
+    <string name="downloading_the_track">Nummer downloaden…</string>
     <string name="search">Zoeken</string>
     <string name="settings">Instellingen</string>
     <string name="close_search">Zoeken sluiten</string>

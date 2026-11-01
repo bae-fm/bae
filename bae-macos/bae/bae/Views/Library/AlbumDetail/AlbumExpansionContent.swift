@@ -15,8 +15,6 @@ struct AlbumExpansionContent: View {
     @Binding
     var releaseCursor: Cursor<ReleaseRef>
     let currentTrackId: String?
-    /// The track currently loading, whose row shows a spinner.
-    let loadingTrackId: String?
     let isPlaying: Bool
     let onClose: () -> Void
     let onPlay: () -> Void
@@ -96,7 +94,6 @@ struct AlbumExpansionContent: View {
                         release: selectedRelease,
                         isCompilation: album.isCompilation,
                         currentTrackId: currentTrackId,
-                        loadingTrackId: loadingTrackId,
                         isPlaying: isPlaying,
                         onPlayFromTrack: onPlayFromTrack,
                         onTogglePlayPause: onTogglePlayPause,
@@ -339,15 +336,6 @@ struct ReleaseFactsLine: View {
         PreviewData.albumExpansionScene(
             albumId: "a-01",
             currentTrackId: "t-d1-2",
-            isPlaying: true
-        )
-    }
-
-    #Preview("Single Disc — Track Loading") {
-        PreviewData.albumExpansionScene(
-            albumId: "a-01",
-            currentTrackId: "t-d1-2",
-            loadingTrackId: "t-d1-3",
             isPlaying: true
         )
     }

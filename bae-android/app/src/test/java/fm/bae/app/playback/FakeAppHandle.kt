@@ -191,6 +191,8 @@ internal open class FakeAppHandle(
 
     override fun feedPlaybackPositions(): KeyedValueStream = FakeKeyedValueStream()
 
+    override fun feedTrackDownloads(): KeyedValueStream = FakeKeyedValueStream()
+
     override fun triggerSync() {}
 
     override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null

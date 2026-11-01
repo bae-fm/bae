@@ -7,6 +7,7 @@
     <string name="close">Închide</string>
     <string name="play">Redă</string>
     <string name="pause">Pauză</string>
+    <string name="downloading_the_track">Se descarcă piesa…</string>
     <string name="search">Caută</string>
     <string name="settings">Setări</string>
     <string name="close_search">Închide căutarea</string>

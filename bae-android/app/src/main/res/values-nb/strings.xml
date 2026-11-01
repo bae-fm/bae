@@ -7,6 +7,7 @@
     <string name="close">Lukk</string>
     <string name="play">Spill av</string>
     <string name="pause">Pause</string>
+    <string name="downloading_the_track">Laster ned sporet…</string>
     <string name="search">Søk</string>
     <string name="settings">Innstillinger</string>
     <string name="close_search">Lukk søket</string>

@@ -12,7 +12,6 @@ struct TrackRowView: View {
     /// column is as wide and no label wraps.
     let positionWidth: CGFloat
     let isCurrent: Bool
-    let isLoading: Bool
     let isPlaying: Bool
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
@@ -27,8 +26,8 @@ struct TrackRowView: View {
     @State
     private var highlightOpacity: Double = 0
 
-    /// The leading slot's least width: the play button and the loading
-    /// spinner that take the number's place.
+    /// The leading slot's least width: the play button and the playing
+    /// glyph that take the number's place.
     fileprivate static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
@@ -39,7 +38,7 @@ struct TrackRowView: View {
             ZStack {
                 TrackPositionLabel(text: track.positionText)
                     .foregroundStyle(.tertiary)
-                    .opacity(!isCurrent && !isHovered && !isLoading ? 1 : 0)
+                    .opacity(!isCurrent && !isHovered ? 1 : 0)
 
                 Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                     Image(
@@ -49,18 +48,13 @@ struct TrackRowView: View {
                     .themeIcon(.medium)
                 }
                 .buttonStyle(.plain)
-                .opacity(isHovered && !isLoading ? 1 : 0)
-                .allowsHitTesting(isHovered && !isLoading)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
 
                 Image(systemName: "speaker.wave.2.fill")
                     .themeIcon(.small)
                     .foregroundStyle(Theme.accent)
-                    .opacity(isCurrent && !isHovered && !isLoading ? 1 : 0)
-
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(isLoading ? 1 : 0)
-                    .allowsHitTesting(isLoading)
+                    .opacity(isCurrent && !isHovered ? 1 : 0)
             }
             .frame(width: max(positionWidth, Self.leadingSlotMinWidth))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -159,7 +153,6 @@ struct TrackPositionLabel: View {
         track: Track,
         artist: String? = nil,
         isCurrent: Bool = false,
-        isLoading: Bool = false,
         isPlaying: Bool = false
     ) -> some View {
         TrackRowView(
@@ -169,7 +162,6 @@ struct TrackPositionLabel: View {
             // which the list's rows then take.
             positionWidth: TrackRowView.leadingSlotMinWidth,
             isCurrent: isCurrent,
-            isLoading: isLoading,
             isPlaying: isPlaying,
             onPlay: {},
             onTogglePlayPause: {},
@@ -206,14 +198,6 @@ struct TrackPositionLabel: View {
                 ),
                 isCurrent: true,
                 isPlaying: false
-            )
-            // Loading.
-            previewTrackRow(
-                track: PreviewData.previewTrack(
-                    title: "Track Title",
-                    position: "4"
-                ),
-                isLoading: true
             )
             // Compilation row: core supplies a per-track display artist.
             previewTrackRow(

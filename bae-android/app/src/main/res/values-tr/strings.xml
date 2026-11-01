@@ -7,6 +7,7 @@
     <string name="close">Kapat</string>
     <string name="play">Çal</string>
     <string name="pause">Duraklat</string>
+    <string name="downloading_the_track">Parça indiriliyor…</string>
     <string name="search">Ara</string>
     <string name="settings">Ayarlar</string>
     <string name="close_search">Aramayı kapat</string>

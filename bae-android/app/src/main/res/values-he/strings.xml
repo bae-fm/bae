@@ -7,6 +7,7 @@
     <string name="close">סגור</string>
     <string name="play">נגן</string>
     <string name="pause">השהה</string>
+    <string name="downloading_the_track">מוריד את הרצועה…</string>
     <string name="search">חיפוש</string>
     <string name="settings">הגדרות</string>
     <string name="close_search">סגור חיפוש</string>

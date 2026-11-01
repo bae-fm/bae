@@ -9,9 +9,11 @@ struct NowPlayingBar: View {
     let secondaryLine: String?
     let cover: ImageContent?
     let isPlaying: Bool
-    let isLoading: Bool
     /// Where the playing track is; `nil` while no track plays.
     let position: LatestSource<BridgeTrackPosition>?
+    /// How much of what the loading track waits on from storage is here;
+    /// `nil` while no track loads.
+    let download: LatestSource<BridgeTrackDownload>?
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
     let volume: Float
@@ -197,9 +199,7 @@ struct NowPlayingBar: View {
     private var playPauseButton: some View {
         PlayPauseControl(
             isPlaying: isPlaying,
-            isLoading: isLoading,
             glyphFont: ThemeIcon.large.font,
-            spinnerControlSize: .small,
             targetSize: 48,
             onToggle: onPlayPause,
         )
@@ -207,16 +207,20 @@ struct NowPlayingBar: View {
         .background(Circle().fill(Theme.tile))
     }
 
+    /// The seek bar, or, while the loading track waits on storage, how much
+    /// of what it waits on is here in its place.
     private var progressBar: some View {
-        PlaybackProgressView(
-            position: position,
-            showRemainingTime: showRemainingTime,
-            onSeek: onSeek,
-            onToggleRemainingTime: onToggleRemainingTime,
-        )
-        .frame(maxWidth: .infinity)
-        .frame(height: 20)
-        .accessibilityLabel("Playback position")
+        StepProgressLine(steps: download) {
+            PlaybackProgressView(
+                position: position,
+                showRemainingTime: showRemainingTime,
+                onSeek: onSeek,
+                onToggleRemainingTime: onToggleRemainingTime,
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 20)
+            .accessibilityLabel("Playback position")
+        }
     }
 
     private var repeatHelp: LocalizedStringKey {
@@ -336,7 +340,8 @@ extension NowPlayingBar {
         let trackTitle: String?
         let artistNames: String?
         let isPlaying: Bool
-        var isLoading: Bool = false
+        /// What the loading track waits on from storage, or nothing.
+        var download: BridgeTrackDownload?
         let repeatMode: BridgeRepeatMode
         let shuffled: Bool?
         /// The seek bar's position: a quarter through a track, or none.
@@ -355,13 +360,16 @@ extension NowPlayingBar {
                 secondaryLine: artistNames,
                 cover: nil,
                 isPlaying: isPlaying,
-                isLoading: isLoading,
                 position: hasPosition
                     ? PreviewData.trackPosition(
                         positionMs: 55_500,
                         durationMs: 222_000
                     )
                     : nil,
+                download: download.map {
+                    LatestStream.trackDownloads(holding: ["track": $0])
+                        .source(for: "track")
+                },
                 showRemainingTime: false,
                 volume: volume,
                 isMuted: isMuted,
@@ -426,12 +434,12 @@ extension NowPlayingBar {
         .environment(Queue.stub())
     }
 
-    #Preview("Loading") {
+    #Preview("Downloading") {
         NowPlayingBarPreview(
             trackTitle: PreviewData.nowPlayingTitle,
             artistNames: PreviewData.nowPlayingArtist,
             isPlaying: true,
-            isLoading: true,
+            download: BridgeTrackDownload(here: 1_200_000, total: 4_194_304),
             repeatMode: .off,
             shuffled: nil,
         )

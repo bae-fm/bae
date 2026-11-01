@@ -7,6 +7,7 @@
     <string name="close">Luk</string>
     <string name="play">Afspil</string>
     <string name="pause">Pause</string>
+    <string name="downloading_the_track">Henter nummeret…</string>
     <string name="search">Søg</string>
     <string name="settings">Indstillinger</string>
     <string name="close_search">Luk søgningen</string>

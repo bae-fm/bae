@@ -7,6 +7,7 @@
     <string name="close">Zatvori</string>
     <string name="play">Reproduciraj</string>
     <string name="pause">Pauziraj</string>
+    <string name="downloading_the_track">Preuzimanje pjesme…</string>
     <string name="search">Pretraži</string>
     <string name="settings">Postavke</string>
     <string name="close_search">Zatvori pretraživanje</string>

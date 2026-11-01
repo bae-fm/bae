@@ -7,6 +7,7 @@
     <string name="close">Sulje</string>
     <string name="play">Toista</string>
     <string name="pause">Tauko</string>
+    <string name="downloading_the_track">Ladataan kappaletta…</string>
     <string name="search">Hae</string>
     <string name="settings">Asetukset</string>
     <string name="close_search">Sulje haku</string>

@@ -7,6 +7,7 @@
     <string name="close">Fechar</string>
     <string name="play">Reproduzir</string>
     <string name="pause">Pausa</string>
+    <string name="downloading_the_track">A transferir a faixa…</string>
     <string name="search">Pesquisar</string>
     <string name="settings">Definições</string>
     <string name="close_search">Fechar pesquisa</string>

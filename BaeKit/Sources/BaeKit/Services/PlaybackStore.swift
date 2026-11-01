@@ -60,6 +60,11 @@ public class PlaybackStore {
     /// that read it each display frame.
     public let trackPositions: LatestStream<BridgeTrackPosition>
 
+    /// How much of what a load of the playing track waits on from storage
+    /// is here, under its track id, for the native views that read it each
+    /// display frame.
+    public let trackDownloads: LatestStream<BridgeTrackDownload>
+
     /// The count of tracks each add puts in the queue; drives the queue
     /// button's "+N" badge.
     @ObservationIgnored
@@ -69,12 +74,14 @@ public class PlaybackStore {
         queueItemsAddedSubject.eraseToAnyPublisher()
     }
 
-    /// A store whose positions the subscription fills, or, for a preview,
-    /// fixed positions.
+    /// A store whose positions and downloads the subscription fills, or,
+    /// for a preview, fixed ones.
     public init(
-        trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions()
+        trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions(),
+        trackDownloads: LatestStream<BridgeTrackDownload> = .trackDownloads()
     ) {
         self.trackPositions = trackPositions
+        self.trackDownloads = trackDownloads
     }
 
     /// Where `trackId` is while it plays, for the native view drawing it;
@@ -83,6 +90,14 @@ public class PlaybackStore {
         -> LatestSource<BridgeTrackPosition>?
     {
         trackId.map { trackPositions.source(for: $0) }
+    }
+
+    /// How much of what the load of `trackId` waits on from storage is here,
+    /// for the native view drawing it; `nil` while no track loads.
+    public func trackDownload(forTrack trackId: String?)
+        -> LatestSource<BridgeTrackDownload>?
+    {
+        trackId.map { trackDownloads.source(for: $0) }
     }
 
     public var presentedSidePausePrompt: BridgeSidePausePrompt? {

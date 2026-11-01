@@ -382,16 +382,28 @@ pub struct PlaybackHandle {
     /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
+    track_downloads: tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
+        track_downloads: tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>>,
     ) -> Self {
         Self {
             worker,
             progress_handle,
+            track_downloads,
         }
+    }
+
+    /// The download a load of the playing track waits on: how much of its
+    /// reads from storage is here, while the person waits on the load and it
+    /// reads from storage; `None` otherwise.
+    pub fn subscribe_track_downloads(
+        &self,
+    ) -> tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>> {
+        self.track_downloads.clone()
     }
 
     /// Fire-and-forget; the service runs commands in order on its own thread.

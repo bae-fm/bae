@@ -28,7 +28,7 @@ struct AlbumTrackListLayoutTests {
 
             // Nine tracks split five over four; the eight-track side stays whole.
             // Both of the first column's runs share one x, ordered down the pane.
-            let bands = try rowBands(in: host, height: size.height, count: 17)
+            let bands = rowBands(in: host, release: release)
             let columnX = try #require(bands.map(\.x).min())
             let secondColumnX = try #require(bands.map(\.x).max())
             #expect(secondColumnX - columnX > 100)
@@ -83,7 +83,7 @@ struct AlbumTrackListLayoutTests {
             window.appearance = NSAppearance(named: .darkAqua)
             try await SnapshotTestSupport.settle(host)
 
-            let bands = try rowBands(in: host, height: size.height, count: 19)
+            let bands = rowBands(in: host, release: release)
             let pane = try await Pane.capture(
                 host,
                 size: size,
@@ -97,8 +97,8 @@ struct AlbumTrackListLayoutTests {
         }
     }
 
-    /// The track list over the pane's background, with nothing playing and
-    /// nothing loading, in a window the capture can read pixels back from.
+    /// The track list over the pane's background, with nothing playing, in
+    /// a window the capture can read pixels back from.
     private func withHostedTrackList<Value>(
         release: ReleaseDetail,
         size: NSSize,
@@ -109,7 +109,6 @@ struct AlbumTrackListLayoutTests {
                 release: release,
                 isCompilation: false,
                 currentTrackId: nil,
-                loadingTrackId: nil,
                 isPlaying: false,
                 onPlayFromTrack: { _ in },
                 onTogglePlayPause: {},
@@ -126,25 +125,37 @@ struct AlbumTrackListLayoutTests {
         }
     }
 
-    /// A band per row. Every row keeps its loading spinner in the layout tree,
-    /// opacity-toggled, so the hosted tree carries one `NSProgressIndicator`
-    /// per row wherever the row was laid out.
+    /// A band per row: where its play button is laid out. SwiftUI puts a
+    /// stand-in view for each focusable control into the hosting view's key
+    /// view loop, at the control's frame, so the loop from the hosting view
+    /// back to it passes each row's button once. A row's button stays in the
+    /// layout tree whatever the row shows, opacity-toggled, centred in its
+    /// leading slot.
     private func rowBands(
         in host: NSView,
-        height: CGFloat,
-        count: Int
-    ) throws -> [RowBand] {
-        let indicators = SnapshotTestSupport.descendants(of: host)
-            .filter { $0 is NSProgressIndicator }
-        let bands = indicators.map { indicator -> RowBand in
-            let frame = indicator.convert(indicator.bounds, to: host)
-            return RowBand(
+        release: ReleaseDetail
+    ) -> [RowBand] {
+        // One past the rows at most, so a loop that never returns to the
+        // hosting view fails the count rather than hanging the test.
+        var frames: [CGRect] = []
+        var next = host.nextKeyView
+        while let view = next, view !== host,
+            frames.count <= release.tracks.count
+        {
+            frames.append(view.convert(view.bounds, to: host))
+            next = view.nextKeyView
+        }
+        let bands = frames.map { frame in
+            RowBand(
                 x: frame.minX,
-                top: host.isFlipped ? frame.minY : height - frame.maxY,
-                bottom: host.isFlipped ? frame.maxY : height - frame.minY
+                width: frame.width,
+                top: host.isFlipped
+                    ? frame.minY : host.bounds.height - frame.maxY,
+                bottom: host.isFlipped
+                    ? frame.maxY : host.bounds.height - frame.minY
             )
         }
-        #expect(bands.count == count)
+        #expect(bands.count == release.tracks.count)
         return bands
     }
 
@@ -152,6 +163,7 @@ struct AlbumTrackListLayoutTests {
     /// growing downward.
     private struct RowBand {
         let x: CGFloat
+        let width: CGFloat
         let top: CGFloat
         let bottom: CGFloat
     }
@@ -198,13 +210,13 @@ struct AlbumTrackListLayoutTests {
             try #require(bands.map(durationEnd).max())
         }
 
-        /// How tall the ink of a row's position label stands: the leading
-        /// slot is centred on the row's spinner, and spans the row's 40
+        /// How tall the ink of a row's position label stands, scanned
+        /// around where the label is laid out and across the row's 40
         /// points.
         func labelInkHeight(of band: RowBand) throws -> CGFloat {
             let scale = CGFloat(image.pixelsWide) / image.size.width
             let center = (band.top + band.bottom) / 2
-            let middle = (band.x + (band.bottom - band.top) / 2)
+            let middle = band.x + band.width / 2
             let firstRow = max(Int((center - 18) * scale), 0)
             let lastRow = min(Int((center + 18) * scale), image.pixelsHigh - 1)
             let firstColumn = max(Int((middle - 20) * scale), 0)

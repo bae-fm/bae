@@ -17,7 +17,6 @@ struct QueueView: View {
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
     let isPlaying: Bool
-    let isLoading: Bool
     let onClose: () -> Void
     let onGoToNowPlaying: (() -> Void)?
     let onPlayPause: () -> Void
@@ -239,9 +238,7 @@ struct QueueView: View {
 
             PlayPauseControl(
                 isPlaying: isPlaying,
-                isLoading: isLoading,
                 glyphFont: ThemeIcon.medium.font,
-                spinnerControlSize: .small,
                 targetSize: ThemeSize.hitTarget,
                 onToggle: onPlayPause
             )
@@ -331,7 +328,6 @@ struct QueueView: View {
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
-                isLoading: store.nowPlaying.loadingTrackId != nil,
                 onClose: {},
                 onGoToNowPlaying: nil,
                 onPlayPause: {},

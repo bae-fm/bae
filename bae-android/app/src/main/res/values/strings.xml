@@ -20,6 +20,7 @@
     <string name="close">Close</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
+    <string name="downloading_the_track">Downloading the track…</string>
 
     <!-- Library -->
     <string name="search">Search</string>

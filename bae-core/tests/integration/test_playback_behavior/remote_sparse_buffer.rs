@@ -4,6 +4,8 @@ struct RemoteMultiWindowPlayback {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     cloud: Arc<coven::MemoryStorage>,
+    /// Where the album's FLAC is stored.
+    flac_object: coven::ObjectPath,
     _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
@@ -27,19 +29,80 @@ impl RemoteMultiWindowPlayback {
         }).await?;
         let (release_id, _) = wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
         library_manager.drain_uploads_expecting_work().await?;
-        for file in library_manager.get_files_for_release(&release_id).await? {
+        let files = library_manager.get_files_for_release(&release_id).await?;
+        let flac = files
+            .iter()
+            .find(|file| file.original_filename.ends_with(".flac"))
+            .expect("the album has its FLAC");
+        let flac_ref = library_manager.release_file_ref_for_test(&flac.id).await?;
+        let coven::FilePlace::Cloud { location, .. } = flac_ref.place() else {
+            panic!("the uploaded FLAC is stored");
+        };
+        let flac_object = coven::ObjectPath::file(
+            library_manager.store_id(),
+            location.uploader(),
+            location.object(),
+        );
+        for file in files {
             library_manager.evict_file_for_test(file.file).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library_manager.get_tracks_for_release(&release_id).await?.into_iter().map(|track| track.id).collect();
         let (playback_handle, capture_stream_rx) = start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
         let progress_rx = playback_handle.subscribe_progress();
-        Ok(Self { playback_handle, progress_rx, track_ids, cloud, _capture_stream_rx: capture_stream_rx, _temp_dir: temp_dir })
+        Ok(Self { playback_handle, progress_rx, track_ids, cloud, flac_object, _capture_stream_rx: capture_stream_rx, _temp_dir: temp_dir })
     }
 
     async fn play_and_wait(&mut self, track_id: &str) {
         play_and_wait_on(&self.playback_handle, &mut self.progress_rx, track_id).await;
     }
+}
+
+/// While the person waits on a track whose file is read from storage, its
+/// load tells how much of what it waits on is here, under the track's id;
+/// once the track plays, nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_load_from_storage_tells_its_download() {
+    let mut playback = RemoteMultiWindowPlayback::new("remote-load-download")
+        .await
+        .expect("set up the remote multi-window fixture");
+    let track = playback.track_ids[0].clone();
+    // Hold the FLAC's body a byte past its header, so the load waits on it.
+    let (reached, observed) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    playback
+        .cloud
+        .hold_body_at(playback.flac_object.clone(), 12, reached, resumed)
+        .await;
+    let mut downloads = playback.playback_handle.subscribe_track_downloads();
+
+    playback.playback_handle.play(track.clone());
+    observed.await.expect("the load reads the FLAC from storage");
+    let download = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let Some(download) = downloads.borrow_and_update().clone() {
+                return download;
+            }
+            downloads.changed().await.expect("playback runs");
+        }
+    })
+    .await
+    .expect("the waited load tells its download");
+    assert_eq!(download.track_id, track);
+    assert!(
+        download.here < download.total,
+        "the held read has part of its bytes: {download:?}"
+    );
+
+    resume.send(()).expect("the held read waits");
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track: playing, .. } if playing.track_id == track),
+        Duration::from_secs(30),
+    )
+    .await
+    .expect("the track plays once its bytes arrive");
+    assert_eq!(*downloads.borrow(), None, "a playing track waits on no download");
 }
 
 /// Remote-cloud port of `switching_tracks_within_a_multi_window_file_keeps_streaming`:

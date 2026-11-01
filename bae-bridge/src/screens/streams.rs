@@ -236,6 +236,23 @@ pub(crate) fn playback_positions(
     })
 }
 
+/// The stream [`AppHandle::feed_track_downloads`](crate::AppHandle::feed_track_downloads) hands out.
+pub(crate) fn track_downloads(
+    runtime: OperationRuntime,
+    run: impl RunFeed,
+) -> Arc<KeyedValueStream> {
+    feed(runtime, run, move |services, writer| async move {
+        let mut downloads = services.subscribe_track_downloads();
+        loop {
+            let held = track_download(downloads.borrow_and_update().clone());
+            writer.reset(held);
+            if downloads.changed().await.is_err() {
+                return;
+            }
+        }
+    })
+}
+
 #[cfg(feature = "desktop")]
 /// The stream [`AppHandle::feed_preview_position`](crate::AppHandle::feed_preview_position) hands out.
 pub(crate) fn preview_position(
@@ -323,6 +340,27 @@ fn track_positions(
                         position,
                         positions.seek_revision,
                     ),
+                },
+            )
+        })
+        .into_iter()
+        .collect()
+}
+
+/// The download a load of the playing track waits on as its stream holds
+/// it: under the track's key, or nothing.
+fn track_download(
+    download: Option<bae_core::playback::TrackDownload>,
+) -> HashMap<Vec<u8>, BridgeFastValue> {
+    download
+        .map(|download| {
+            (
+                download.track_id.into_bytes(),
+                BridgeFastValue::TrackDownload {
+                    progress: crate::types::BridgeTrackDownload {
+                        here: download.here,
+                        total: download.total,
+                    },
                 },
             )
         })

@@ -642,6 +642,29 @@ extension LatestSource where Value == BridgeTrackPosition {
     }
 }
 
+extension LatestStream where Value == BridgeTrackDownload {
+    /// How much of what a load of the playing track waits on from storage
+    /// is here, under its track id; a preview's holds `values` and nothing
+    /// feeds it.
+    public static func trackDownloads(holding values: [String: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: keyed(values)) {
+            if case .trackDownload(let download) = $0 {
+                download
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill from core.
+    public func feed(from appHandle: AppHandle) -> LatestFeed {
+        fed { appHandle.feedTrackDownloads() }
+    }
+}
+
 extension LatestStream where Value == BridgePreviewPosition {
     /// Where the preview is in its clip, while one is loaded; a preview's
     /// holds `value` and nothing feeds it.

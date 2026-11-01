@@ -7,6 +7,7 @@
     <string name="close">Bezárás</string>
     <string name="play">Lejátszás</string>
     <string name="pause">Szünet</string>
+    <string name="downloading_the_track">A szám letöltése…</string>
     <string name="search">Keresés</string>
     <string name="settings">Beállítások</string>
     <string name="close_search">Keresés bezárása</string>

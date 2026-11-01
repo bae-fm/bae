@@ -50,6 +50,35 @@ class PlaybackControlsTest {
         assertEquals(0, handle.pauseCount)
     }
 
+    /** A load shows pause, and a press lands it paused rather than asking core to resume. */
+    @Test
+    fun togglePlayPausePausesALoad() {
+        val (player, handle) = player()
+        player.applyPlaybackState(loadingState(nowPlayingTrack(trackId = "next")))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(true, player.isPlayingOrLoading.value)
+        player.togglePlayPause()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, handle.pauseCount)
+        assertEquals(0, handle.resumeCount)
+    }
+
+    /** The loading track is named while it loads, by id whether or not core has prepared it, and not once it plays. */
+    @Test
+    fun theLoadingTrackIsNamedUntilItPlays() {
+        val (player, _) = player()
+
+        player.applyPlaybackState(loadingState("next"))
+        assertEquals("next", player.loadingTrackId.value)
+        player.applyPlaybackState(loadingState(nowPlayingTrack(trackId = "next")))
+        assertEquals("next", player.loadingTrackId.value)
+        player.applyPlaybackState(playingState(trackId = "next"))
+
+        assertEquals(null, player.loadingTrackId.value)
+    }
+
     @Test
     fun stopForwardsToCore() {
         val (player, handle) = player()

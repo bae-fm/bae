@@ -22,6 +22,7 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStorageSetupProgress
+import uniffi.bae_bridge.BridgeTrackDownload
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyedValueStream
@@ -119,6 +120,13 @@ class LatestStream<V : Any> private constructor(
         /** Where the playing track is, by track id; a preview's holds [values] and nothing feeds it. */
         fun trackPositions(values: Map<String, BridgeTrackPosition>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
+
+        /**
+         * How much of what a load of the playing track waits on from storage is here, by track id;
+         * a preview's holds [values] and nothing feeds it.
+         */
+        fun trackDownloads(values: Map<String, BridgeTrackDownload>? = null) =
+            LatestStream(values) { (it as? BridgeFastValue.TrackDownload)?.progress }
 
         /** Where a restore or join stands, while it runs; a preview's holds [value], fed by nothing. */
         fun bootstrapStatus(value: BridgeBootstrapStatus? = null): LatestStream<BridgeBootstrapStatus> =
@@ -224,6 +232,14 @@ fun LatestStream<BridgeTrackPosition>.feed(
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, appHandle::feedPlaybackPositions)
+
+/** Fill from core. */
+@JvmName("feedTrackDownloads")
+fun LatestStream<BridgeTrackDownload>.feed(
+    appHandle: AppHandleInterface,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, appHandle::feedTrackDownloads)
 
 /** A fed stream's feed, which stops when cancelled; the stream then holds nothing. */
 class LatestFeed internal constructor(

@@ -29,11 +29,12 @@ pub(super) struct FileBuffers {
 }
 
 impl FileBuffers {
-    pub(super) fn new() -> Self {
+    /// Buffers whose readers `arbiter` prioritizes.
+    pub(super) fn new(arbiter: Arc<FetchArbiter>) -> Self {
         Self {
             cached: HashMap::new(),
             retired: Vec::new(),
-            arbiter: FetchArbiter::new(),
+            arbiter,
         }
     }
 
@@ -42,8 +43,16 @@ impl FileBuffers {
     /// to it. Called wherever a track becomes the current one.
     pub(super) fn mark_foreground(&self, prepared: &PlaybackPreparedTrack) {
         if let Some(segment) = prepared.segments.first() {
-            self.arbiter.set_foreground(segment.buffer.id());
+            self.arbiter
+                .set_foreground(segment.buffer.id(), &prepared.track_id);
         }
+    }
+
+    /// The track a load the person waits on is for, or `None` once nothing
+    /// loads: the playing track's reads from storage while it loads are the
+    /// download its load waits on.
+    pub(super) fn set_waiting(&self, track_id: Option<&str>) {
+        self.arbiter.set_waiting(track_id);
     }
 
     /// Hold a track that has left the live slot. Its buffers stay cached and

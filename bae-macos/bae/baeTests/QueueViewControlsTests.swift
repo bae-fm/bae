@@ -83,7 +83,6 @@ struct QueueViewControlsTests {
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
-                isLoading: store.nowPlaying.loadingTrackId != nil,
                 onClose: { recorder.closeCount += 1 },
                 onGoToNowPlaying: { recorder.navigateCount += 1 },
                 onPlayPause: { recorder.playPauseCount += 1 },

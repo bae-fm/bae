@@ -143,6 +143,23 @@ impl MultiWindowPlayback {
     }
 }
 
+/// A load this device reads from its own copy waits on no download: the
+/// track plays without a download ever told.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_local_load_tells_no_download() {
+    let mut playback = MultiWindowPlayback::new("local-load-download").await;
+    let downloads = playback.playback_handle.subscribe_track_downloads();
+
+    let track = playback.track_ids[0].clone();
+    playback.play_and_wait(&track).await;
+
+    assert!(
+        !downloads.has_changed().expect("playback runs"),
+        "a local load tells no download"
+    );
+    assert_eq!(*downloads.borrow(), None);
+}
+
 /// Switching tracks within a single multi-window file must keep the shared
 /// file buffer streaming. Playing the last track buffers the file head and a
 /// window at that track's offset; the middle track's bytes are in neither, so

@@ -7,6 +7,7 @@
     <string name="close">Zavrieť</string>
     <string name="play">Prehrať</string>
     <string name="pause">Pozastaviť</string>
+    <string name="downloading_the_track">Sťahuje sa skladba…</string>
     <string name="search">Hľadať</string>
     <string name="settings">Nastavenia</string>
     <string name="close_search">Zavrieť vyhľadávanie</string>

@@ -28,6 +28,7 @@ pub mod service;
 pub mod source;
 pub mod stream_pipeline;
 pub mod timeline;
+mod track_download;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod track_sources;
@@ -67,3 +68,4 @@ pub use service::{
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTime, TrackTimeline};
+pub use track_download::TrackDownload;

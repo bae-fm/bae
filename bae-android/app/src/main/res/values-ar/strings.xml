@@ -7,6 +7,7 @@
     <string name="close">إغلاق</string>
     <string name="play">تشغيل</string>
     <string name="pause">إيقاف مؤقت</string>
+    <string name="downloading_the_track">جارٍ تنزيل المقطع…</string>
     <string name="search">بحث</string>
     <string name="settings">الإعدادات</string>
     <string name="close_search">إغلاق البحث</string>

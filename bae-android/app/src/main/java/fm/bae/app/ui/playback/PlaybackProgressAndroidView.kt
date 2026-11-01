@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,13 +17,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeTrackPosition
@@ -73,36 +77,47 @@ fun PlaybackProgressAndroidView(
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
     val nowPlaying by player.nowPlaying.collectAsState()
+    val loadingTrackId by player.loadingTrackId.collectAsState()
     val position = nowPlaying?.let { player.trackPositions.source(it.trackId) }
     val colors = MaterialTheme.colorScheme
     val hairline = BaeTheme.colors.hairline
-    AndroidView(
+    val downloading = stringResource(R.string.downloading_the_track)
+    // A load waiting on storage shows how much of what it reads is here in
+    // place of the seek bar.
+    StepProgressLine(
+        steps = loadingTrackId?.let { player.trackDownloads.source(it) },
+        title = { downloading },
+        fraction = { it.here.toDouble() / it.total.toDouble() },
         modifier = modifier,
-        factory = { viewContext -> PlaybackProgressView(viewContext) },
-        update = { view ->
-            view.applyColors(
-                accent = colors.primary.toArgb(),
-                track = hairline.toArgb(),
-                text = colors.onSurfaceVariant.toArgb(),
-            )
-            view.bind(
-                position = position,
-                state = { context.seekBarState(it, showRemaining) },
-                onSeekRatio = { ratio ->
-                    val duration = player.duration
-                    if (duration != C.TIME_UNSET && duration > 0L) {
-                        player.seekTo((ratio * duration).toLong())
-                    }
-                },
-                // The config subscription re-renders the bar.
-                onToggleRemaining = {
-                    perform("update show-remaining-time setting") {
-                        session.appHandle.setShowRemainingTime(!showRemaining)
-                    }
-                },
-            )
-        },
-    )
+    ) {
+        AndroidView(
+            modifier = Modifier.fillMaxWidth(),
+            factory = { viewContext -> PlaybackProgressView(viewContext) },
+            update = { view ->
+                view.applyColors(
+                    accent = colors.primary.toArgb(),
+                    track = hairline.toArgb(),
+                    text = colors.onSurfaceVariant.toArgb(),
+                )
+                view.bind(
+                    position = position,
+                    state = { context.seekBarState(it, showRemaining) },
+                    onSeekRatio = { ratio ->
+                        val duration = player.duration
+                        if (duration != C.TIME_UNSET && duration > 0L) {
+                            player.seekTo((ratio * duration).toLong())
+                        }
+                    },
+                    // The config subscription re-renders the bar.
+                    onToggleRemaining = {
+                        perform("update show-remaining-time setting") {
+                            session.appHandle.setShowRemainingTime(!showRemaining)
+                        }
+                    },
+                )
+            },
+        )
+    }
 }
 
 private fun TextView.showText(text: String) {

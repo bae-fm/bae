@@ -62,7 +62,6 @@
             selectedRelease: ReleaseDetail,
             releaseCursor: Binding<Cursor<ReleaseRef>>,
             currentTrackId: String? = nil,
-            loadingTrackId: String? = nil,
             isPlaying: Bool = false,
         ) -> some View {
             AlbumExpansionContent(
@@ -71,7 +70,6 @@
                 onBrowseImages: {},
                 releaseCursor: releaseCursor,
                 currentTrackId: currentTrackId,
-                loadingTrackId: loadingTrackId,
                 isPlaying: isPlaying,
                 onClose: {},
                 onPlay: {},
@@ -102,13 +100,11 @@
         static func albumExpansionScene(
             albumId: String,
             currentTrackId: String? = nil,
-            loadingTrackId: String? = nil,
             isPlaying: Bool = false
         ) -> some View {
             albumExpansionScene(
                 detail: albumDetail(albumId: albumId),
                 currentTrackId: currentTrackId,
-                loadingTrackId: loadingTrackId,
                 isPlaying: isPlaying
             )
         }
@@ -132,7 +128,6 @@
             return albumExpansionScene(
                 detail: AlbumDetail(bridge: bridge),
                 currentTrackId: nil,
-                loadingTrackId: nil,
                 isPlaying: false
             )
         }
@@ -141,7 +136,6 @@
         private static func albumExpansionScene(
             detail: AlbumDetail,
             currentTrackId: String?,
-            loadingTrackId: String?,
             isPlaying: Bool
         ) -> some View {
             let primary = detail.primaryRelease
@@ -152,7 +146,6 @@
                     selectedRelease: primary,
                     releaseCursor: .constant(cursor),
                     currentTrackId: currentTrackId,
-                    loadingTrackId: loadingTrackId,
                     isPlaying: isPlaying
                 )
                 .padding()

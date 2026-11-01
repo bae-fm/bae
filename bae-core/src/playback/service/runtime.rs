@@ -689,6 +689,8 @@ impl PlaybackService {
         audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
+        let arbiter = FetchArbiter::new();
+        let track_downloads = arbiter.subscribe_downloads();
         let progress_handle = PlaybackProgressHandle::new(
             progress_rx,
             runtime_handle.clone(),
@@ -757,7 +759,7 @@ impl PlaybackService {
                             volume: OutputVolume::new(),
                             preview,
                             position_update_interval_ms,
-                            file_buffers: FileBuffers::new(),
+                            file_buffers: FileBuffers::new(arbiter),
                             starvation_episode: None,
                             last_position_persist: None,
                             first_audio_pending: None,
@@ -780,7 +782,7 @@ impl PlaybackService {
                     });
                 })
             });
-        PlaybackHandle::new(worker, progress_handle)
+        PlaybackHandle::new(worker, progress_handle, track_downloads)
     }
 
     pub(super) async fn run(

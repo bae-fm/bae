@@ -36,6 +36,7 @@ import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackDisplay
+import uniffi.bae_bridge.BridgeTrackDownload
 import uniffi.bae_bridge.BridgeTrackPosition
 
 private const val TAG = "bae.BaeCorePlayer"
@@ -258,15 +259,32 @@ class BaeCorePlayer(
     /** Failed reads of the values and the queue this player mirrors, each until its next value. */
     val readFailures = PlaybackReadFailures()
 
-    // True while core is loading or buffering a track.
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    /**
+     * Whether the transport shows pause: while a track plays, and while one
+     * loads to play, which a press lands paused.
+     */
+    private val _isPlayingOrLoading = MutableStateFlow(false)
+    val isPlayingOrLoading: StateFlow<Boolean> = _isPlayingOrLoading.asStateFlow()
+
+    /** The track core is loading, while it loads one. */
+    private val _loadingTrackId = MutableStateFlow<String?>(null)
+    val loadingTrackId: StateFlow<String?> = _loadingTrackId.asStateFlow()
+
+    /** The track core loads, while it loads one; [publish] shows it. */
+    private var loadingTrack: String? = null
 
     /**
      * Where the playing track is, by track id, for the View that draws it each
      * display frame: the session's to feed.
      */
     val trackPositions: LatestStream<BridgeTrackPosition> = LatestStream.trackPositions()
+
+    /**
+     * How much of what a load of the playing track waits on from storage is
+     * here, by track id, for the View that draws it each display frame: the
+     * session's to feed.
+     */
+    val trackDownloads: LatestStream<BridgeTrackDownload> = LatestStream.trackDownloads()
 
     // The in-app queue; the current track is not in it.
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)
@@ -297,7 +315,7 @@ class BaeCorePlayer(
     }
 
     fun togglePlayPause() {
-        if (_isPlaying.value) pause() else play()
+        if (_isPlayingOrLoading.value) pause() else play()
     }
 
     // ── Values and events from core, on the main thread ──
@@ -305,6 +323,7 @@ class BaeCorePlayer(
     fun applyValues(values: BridgePlaybackValues) {
         readFailures.valuesArrived()
         val previousTrackId = playingTrackId
+        loadingTrack = values.state.loadingTrackId()
         val becameActive =
             when (val state = values.state) {
                 BridgePlaybackValueState.Stopped -> {
@@ -520,7 +539,8 @@ class BaeCorePlayer(
                 )
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
-        _isLoading.value = transport == Transport.BUFFERING
+        _isPlayingOrLoading.value = playWhenReady
+        _loadingTrackId.value = loadingTrack
         _queue.value =
             QueueProjection(
                 manual = manualEntries,
@@ -699,3 +719,21 @@ class BaeCorePlayer(
         upcoming.close()
     }
 }
+
+/** The track this state loads, while it is a load. */
+private fun BridgePlaybackValueState.loadingTrackId(): String? =
+    when (this) {
+        is BridgePlaybackValueState.Loading -> {
+            when (val loading = track) {
+                is BridgeLoadingTrack.Unprepared -> loading.trackId
+                is BridgeLoadingTrack.Prepared -> loading.track.track.trackId
+            }
+        }
+
+        BridgePlaybackValueState.Stopped,
+        is BridgePlaybackValueState.Playing,
+        is BridgePlaybackValueState.Paused,
+        -> {
+            null
+        }
+    }

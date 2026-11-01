@@ -42,7 +42,6 @@ struct QueuePanel: View {
             nowPlayingArtist: track?.display.artistNames,
             nowPlayingCover: cover,
             isPlaying: np.isPlaying,
-            isLoading: np.loadingTrackId != nil,
             onClose: onClose,
             onGoToNowPlaying: onGoToNowPlaying,
             onPlayPause: {

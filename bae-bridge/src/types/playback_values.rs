@@ -223,6 +223,15 @@ pub struct BridgeTrackPosition {
     pub seek_revision: u64,
 }
 
+/// How much of what a load of the playing track waits on from storage is
+/// here: the value its track's key holds in the track downloads'
+/// `KeyedValueStream` while the person waits on the load.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeTrackDownload {
+    pub here: u64,
+    pub total: u64,
+}
+
 /// Where the preview is in its clip, and which clip that is.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePreviewPosition {

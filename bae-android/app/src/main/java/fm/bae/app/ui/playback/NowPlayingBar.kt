@@ -357,15 +357,13 @@ private fun NowPlayingTransportButtons(
     repeatMode: BridgeRepeatMode,
     onOpenQueue: () -> Unit,
 ) {
-    val isPlaying by player.isPlaying.collectAsState()
-    val isLoading by player.isLoading.collectAsState()
+    val isPlaying by player.isPlayingOrLoading.collectAsState()
     IconButton(onClick = { player.seekToPreviousMediaItem() }) {
         Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
     }
     PlayPauseControl(
         isPlaying = isPlaying,
-        isLoading = isLoading,
-        sizes = PlayPauseControlSizes(iconSize = ThemeIcon.large, spinnerSize = ThemeIcon.large, spinnerStroke = 2.dp),
+        iconSize = ThemeIcon.large,
         onToggle = { player.togglePlayPause() },
     )
     IconButton(onClick = { player.seekToNextMediaItem() }) {

@@ -7,6 +7,7 @@
     <string name="close">닫기</string>
     <string name="play">재생</string>
     <string name="pause">일시 정지</string>
+    <string name="downloading_the_track">트랙을 다운로드하는 중…</string>
     <string name="search">검색</string>
     <string name="settings">설정</string>
     <string name="close_search">검색 닫기</string>

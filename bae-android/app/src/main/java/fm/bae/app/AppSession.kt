@@ -178,6 +178,8 @@ class OpenLibrary internal constructor(
         screenSubscriptions += playbackTimeline(scope)
         streamFeeds +=
             playback.trackPositions.feed(appHandle, scope) { bugs.report("read the playing track's position", it) }
+        streamFeeds +=
+            playback.trackDownloads.feed(appHandle, scope) { bugs.report("read the playing track's download", it) }
         subscribeToTransfers(scope)
         screenSubscriptions +=
             ScreenSubscription(

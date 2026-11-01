@@ -7,6 +7,7 @@
     <string name="close">Κλείσιμο</string>
     <string name="play">Αναπαραγωγή</string>
     <string name="pause">Παύση</string>
+    <string name="downloading_the_track">Λήψη του κομματιού…</string>
     <string name="search">Αναζήτηση</string>
     <string name="settings">Ρυθμίσεις</string>
     <string name="close_search">Κλείσιμο αναζήτησης</string>

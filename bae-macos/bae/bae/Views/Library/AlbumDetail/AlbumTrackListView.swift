@@ -8,7 +8,6 @@ struct AlbumTrackListView: View {
     let release: ReleaseDetail
     let isCompilation: Bool
     let currentTrackId: String?
-    let loadingTrackId: String?
     let isPlaying: Bool
     let onPlayFromTrack: (String) -> Void
     let onTogglePlayPause: () -> Void
@@ -94,7 +93,6 @@ struct AlbumTrackListView: View {
                     artist: track.displayArtist,
                     positionWidth: positionWidth,
                     isCurrent: currentTrackId == track.id,
-                    isLoading: loadingTrackId == track.id,
                     isPlaying: isPlaying,
                     onPlay: { onPlayFromTrack(track.id) },
                     onTogglePlayPause: onTogglePlayPause,
@@ -120,7 +118,6 @@ struct AlbumTrackListView: View {
             release: detail,
             isCompilation: false,
             currentTrackId: playFirstTrack ? detail.tracks.first?.id : nil,
-            loadingTrackId: nil,
             isPlaying: playFirstTrack,
             onPlayFromTrack: { _ in },
             onTogglePlayPause: {},

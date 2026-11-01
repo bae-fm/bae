@@ -113,7 +113,7 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
     let playing = 1u64;
     let preload = 2u64;
 
-    arbiter.set_foreground(playing);
+    arbiter.set_foreground(playing, "track-playing");
     assert!(arbiter.is_foreground(playing));
     assert!(!arbiter.is_foreground(preload));
 

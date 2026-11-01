@@ -32,10 +32,10 @@ struct NowPlayingBarContainer: View {
             secondaryLine: np.secondaryLine,
             cover: cover,
             isPlaying: np.isPlaying,
-            isLoading: np.loadingTrackId != nil,
             position: playbackStore.trackPosition(
                 forTrack: track?.track.trackId
             ),
+            download: playbackStore.trackDownload(forTrack: np.loadingTrackId),
             showRemainingTime: configStore.config.showRemainingTime,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,

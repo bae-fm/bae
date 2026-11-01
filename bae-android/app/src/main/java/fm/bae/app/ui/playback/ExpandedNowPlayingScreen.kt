@@ -217,8 +217,7 @@ private fun ExpandedSeekSection(
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
-    val isPlaying by player.isPlaying.collectAsState()
-    val isLoading by player.isLoading.collectAsState()
+    val isPlaying by player.isPlayingOrLoading.collectAsState()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -234,8 +233,7 @@ private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
         Spacer(modifier = Modifier.width(ThemeSpace.section))
         PlayPauseControl(
             isPlaying = isPlaying,
-            isLoading = isLoading,
-            sizes = PlayPauseControlSizes(iconSize = 48.dp, spinnerSize = 36.dp, spinnerStroke = 3.dp),
+            iconSize = 48.dp,
             onToggle = { player.togglePlayPause() },
         )
         Spacer(modifier = Modifier.width(ThemeSpace.section))

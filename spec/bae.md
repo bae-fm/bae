@@ -3029,6 +3029,16 @@ start plays there. In each case the first sample played is the one asked for.
 Any other lossy track is seeked a little early and decoded up to the new
 position, so its decoder has the frames before it.
 
+While the person waits on a track to start, or on a seek to land, the
+windows its load reads from storage are a download the apps show in place of
+the seek bar: "Downloading the track…" over a bar of how much of those
+windows is here, summed over the reads of the playing track's file still
+running, from coven's count of each read's bytes in hand. Reading ahead while
+the track plays, a preload of the next track, and a load this device serves
+from its own copy or the cache show nothing, and the play/pause control never
+turns into a spinner: it shows pause while a track loads to play, and a press
+lands the load paused.
+
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and
 reported, rather than left behind a frozen position bar.
@@ -3505,8 +3515,9 @@ start, and the line that moves begins as the track does. The queue is a live
 subscription of its own. The playing track's position and
 a preview's, which move as audio plays, reach an app only in a
 `KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
-so far. A seek the person drops is held in front of the track's position
-until core has applied it, so every view drawing that track — the seek bar,
+so far. So does the download a load of the playing track waits on (§7.6),
+under the track's id while the person waits on the load. A seek the person
+drops is held in front of the track's position until core has applied it, so every view drawing that track — the seek bar,
 the queue's strip — shows where they dropped it meanwhile.
 
 ### 9.5 Storage and sync
@@ -3657,7 +3668,8 @@ release's or track's id as UTF-8, or a candidate's key.
   the library's name, the watched folders' scans, and an import pane's
   library membership, which moves its checks in place.
 - **Fast values** — transfer bytes and rates, file shares, export
-  percents, playback and preview positions, import percents, and how far a
+  percents, playback and preview positions, a loading track's download,
+  import percents, and how far a
   bulk action has got, which core sends many times a second, and the steps
   of an open and of a setup call — reach an app
   only in a `KeyedValueStream`, keyed by release, file, track or candidate,

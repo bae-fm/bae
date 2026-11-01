@@ -106,6 +106,7 @@ final class CommonSubscriptions {
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
             downloadStore.releaseProgress.feed(from: appHandle),
             playbackStore.trackPositions.feed(from: appHandle),
+            playbackStore.trackDownloads.feed(from: appHandle),
         ]
         startSync()
     }

@@ -7,6 +7,7 @@
     <string name="close">Zamknij</string>
     <string name="play">Odtwórz</string>
     <string name="pause">Wstrzymaj</string>
+    <string name="downloading_the_track">Pobieranie utworu…</string>
     <string name="search">Szukaj</string>
     <string name="settings">Ustawienia</string>
     <string name="close_search">Zamknij wyszukiwanie</string>

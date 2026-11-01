@@ -79,12 +79,14 @@ impl PlaybackService {
     /// slot (and syncs the atomic), then calls this. Emitting while the current
     /// track is Completed is a bug — `playback_state` treats it as unreachable.
     pub(super) fn emit_state(&self) {
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::StateChanged {
-                state: self.playback_state(),
-            },
-        );
+        let state = self.playback_state();
+        self.file_buffers.set_waiting(match &state {
+            PlaybackState::Loading { track } => Some(track.track_id()),
+            PlaybackState::Stopped
+            | PlaybackState::Playing { .. }
+            | PlaybackState::Paused { .. } => None,
+        });
+        emit_progress(&self.progress_tx, PlaybackProgress::StateChanged { state });
     }
 
     /// Write the shared `AudioState` atomic as a projection of the slot. The
