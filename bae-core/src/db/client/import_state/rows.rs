@@ -293,12 +293,14 @@ fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
     ))
 }
 
+/// A match's own columns joined as `found`, and its album's first year from
+/// the stored catalog release it names, joined as `fetched`.
 const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found.release_id, \
      found.title, found.artist, found.year, found.country, found.region, \
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
-     found.document_failure, found.document_failure_status, found.album_first_year, \
+     found.document_failure, found.document_failure_status, fetched.album_first_year, \
      found.named_note";
 
 /// What hangs off a match joined as `found`, each list a JSON array in its
@@ -507,6 +509,8 @@ pub(crate) fn load_states_rows_on(
              FROM candidate \
              LEFT JOIN import_candidate_match AS found \
                  ON found.content_hash = candidate.content_hash \
+             LEFT JOIN source_release AS fetched \
+                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
              ORDER BY candidate.content_hash, found.position",
             signals = super::signal_rows::signals_read_columns(),
             verdict = verdict_columns(),

@@ -86,9 +86,8 @@ pub(super) fn store_match(
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
-              album_first_year, named_note) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?) \
+              named_note) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (content_hash, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
@@ -104,7 +103,6 @@ pub(super) fn store_match(
              listing = excluded.listing, \
              document_failure = excluded.document_failure, \
              document_failure_status = excluded.document_failure_status, \
-             album_first_year = excluded.album_first_year, \
              named_note = excluded.named_note",
         params![
             content_hash,
@@ -132,7 +130,6 @@ pub(super) fn store_match(
             listing,
             document_failure.kind,
             document_failure.status,
-            result.album_first_year,
             named_note,
         ],
     )?;
@@ -524,6 +521,8 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
                 row.get("document_failure")?,
                 row.get("document_failure_status")?,
             )?,
+            // Read from the stored catalog release the match names, so a
+            // later fetch of it shows.
             album_first_year: row.get("album_first_year")?,
             // Only a run's ranking reads these, so a verdict keeps neither.
             track_titles: Vec::new(),

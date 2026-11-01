@@ -3397,9 +3397,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- read or never asked for.
     document_failure        TEXT CHECK (document_failure IS NULL OR document_failure IN ('network', 'provider', 'timeout')),
     document_failure_status INTEGER,
-    -- The year the release's album first came out, as its full document's
-    -- release group or master states it.
-    album_first_year        INTEGER,
     -- The note of this release the folder's text names its row by, where the
     -- ranking's notes point went to that row; NULL otherwise, and always for a
     -- release the run does not offer.

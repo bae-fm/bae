@@ -34,6 +34,51 @@ async fn round_trip_preserves_the_verdict_and_its_ledger() {
     );
 }
 
+/// A stored verdict's match reads its album's first year from the catalog
+/// release it names, as that release is stored now: none while it is not
+/// stored, whatever the run read, and a later fetch's once one stores it.
+#[tokio::test]
+async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let mut findings = sample_findings();
+    findings.matches[0].album_first_year = Some(1998);
+    let verdict = TerminalVerdict::Found {
+        findings,
+        track_count: 11,
+        ledger: None,
+    };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+    let first_year = || async {
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        let TerminalVerdict::Found { findings, .. } = &loaded[&hash]
+            .identify
+            .as_ref()
+            .expect("a stored verdict reads back")
+            .verdict
+        else {
+            panic!("the stored verdict reads back as found");
+        };
+        findings.matches[0].album_first_year
+    };
+    assert_eq!(first_year().await, None);
+
+    for year in [1998, 2001] {
+        let mut release = fetched_release("rel-1");
+        release.metadata.album.first_year = Some(year);
+        release.metadata.album.year = Some(year);
+        db.save_source_release(&release).await.unwrap();
+        assert_eq!(first_year().await, Some(year));
+    }
+}
+
 /// Only a run's ranking reads a release's track titles and notes, so a stored
 /// verdict keeps neither: its releases read back without them.
 #[tokio::test]

@@ -66,7 +66,8 @@ fn sample_match() -> MetadataResult {
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
-        album_first_year: Some(1998),
+        // No catalog release of it is stored, so a stored verdict reads none.
+        album_first_year: None,
         track_titles: Vec::new(),
         notes: Vec::new(),
     }
@@ -181,8 +182,14 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 /// Store MusicBrainz release `release_id` as a fetch would, so a pick can name
 /// it.
 async fn fetched(db: &Database, release_id: &str) {
-    db.save_source_release(
-        &crate::import::payloads::ReleasePayloads::for_test(
+    db.save_source_release(&fetched_release(release_id))
+        .await
+        .unwrap();
+}
+
+/// The catalog release [`fetched`] stores.
+fn fetched_release(release_id: &str) -> crate::import::source_release::SourceRelease {
+    crate::import::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
             serde_json::json!({
                 "id": release_id,
@@ -195,10 +202,7 @@ async fn fetched(db: &Database, release_id: &str) {
             Vec::new(),
         )
         .extract()
-        .unwrap(),
-    )
-    .await
-    .unwrap();
+        .unwrap()
 }
 
 fn release_link(release_id: &str) -> crate::import::PressingLink {
