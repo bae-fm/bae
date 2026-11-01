@@ -7,7 +7,7 @@ use super::*;
 use crate::db::{ContextFill, ContextFilled, ReleaseStart};
 
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
-async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
+pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = super::temp_db().await;
     let track_ids: Vec<String> = (0..count)
         .map(|index| bae_test_support::test_uuid(&format!("queue-track-{index}")))
@@ -107,8 +107,8 @@ async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     assert!(
         rejects(
             &db,
-            "INSERT INTO playback_state (id, current_entry, current_track_id, position_ms, volume, is_muted) \
-             VALUES ('current', NULL, NULL, -1, 1.0, 0)"
+            "INSERT INTO playback_state (id, current_entry, current_track_id, position_ms) \
+             VALUES ('current', NULL, NULL, -1)"
         )
         .await
     );
@@ -338,8 +338,6 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     let state = DbPlaybackState {
         current: Some(current.clone()),
         position_ms: Some(42_000),
-        volume: 0.5,
-        is_muted: true,
     };
     db.save_playback_state(&state).await.unwrap();
 
@@ -350,8 +348,6 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
         .expect("a stored row");
     assert_eq!(loaded.current, Some(current));
     assert_eq!(loaded.position_ms, Some(42_000));
-    assert!((loaded.volume - 0.5).abs() < f32::EPSILON);
-    assert!(loaded.is_muted);
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
     let forgotten = db
@@ -367,6 +363,8 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
 
 /// Opening keeps the queue only when it will be resumed: "restore on launch"
 /// on and a resume row stored. Otherwise the queue and the row are emptied.
+/// Either way what playback is doing starts stopped; its volume and mute are
+/// kept only to resume.
 #[tokio::test]
 async fn opening_keeps_the_queue_only_to_resume_it() {
     let (db, _tmp, tracks) = release_db(2).await;
@@ -376,12 +374,24 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
         .await
         .unwrap();
     let state = DbPlaybackState {
-        current: Some(current),
+        current: Some(current.clone()),
         position_ms: None,
-        volume: 1.0,
-        is_muted: false,
     };
     db.save_playback_state(&state).await.unwrap();
+    let now = db.playback_now_row();
+    for change in [
+        crate::playback::PlaybackChange::State(crate::playback::PlaybackState::Playing {
+            track: crate::playback::PlayingTrack {
+                track_id: current.track_id.clone(),
+                duration_ms: Some(1_000),
+            },
+        }),
+        crate::playback::PlaybackChange::Volume(0.5),
+        crate::playback::PlaybackChange::Muted(true),
+        crate::playback::PlaybackChange::Failed(crate::ui::PlaybackErrorReason::NotUploaded),
+    ] {
+        now.apply(&change).await.unwrap();
+    }
 
     db.settle_playback_queue(true).await.unwrap();
     assert_eq!(
@@ -389,8 +399,20 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
         vec![tracks[1].clone()],
         "kept to resume"
     );
+    let resumed = db.now_playing().await.unwrap().expect("nothing to display");
+    assert_eq!(
+        resumed.playback.state,
+        crate::playback::PlaybackState::Stopped
+    );
+    assert_eq!(resumed.failure, None);
+    assert_eq!(
+        db.playback_level().await.unwrap(),
+        (0.5, true),
+        "kept to resume"
+    );
 
     db.settle_playback_queue(false).await.unwrap();
+    assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
     assert!(
         db.queue_value().await.unwrap().context.is_none(),
         "restore off empties it"

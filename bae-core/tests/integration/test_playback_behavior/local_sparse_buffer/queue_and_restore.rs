@@ -283,6 +283,53 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     );
 }
 
+/// A relaunch that resumes the session comes back at the volume and mute it
+/// left, which `playback_now` kept: the resumed track is announced at that
+/// volume, muted.
+#[tokio::test]
+async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
+    let mut playback = MultiWindowPlayback::new("multi-window-restore-volume").await;
+    let track = playback.track_ids[0].clone();
+    playback.play_and_wait(&track).await;
+    playback.playback_handle.set_volume(0.3);
+    playback.playback_handle.set_muted(true);
+    let mut progress_rx = playback.playback_handle.subscribe_progress();
+    support::next_matching(&mut progress_rx, Duration::from_secs(3), |event| match event {
+        PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
+        _ => None,
+    })
+    .await
+    .expect("the mute lands");
+    playback.playback_handle.shutdown().await;
+
+    let (handle, _capture_rx) = start_capture_service_with_restore(
+        playback.library_manager.clone(),
+        playback.runtime_handle.clone(),
+        true,
+    )
+    .await;
+    // Restore runs on the service's thread once its audio device is open,
+    // after this subscribes.
+    let mut progress_rx = handle.subscribe_progress();
+    let mut announced = (None, None);
+    support::next_matching(&mut progress_rx, Duration::from_secs(20), |event| {
+        match event {
+            PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
+            PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),
+            _ => {}
+        }
+        announced.0.zip(announced.1)
+    })
+    .await
+    .expect("restore announces the volume and the mute");
+    assert_eq!(announced, (Some(0.3), Some(true)));
+    assert_eq!(
+        playback.library_manager.playback_level().await.unwrap(),
+        (0.3, true)
+    );
+    handle.shutdown().await;
+}
+
 /// Multi-window analog of `assert_preload_refreshed_after_queue_mutation`,
 /// used by all four preload-displacement mutations (`add_next`,
 /// `reorder_entry`, `insert_in_queue`, `remove_entry`): after the mutation

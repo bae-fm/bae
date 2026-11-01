@@ -322,6 +322,11 @@ open class AppService: @unchecked Sendable, Observable {
             applyPlayback: { [weak self] values in
                 guard let self else { return }
                 playbackValues.apply(values)
+                // A playback failure has no screen of its own: it shows
+                // wherever the person is, once.
+                if let reason = playbackValues.failureToShow(values) {
+                    showError(reason)
+                }
                 mediaControlService.applyValues(
                     values,
                     appHandle: appHandle

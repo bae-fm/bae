@@ -4,6 +4,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
 import uniffi.bae_bridge.BridgeNowPlayingTrack
+import uniffi.bae_bridge.BridgePlaybackFailure
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
@@ -19,6 +20,7 @@ internal fun playbackValues(
     volume: Float = 1f,
     isMuted: Boolean = false,
     repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
+    failure: BridgePlaybackFailure? = null,
 ): BridgePlaybackValues =
     BridgePlaybackValues(
         state = state,
@@ -28,6 +30,7 @@ internal fun playbackValues(
         remote = uniffi.bae_bridge.BridgeRemotePlayback.Local,
         preview = BridgePreviewState.Idle,
         mediaControl = BridgeMediaControlPlayback.Library,
+        failure = failure,
     )
 
 /** A timeline holding [library]'s line; the preview's is not read on Android. */

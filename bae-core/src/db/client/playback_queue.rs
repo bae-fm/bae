@@ -114,16 +114,19 @@ impl Database {
     }
 
     /// Empty the queue and the resume row unless the resume row is kept: what
-    /// opening a library does when it will not resume what it played. A
-    /// library with nothing to resume opens with an empty queue, and one
-    /// opened with "restore on launch" off forgets what it played. A bulk
-    /// write, so emptying a library-sized lane takes one step.
+    /// starting playback with a library does when it will not resume what it
+    /// played. A library with nothing to resume opens with an empty queue,
+    /// and one opened with "restore on launch" off forgets what it played.
+    /// Either way `playback_now` starts stopped, at the resumed volume or at
+    /// full volume. A bulk write, so emptying a library-sized lane takes one
+    /// step.
     pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), DbError> {
         self.call_bulk(move |sql| {
             let stored = sql
                 .query_row("SELECT 1 FROM playback_state", [], |_| Ok(()))
                 .optional()?
                 .is_some();
+            super::playback_now::reset_playback_now_on(sql, resume && stored)?;
             if resume && stored {
                 return Ok(());
             }

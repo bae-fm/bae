@@ -2030,8 +2030,8 @@ BEGIN
 END;
 
 -- Where this device's playback stood, so a restart resumes it: the queue
--- entry playing, how far into its stream, and the volume. Present while a
--- track is loaded; never synced.
+-- entry playing and how far into its stream. The volume it resumes at is
+-- `playback_now`'s. Present while a track is loaded; never synced.
 CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
     -- The entry id the queue screens show ('m' and an Up Next entry number,
@@ -2039,10 +2039,83 @@ CREATE TABLE IF NOT EXISTS playback_state (
     -- leaves nothing to resume.
     current_entry    TEXT,
     current_track_id TEXT REFERENCES tracks(id) ON DELETE SET NULL,
-    position_ms      INTEGER CHECK (position_ms >= 0),
-    volume           REAL NOT NULL,
-    is_muted         INTEGER NOT NULL
+    position_ms      INTEGER CHECK (position_ms >= 0)
 ) STRICT;
+
+-- What this device's playback is doing, as its screens show it: one row,
+-- written by playback as each of these changes. Where it is in what it plays
+-- is not here, since that moves with the audio, and its repeat mode is the
+-- queue's. Starting playback with the library resets the row to stopped,
+-- keeping the volume and mute only when it resumes what it played. Never
+-- synced.
+CREATE TABLE IF NOT EXISTS playback_now (
+    singleton   INTEGER PRIMARY KEY CHECK (singleton = 1),
+    state       TEXT NOT NULL CHECK (state IN ('stopped', 'loading', 'playing', 'paused')),
+    -- The track the state names. A track the library no longer holds stays
+    -- named until playback moves off it.
+    track_id    TEXT,
+    -- While loading: whether the track's audio is prepared yet. A playing or
+    -- paused track always is.
+    prepared    INTEGER CHECK (prepared IN (0, 1)),
+    -- The prepared track's length; NULL when it is unknown.
+    duration_ms INTEGER CHECK (duration_ms >= 0),
+    -- Why it is paused: by hand, or at the end of a side or disc, which the
+    -- pause prompt names by its boundary's id, kind and label, with when the
+    -- next side starts on its own (milliseconds since the epoch), NULL when
+    -- it waits for Play.
+    pause_reason       TEXT CHECK (pause_reason IN ('manual', 'side_ended')),
+    side_boundary_id   TEXT,
+    side_boundary_kind TEXT CHECK (side_boundary_kind IN ('side', 'disc')),
+    side_label         TEXT,
+    side_resumes_at    INTEGER,
+    volume      REAL NOT NULL CHECK (volume >= 0),
+    is_muted    INTEGER NOT NULL CHECK (is_muted IN (0, 1)),
+    -- Where playback goes: this device's own output, a remote renderer, or
+    -- back here after the link to the renderer was lost, with why
+    -- (untranslated).
+    remote             TEXT NOT NULL CHECK (remote IN ('local', 'on', 'ended')),
+    remote_device_id   TEXT,
+    remote_device_name TEXT,
+    remote_end_detail  TEXT,
+    -- The file range a preview auditions (its path as coven's bytes), and
+    -- the clip's length.
+    preview              TEXT NOT NULL CHECK (preview IN ('idle', 'playing', 'paused')),
+    preview_path         BLOB,
+    preview_start_sample INTEGER CHECK (preview_start_sample >= 0),
+    preview_end_sample   INTEGER CHECK (preview_end_sample >= 0),
+    preview_duration_ms  INTEGER CHECK (preview_duration_ms >= 0),
+    -- Why playback last failed, until it next plays: a reason the person can
+    -- act on, or bae's own or the renderer's failure with its untranslated
+    -- detail. Each failure counts up `failures`, so two alike in a row are
+    -- two values a screen tells apart.
+    failure         TEXT CHECK (failure IN (
+        'sync_disconnected', 'upload_pending', 'not_uploaded', 'original_missing',
+        'audio_output', 'internal', 'renderer')),
+    failure_problem TEXT CHECK (failure_problem IN (
+        'device_unavailable', 'unsupported_format', 'airplay_refused')),
+    failure_detail  TEXT,
+    failures        INTEGER NOT NULL CHECK (failures >= 0),
+    CHECK ((state = 'stopped') = (track_id IS NULL)),
+    CHECK ((state = 'loading') = (prepared IS NOT NULL)),
+    CHECK (duration_ms IS NULL OR state IN ('playing', 'paused') OR prepared = 1),
+    CHECK ((state = 'paused') = (pause_reason IS NOT NULL)),
+    CHECK ((pause_reason IS 'side_ended') = (side_boundary_id IS NOT NULL)),
+    CHECK ((side_boundary_id IS NULL) = (side_boundary_kind IS NULL)
+        AND (side_boundary_id IS NULL) = (side_label IS NULL)),
+    CHECK (side_resumes_at IS NULL OR side_boundary_id IS NOT NULL),
+    CHECK ((remote = 'local') = (remote_device_id IS NULL)
+        AND (remote = 'local') = (remote_device_name IS NULL)),
+    CHECK ((remote = 'ended') = (remote_end_detail IS NOT NULL)),
+    CHECK ((preview = 'idle') = (preview_path IS NULL)
+        AND (preview = 'idle') = (preview_start_sample IS NULL)
+        AND (preview = 'idle') = (preview_duration_ms IS NULL)),
+    CHECK (preview_end_sample IS NULL OR preview_path IS NOT NULL),
+    CHECK ((failure IS 'audio_output') = (failure_problem IS NOT NULL)),
+    CHECK ((failure IS 'internal' OR failure IS 'renderer') = (failure_detail IS NOT NULL))
+) STRICT;
+
+INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview, failures)
+VALUES (1, 'stopped', 1.0, 0, 'local', 'idle', 0);
 
 -- ── Transfer queues ───────────────────────────────────────────────────────────
 

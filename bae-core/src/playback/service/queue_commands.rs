@@ -75,10 +75,6 @@ impl PlaybackService {
             self.queue_failed("set the repeat mode", e);
             return;
         }
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::RepeatModeChanged { mode },
-        );
         self.persist_playback_state().await;
     }
 }

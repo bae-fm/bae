@@ -693,6 +693,7 @@ impl PlaybackService {
             progress_rx,
             runtime_handle.clone(),
             clock.clone(),
+            library_manager.playback_now_row(),
             diagnostics.clone(),
         );
         let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());

@@ -31,6 +31,21 @@ pub struct NowPlayingTrack {
     pub display: TrackDisplay,
 }
 
-/// The playback values surfaces show: the service's values with the playing
-/// track's current display.
-pub type NowPlayingValues = crate::playback::PlaybackValues<NowPlayingTrack>;
+/// What playback surfaces show, read from the device's `playback_now` row:
+/// the service's values with the playing track's current display, the
+/// queue's repeat mode, and why playback last failed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NowPlayingValues {
+    pub playback: crate::playback::PlaybackValues<NowPlayingTrack>,
+    pub repeat_mode: crate::playback::RepeatMode,
+    /// `None` once playback plays again after its last failure.
+    pub failure: Option<PlaybackFailure>,
+}
+
+/// Why playback last failed, with how many failures this run of playback
+/// has had, so a surface tells one failure from the next one alike.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaybackFailure {
+    pub number: u64,
+    pub reason: crate::ui::PlaybackErrorReason,
+}

@@ -15,11 +15,14 @@ import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.PlaybackFailureNotices
+import fm.bae.app.data.ScreenSubscription
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.data.castEndedFailure
+import fm.bae.app.data.pulled
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
@@ -50,7 +53,6 @@ import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.PlaybackTimelineCallback
-import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
@@ -127,6 +129,8 @@ class OpenLibrary internal constructor(
      */
     private val shownScreens = MutableStateFlow(0)
     private val valueSubscriptions = mutableListOf<LiveSubscription>()
+    private val screenSubscriptions = mutableListOf<ScreenSubscription<*>>()
+    private val playbackFailures = PlaybackFailureNotices()
 
     /** The fast streams' feeds, which stop with [valueSubscriptions]. */
     private val streamFeeds = mutableListOf<LatestFeed>()
@@ -221,23 +225,7 @@ class OpenLibrary internal constructor(
                     }
                 },
             )
-        valueSubscriptions +=
-            appHandle.subscribePlaybackValues(
-                object : PlaybackValuesCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgePlaybackValues) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            playback.applyValues(value)
-                            stores.cast.applyStatus(value.remote)?.let(::announceCastEnded)
-                        }
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
-                        }
-                    }
-                },
-            )
+        screenSubscriptions += playbackValues(scope)
         valueSubscriptions +=
             appHandle.subscribePlaybackTimeline(
                 object : PlaybackTimelineCallback {
@@ -313,6 +301,24 @@ class OpenLibrary internal constructor(
                 },
             )
     }
+
+    /** What playback is doing, which also says when playback failed. */
+    private fun playbackValues(scope: CoroutineScope) =
+        ScreenSubscription(
+            appHandle.subscribePlaybackValues().pulled(),
+            scope,
+            onValue = { value ->
+                playback.applyValues(value)
+                stores.cast.applyStatus(value.remote)?.let(::announceCastEnded)
+                // A playback failure has no screen of its own: a snackbar wherever the person is, once.
+                playbackFailures.toShow(value)?.let { reason ->
+                    messages.show(LocaleErrorDisplays(appContext).display(reason))
+                }
+            },
+            onError = { error ->
+                subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
+            },
+        )
 
     /**
      * What a failed read of a live [subscription] shows in place of its last
@@ -428,6 +434,8 @@ class OpenLibrary internal constructor(
         eventChannel = null
         valueSubscriptions.forEach(LiveSubscription::cancel)
         valueSubscriptions.clear()
+        screenSubscriptions.forEach(ScreenSubscription<*>::stop)
+        screenSubscriptions.clear()
         streamFeeds.forEach(LatestFeed::cancel)
         streamFeeds.clear()
         appContext.stopService(Intent(appContext, PlaybackService::class.java))

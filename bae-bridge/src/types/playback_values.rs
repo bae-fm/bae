@@ -298,6 +298,23 @@ pub struct BridgePlaybackValues {
     pub remote: BridgeRemotePlayback,
     pub preview: BridgePreviewState,
     pub media_control: BridgeMediaControlPlayback,
+    /// Why playback last failed, until it next plays; `None` since then.
+    pub failure: Option<BridgePlaybackFailure>,
+}
+
+/// Why playback last failed. `number` counts this run of playback's
+/// failures, so a screen shows each failure once: one whose number it has
+/// already shown is the same failure read again.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaybackFailure {
+    pub number: u64,
+    pub reason: super::BridgePlaybackErrorReason,
+}
+
+mirror_struct! {
+    BridgePlaybackFailure = bae_core::playback::PlaybackFailure,
+    from_core: fn,
+    fields: { number, reason: (super::BridgePlaybackErrorReason) },
 }
 
 /// Where playback is, for a surface that moves the position on itself: the
@@ -436,15 +453,21 @@ mirror_enum! {
 
 impl BridgePlaybackValues {
     pub(crate) fn from_core(value: bae_core::playback::NowPlayingValues) -> Self {
-        let media_control = BridgeMediaControlPlayback::from_core(value.media_control());
+        let bae_core::playback::NowPlayingValues {
+            playback,
+            repeat_mode,
+            failure,
+        } = value;
+        let media_control = BridgeMediaControlPlayback::from_core(playback.media_control());
         Self {
-            state: BridgePlaybackValueState::from_core(value.state),
-            volume: value.volume,
-            is_muted: value.is_muted,
-            repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
-            remote: BridgeRemotePlayback::from_core(value.remote),
-            preview: BridgePreviewState::from_core(value.preview),
+            state: BridgePlaybackValueState::from_core(playback.state),
+            volume: playback.volume,
+            is_muted: playback.is_muted,
+            repeat_mode: BridgeRepeatMode::from_core(repeat_mode),
+            remote: BridgeRemotePlayback::from_core(playback.remote),
+            preview: BridgePreviewState::from_core(playback.preview),
             media_control,
+            failure: failure.map(BridgePlaybackFailure::from_core),
         }
     }
 }

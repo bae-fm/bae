@@ -173,9 +173,10 @@ const SENTINEL_VOLUME: f32 = 0.4321;
 /// sentinel excluded. The service handles commands one at a time in the order
 /// they were sent and emits on one channel that the fan-out forwards in order,
 /// so whatever the earlier commands emit while being handled arrives before the
-/// sentinel's `VolumeChanged`. Once it has arrived, `subscribe_values()` and
-/// `subscribe_positions()` hold what those events left. Setting the volume steers neither transport
-/// nor the queue, and leaves a side-pause countdown running.
+/// sentinel's `VolumeChanged`. Once it has arrived, the `playback_now` row
+/// and `subscribe_positions()` hold what those events left. Setting the
+/// volume steers neither transport nor the queue, and leaves a side-pause
+/// countdown running.
 async fn settled_events_on(
     handle: &bae_core::playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -266,20 +267,6 @@ async fn wait_for_track_position(
         _ => None,
     })
     .await
-}
-
-/// Wait for the next `RepeatModeChanged` and return its mode, or panic on
-/// timeout.
-async fn wait_for_repeat_mode(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    timeout_duration: Duration,
-) -> RepeatMode {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
-        PlaybackProgress::RepeatModeChanged { mode } => Some(mode),
-        _ => None,
-    })
-    .await
-    .expect("no RepeatModeChanged arrived within the timeout")
 }
 
 /// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
@@ -428,6 +415,20 @@ impl PlaybackTestFixture {
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         }
+    }
+    /// The services over this fixture's library and playback, as an app
+    /// holds them.
+    async fn services(&self) -> bae_core::library::AppServices {
+        let import = self
+            .library_manager
+            .start_import_service(tokio::runtime::Handle::current())
+            .await
+            .expect("start the import service");
+        bae_core::library::AppServices::new(
+            self.library_manager.clone(),
+            self.playback_handle.clone(),
+            import,
+        )
     }
     /// Wait for a specific state change with timeout
     async fn wait_for_state<F>(

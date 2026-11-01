@@ -187,34 +187,34 @@ impl PlaybackService {
     }
 
     /// Resume playback from the device-local resume row over the queue the
-    /// tables hold: the repeat mode, the volume, and the entry playing, loaded
-    /// paused at its saved position. A deleted track left no entry to resume.
-    /// A failed read of the queue resumes nothing.
+    /// tables hold: the repeat mode, the volume `playback_now` kept, and the
+    /// entry playing, loaded paused at its saved position. A deleted track
+    /// left no entry to resume. A failed read of the queue resumes nothing;
+    /// a failed read of the volume resumes at full volume.
     pub(super) async fn restore(&mut self, state: DbPlaybackState) {
         info!("Restoring playback state: entry={:?}", state.current);
         if let Err(e) = self.playback_queue.restore(state.current).await {
             warn!("couldn't read the queue to resume: {e}; resuming nothing");
             return;
         }
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::RepeatModeChanged {
-                mode: self.playback_queue.repeat_mode(),
-            },
-        );
 
+        let (volume, is_muted) = match self.library_manager.playback_level().await {
+            Ok(level) => level,
+            Err(e) => {
+                warn!("couldn't read the volume to resume: {e}; resuming at full volume");
+                (1.0, false)
+            }
+        };
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
         self.volume
-            .restore(state.volume, state.is_muted, self.audio_output.as_ref());
+            .restore(volume, is_muted, self.audio_output.as_ref());
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::VolumeChanged {
-                volume: state.volume,
-            },
+            PlaybackProgress::VolumeChanged { volume },
         );
-        if state.is_muted {
+        if is_muted {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::MuteChanged { is_muted: true },
@@ -285,8 +285,6 @@ impl PlaybackService {
         let row = DbPlaybackState {
             current: self.playback_queue.current().cloned(),
             position_ms,
-            volume: self.volume.level(self.audio_output.as_ref()),
-            is_muted: self.volume.is_muted(),
         };
         if let Err(e) = self.library_manager.save_playback_state(&row).await {
             warn!(

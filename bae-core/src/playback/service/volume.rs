@@ -24,14 +24,15 @@ impl OutputVolume {
         }
     }
 
-    pub(super) fn is_muted(&self) -> bool {
+    #[cfg(test)]
+    fn is_muted(&self) -> bool {
         self.muted
     }
 
-    /// The level the user set — what the UI shows and what is persisted. While
-    /// muted the output sits at zero, so the remembered pre-mute level is the
-    /// answer.
-    pub(super) fn level(&self, output: &dyn AudioOutput) -> f32 {
+    /// The level the user set — what the UI shows. While muted the output
+    /// sits at zero, so the remembered pre-mute level is the answer.
+    #[cfg(test)]
+    fn level(&self, output: &dyn AudioOutput) -> f32 {
         if self.muted {
             self.pre_mute_level
         } else {

@@ -72,6 +72,7 @@ public final class ScreenSubscription<Source: PulledSubscription> {
 
 // Every bridge object a screen pulls from, read only through
 // `ScreenSubscription`.
+extension PlaybackValuesSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}

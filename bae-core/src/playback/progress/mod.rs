@@ -1,7 +1,6 @@
 pub mod handle;
 pub mod timeline;
 use crate::playback::service::PlaybackState;
-use crate::playback::RepeatMode;
 pub use handle::PlaybackProgressHandle;
 pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -70,11 +69,23 @@ pub struct PlaybackValues<Track = crate::playback::PlayingTrack> {
     pub state: PlaybackState<Track>,
     pub volume: f32,
     pub is_muted: bool,
-    pub repeat_mode: RepeatMode,
     /// Where playback is going: this device's own output, a remote renderer,
     /// or back here after the link to a renderer was lost.
     pub remote: RemotePlayback,
     pub preview: PreviewState,
+}
+
+/// One change to what playback is doing, as the device's `playback_now` row
+/// takes it: a value that changed, or a failure.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlaybackChange {
+    State(PlaybackState),
+    Volume(f32),
+    Muted(bool),
+    Remote(RemotePlayback),
+    Preview(PreviewState),
+    /// Playback failed; the row holds why until playback next plays.
+    Failed(crate::ui::PlaybackErrorReason),
 }
 
 /// Where playback is in what it plays: the library track's position and the
@@ -120,39 +131,60 @@ pub enum RemotePlayback {
 }
 
 impl PlaybackValues {
+    /// What playback does as it starts: stopped, at full volume, unmuted,
+    /// on this device's output, previewing nothing. The `playback_now` row
+    /// starting playback leaves holds these, apart from a resumed volume
+    /// and mute, which playback announces as it resumes.
     pub(super) fn initial() -> Self {
         Self {
             state: PlaybackState::Stopped,
             volume: 1.0,
             is_muted: false,
-            repeat_mode: RepeatMode::Off,
             remote: RemotePlayback::Local,
             preview: PreviewState::Idle,
         }
     }
 
-    /// These values after `event`, or `None` when `event` is not about
-    /// them.
-    pub(super) fn applying(&self, event: &PlaybackProgress) -> Option<Self> {
-        let mut next = self.clone();
-        match event {
-            PlaybackProgress::StateChanged { state } => next.state = state.clone(),
-            PlaybackProgress::RepeatModeChanged { mode } => next.repeat_mode = *mode,
-            PlaybackProgress::VolumeChanged { volume } => next.volume = *volume,
-            PlaybackProgress::MuteChanged { is_muted } => next.is_muted = *is_muted,
-            PlaybackProgress::RemoteStatusChanged { remote } => {
-                next.remote.clone_from(remote);
+    /// Take `event` into these values, and say what it changed: a value it
+    /// moved, or the failure it reports. `None` when it changed none of them.
+    pub(super) fn apply(&mut self, event: &PlaybackProgress) -> Option<PlaybackChange> {
+        fn changed<T: PartialEq + Clone>(
+            held: &mut T,
+            next: &T,
+            change: impl FnOnce(T) -> PlaybackChange,
+        ) -> Option<PlaybackChange> {
+            if held == next {
+                return None;
             }
-            PlaybackProgress::PreviewStateChanged(state) => next.preview = state.clone(),
+            held.clone_from(next);
+            Some(change(next.clone()))
+        }
+        match event {
+            PlaybackProgress::StateChanged { state } => {
+                changed(&mut self.state, state, PlaybackChange::State)
+            }
+            PlaybackProgress::VolumeChanged { volume } => {
+                changed(&mut self.volume, volume, PlaybackChange::Volume)
+            }
+            PlaybackProgress::MuteChanged { is_muted } => {
+                changed(&mut self.is_muted, is_muted, PlaybackChange::Muted)
+            }
+            PlaybackProgress::RemoteStatusChanged { remote } => {
+                changed(&mut self.remote, remote, PlaybackChange::Remote)
+            }
+            PlaybackProgress::PreviewStateChanged(state) => {
+                changed(&mut self.preview, state, PlaybackChange::Preview)
+            }
+            PlaybackProgress::PlaybackError { reason } => {
+                Some(PlaybackChange::Failed(reason.clone()))
+            }
             PlaybackProgress::PositionUpdate { .. }
             | PlaybackProgress::Seeked { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
             | PlaybackProgress::QueueItemsAdded { .. }
-            | PlaybackProgress::PlaybackError { .. }
             | PlaybackProgress::TrackCompleted { .. }
-            | PlaybackProgress::DecodeStats { .. } => return None,
+            | PlaybackProgress::DecodeStats { .. } => None,
         }
-        Some(next)
     }
 }
 
@@ -249,8 +281,7 @@ impl PlaybackPositions {
                 preview.position_ms = *position_ms;
                 preview.progress = *progress;
             }
-            PlaybackProgress::RepeatModeChanged { .. }
-            | PlaybackProgress::VolumeChanged { .. }
+            PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }
             | PlaybackProgress::RemoteStatusChanged { .. }
             | PlaybackProgress::QueueItemsAdded { .. }
@@ -273,7 +304,6 @@ impl<Track> PlaybackValues<Track> {
             state,
             volume,
             is_muted,
-            repeat_mode,
             remote,
             preview,
         } = self;
@@ -281,7 +311,6 @@ impl<Track> PlaybackValues<Track> {
             state: state.try_map_track(f)?,
             volume,
             is_muted,
-            repeat_mode,
             remote,
             preview,
         })
@@ -334,9 +363,6 @@ pub enum PlaybackProgress {
     /// a transient "+N" badge.
     QueueItemsAdded {
         count: u32,
-    },
-    RepeatModeChanged {
-        mode: RepeatMode,
     },
     VolumeChanged {
         volume: f32,
@@ -411,19 +437,19 @@ mod tests {
 
     #[test]
     fn media_control_uses_preview_only_while_preview_is_active() {
-        let library = PlaybackValues::initial();
-        assert_eq!(library.media_control(), MediaControlPlayback::Library);
+        let mut values = PlaybackValues::initial();
+        assert_eq!(values.media_control(), MediaControlPlayback::Library);
 
-        let preview = library
-            .applying(&PlaybackProgress::PreviewStateChanged(
-                PreviewState::Playing {
-                    target: preview_target("/tmp/preview.flac"),
-                    duration_ms: 120_000,
-                },
-            ))
-            .expect("preview state is retained");
+        let playing = PreviewState::Playing {
+            target: preview_target("/tmp/preview.flac"),
+            duration_ms: 120_000,
+        };
+        assert_eq!(
+            values.apply(&PlaybackProgress::PreviewStateChanged(playing.clone())),
+            Some(PlaybackChange::Preview(playing))
+        );
         assert!(matches!(
-            preview.media_control(),
+            values.media_control(),
             MediaControlPlayback::Preview {
                 duration_ms: 120_000,
                 is_playing: true,
@@ -431,10 +457,43 @@ mod tests {
             }
         ));
 
-        let idle = preview
-            .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle))
-            .expect("idle state is retained");
-        assert_eq!(idle.media_control(), MediaControlPlayback::Library);
+        assert_eq!(
+            values.apply(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle)),
+            Some(PlaybackChange::Preview(PreviewState::Idle))
+        );
+        assert_eq!(values.media_control(), MediaControlPlayback::Library);
+    }
+
+    /// A value is a change only when it moves; a failure always is one, so
+    /// two failures alike are two changes.
+    #[test]
+    fn a_value_changes_only_when_it_moves_and_every_failure_is_a_change() {
+        let mut values = PlaybackValues::initial();
+        assert_eq!(
+            values.apply(&PlaybackProgress::VolumeChanged { volume: 1.0 }),
+            None,
+            "the volume playback starts at"
+        );
+        assert_eq!(
+            values.apply(&PlaybackProgress::VolumeChanged { volume: 0.5 }),
+            Some(PlaybackChange::Volume(0.5))
+        );
+        assert_eq!(values.volume, 0.5);
+        assert_eq!(
+            values.apply(&PlaybackProgress::StateChanged {
+                state: PlaybackState::Stopped
+            }),
+            None
+        );
+        let failure = crate::ui::PlaybackErrorReason::SyncDisconnected;
+        for _ in 0..2 {
+            assert_eq!(
+                values.apply(&PlaybackProgress::PlaybackError {
+                    reason: failure.clone()
+                }),
+                Some(PlaybackChange::Failed(failure.clone()))
+            );
+        }
     }
 
     #[test]
@@ -456,7 +515,7 @@ mod tests {
 
     #[test]
     fn position_ticks_change_no_playback_value() {
-        let values = PlaybackValues::initial();
+        let mut values = PlaybackValues::initial();
         for tick in [
             PlaybackProgress::PositionUpdate {
                 position_ms: 1_000,
@@ -475,7 +534,7 @@ mod tests {
                 progress: 0.01,
             },
         ] {
-            assert!(values.applying(&tick).is_none(), "{tick:?} is a position");
+            assert!(values.apply(&tick).is_none(), "{tick:?} is a position");
         }
     }
 

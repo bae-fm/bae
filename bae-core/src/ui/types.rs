@@ -157,7 +157,7 @@ impl UiError {
 /// reach the release's audio are user-actionable and keyed; every in-core
 /// failure (decode, audio output, IO) is un-enumerable and routes to
 /// `Diagnostic`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlaybackErrorReason {
     /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
@@ -174,10 +174,23 @@ pub enum PlaybackErrorReason {
     /// The audio output didn't start, for a reason of the device's or the
     /// speaker's. Actionable, keyed.
     AudioOutput { problem: AudioOutputProblem },
-    /// Any other failure (decode, audio output, IO, DB, missing file). Carries
-    /// the underlying `UiError`; the UI renders its generic per-category line
-    /// plus the opaque, log-only detail.
-    Diagnostic { error: UiError },
+    /// Any other failure: bae's own (decode, audio output, IO, DB, missing
+    /// file) or a renderer refusing a command. The UI renders its generic
+    /// per-category line plus `detail`, the opaque, log-only error chain.
+    Diagnostic {
+        failure: PlaybackDiagnostic,
+        detail: String,
+    },
+}
+
+/// Whose failure a diagnostic playback failure is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaybackDiagnostic {
+    /// bae's own.
+    Internal,
+    /// The device playback was sent to refused a command while the link to
+    /// it stayed up.
+    Renderer,
 }
 
 /// What kept the audio output from starting, as the person can act on it.
@@ -197,19 +210,33 @@ impl PlaybackErrorReason {
     /// IO) that have no user-actionable distinction.
     pub fn internal(detail: impl std::fmt::Display) -> Self {
         Self::Diagnostic {
-            error: UiError::internal(detail),
+            failure: PlaybackDiagnostic::Internal,
+            detail: detail.to_string(),
+        }
+    }
+
+    /// A renderer refused a command; `detail` is why, untranslated.
+    pub fn renderer(detail: impl std::fmt::Display) -> Self {
+        Self::Diagnostic {
+            failure: PlaybackDiagnostic::Renderer,
+            detail: detail.to_string(),
         }
     }
 }
 
-/// What the UI hears outside its value subscriptions: playback's notices,
-/// and the import runtime's values as they change.
+impl PlaybackDiagnostic {
+    /// The error category the UI renders this failure's line from.
+    pub fn category(self) -> UiErrorCategory {
+        match self {
+            Self::Internal => UiErrorCategory::Internal,
+            Self::Renderer => UiErrorCategory::Renderer,
+        }
+    }
+}
+
+/// What the UI hears outside its value subscriptions: playback's notices.
 #[derive(Debug, Clone)]
 pub enum UiEvent {
-    /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
-    /// downloaded yet, or an in-core decode failure. Carries a typed reason the
-    /// UI renders for its locale; playback falls back to stopped.
-    PlaybackError { reason: PlaybackErrorReason },
     /// Tracks were just appended/inserted into the queue. Carries the count
     /// for a transient "+N" UI indicator. Fires only on add operations
     /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),

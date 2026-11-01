@@ -9,9 +9,6 @@ pub(super) fn convert_ui_event(
     use bae_core::ui::UiEvent;
 
     match event {
-        UiEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
-            reason: crate::types::BridgePlaybackErrorReason::from_core(reason),
-        }),
         UiEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
     }
 }

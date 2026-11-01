@@ -28,8 +28,6 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
 /// A UI event; database-backed state arrives through live results instead.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
-    /// Playback couldn't start or continue, and has stopped.
-    PlaybackError { reason: BridgePlaybackErrorReason },
     /// Tracks were added to the queue; never sent for zero.
     QueueItemsAdded { count: u32 },
 }

@@ -324,7 +324,6 @@ impl LibraryManager {
     /// before the store closes: a pull waiting on it then answers that it was
     /// cancelled. One opened while the library closes is cancelled from the
     /// start.
-    #[cfg(desktop)]
     pub(crate) fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
         query: coven::LiveQuery<T>,

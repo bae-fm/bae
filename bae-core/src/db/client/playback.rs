@@ -1,22 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Follow the display of the track `initial` names, `None` when it names
-    /// none or the library no longer holds it. The playing track changes by
-    /// pointing the same query at the new track through its request handle.
-    pub(crate) fn subscribe_track_display(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::playback::TrackDisplay>> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |track_id, sql| match track_id {
-                Some(track_id) => track_display_on(&sql, track_id).map_err(CovenError::from),
-                None => Ok(None),
-            })
-            .process(Ok)
-    }
-
     /// Follow the side facts of the tracks `initial` names, in its order,
     /// leaving out a track the library no longer holds. The playback service
     /// points it at the tracks whose crossing it has staged.
@@ -68,14 +52,12 @@ impl Database {
             };
             conn.execute(
                 "INSERT OR REPLACE INTO playback_state \
-                     (id, current_entry, current_track_id, position_ms, volume, is_muted) \
-                     VALUES ('current', ?, ?, ?, ?, ?)",
+                     (id, current_entry, current_track_id, position_ms) \
+                     VALUES ('current', ?, ?, ?)",
                 params![
                     current_entry,
                     current_track_id,
                     state.position_ms.map(|position| position as i64),
-                    state.volume,
-                    state.is_muted,
                 ],
             )
             .map(|_| ())
@@ -89,7 +71,7 @@ impl Database {
         self.read(move |sql| {
             Ok(sql
                 .query_row(
-                    "SELECT current_entry, current_track_id, position_ms, volume, is_muted \
+                    "SELECT current_entry, current_track_id, position_ms \
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
@@ -113,8 +95,6 @@ impl Database {
                         Ok(DbPlaybackState {
                             current,
                             position_ms: position_ms.map(|position| position as u64),
-                            volume: row.get("volume")?,
-                            is_muted: row.get("is_muted")?,
                         })
                     },
                 )
@@ -199,7 +179,7 @@ pub(super) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<Track
 }
 
 /// The display of `track_id`, or `None` when the library no longer holds it.
-fn track_display_on(
+pub(super) fn track_display_on(
     sql: &SqlReadContext<'_>,
     track_id: &str,
 ) -> Result<Option<crate::playback::TrackDisplay>, DbError> {

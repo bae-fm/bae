@@ -9,8 +9,6 @@ async fn pure_reads_use_the_read_connection() {
     db.save_playback_state(&bae_core::db::DbPlaybackState {
         current: None,
         position_ms: None,
-        volume: 1.0,
-        is_muted: false,
     })
     .await
     .unwrap();

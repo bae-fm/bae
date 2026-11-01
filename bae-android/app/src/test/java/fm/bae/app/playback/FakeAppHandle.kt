@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
+import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.AddedDeviceCallback
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
@@ -35,6 +36,7 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
+import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlaylist
 import uniffi.bae_bridge.BridgePlaylistEntry
 import uniffi.bae_bridge.BridgePreviewTarget
@@ -81,7 +83,7 @@ import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineCallback
-import uniffi.bae_bridge.PlaybackValuesCallback
+import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.PlaylistEntriesCallback
 import uniffi.bae_bridge.PlaylistsCallback
 import uniffi.bae_bridge.ProfilesCallback
@@ -180,7 +182,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribePlaybackValues(callback: PlaybackValuesCallback): LiveSubscription = liveSubscription()
+    override fun subscribePlaybackValues(): PlaybackValuesSubscription = FakePlaybackValuesSubscription()
 
     override fun subscribePlaybackTimeline(callback: PlaybackTimelineCallback): LiveSubscription = liveSubscription()
 
@@ -771,4 +773,19 @@ internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
     override fun latest(key: ByteArray): BridgeFastValue? = null
 
     override fun cancel() = Unit
+}
+
+/** Playback values nothing delivers: each pull waits until cancelled. */
+internal class FakePlaybackValuesSubscription : PlaybackValuesSubscription(NoHandle) {
+    private val values = Channel<BridgePlaybackValues>(Channel.UNLIMITED)
+
+    override suspend fun next(): BridgePlaybackValues = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
+    }
 }

@@ -528,11 +528,21 @@ async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
 
 #[tokio::test]
 async fn set_repeat_mode_applies_and_reports_each_mode() {
-    let mut fixture = PlaybackTestFixture::new().await;
+    let fixture = PlaybackTestFixture::new().await;
+    let services = fixture.services().await;
+    let values = services.subscribe_playback_values();
     for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
         fixture.playback_handle.set_repeat_mode(expected);
-        let mode = wait_for_repeat_mode(&mut fixture.progress_rx, Duration::from_secs(3)).await;
-        assert_eq!(mode, expected, "SetRepeatMode applies the requested mode");
+        tokio::time::timeout(Duration::from_secs(3), async {
+            loop {
+                let value = values.next().await.expect("the playback values resolve");
+                if value.is_some_and(|value| value.repeat_mode == expected) {
+                    return;
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("SetRepeatMode applies {expected:?}"));
     }
 }
 

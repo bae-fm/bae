@@ -403,6 +403,7 @@ private func playbackValues(
         repeatMode: .off,
         remote: .local,
         preview: preview,
-        mediaControl: mediaControl
+        mediaControl: mediaControl,
+        failure: nil
     )
 }

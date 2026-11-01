@@ -9,11 +9,26 @@ use crate::types::BridgeError;
 
 /// A live query's values as the app pulls them: `$object` holds core's
 /// [`LiveValues`](bae_core::library::LiveValues) of `$core`, each pulled
-/// value converted to `$bridge` by `$convert`, and `$make` builds it.
+/// value converted to `$bridge` by `$convert`, and `$make` builds it. With
+/// `when present`, `$convert` answers an `Option`, and a pull passes over
+/// each value it answers `None` for, waiting for the next.
 macro_rules! pulled_values {
     (
         $(#[doc = $doc:literal])*
         $object:ident: $core:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
+    ) => {
+        pulled_values! {
+            $(#[doc = $doc])*
+            $object: $core => $bridge,
+            converted by |value: $core| Some(($convert)(value)), when present,
+            built by $make
+        }
+    };
+    (
+        $(#[doc = $doc:literal])*
+        $object:ident: $core:ty => $bridge:ty,
+        converted by $convert:expr, when present,
+        built by $make:ident
     ) => {
         $(#[doc = $doc])*
         #[derive(uniffi::Object)]
@@ -31,11 +46,12 @@ macro_rules! pulled_values {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
-                        self.values
-                            .next()
-                            .await
-                            .map($convert)
-                            .map_err(values_error)
+                        loop {
+                            let value = self.values.next().await.map_err(values_error)?;
+                            if let Some(value) = ($convert)(value) {
+                                return Ok(value);
+                            }
+                        }
                     })
                     .await
             }
@@ -70,12 +86,27 @@ fn values_error(error: bae_core::library::LiveValuesError) -> BridgeError {
 }
 
 pulled_values! {
+    /// What playback is doing, apart from where it is in what it plays. A
+    /// value whose playing track the library no longer holds is passed over:
+    /// the value before it stands until playback moves off the track.
+    PlaybackValuesSubscription:
+        Option<bae_core::playback::NowPlayingValues> => crate::types::BridgePlaybackValues,
+    converted by |values: Option<bae_core::playback::NowPlayingValues>| {
+        values.map(crate::types::BridgePlaybackValues::from_core)
+    },
+    when present,
+    built by playback_values
+}
+
+#[cfg(feature = "desktop")]
+pulled_values! {
     /// How far the identifications and imports in flight have got.
     ImportCountsSubscription: bae_core::import::ImportCounts => crate::types::BridgeImportCounts,
     converted by crate::types::BridgeImportCounts::from_core,
     built by import_counts
 }
 
+#[cfg(feature = "desktop")]
 pulled_values! {
     /// What one candidate has in flight; `None` while nothing is.
     CandidateRuntimeSubscription:

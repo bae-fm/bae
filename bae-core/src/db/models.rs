@@ -292,15 +292,14 @@ pub struct DbRelease {
 }
 
 /// The single device-local `playback_state` row: where playback stood, so a
-/// restart resumes it. The queue it plays from is in the queue tables.
+/// restart resumes it. The queue it plays from is in the queue tables, and
+/// the volume it resumes at in `playback_now`.
 #[derive(Debug, Clone)]
 pub struct DbPlaybackState {
     /// The queue entry playing, `None` when its track was deleted.
     pub current: Option<crate::playback::QueueEntry>,
     /// How far into the current track's stream it had played.
     pub position_ms: Option<u64>,
-    pub volume: f32,
-    pub is_muted: bool,
 }
 
 /// A single track on a specific release, not on the logical album — track

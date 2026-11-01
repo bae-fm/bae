@@ -3,16 +3,7 @@
 async fn playing_first_track(
     fixture: &PlaybackTestFixture,
 ) -> (bae_core::library::AppServices, String) {
-    let import = fixture
-        .library_manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .expect("start the import service");
-    let services = bae_core::library::AppServices::new(
-        fixture.library_manager.clone(),
-        fixture.playback_handle.clone(),
-        import,
-    );
+    let services = fixture.services().await;
     let release_id = fixture
         .library_manager
         .get_track_display(&fixture.track_ids[0])
@@ -47,22 +38,18 @@ async fn paused_on_first_track(
 /// paused and `accept` takes what it shows. The system media controls are
 /// handed the same value, so they must show it too.
 async fn now_playing_until(
-    values: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<bae_core::playback::NowPlayingValues, bae_core::library::LibraryError>,
-    >,
+    values: &bae_core::library::LiveValues<Option<bae_core::playback::NowPlayingValues>>,
     track_id: &str,
     what: &str,
     accept: impl Fn(&bae_core::playback::TrackDisplay) -> bool,
 ) -> bae_core::playback::TrackDisplay {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            let value = values
-                .recv()
-                .await
-                .expect("the playback values stay open")
-                .expect("the playback values resolve");
-            let media_control = value.media_control();
-            let PlaybackState::Paused { track, .. } = value.state else {
+            let Some(value) = values.next().await.expect("the playback values resolve") else {
+                continue;
+            };
+            let media_control = value.playback.media_control();
+            let PlaybackState::Paused { track, .. } = value.playback.state else {
                 continue;
             };
             if track.track.track_id != track_id || !accept(&track.display) {
@@ -122,9 +109,9 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values();
+    let values = services.subscribe_playback_values();
     let queue = first_upcoming(&services);
-    let before = now_playing_until(&mut values, &track_id, "the paused track", |_| true)
+    let before = now_playing_until(&values, &track_id, "the paused track", |_| true)
         .await
         .cover_image;
     first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
@@ -165,7 +152,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
                     .is_none_or(|before| before.version != cover.version)
         })
     };
-    let after = now_playing_until(&mut values, &track_id, "the new cover", |display| changed(&display.cover_image))
+    let after = now_playing_until(&values, &track_id, "the new cover", |display| changed(&display.cover_image))
         .await
         .cover_image;
     let upcoming = first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
@@ -179,9 +166,9 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values();
+    let values = services.subscribe_playback_values();
     let queue = first_upcoming(&services);
-    now_playing_until(&mut values, &track_id, "the paused track", |_| true).await;
+    now_playing_until(&values, &track_id, "the paused track", |_| true).await;
     first_upcoming_until(&queue, |_| true).await;
 
     let mut edit = services
@@ -199,7 +186,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         .await
         .expect("apply the edit");
 
-    now_playing_until(&mut values, &track_id, "the new names", |display| {
+    now_playing_until(&values, &track_id, "the new names", |display| {
         display.title == "Renamed Opening Track" && display.album_title == "Renamed Album"
     })
     .await;
@@ -216,15 +203,15 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, _) = playing_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values();
+    let values = services.subscribe_playback_values();
     let mut positions = services.subscribe_playback_positions();
-    let value = tokio::time::timeout(Duration::from_secs(10), values.recv())
+    let value = tokio::time::timeout(Duration::from_secs(10), values.next())
         .await
         .expect("the playing value arrives")
-        .expect("the playback values stay open")
-        .expect("the playback values resolve");
-    let PlaybackState::Playing { track } = value.state else {
-        panic!("the first value shows the track playing, not {:?}", value.state);
+        .expect("the playback values resolve")
+        .expect("the library holds the playing track");
+    let PlaybackState::Playing { track } = value.playback.state else {
+        panic!("the first value shows the track playing, not {:?}", value.playback.state);
     };
     assert_eq!(track.track.track_id, track_id);
 
@@ -241,7 +228,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
     }
     assert!(seen.windows(2).all(|pair| pair[0] < pair[1]), "the position moves forward: {seen:?}");
     assert!(
-        matches!(values.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Empty)),
+        tokio::time::timeout(Duration::from_millis(500), values.next()).await.is_err(),
         "no playback value follows the positions"
     );
 }

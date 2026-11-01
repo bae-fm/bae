@@ -25,12 +25,11 @@ impl UiEvents {
 }
 
 /// The notice a playback update gives the UI, if any: most updates reach it
-/// through the playback values instead.
+/// through the `playback_now` row instead.
 fn playback_notice(progress: crate::playback::PlaybackProgress) -> Option<UiEvent> {
     use crate::playback::PlaybackProgress;
     match progress {
         PlaybackProgress::QueueItemsAdded { count } => Some(UiEvent::QueueItemsAdded { count }),
-        PlaybackProgress::PlaybackError { reason } => Some(UiEvent::PlaybackError { reason }),
         _ => None,
     }
 }

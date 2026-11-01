@@ -24,7 +24,7 @@ object UiEventAdapter {
         errors: ErrorDisplays,
     ) {
         try {
-            route(event, messages, player, errors)
+            route(event, player)
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
@@ -39,47 +39,14 @@ object UiEventAdapter {
         }
     }
 
-    private suspend fun route(
+    private fun route(
         event: BridgeUiEvent,
-        messages: SessionMessages,
         player: PlaybackEventSink,
-        errors: ErrorDisplays,
     ) {
-        handleDirectEvent(event, messages, player, errors)
-    }
-
-    private fun handleDirectEvent(
-        event: BridgeUiEvent,
-        messages: SessionMessages,
-        player: PlaybackEventSink,
-        errors: ErrorDisplays,
-    ) {
-        if (handlePlaybackEvent(event, messages, player, errors)) {
-            return
-        }
-        error("unhandled UI event: ${event::class.simpleName}")
-    }
-
-    private fun handlePlaybackEvent(
-        event: BridgeUiEvent,
-        messages: SessionMessages,
-        player: PlaybackEventSink,
-        errors: ErrorDisplays,
-    ): Boolean {
         when (event) {
-            // A playback failure has no screen of its own: a snackbar wherever the person is.
-            is BridgeUiEvent.PlaybackError -> {
-                messages.show(errors.display(event.reason))
-            }
-
             is BridgeUiEvent.QueueItemsAdded -> {
                 player.onQueueItemsAdded(event.count.toInt())
             }
-
-            else -> {
-                return false
-            }
         }
-        return true
     }
 }

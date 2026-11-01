@@ -646,17 +646,25 @@ impl From<bae_core::library::CreateLibraryError> for BridgeError {
     }
 }
 
-mirror_enum! {
-    BridgePlaybackErrorReason = bae_core::ui::PlaybackErrorReason,
-    from_core: pub(crate) fn,
-    variants: {
-        SyncDisconnected,
-        UploadPending,
-        NotUploaded,
-        OriginalMissing,
-        AudioOutput { problem: (BridgeAudioOutputProblem) },
-        Diagnostic { error: (BridgeError) },
-    },
+impl BridgePlaybackErrorReason {
+    pub(crate) fn from_core(reason: bae_core::ui::PlaybackErrorReason) -> Self {
+        use bae_core::ui::PlaybackErrorReason;
+        match reason {
+            PlaybackErrorReason::SyncDisconnected => Self::SyncDisconnected,
+            PlaybackErrorReason::UploadPending => Self::UploadPending,
+            PlaybackErrorReason::NotUploaded => Self::NotUploaded,
+            PlaybackErrorReason::OriginalMissing => Self::OriginalMissing,
+            PlaybackErrorReason::AudioOutput { problem } => Self::AudioOutput {
+                problem: BridgeAudioOutputProblem::from_core(problem),
+            },
+            PlaybackErrorReason::Diagnostic { failure, detail } => Self::Diagnostic {
+                error: BridgeError::Diagnostic {
+                    category: BridgeErrorCategory::from_core(failure.category()),
+                    detail,
+                },
+            },
+        }
+    }
 }
 
 mirror_enum! {

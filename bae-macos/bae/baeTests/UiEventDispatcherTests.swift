@@ -11,16 +11,38 @@ import Testing
 /// command center), so every suite here is serialized and resets state on
 /// exit.
 @MainActor
-@Suite("UiEventDispatcher error seams", .serialized)
-struct UiEventDispatcherErrorTests {
-    @Test("playbackError reaches uiStore through the showError override")
-    func playbackErrorReachesUiStore() {
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(appService: appService)
+@Suite("Playback failure display", .serialized)
+struct PlaybackFailureDisplayTests {
+    @Test("a playback failure reaches uiStore once, however often it is read")
+    func playbackFailureReachesUiStoreOnce() async throws {
+        let handle = FakeAppHandle()
+        let uiStore = UiStore()
+        let appService = makeAppService(handle: handle, uiStore: uiStore)
+        appService.startCommonSubscriptions()
+        let failed = BridgePlaybackFailure(number: 1, reason: .syncDisconnected)
 
-        sink(.playbackError(reason: .syncDisconnected))
+        handle.deliverPlayback(playbackValues(state: .stopped, failure: failed))
+        try await Wait.until { appService.hasDisplayedErrorForTesting }
+        uiStore.lastError = nil
 
-        #expect(appService.hasDisplayedErrorForTesting)
+        // The same failure read again with a volume change shows nothing;
+        // the next failure, alike in all but its number, shows.
+        var louder = playbackValues(state: .stopped, failure: failed)
+        louder.volume = 0.5
+        handle.deliverPlayback(louder)
+        try await Wait.until { appService.stateForTesting.volume == 0.5 }
+        #expect(!appService.hasDisplayedErrorForTesting)
+
+        handle.deliverPlayback(
+            playbackValues(
+                state: .stopped,
+                failure: BridgePlaybackFailure(
+                    number: 2,
+                    reason: .syncDisconnected
+                )
+            )
+        )
+        try await Wait.until { appService.hasDisplayedErrorForTesting }
     }
 }
 
@@ -142,7 +164,8 @@ private func playing(trackId: String) -> BridgePlaybackValueState {
 }
 
 private func playbackValues(
-    state: BridgePlaybackValueState
+    state: BridgePlaybackValueState,
+    failure: BridgePlaybackFailure? = nil
 ) -> BridgePlaybackValues {
     BridgePlaybackValues(
         state: state,
@@ -151,7 +174,8 @@ private func playbackValues(
         repeatMode: .off,
         remote: .local,
         preview: .idle,
-        mediaControl: .library
+        mediaControl: .library,
+        failure: failure
     )
 }
 
@@ -162,9 +186,10 @@ private func playbackValues(
 private let fixedInstant = ContinuousClock.now
 
 @MainActor
-private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
-    -> bae.AppService
-{
+private func makeAppService(
+    handle: FakeAppHandle = FakeAppHandle(),
+    uiStore: UiStore = UiStore()
+) -> bae.AppService {
     bae.AppService(
         appHandle: handle,
         mediaControlService: MediaControlService(now: { fixedInstant }),
@@ -172,7 +197,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             config: .disabled,
             bugReporter: CoreBugReporter()
         ),
-        uiStore: UiStore(),
+        uiStore: uiStore,
         config: BridgeConfig(
             libraryId: "lib-test",
             libraryPath: "/tmp/test",
@@ -235,7 +260,7 @@ private var emptySeed: LibrarySessionSeed {
 /// real service without a live core.
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
-    private var playbackCallback: (any PlaybackValuesCallback)?
+    private let playbackValues = FakePlaybackValues()
     private var timelineCallback: (any PlaybackTimelineCallback)?
 
     init() {
@@ -278,11 +303,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribePlaybackValues(
-        callback: any PlaybackValuesCallback
-    ) -> LiveSubscription {
-        playbackCallback = callback
-        return NoopLiveSubscription()
+    override func subscribePlaybackValues() -> PlaybackValuesSubscription {
+        playbackValues
     }
 
     override func subscribePlaybackTimeline(
@@ -360,7 +382,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     }
 
     func deliverPlayback(_ value: BridgePlaybackValues) {
-        playbackCallback?.onValue(value: value)
+        playbackValues.deliver(value)
     }
 
     func deliverTimeline(_ timeline: BridgePlaybackTimeline) {
@@ -381,6 +403,56 @@ private final class NoopLiveSubscription: LiveSubscription,
     }
 
     override func cancel() {}
+}
+
+/// Playback values a test hands the app one at a time, each answering the
+/// app's next pull.
+private final class FakePlaybackValues: PlaybackValuesSubscription,
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var waiting: [BridgePlaybackValues] = []
+    private var puller: CheckedContinuation<BridgePlaybackValues, any Error>?
+
+    init() {
+        super.init(noHandle: PlaybackValuesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    func deliver(_ value: BridgePlaybackValues) {
+        let puller = lock.withLock {
+            let puller = self.puller
+            self.puller = nil
+            if puller == nil { waiting.append(value) }
+            return puller
+        }
+        puller?.resume(returning: value)
+    }
+
+    override func next() async throws -> BridgePlaybackValues {
+        try await withCheckedThrowingContinuation { continuation in
+            let value = lock.withLock {
+                if waiting.isEmpty {
+                    puller = continuation
+                    return BridgePlaybackValues?.none
+                }
+                return waiting.removeFirst()
+            }
+            if let value { continuation.resume(returning: value) }
+        }
+    }
+
+    override func cancel() async throws {
+        let puller = lock.withLock {
+            let puller = self.puller
+            self.puller = nil
+            return puller
+        }
+        puller?.resume(throwing: BridgeError.Cancelled)
+    }
 }
 
 /// A stream nothing feeds, which holds nothing.

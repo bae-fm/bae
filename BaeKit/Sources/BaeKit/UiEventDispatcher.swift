@@ -17,9 +17,6 @@ public enum UiEventDispatcher {
         switch event {
         case .queueItemsAdded(let count):
             appService.applyQueueItemsAdded(count)
-
-        case .playbackError(let reason):
-            appService.showError(reason)
         }
     }
 

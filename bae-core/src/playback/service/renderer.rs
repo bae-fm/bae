@@ -397,12 +397,7 @@ impl PlaybackService {
             RendererSessionEvent::CommandFailed(error) => emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::Diagnostic {
-                        error: crate::ui::UiError::diagnostic(
-                            crate::ui::UiErrorCategory::Renderer,
-                            error,
-                        ),
-                    },
+                    reason: crate::ui::PlaybackErrorReason::renderer(error),
                 },
             ),
             RendererSessionEvent::Ended(error) => {

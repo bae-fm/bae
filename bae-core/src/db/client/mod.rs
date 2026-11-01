@@ -121,6 +121,8 @@ mod history;
 mod membership;
 mod people;
 mod playback;
+mod playback_now;
+pub use playback_now::PlaybackNowRow;
 mod playback_queue;
 pub use playback_queue::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,

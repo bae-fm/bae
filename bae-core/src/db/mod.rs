@@ -33,7 +33,8 @@ pub(crate) use client::{
     ScannedCandidateKey,
 };
 pub use client::{
-    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
+    ContextFill, ContextFilled, ManualPlace, PlaybackNowRow, PlaybackQueueTables, ReleaseStart,
+    ShuffleChange,
 };
 pub use client::{Database, IdentityWriteError, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

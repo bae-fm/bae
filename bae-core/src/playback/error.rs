@@ -153,9 +153,10 @@ mod tests {
 
         let error = PlaybackError::AudioOutput(AudioError::Unexpected("RAOP key wrap".to_string()));
         assert!(error.is_bug());
-        let PlaybackErrorReason::Diagnostic { error: shown } = error.ui_reason() else {
+        let PlaybackErrorReason::Diagnostic { failure, detail } = error.ui_reason() else {
             panic!("an unexpected failure is a diagnostic");
         };
-        assert!(format!("{shown:?}").contains("RAOP key wrap"));
+        assert_eq!(failure, crate::ui::PlaybackDiagnostic::Internal);
+        assert!(detail.contains("RAOP key wrap"), "{detail}");
     }
 }

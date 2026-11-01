@@ -198,8 +198,6 @@ impl LibraryManager {
         let row = crate::db::DbPlaybackState {
             current: Some(current),
             position_ms,
-            volume: 1.0,
-            is_muted: false,
         };
         self.save_playback_state(&row).await?;
         Ok(())

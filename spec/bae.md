@@ -2942,7 +2942,8 @@ takes effect on resume. On Linux the sound server, PipeWire or PulseAudio,
 moves them; with ALSA alone there is no default device to follow. On the
 desktop, when the device goes away and there is none to move to, playback
 stops and says the audio device isn't available, and a preview ends. Volume
-and mute live in core, so unmuting restores the level last set.
+and mute live in core, so unmuting restores the level last set; muting leaves
+the level shown where it was, beside the mute.
 
 **Sample rates.** On macOS bae plays at the native sample rate: when the
 output device supports the track's rate, a track or a preview that starts a
@@ -2995,8 +2996,9 @@ The queue and position are per device. The queue is stored as it changes: Up
 Next, what's playing from (a release, several, or the library) and its tracks
 in play order — shuffled or not, with the session's removals and reorders —
 which track of it is playing, and repeat.
-Beside it a device saves the entry playing and its position, volume and mute,
-while a track is loaded.
+Beside it a device saves the entry playing and its position while a track is
+loaded, and keeps what playback is doing in one row (§9.4), whose volume and
+mute a resumed session comes back at.
 
 A restart takes the queue up as it stood: the same order, the same history
 before the playing track, and the saved entry loaded paused at its position.
@@ -3217,8 +3219,8 @@ What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A
 detail embeds its summary, so a surface holding a detail can treat it as one.
 
-`subscribe_ui_events` carries what isn't a value: a playback error and
-tracks added to the queue. How far the
+`subscribe_ui_events` carries what isn't a value: tracks added to the
+queue. How far the
 identifications and imports in flight have got is a live query of its own,
 `subscribe_import_counts`, which the app pulls.
 
@@ -3252,9 +3254,18 @@ together.
 The playback handle drives one queue on its own thread: play a release,
 several releases or the library shuffled; pause, resume, stop; next, previous,
 seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
-stop; preview a file before import. Its values are live subscriptions: the
-playing track and its phase, with volume, mute, repeat and where playback is
-going, sent only when one changes; the timeline, the line of the playing
+stop; preview a file before import. What playback is doing is one
+device-local row, `playback_now`, which playback writes as each value
+changes, before it tells anyone else of the change: the playing track and its
+phase, volume, mute, where playback is going, the preview, and why playback
+last failed, numbered, until it next plays. Starting playback with the
+library resets the row to stopped, keeping the volume and mute only when it
+resumes what it played. The app pulls a live query of that row joined with
+the playing track's display and the queue's repeat mode, a value after each
+change; while the row names a track the library no longer holds, until
+playback moves off it, no value is sent. A failure shows once wherever the
+person is: a value reading a failure whose number was shown shows nothing.
+Its other values are live subscriptions: the timeline, the line of the playing
 track and of a preview, each a position and whether it moves on from it,
 sent only as playback leaves the line it holds (a seek, another track or
 clip, a pause or resume, a new length, the pregap ending, or a position more
@@ -3388,6 +3399,14 @@ release's or track's id as UTF-8, or a candidate's key.
   open. The iOS app, once it has a library to show, calls it on
   `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
   The macOS app doesn't: the OS ends no app there for holding memory.
+- **Screen subscriptions** are objects the app pulls from, built only in the
+  bridge's `screens.rs` from a live query: `next()` answers the first value at
+  once, then one after each write that changes it; a failed read answers as
+  an error and the next pull waits for the read after it; `cancel()`, or
+  closing the library, answers a waiting pull and every later one that it was
+  cancelled. Each app reads them through one helper, `ScreenSubscription`,
+  with the same name and shape in BaeKit and in Android's data layer. What
+  playback is doing is one (§9.4).
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
   as one of the library's tasks, and so does every task core starts to read
@@ -3669,6 +3688,7 @@ All sync (§5), except `local_history`.
 | `playback_manual` | Up Next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
+| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver, preview, last failure and the count of failures (§9.4) |
 
 A play's fill, Clear Up Next, Clear playing from and the emptying as a library
 opens without resuming are bulk writes: plain SQLite on these device-local

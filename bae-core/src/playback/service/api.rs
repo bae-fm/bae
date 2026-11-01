@@ -483,12 +483,6 @@ impl PlaybackHandle {
         self.progress_handle.subscribe_all()
     }
 
-    pub fn subscribe_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::playback::progress::PlaybackValues> {
-        self.progress_handle.subscribe_values()
-    }
-
     pub fn subscribe_positions(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::playback::progress::PlaybackPositions> {

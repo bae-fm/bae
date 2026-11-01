@@ -735,9 +735,8 @@ async fn album_browse_ignores_an_unread_table() {
 
     exec(
         &db,
-        "INSERT INTO playback_state
-         (id, current_entry, current_track_id, position_ms, volume, is_muted)
-         VALUES ('current', NULL, NULL, 0, 1.0, 0)",
+        "INSERT INTO playback_state (id, current_entry, current_track_id, position_ms)
+         VALUES ('current', NULL, NULL, 0)",
         &[],
     )
     .await;

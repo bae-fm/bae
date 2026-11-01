@@ -4,52 +4,68 @@ use bae_util::task_failure::caught_sync;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::watch;
-use tracing::info;
-/// Fans one progress stream out to every subscriber, and folds it into the
-/// playback values, the positions, and the timeline they make.
+use tracing::{error, info};
+/// Fans one progress stream out to every subscriber, writes what playback is
+/// doing into the device's `playback_now` row, and folds the stream into the
+/// positions and the timeline they make.
 #[derive(Clone)]
 pub struct PlaybackProgressHandle {
     subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
-    values: watch::Receiver<PlaybackValues>,
     positions: watch::Receiver<PlaybackPositions>,
     timeline: watch::Receiver<PlaybackTimeline>,
 }
 impl PlaybackProgressHandle {
-    /// Spawn the fan-out task that forwards each event from `progress_rx` to
-    /// every live subscriber, after folding it into the values, the positions
-    /// and, read at `clock`'s now, the timeline. A panic folding one event is
-    /// reported through `diagnostics`, and the fan-out forwards that event and
-    /// serves the next.
+    /// Spawn the fan-out task that takes each event from `progress_rx` in
+    /// order: it writes the change the event makes to what playback is doing
+    /// into `row`, folds the event into the positions and, read at `clock`'s
+    /// now, the timeline, then forwards it to every live subscriber. A panic
+    /// folding one event, or a failed write, is reported through
+    /// `diagnostics`, and the fan-out forwards that event and serves the next.
     pub fn new(
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
         clock: crate::playback::PlaybackClockRef,
+        row: crate::db::PlaybackNowRow,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
             Arc::new(Mutex::new(Vec::new()));
         let subscriptions_clone = subscriptions.clone();
-        let (values_tx, values) = watch::channel(PlaybackValues::initial());
         let (positions_tx, positions) = watch::channel(PlaybackPositions::initial());
         let (timeline_tx, timeline) = watch::channel(PlaybackTimeline::initial());
         runtime_handle.spawn(async move {
+            // What the row holds, as starting playback left it and this
+            // fan-out wrote it since: what each event is compared against.
+            let mut values = PlaybackValues::initial();
             let mut fold = TimelineFold::new();
             loop {
                 match progress_rx.recv().await {
                     Some(progress) => {
                         let folded = caught_sync("fold a playback event", || {
-                            publish_change(&values_tx, |values| values.applying(&progress));
+                            let change = values.apply(&progress);
                             publish_change(&positions_tx, |positions| {
                                 positions.applying(&progress)
                             });
                             if let Some(next) =
-                                fold.next(&positions_tx.borrow(), &values_tx.borrow(), clock.now())
+                                fold.next(&positions_tx.borrow(), &values, clock.now())
                             {
                                 timeline_tx.send_replace(next);
                             }
+                            change
                         });
-                        if let Err(failed) = folded {
-                            diagnostics.bug(failed);
+                        match folded {
+                            Ok(Some(change)) => {
+                                if let Err(e) = row.apply(&change).await {
+                                    error!(
+                                        "couldn't write what playback is doing ({change:?}): {e}"
+                                    );
+                                    diagnostics.report_bug("write what playback is doing", &e);
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(failed) => {
+                                diagnostics.bug(failed);
+                            }
                         }
                         let mut subs = subscriptions_clone.lock().unwrap();
                         subs.retain(|tx| tx.send(progress.clone()).is_ok());
@@ -63,7 +79,6 @@ impl PlaybackProgressHandle {
         });
         Self {
             subscriptions,
-            values,
             positions,
             timeline,
         }
@@ -74,12 +89,6 @@ impl PlaybackProgressHandle {
         let (tx, rx) = tokio_mpsc::unbounded_channel();
         self.subscriptions.lock().unwrap().push(tx);
         rx
-    }
-
-    /// The playback values, which a receiver sees change only when one of
-    /// them does: a position tick leaves them alone.
-    pub fn subscribe_values(&self) -> watch::Receiver<PlaybackValues> {
-        self.values.clone()
     }
 
     /// The playback positions, which change as audio plays.
@@ -111,19 +120,35 @@ mod tests {
     use super::*;
     use tokio::time::{timeout, Duration};
 
-    fn test_clock() -> crate::playback::PlaybackClockRef {
-        std::sync::Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now()))
-    }
-
-    #[tokio::test]
-    async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
+    /// The fan-out over a fresh library's `playback_now` row, with the
+    /// sender that feeds it. The `TempDir` holds the library.
+    async fn started() -> (
+        PlaybackProgressHandle,
+        tokio_mpsc::UnboundedSender<PlaybackProgress>,
+        crate::db::Database,
+        tempfile::TempDir,
+    ) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let db = crate::db::Database::new_test(
+            tmp.path().join("test.db").to_str().unwrap(),
+            Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let handle = PlaybackProgressHandle::new(
             progress_rx,
             tokio::runtime::Handle::current(),
-            test_clock(),
+            Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now())),
+            db.playback_now_row(),
             crate::diagnostics::Diagnostics::noop(),
         );
+        (handle, progress_tx, db, tmp)
+    }
+
+    #[tokio::test]
+    async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
+        let (handle, progress_tx, _db, _tmp) = started().await;
         let mut live = handle.subscribe_all();
         let dropped = handle.subscribe_all();
         drop(dropped);
@@ -153,34 +178,27 @@ mod tests {
         .expect("dropped subscriber is pruned");
     }
 
+    /// The row holds an event's change by the time the event is forwarded.
     #[tokio::test]
-    async fn persistent_values_are_replayed_to_late_subscribers() {
-        let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(
-            progress_rx,
-            tokio::runtime::Handle::current(),
-            test_clock(),
-            crate::diagnostics::Diagnostics::noop(),
-        );
+    async fn a_change_is_in_the_row_before_its_event_is_forwarded() {
+        let (handle, progress_tx, db, _tmp) = started().await;
+        let mut events = handle.subscribe_all();
 
         progress_tx
             .send(PlaybackProgress::VolumeChanged { volume: 0.25 })
             .unwrap();
-        tokio::task::yield_now().await;
+        progress_tx
+            .send(PlaybackProgress::MuteChanged { is_muted: true })
+            .unwrap();
+        next_event(&mut events).await;
+        next_event(&mut events).await;
 
-        let late = handle.subscribe_values();
-        assert_eq!(late.borrow().volume, 0.25);
+        assert_eq!(db.playback_level().await.unwrap(), (0.25, true));
     }
 
     #[tokio::test]
     async fn seek_revision_is_retained_across_later_position_ticks() {
-        let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(
-            progress_rx,
-            tokio::runtime::Handle::current(),
-            test_clock(),
-            crate::diagnostics::Diagnostics::noop(),
-        );
+        let (handle, progress_tx, _db, _tmp) = started().await;
         let mut events = handle.subscribe_all();
 
         progress_tx
@@ -214,8 +232,8 @@ mod tests {
         assert_eq!(positions.seek_revision, 1);
     }
 
-    /// The next event the fan-out forwards, which it folds into the values
-    /// and positions first.
+    /// The next event the fan-out forwards, which it writes and folds into
+    /// the positions first.
     async fn next_event(
         events: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
     ) -> PlaybackProgress {
@@ -225,33 +243,42 @@ mod tests {
             .expect("the fan-out stays open")
     }
 
+    /// A state change reaches the row and leaves the positions; a position
+    /// tick moves the positions and leaves the row.
     #[tokio::test]
-    async fn a_position_tick_sends_no_value_and_a_state_change_sends_one() {
-        let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(
-            progress_rx,
-            tokio::runtime::Handle::current(),
-            test_clock(),
-            crate::diagnostics::Diagnostics::noop(),
-        );
+    async fn a_position_tick_moves_only_the_positions_and_a_state_change_only_the_row() {
+        let (handle, progress_tx, db, _tmp) = started().await;
         let mut events = handle.subscribe_all();
-        let mut values = handle.subscribe_values();
         let mut positions = handle.subscribe_positions();
-        values.mark_unchanged();
         positions.mark_unchanged();
-        let playing = PlaybackProgress::StateChanged {
-            state: crate::playback::PlaybackState::Playing {
-                track: crate::playback::PlayingTrack {
-                    track_id: "track-1".into(),
-                    duration_ms: Some(100),
-                },
-            },
-        };
+        assert_eq!(
+            db.now_playing()
+                .await
+                .unwrap()
+                .map(|now| now.playback.state),
+            Some(crate::playback::PlaybackState::Stopped)
+        );
 
-        progress_tx.send(playing.clone()).unwrap();
+        progress_tx
+            .send(PlaybackProgress::StateChanged {
+                state: crate::playback::PlaybackState::Playing {
+                    track: crate::playback::PlayingTrack {
+                        track_id: "track-1".into(),
+                        duration_ms: Some(100),
+                    },
+                },
+            })
+            .unwrap();
         next_event(&mut events).await;
-        assert!(values.has_changed().unwrap(), "the state change is sent");
-        values.mark_unchanged();
+        assert_eq!(
+            db.now_playing().await.unwrap(),
+            None,
+            "the row names track-1, which the library does not hold"
+        );
+        assert!(
+            !positions.has_changed().unwrap(),
+            "a state change moves no position"
+        );
 
         progress_tx
             .send(PlaybackProgress::PositionUpdate {
@@ -263,34 +290,9 @@ mod tests {
             .unwrap();
         next_event(&mut events).await;
         assert!(
-            !values.has_changed().unwrap(),
-            "a position tick sends no value"
-        );
-        assert!(
             positions.has_changed().unwrap(),
             "a position tick sends a position"
         );
-        positions.mark_unchanged();
-
-        progress_tx.send(playing).unwrap();
-        next_event(&mut events).await;
-        assert!(
-            !values.has_changed().unwrap(),
-            "the same state again sends nothing"
-        );
-        assert!(
-            !positions.has_changed().unwrap(),
-            "the same track's state leaves its position"
-        );
-
-        progress_tx
-            .send(PlaybackProgress::VolumeChanged { volume: 0.5 })
-            .unwrap();
-        next_event(&mut events).await;
-        assert!(values.has_changed().unwrap(), "a volume change is sent");
-        assert!(
-            !positions.has_changed().unwrap(),
-            "a volume change moves no position"
-        );
+        assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
     }
 }

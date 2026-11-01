@@ -199,6 +199,8 @@ async fn test_preview_seek_while_paused_emits_position_update() {
 /// so a cloud failure here is genuinely mid-flight — not a prepare-time error.
 struct CloudOnlyPlaybackFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
+    /// The services over the library and playback, as an app holds them.
+    services: bae_core::library::AppServices,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     cloud: Arc<coven::MemoryStorage>,
     track_ids: Vec<String>,
@@ -262,10 +264,16 @@ impl CloudOnlyPlaybackFixture {
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager, runtime_handle).await;
+            start_capture_service(library_manager.clone(), runtime_handle).await;
         let progress_rx = playback_handle.subscribe_progress();
+        let services = bae_core::library::AppServices::new(
+            library_manager,
+            playback_handle.clone(),
+            import_handle,
+        );
         Ok(Self {
             playback_handle,
+            services,
             progress_rx,
             cloud,
             track_ids,
@@ -327,7 +335,15 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
             .all(|s| matches!(s, PlaybackState::Stopped)),
         "playback must stay stopped after the failure, got {resurfaced:?}"
     );
-    let state = fixture.playback_handle.subscribe_values().borrow().state.clone();
+    let state = fixture
+        .services
+        .subscribe_playback_values()
+        .next()
+        .await
+        .expect("the playback values resolve")
+        .expect("a stopped playback names no track")
+        .playback
+        .state;
     assert!(
         matches!(state, PlaybackState::Stopped),
         "playback must stay stopped after the failure, not flip back to Playing, got {state:?}"

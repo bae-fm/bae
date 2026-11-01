@@ -1,5 +1,5 @@
 use super::*;
-use crate::playback::progress::{PlaybackPosition, PlaybackProgress};
+use crate::playback::progress::PlaybackPosition;
 
 fn at(ms: i64) -> DateTime<Utc> {
     DateTime::<Utc>::from_timestamp_millis(1_700_000_000_000 + ms).unwrap()
@@ -26,24 +26,22 @@ fn track(track_id: &str) -> crate::playback::PlayingTrack {
 }
 
 fn playing(track_id: &str) -> PlaybackValues {
-    paused(track_id)
-        .applying(&PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing {
-                track: track(track_id),
-            },
-        })
-        .unwrap()
+    PlaybackValues {
+        state: PlaybackState::Playing {
+            track: track(track_id),
+        },
+        ..PlaybackValues::initial()
+    }
 }
 
 fn paused(track_id: &str) -> PlaybackValues {
-    PlaybackValues::initial()
-        .applying(&PlaybackProgress::StateChanged {
-            state: PlaybackState::Paused {
-                track: track(track_id),
-                reason: crate::playback::PlaybackPauseReason::Manual,
-            },
-        })
-        .unwrap()
+    PlaybackValues {
+        state: PlaybackState::Paused {
+            track: track(track_id),
+            reason: crate::playback::PlaybackPauseReason::Manual,
+        },
+        ..PlaybackValues::initial()
+    }
 }
 
 fn line(timeline: &PlaybackTimeline) -> (u64, bool) {

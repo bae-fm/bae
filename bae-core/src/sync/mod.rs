@@ -315,13 +315,14 @@ mod tests {
     const DEVICE_LOCAL_TABLES: &[&str] = &[
         // This device's own copies: the folder each release was imported
         // from, plays before a person exists, and what this device plays:
-        // its queue and where it stood.
+        // its queue, where it stood and what it is doing.
         "local_release_origin",
         "local_history",
         "playback_queue",
         "playback_manual",
         "playback_context",
         "playback_state",
+        "playback_now",
         // The releases this device is downloading, exporting or saving, one
         // at a time.
         "release_queues",

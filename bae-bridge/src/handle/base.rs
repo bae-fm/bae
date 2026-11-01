@@ -27,16 +27,12 @@ impl AppHandle {
         )
     }
 
-    pub fn subscribe_playback_values(
-        &self,
-        callback: Box<dyn crate::types::PlaybackValuesCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            |services| services.subscribe_playback_values(),
-            move |value| match value {
-                Ok(value) => callback.on_value(BridgePlaybackValues::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::internal(error)),
-            },
+    /// What playback is doing, apart from where it is in what it plays: the
+    /// first value at once, then one after each change.
+    pub fn subscribe_playback_values(&self) -> std::sync::Arc<crate::PlaybackValuesSubscription> {
+        crate::screens::playback_values(
+            self.services.subscribe_playback_values(),
+            self.runtime.clone(),
         )
     }
 
@@ -424,3 +420,7 @@ fn queue_entry_id(entry_id: &str) -> Option<QueueEntryId> {
 #[cfg(all(test, not(feature = "desktop")))]
 #[path = "base_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "playback_values_tests.rs"]
+mod playback_values_tests;

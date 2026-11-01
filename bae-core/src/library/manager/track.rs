@@ -136,11 +136,22 @@ impl LibraryManager {
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
 
-    pub(crate) fn subscribe_track_display(
+    /// The row playback writes what it is doing into.
+    pub(crate) fn playback_now_row(&self) -> crate::db::PlaybackNowRow {
+        self.database.playback_now_row()
+    }
+
+    /// Follow what playback is doing as its screens show it; `None` while it
+    /// names a track the library no longer holds.
+    pub(crate) fn subscribe_now_playing(
         &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::playback::TrackDisplay>> {
-        self.database.subscribe_track_display(initial)
+    ) -> coven::LiveQuery<Option<crate::playback::NowPlayingValues>> {
+        self.database.subscribe_now_playing()
+    }
+
+    /// The volume and mute playback resumes at.
+    pub async fn playback_level(&self) -> Result<(f32, bool), LibraryError> {
+        Ok(self.database.playback_level().await?)
     }
 
     pub(crate) fn subscribe_playback_track_infos(

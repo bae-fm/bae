@@ -49,29 +49,6 @@ private final class SyncActivityValueSink: SyncActivityCallback,
     }
 }
 
-private final class PlaybackValuesSink: PlaybackValuesCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgePlaybackValues) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgePlaybackValues) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 private final class PlaybackTimelineSink: PlaybackTimelineCallback,
     @unchecked Sendable
 {
@@ -159,6 +136,7 @@ final class CommonSubscriptions {
     private let playbackStore: PlaybackStore
     private let castStore: CastStore
     private var subscriptions: [LiveSubscription] = []
+    private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -192,6 +170,11 @@ final class CommonSubscriptions {
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         precondition(subscriptions.isEmpty)
+        playbackValues = ScreenSubscription(
+            appHandle.subscribePlaybackValues(),
+            onValue: applyPlayback,
+            onError: onError
+        )
         feeds = [
             outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
@@ -200,12 +183,6 @@ final class CommonSubscriptions {
         ]
         subscriptions =
             libraryStatusSubscriptions(onError: onError) + [
-                appHandle.subscribePlaybackValues(
-                    callback: PlaybackValuesSink(
-                        apply: applyPlayback,
-                        fail: onError
-                    )
-                ),
                 appHandle.subscribePlaybackTimeline(
                     callback: PlaybackTimelineSink(apply: applyTimeline)
                 ),

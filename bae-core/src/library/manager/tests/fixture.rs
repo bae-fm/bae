@@ -497,22 +497,21 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     )
     .await
     .expect("start playback");
-    let mut values = playback.subscribe_values();
+    let values = manager.values_until_closed(manager.subscribe_now_playing());
     let mut positions = playback.subscribe_positions();
-    let restored = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        values.wait_for(|values| {
-            matches!(values.state, crate::playback::PlaybackState::Paused { .. })
-        }),
-    )
+    let restored = tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        loop {
+            let value = values.next().await.expect("the playback values resolve");
+            if let Some(crate::playback::PlaybackState::Paused { track, .. }) =
+                value.map(|value| value.playback.state)
+            {
+                return track;
+            }
+        }
+    })
     .await
-    .expect("playback resumes the fixture's track")
-    .unwrap()
-    .clone();
-    let crate::playback::PlaybackState::Paused { track, .. } = restored.state else {
-        unreachable!("waited for a paused state");
-    };
-    assert_eq!(track.track_id, pregap_track);
+    .expect("playback resumes the fixture's track");
+    assert_eq!(restored.track.track_id, pregap_track);
     tokio::time::timeout(
         std::time::Duration::from_secs(30),
         positions.wait_for(|positions| {

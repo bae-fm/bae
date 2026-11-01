@@ -226,6 +226,9 @@ fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), cra
 mod playback_queue_tests;
 
 #[cfg(test)]
+mod playback_now_tests;
+
+#[cfg(test)]
 mod playback_queue_bench;
 
 #[cfg(test)]

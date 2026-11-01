@@ -333,17 +333,13 @@ async fn a_refused_command_is_reported_and_the_device_kept() {
     assert!(service.renderer.is_remote(), "the session stays on the device");
     let mut reported = None;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::PlaybackError {
-            reason: crate::ui::PlaybackErrorReason::Diagnostic { error },
-        } = progress
-        {
-            reported = Some(error);
+        if let PlaybackProgress::PlaybackError { reason } = progress {
+            reported = Some(reason);
         }
     }
     assert_eq!(
         reported,
-        Some(crate::ui::UiError::diagnostic(
-            crate::ui::UiErrorCategory::Renderer,
+        Some(crate::ui::PlaybackErrorReason::renderer(
             "renderer command failed: LOAD failed: unsupported media",
         ))
     );
