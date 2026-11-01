@@ -8,7 +8,7 @@ public protocol LibrarySessionHandle: AnyObject, Sendable {
     func libraryName() async throws -> String
     func storageLocation() async throws -> BridgeStorageLocation?
     func getUploadsPaused() async throws -> Bool
-    func closeLibrary() throws
+    func closeLibrary(closing: BridgeLibraryClosing?) throws
 }
 
 extension AppHandle: LibrarySessionHandle {
@@ -108,7 +108,9 @@ public final class LibrarySessionOpener<
                 }
                 catch {
                     logger.error("Failed to seed library: \(error)")
-                    try await DetachedWork.run { try handle.closeLibrary() }
+                    try await DetachedWork.run {
+                        try handle.closeLibrary(closing: nil)
+                    }
                     throw error
                 }
             }

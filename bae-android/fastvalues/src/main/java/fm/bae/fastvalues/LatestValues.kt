@@ -12,9 +12,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
+import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
@@ -127,6 +129,12 @@ class LatestStream<V : Any> private constructor(
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
                 (it as? BridgeFastValue.OpenProgress)?.progress
             }
+
+        /** The step a library's close runs, while it runs one; a preview's holds [value], fed by nothing. */
+        fun closingSteps(value: BridgeClosingStep? = null): LatestStream<BridgeClosingStep> =
+            LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
+                (it as? BridgeFastValue.ClosingStep)?.step
+            }
     }
 }
 
@@ -162,6 +170,14 @@ fun LatestStream<BridgeOpenProgress>.feed(
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, opening::feedOpenSteps)
+
+/** Fill with the steps of the close [closing] is handed to. */
+@JvmName("feedClosingSteps")
+fun LatestStream<BridgeClosingStep>.feed(
+    closing: BridgeLibraryClosing,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, closing::feedClosingSteps)
 
 /** Fill with where the restore or join [setup] is handed to stands. */
 @JvmName("feedBootstrapStatus")

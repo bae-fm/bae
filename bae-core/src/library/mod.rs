@@ -3,6 +3,7 @@ pub mod app_services;
 mod artist_search;
 mod bootstrap_auth;
 mod browse;
+mod closing_step;
 pub(crate) mod detach_cancels;
 mod detail;
 pub mod download_snapshot;
@@ -37,6 +38,7 @@ pub use album_selection::{
 pub use app_services::*;
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchSubscription, ArtistSearchView};
 pub use browse::*;
+pub use closing_step::ClosingStep;
 pub use detail::{DetailSnapshot, DetailSubscription};
 pub use download_snapshot::{
     DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,

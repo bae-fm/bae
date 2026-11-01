@@ -42,7 +42,7 @@ private func discoverInitialLibraries(
                 positionUpdateIntervalMs: 200,
                 restorePlayback: false
             )
-            try app.closeLibrary()
+            try app.closeLibrary(closing: nil)
             libraries = try await host.listLibraries()
         }
     #endif
@@ -74,6 +74,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A device reset in flight, whose loading of the library the loading
     /// screen shows; nil while no reset runs.
     var resetSteps: DeviceResetSteps?
+    /// A close of the open library in flight, whose steps the loading screen
+    /// shows; nil while none runs.
+    var closingSteps: LibraryClosingSteps?
     var loadError: LoadError?
     /// What launch found wrong. Set once, at launch, and kept for the run
     /// whatever opens or fails after.
@@ -338,22 +341,20 @@ extension AppDelegate {
                 "Library open superseded before it could land; skipping"
             )
         case .failed(let error):
-            if let recovery = AppScreen.recovering(
+            let next = AppScreen.afterFailedOpen(
                 libraryId: libraryId,
-                from: error
-            ) {
-                screen = recovery
-                // A screen that finishes a reset or restore says so itself.
-                if case .resetRequired = recovery {
-                    loadError = LoadError(.resetOffered, error)
-                }
-            }
-            else {
+                from: error,
+                hasShell: hasShell
+            )
+            screen = next
+            switch next {
+            case .resetRequired:
+                loadError = LoadError(.resetOffered, error)
+            case .library, .welcome:
                 loadError = LoadError(.libraryOpen, error)
-                if !hasShell {
-                    // A failed bootstrap open returns to the welcome.
-                    screen = .welcome
-                }
+            default:
+                // A screen that finishes a reset or restore says so itself.
+                break
             }
         }
     }
@@ -488,15 +489,20 @@ extension AppDelegate {
         guard let service = appService else { return }
         prepareForLibraryShutdown()
         screen = .loading
-        beginLibraryShutdown(service)
+        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        closingSteps = steps
+        beginLibraryShutdown(service, showing: steps)
     }
 
+    /// Close `service`'s library once, whoever asks first, writing its steps
+    /// to `closing` when a screen shows them.
     @discardableResult
-    func beginLibraryShutdown(_ service: AppService)
-        -> Task<LibraryShutdownResult, Never>
-    {
+    func beginLibraryShutdown(
+        _ service: AppService,
+        showing closing: LibraryClosingSteps?
+    ) -> Task<LibraryShutdownResult, Never> {
         let attempt = shutdownCoordinator.begin(for: service) {
-            try await service.close()
+            try await service.close(showing: closing)
         }
         if attempt.started {
             Task { [weak self, service, task = attempt.task] in
@@ -515,6 +521,7 @@ extension AppDelegate {
             return
         }
         shutdownCoordinator.finish(for: service)
+        closingSteps = nil
         switch result {
         case .completed:
             releaseLibrarySession(service)
@@ -542,7 +549,7 @@ extension AppDelegate {
     private func closeReplaced(_ replaced: AppService) {
         Task {
             do {
-                try await replaced.close()
+                try await replaced.close(showing: nil)
             }
             catch {
                 baeAppLogger.error(
@@ -552,11 +559,17 @@ extension AppDelegate {
         }
     }
 
-    /// Close `service`'s library and end its session. The library is closed
-    /// whether or not closing it fails, so the session ends either way.
+    /// Close `service`'s library, showing its steps on the loading screen,
+    /// and end its session. The library is closed whether or not closing it
+    /// fails, so the session ends either way.
     private func close(_ service: AppService) async throws {
-        defer { releaseLibrarySession(service) }
-        try await service.close()
+        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        closingSteps = steps
+        defer {
+            closingSteps = nil
+            releaseLibrarySession(service)
+        }
+        try await service.close(showing: steps)
     }
 
     private func releaseLibrarySession(_ service: AppService) {
@@ -659,8 +672,11 @@ extension AppDelegate {
     /// what is left and open it again, showing why it stayed.
     private func reopen(_ service: AppService, error: DisplayError?) async {
         let libraryId = service.libraryId
+        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        closingSteps = steps
+        defer { closingSteps = nil }
         do {
-            try await service.close()
+            try await service.close(showing: steps)
         }
         catch let closeError {
             baeAppLogger.error(

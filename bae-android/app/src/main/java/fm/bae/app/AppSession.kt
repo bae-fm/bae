@@ -43,6 +43,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
+import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 
 private val logger = BaeLogger("bae.OpenLibrary")
@@ -316,12 +317,13 @@ class OpenLibrary internal constructor(
      * and release the [appHandle]. Called when a different library is opened so
      * the old session doesn't leak its handle. The close blocks until it's done,
      * so it runs off the main thread, and the library is closed when this
-     * returns.
+     * returns. Each step it runs is written to [closing]'s stream, when a
+     * screen shows the close.
      */
-    suspend fun dispose() {
+    suspend fun dispose(closing: BridgeLibraryClosing?) {
         stopSessionServices()
         try {
-            withContext(Dispatchers.IO) { appHandle.closeLibrary() }
+            withContext(Dispatchers.IO) { appHandle.closeLibrary(closing) }
         } finally {
             release()
         }

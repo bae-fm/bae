@@ -18,7 +18,7 @@ class OpenFailedScreenTest {
 
         assertEquals(
             AppScreen.RestoreUnfinished("library"),
-            AppScreen.openFailed("library", failure, DisplayError("Restoring did not finish.")),
+            AppScreen.openFailed("library", failure, DisplayError("Restoring did not finish."), open = null),
         )
     }
 
@@ -32,7 +32,7 @@ class OpenFailedScreenTest {
 
         assertEquals(
             AppScreen.ResetUnfinished("library", error = null),
-            AppScreen.openFailed("library", failure, DisplayError("Resetting did not finish.")),
+            AppScreen.openFailed("library", failure, DisplayError("Resetting did not finish."), open = null),
         )
     }
 
@@ -45,7 +45,12 @@ class OpenFailedScreenTest {
                 "library",
                 ScreenFailure(FailedStep.RESET_OFFERED, DisplayError("This device must be reset.", "damaged database")),
             ),
-            AppScreen.openFailed("library", failure, DisplayError("This device must be reset.", "damaged database")),
+            AppScreen.openFailed(
+                "library",
+                failure,
+                DisplayError("This device must be reset.", "damaged database"),
+                open = null,
+            ),
         )
     }
 
@@ -55,7 +60,7 @@ class OpenFailedScreenTest {
 
         assertEquals(
             AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, DisplayError("Offline.", "offline"))),
-            AppScreen.openFailed("library", failure, DisplayError("Offline.", "offline")),
+            AppScreen.openFailed("library", failure, DisplayError("Offline.", "offline"), open = null),
         )
     }
 }

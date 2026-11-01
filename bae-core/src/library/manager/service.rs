@@ -349,10 +349,21 @@ impl LibraryManager {
     /// built on the manager (playback, import) end their own work when they
     /// are dropped.
     pub async fn close(&self) -> Result<(), LibraryError> {
+        self.close_reporting(&|_| ()).await
+    }
+
+    /// [`Self::close`], telling `steps` as each step starts.
+    pub async fn close_reporting(
+        &self,
+        steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
+    ) -> Result<(), LibraryError> {
+        steps(crate::library::ClosingStep::StoppingSync);
         if let Err(error) = self.database.stop_sync().await {
             warn!(%error, "stopping sync as the library closes failed");
         }
+        steps(crate::library::ClosingStep::FinishingWork);
         self.tasks.close().await;
+        steps(crate::library::ClosingStep::ClosingStore);
         self.database.close().await?;
         Ok(())
     }

@@ -104,7 +104,7 @@ impl BridgeHost {
             .await;
         let closing = app.clone();
         let closed = bae_util::task_failure::blocking("close the new library", move || {
-            closing.close_library()
+            closing.close_library(None)
         })
         .await
         .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))?;

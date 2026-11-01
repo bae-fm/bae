@@ -130,5 +130,5 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             profile.id
         );
     });
-    app.close_library().unwrap();
+    app.close_library(None).unwrap();
 }

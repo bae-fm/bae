@@ -348,17 +348,28 @@ impl AppHandle {
 
     /// Closing the library, as its runtime runs it: the desktop services, then
     /// playback, identification, import, sync, the manager's tasks and the
-    /// store. It holds the host, whose runtime prepared the library's store,
-    /// until the library has closed.
-    fn closing(&self) -> impl std::future::Future<Output = Closing> + Send + 'static {
+    /// store, each step written to `steps` as it starts. It holds the host,
+    /// whose runtime prepared the library's store, until the library has
+    /// closed.
+    fn closing(
+        &self,
+        steps: crate::screens::ClosingSteps,
+    ) -> impl std::future::Future<Output = Closing> + Send + 'static {
         let services = self.services.clone();
         #[cfg(feature = "desktop")]
         let desktop = self.desktop.clone();
         let host = self._host.clone();
         async move {
             #[cfg(feature = "desktop")]
-            desktop.shutdown().await;
-            let closed = services.close().await;
+            {
+                steps.step(crate::types::BridgeClosingStep::StoppingServers);
+                desktop.shutdown().await;
+            }
+            let closed = services
+                .close_reporting(&|step| {
+                    steps.step(crate::types::BridgeClosingStep::from_core(step))
+                })
+                .await;
             drop(host);
             closed
         }
@@ -373,7 +384,7 @@ impl Drop for AppHandle {
     fn drop(&mut self) {
         let services = self.services.clone();
         self.session.end_released(
-            self.closing(),
+            self.closing(crate::screens::ClosingSteps::unread()),
             move |error: &dyn std::fmt::Display| {
                 services.report_bug("close the library its handle released", error)
             },
@@ -397,9 +408,16 @@ impl AppHandle {
     /// failure.
     ///
     /// Blocks until done, so it is called off the UI thread and never from the
-    /// app runtime. Every later call on this handle fails.
-    pub fn close_library(&self) -> Result<(), BridgeError> {
-        self.session.end(self.closing()).ok_or_else(|| {
+    /// app runtime. Every later call on this handle fails. Each step the close
+    /// runs is written to `closing`'s stream, when the app shows the close.
+    pub fn close_library(
+        &self,
+        closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
+    ) -> Result<(), BridgeError> {
+        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
+            closing.writer()
+        });
+        self.session.end(self.closing(steps)).ok_or_else(|| {
             BridgeError::from(bae_core::library::LibraryError::Internal(
                 "the library is already closed".to_string(),
             ))

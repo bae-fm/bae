@@ -16,6 +16,12 @@ extension BridgeOpenProgress: ProgressStep {
     }
 }
 
+extension BridgeClosingStep: ProgressStep {
+    var title: String { localizedCoreString(bridgeClosingStepKey(step: self)) }
+    /// A close's steps count nothing.
+    var fraction: Double? { nil }
+}
+
 extension BridgeSetupProgress: ProgressStep {
     var title: String { localizedCoreString(bridgeSetupStepKey(step: step)) }
     var fraction: Double? {
@@ -23,8 +29,8 @@ extension BridgeSetupProgress: ProgressStep {
     }
 }
 
-/// The step a library's open or a setup call runs, over a bar of how much
-/// of it is done, set straight from the call's stream once per display
+/// The step a library's open, a setup call or a close runs, over a bar of
+/// how much of it is done, set straight from the call's stream once per display
 /// frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
 /// swaps what it shows only as a step starts or ends, never as one moves.
 final class StepProgressNSView<Step: ProgressStep>: NSView {

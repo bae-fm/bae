@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.LibraryClosingSteps
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.data.LibraryTransferStores
@@ -36,6 +37,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -98,12 +100,20 @@ internal class DiscoveredLibraries {
 
 /** Lifecycle state for the app root. */
 sealed interface AppScreen {
-    data object Loading : AppScreen
+    /** A call in flight, whose screen shows how far it has come. */
+    sealed interface InProgress : AppScreen
+
+    data object Loading : InProgress
 
     /** A library opening by id, whose [steps] the screen draws once the open runs one. */
     data class Opening(
         val steps: LatestSource<BridgeOpenProgress>,
-    ) : AppScreen
+    ) : InProgress
+
+    /** The open library closing, whose [steps] the screen shows as they run. */
+    data class Closing(
+        val steps: LatestSource<BridgeClosingStep>,
+    ) : InProgress
 
     data object Onboarding : AppScreen
 
@@ -113,7 +123,7 @@ sealed interface AppScreen {
      */
     data class Resetting(
         val status: BridgeBootstrapStatus?,
-    ) : AppScreen
+    ) : InProgress
 
     data class LibraryOpen(
         val session: OpenLibrary,
@@ -204,13 +214,15 @@ sealed interface AppScreen {
 
         /**
          * The screen a failed open of [libraryId] lands on: resetting the
-         * device, finishing the reset or restore that stopped partway, or
-         * the failure as [shown].
+         * device, finishing the reset or restore that stopped partway, else
+         * [open], the library still open when the open was a switch, whose
+         * snackbar shows the failure, else the failure as [shown].
          */
         fun openFailed(
             libraryId: String,
             error: BridgeException,
             shown: DisplayError,
+            open: OpenLibrary?,
         ): AppScreen =
             when (val category = (error as? BridgeException.Diagnostic)?.category) {
                 is BridgeErrorCategory.DeviceResetRequired -> {
@@ -222,7 +234,7 @@ sealed interface AppScreen {
                 }
 
                 else -> {
-                    Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                    open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
                 }
             }
     }
@@ -386,7 +398,7 @@ object AppSessionHolder {
                         )
                     }
                 }
-            onScreen(AppScreen.LibraryOpen(installSession(libraryId, handle, app.diagnostics, context)))
+            onScreen(AppScreen.LibraryOpen(installSession(libraryId, handle, app.diagnostics, context, onScreen)))
         } catch (e: CancellationException) {
             // A newer openLibrary (or leaving the screen) cancelled us; let it
             // propagate so cooperative cancellation works and we don't report a
@@ -395,7 +407,15 @@ object AppSessionHolder {
         } catch (e: BridgeException) {
             logger.error("opening library $libraryId failed", e)
             val shown = context.displayError(e)
-            onScreen(if (shown == null) openOrOnboarding() else AppScreen.openFailed(libraryId, e, shown))
+            onScreen(
+                if (shown == null) {
+                    openOrOnboarding()
+                } else {
+                    AppScreen.openFailed(libraryId, e, shown, current).also { screen ->
+                        if (screen is AppScreen.LibraryOpen) screen.session.messages.show(shown)
+                    }
+                },
+            )
         }
     }
 
@@ -429,7 +449,7 @@ object AppSessionHolder {
         val app = context.applicationContext as BaeApp
         val session =
             try {
-                openPrepared(library, app.diagnostics, context)
+                openPrepared(library, app.diagnostics, context, onScreen)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
@@ -464,12 +484,26 @@ object AppSessionHolder {
         library: OpenedLibrary,
         diagnostics: BridgeDiagnostics,
         context: Context,
+        onScreen: (AppScreen) -> Unit,
     ): OpenLibrary {
         val handle =
             withContext(Dispatchers.IO) {
                 library.open(POSITION_UPDATE_INTERVAL_MS, RestorePlaybackPref.load(context))
             }
-        return installSession(library.libraryId(), handle, diagnostics, context)
+        return installSession(library.libraryId(), handle, diagnostics, context, onScreen)
+    }
+
+    /** Close [open], showing its steps as [AppScreen.Closing] until it has closed. */
+    private suspend fun closeShowing(
+        open: OpenLibrary,
+        context: Context,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val app = context.applicationContext as BaeApp
+        LibraryClosingSteps(app.host, appScope, app.bugs).use { closing ->
+            onScreen(AppScreen.Closing(closing.steps))
+            open.dispose(closing.closing)
+        }
     }
 
     /** The reset for [libraryId], whose warning the caller shows before confirming it. */
@@ -495,12 +529,12 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
         failed: (ScreenFailure?) -> AppScreen,
     ) {
-        onScreen(AppScreen.Resetting(status = null))
         val app = context.applicationContext as BaeApp
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
             current = null
-            open.dispose()
+            closeShowing(open, context, onScreen)
         }
+        onScreen(AppScreen.Resetting(status = null))
         val result =
             try {
                 LibrarySetupStatus.of(app.host, appScope, app.bugs).use { setup ->
@@ -544,11 +578,13 @@ object AppSessionHolder {
      * Close the open library and offer restoring it with the person's current
      * restore code, after another of their devices replaced their keys.
      */
-    suspend fun presentDeviceRestore(onScreen: (AppScreen) -> Unit) {
+    suspend fun presentDeviceRestore(
+        context: Context,
+        onScreen: (AppScreen) -> Unit,
+    ) {
         val open = checkNotNull(current) { "a pending record asks for a restore only while open" }
-        onScreen(AppScreen.Loading)
         current = null
-        open.dispose()
+        closeShowing(open, context, onScreen)
         onScreen(AppScreen.RestoreOffered(open.libraryId))
     }
 
@@ -637,6 +673,7 @@ object AppSessionHolder {
         handle: AppHandle,
         diagnostics: BridgeDiagnostics,
         context: Context,
+        onScreen: (AppScreen) -> Unit,
     ): OpenLibrary {
         try {
             if (handle.storeKeyState() == BridgeStoreKeyState.LOCKED) {
@@ -653,7 +690,7 @@ object AppSessionHolder {
         val initialDownloads = handle.getDownloadCounts()
         val previous = current
         current = null
-        previous?.dispose()
+        previous?.let { closeShowing(it, context, onScreen) }
         val appContext = context.applicationContext
         val bugs = (appContext as BaeApp).bugs
         // The session's coroutines report a failure nothing caught as a bug.

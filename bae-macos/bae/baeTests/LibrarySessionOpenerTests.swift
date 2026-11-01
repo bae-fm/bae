@@ -321,7 +321,9 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     func getUploadsPaused() async throws -> Bool {
         try outbox.get()
     }
-    func closeLibrary() throws { closeFlag.set() }
+    func closeLibrary(closing _: BridgeLibraryClosing?) throws {
+        closeFlag.set()
+    }
 }
 
 /// A one-way flag settable from any thread — the opener calls `closeLibrary()`

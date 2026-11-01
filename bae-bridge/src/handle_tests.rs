@@ -848,5 +848,5 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
         ),
         "the released handle's store is closed: {read:?}"
     );
-    reopened.close_library().unwrap();
+    reopened.close_library(None).unwrap();
 }

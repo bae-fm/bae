@@ -141,7 +141,7 @@ public final class LibraryRemovals {
         libraryId: String
     ) async {
         do {
-            try await DetachedWork.run { try app.closeLibrary() }
+            try await DetachedWork.run { try app.closeLibrary(closing: nil) }
         }
         catch {
             logger.error(

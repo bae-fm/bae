@@ -206,13 +206,16 @@ open class AppService: @unchecked Sendable, Observable {
 
     /// Close the library so nothing of this process holds its store: save
     /// where playback was, stop its services and sync, close the store, and
-    /// shut the core's runtime down, off the main actor. The network reports
-    /// stop with it. The library is closed whether or not this throws: a
-    /// failure says what went wrong while closing it. Removing a library
-    /// instead calls `removeLibrary` while this service owns the store.
-    public func close() async throws {
+    /// shut the core's runtime down, off the main actor, writing each step to
+    /// `closing` when the app shows the close. The network reports stop with
+    /// it. The library is closed whether or not this throws: a failure says
+    /// what went wrong while closing it. Removing a library instead calls
+    /// `removeLibrary` while this service owns the store.
+    public func close(showing closing: LibraryClosingSteps?) async throws {
         defer { networkPathReports.stop() }
-        try await DetachedWork.run { [appHandle] in try appHandle.closeLibrary()
+        let bridgeClosing = closing?.closing
+        try await DetachedWork.run { [appHandle] in
+            try appHandle.closeLibrary(closing: bridgeClosing)
         }
     }
 
@@ -251,7 +254,8 @@ open class AppService: @unchecked Sendable, Observable {
         let removal = try await appHandle.removeLibrary()
         // The store is gone. Ending the session ends the core's runtime off
         // the main actor, so releasing the handle has nothing left to wait for.
-        try await DetachedWork.run { [appHandle] in try appHandle.closeLibrary()
+        try await DetachedWork.run { [appHandle] in
+            try appHandle.closeLibrary(closing: nil)
         }
         return removal
     }

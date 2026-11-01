@@ -13,6 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 
 /**
@@ -31,7 +32,7 @@ class OpenLibraryDisposeTest {
     fun disposeClosesTheLibraryBeforeReleasingTheHandle() {
         val (session, handle) = openLibrary()
 
-        runBlocking { session.dispose() }
+        runBlocking { session.dispose(null) }
 
         assertEquals(listOf("closeLibrary", "close"), handle.calls)
     }
@@ -42,7 +43,7 @@ class OpenLibraryDisposeTest {
         val (session, handle) = openLibrary()
         session.screenShown()
 
-        val disposing = CoroutineScope(Dispatchers.Unconfined).launch { session.dispose() }
+        val disposing = CoroutineScope(Dispatchers.Unconfined).launch { session.dispose(null) }
         assertEquals(emptyList<String>(), handle.calls)
 
         session.screenGone()
@@ -55,7 +56,7 @@ class OpenLibraryDisposeTest {
         val (session, handle) = openLibrary(failClose = true)
 
         assertThrows(IllegalStateException::class.java) {
-            runBlocking { session.dispose() }
+            runBlocking { session.dispose(null) }
         }
 
         assertEquals(listOf("closeLibrary", "close"), handle.calls)
@@ -96,7 +97,7 @@ class OpenLibraryDisposeTest {
     ) : FakeAppHandle() {
         val calls = mutableListOf<String>()
 
-        override fun closeLibrary() {
+        override fun closeLibrary(closing: BridgeLibraryClosing?) {
             calls.add("closeLibrary")
             if (failClose) {
                 throw IllegalStateException("closing the library failed")

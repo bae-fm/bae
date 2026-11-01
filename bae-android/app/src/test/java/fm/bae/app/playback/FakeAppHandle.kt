@@ -33,6 +33,7 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
 import uniffi.bae_bridge.BridgeInviteDelivery
 import uniffi.bae_bridge.BridgeJoinRequest
+import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
@@ -255,7 +256,7 @@ internal open class FakeAppHandle(
 
     // Every other call the bridge offers: a test that reaches one fakes it here first.
 
-    override fun closeLibrary() {
+    override fun closeLibrary(closing: BridgeLibraryClosing?) {
         unfaked("closeLibrary")
     }
 

@@ -464,6 +464,6 @@ mod tests {
             caller.block_on(app.clone().library_name()).unwrap(),
             "Session Library"
         );
-        app.close_library().unwrap();
+        app.close_library(None).unwrap();
     }
 }

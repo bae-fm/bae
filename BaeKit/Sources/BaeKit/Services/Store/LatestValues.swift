@@ -515,6 +515,28 @@ extension LatestStream where Value == BridgeBootstrapStatus {
     }
 }
 
+extension LatestStream where Value == BridgeClosingStep {
+    /// The step a library's close runs, while it runs one; a preview's holds
+    /// `value` and nothing feeds it.
+    public static func closingSteps(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .closingStep(let step) = $0 {
+                step
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the steps of the close `closing` is handed to.
+    public func feed(from closing: BridgeLibraryClosing) -> LatestFeed {
+        fed { closing.feedClosingSteps() }
+    }
+}
+
 extension LatestStream {
     /// The value of a stream that holds one, for the native view that draws
     /// it.

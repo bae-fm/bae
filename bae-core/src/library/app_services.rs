@@ -188,8 +188,16 @@ impl AppServices {
     /// A step that panics is reported as a bug and fails the close, and the
     /// steps after it still run, the store's close among them.
     pub async fn close(&self) -> Result<(), crate::library::LibraryError> {
-        let stopped = self.stop_workers().await;
-        let closed = self.inner.manager.close().await;
+        self.close_reporting(&|_| ()).await
+    }
+
+    /// [`Self::close`], telling `steps` as each step starts.
+    pub async fn close_reporting(
+        &self,
+        steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
+    ) -> Result<(), crate::library::LibraryError> {
+        let stopped = self.stop_workers(steps).await;
+        let closed = self.inner.manager.close_reporting(steps).await;
         match (stopped, closed) {
             (Ok(()), closed) => closed,
             (Err(stopped), Ok(())) => Err(stopped),
@@ -223,10 +231,17 @@ impl AppServices {
             .spawn_stoppable_task(task_name, stop, task, |_| {})
     }
 
-    async fn stop_workers(&self) -> Result<(), crate::library::LibraryError> {
+    /// Stop playback, then identification and import, telling `steps` as
+    /// each starts.
+    async fn stop_workers(
+        &self,
+        steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
+    ) -> Result<(), crate::library::LibraryError> {
+        steps(crate::library::ClosingStep::StoppingPlayback);
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
+            steps(crate::library::ClosingStep::StoppingImports);
             let identification = self.inner.identification.clone();
             let import = self.inner.import.clone();
             // Both joins block until their threads exit, so they run off the

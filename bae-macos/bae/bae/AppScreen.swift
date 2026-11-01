@@ -46,4 +46,17 @@ enum AppScreen {
             return nil
         }
     }
+
+    /// The screen a failed open of `libraryId` lands on: the call that
+    /// recovers it, when the failure is one the person recovers from here;
+    /// else the library still open, when `hasShell`, with the failure shown
+    /// over it; else the welcome.
+    static func afterFailedOpen(
+        libraryId: String,
+        from error: Error,
+        hasShell: Bool
+    ) -> Self {
+        recovering(libraryId: libraryId, from: error)
+            ?? (hasShell ? .library : .welcome)
+    }
 }

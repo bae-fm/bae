@@ -148,7 +148,8 @@ extension AppDelegate {
             return .terminateNow
         }
         prepareForLibraryShutdown()
-        let shutdown = beginLibraryShutdown(appService)
+        // Quitting shows no screen of the close's steps.
+        let shutdown = beginLibraryShutdown(appService, showing: nil)
         Task {
             let result = await shutdown.value
             let shouldTerminate: Bool

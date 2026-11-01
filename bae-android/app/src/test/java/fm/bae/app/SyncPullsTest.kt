@@ -17,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
@@ -30,7 +31,7 @@ class SyncPullsTest {
     fun eachPulledSyncStatusReachesTheStore() {
         val handle =
             object : FakeAppHandle() {
-                override fun closeLibrary() = Unit
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
 
                 override fun close() = Unit
             }
@@ -48,7 +49,7 @@ class SyncPullsTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), store.line.value)
 
-        runBlocking { session.dispose() }
+        runBlocking { session.dispose(null) }
         scope.cancel()
     }
 
@@ -56,7 +57,7 @@ class SyncPullsTest {
     fun eachPulledSyncActivityReachesTheStore() {
         val handle =
             object : FakeAppHandle() {
-                override fun closeLibrary() = Unit
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
 
                 override fun close() = Unit
             }
@@ -76,7 +77,7 @@ class SyncPullsTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(settled, store.activity.value)
 
-        runBlocking { session.dispose() }
+        runBlocking { session.dispose(null) }
         scope.cancel()
     }
 

@@ -158,6 +158,9 @@ pub enum BridgeFastValue {
     BootstrapStatus {
         status: super::BridgeBootstrapStatus,
     },
+    /// The step a library's close runs; a stream's one key, `""`, while it
+    /// runs one.
+    ClosingStep { step: super::BridgeClosingStep },
     /// How far a bulk action over an import list's selection has got; a
     /// stream's one key, `""`, while the action runs.
     #[cfg(feature = "desktop")]

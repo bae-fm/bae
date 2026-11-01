@@ -210,6 +210,52 @@ pub struct BridgeLoadProgress {
     pub total: u64,
 }
 
+/// A step closing the open library runs, in the order they run. Mirrors
+/// `bae_core::library::ClosingStep`, after the desktop's own first step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeClosingStep {
+    /// Stopping the servers the desktop hosts for the library.
+    StoppingServers,
+    /// Stopping playback, saving where it was.
+    StoppingPlayback,
+    /// Stopping identification and import, waiting for the file each is on.
+    StoppingImports,
+    /// Stopping sync, once the pass that runs has ended.
+    StoppingSync,
+    /// Ending the library's background work.
+    FinishingWork,
+    /// Closing the library's database.
+    ClosingStore,
+}
+
+impl BridgeClosingStep {
+    pub(crate) fn from_core(step: bae_core::library::ClosingStep) -> Self {
+        match step {
+            bae_core::library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            bae_core::library::ClosingStep::StoppingImports => Self::StoppingImports,
+            bae_core::library::ClosingStep::StoppingSync => Self::StoppingSync,
+            bae_core::library::ClosingStep::FinishingWork => Self::FinishingWork,
+            bae_core::library::ClosingStep::ClosingStore => Self::ClosingStore,
+        }
+    }
+}
+
+/// Localization key for a close's step, the line the app shows while the
+/// close runs it. The UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_closing_step_key(step: BridgeClosingStep) -> String {
+    match step {
+        BridgeClosingStep::StoppingServers => "core.library.closing_step.stopping_servers",
+        BridgeClosingStep::StoppingPlayback => "core.library.closing_step.stopping_playback",
+        BridgeClosingStep::StoppingImports => "core.library.closing_step.stopping_imports",
+        BridgeClosingStep::StoppingSync => "core.library.closing_step.stopping_sync",
+        BridgeClosingStep::FinishingWork => "core.library.closing_step.finishing_work",
+        BridgeClosingStep::ClosingStore => "core.library.closing_step.closing_store",
+    }
+    .to_string()
+}
+
 /// Localization key for a setup step, the line over its progress bar. The
 /// UI resolves it against the `Core` table.
 #[uniffi::export]

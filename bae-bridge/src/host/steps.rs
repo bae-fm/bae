@@ -1,10 +1,11 @@
-//! The objects an open or a setup call reports its steps through, made on
-//! the host so that the app pulls their streams on the host's runtime.
+//! The objects an open, a setup call or a close reports its steps through,
+//! made on the host so that the app pulls their streams on the host's
+//! runtime.
 
 use std::sync::Arc;
 
 use super::BridgeHost;
-use crate::{BridgeLibraryOpening, BridgeLibrarySetup};
+use crate::{BridgeLibraryClosing, BridgeLibraryOpening, BridgeLibrarySetup};
 
 #[uniffi::export]
 impl BridgeLibraryOpening {
@@ -21,5 +22,15 @@ impl BridgeLibrarySetup {
     #[uniffi::constructor]
     pub fn new(host: Arc<BridgeHost>) -> Arc<Self> {
         crate::screens::library_setup(host.operations.clone())
+    }
+}
+
+#[uniffi::export]
+impl BridgeLibraryClosing {
+    /// A closing whose stream the app pulls on `host`'s runtime, which runs
+    /// on after the library's own has ended.
+    #[uniffi::constructor]
+    pub fn new(host: Arc<BridgeHost>) -> Arc<Self> {
+        crate::screens::library_closing(host.operations.clone())
     }
 }

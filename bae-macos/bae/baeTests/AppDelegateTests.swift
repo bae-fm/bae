@@ -156,6 +156,37 @@ struct AppDelegateTests {
         )
     }
 
+    /// Switching from an open library to one that fails to open leaves the
+    /// open one on screen, with the failure over it; with none open, the
+    /// welcome shows it.
+    @Test("a failed open returns to the open library, or else the welcome")
+    func failedOpenReturnsToTheOpenLibrary() {
+        let offline = BridgeError.Diagnostic(
+            category: .network,
+            detail: "offline"
+        )
+        guard
+            case .library = AppScreen.afterFailedOpen(
+                libraryId: "lib-02",
+                from: offline,
+                hasShell: true
+            )
+        else {
+            Issue.record("a failed switch leaves the open library's screen")
+            return
+        }
+        guard
+            case .welcome = AppScreen.afterFailedOpen(
+                libraryId: "lib-02",
+                from: offline,
+                hasShell: false
+            )
+        else {
+            Issue.record("a failed first open lands on the welcome")
+            return
+        }
+    }
+
     /// Finishing from the welcome's list, then leaving, returns to the
     /// welcome while no library is open.
     @Test(

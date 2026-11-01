@@ -498,6 +498,17 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.push(bridge_setup_step_key(step));
     }
+    // bridge_closing_step_key — each step carries a key.
+    for step in [
+        BridgeClosingStep::StoppingServers,
+        BridgeClosingStep::StoppingPlayback,
+        BridgeClosingStep::StoppingImports,
+        BridgeClosingStep::StoppingSync,
+        BridgeClosingStep::FinishingWork,
+        BridgeClosingStep::ClosingStore,
+    ] {
+        keys.push(bridge_closing_step_key(step));
+    }
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 

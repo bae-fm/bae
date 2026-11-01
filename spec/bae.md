@@ -2390,7 +2390,9 @@ settings for it in its database (Appendix C). One library whose
 storage settings can't be read never hides the others: the list carries each
 library with its settings or why they can't be read, shows that reason in
 place of the account, and offers no Open for it. Launch and switching
-libraries pass over it.
+libraries pass over it. Switching keeps the open library until the next one
+has opened; a switch whose open fails leaves the open library on screen with
+the failure shown over it.
 
 ### 6.3 How bae declares its tables
 
@@ -3484,6 +3486,17 @@ release's or track's id as UTF-8, or a candidate's key.
   that waited for it. After a removal deleted
   the store, only the runtime is left to end. An open that fails after the
   library started closes it the same way before its runtime ends.
+  A close the app shows reports each step as it starts, through a stream of
+  its own of the same kind as an open's, which the app makes from the host
+  (whose runtime outlives the library's) and hands to the close: stopping the
+  desktop's servers, stopping playback, stopping identification and import,
+  stopping sync once its running pass ends, ending the library's background
+  work, and closing the store. The apps show the step's name while it runs,
+  never a bare spinner: on the Mac over a moving bar on the loading screen, on
+  Android under a spinner on its own screen. That covers closing a library, the
+  close before restoring or resetting this device's copy, and, on Android, the
+  close of the library a newly opened one replaces. Quitting the Mac app, and
+  the close after a removal or a failed open, show nothing and report nowhere.
 - **`release_memory`** gives back the pages the library's store keeps cached
   that no read or write is using; later reads load what they need again. SQLite
   keeps every connection's unused pages in one pool for the process, so coven

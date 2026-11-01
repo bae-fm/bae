@@ -68,7 +68,7 @@ fn stopping_a_feed_ends_it() {
     ended
         .recv_timeout(Duration::from_secs(10))
         .expect("stopping ends the feed");
-    app.close_library().unwrap();
+    app.close_library(None).unwrap();
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn closing_the_library_ends_a_feed() {
         .recv_timeout(Duration::from_secs(10))
         .expect("the feed starts");
 
-    app.close_library().unwrap();
+    app.close_library(None).unwrap();
 
     ended
         .recv_timeout(Duration::from_secs(10))
@@ -91,7 +91,7 @@ fn closing_the_library_ends_a_feed() {
 fn a_feed_started_on_a_closed_library_never_runs() {
     let root = tempfile::tempdir().unwrap();
     let app = open_library(&root);
-    app.close_library().unwrap();
+    app.close_library(None).unwrap();
 
     let (_stop, started, _ended) = waiting_feed(&app);
 
@@ -132,7 +132,7 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     let (closed_tx, closed) = mpsc::channel();
     std::thread::spawn(move || {
         closed_tx
-            .send(app.close_library())
+            .send(app.close_library(None))
             .expect("the test waits for the close");
     });
     closed
@@ -187,6 +187,6 @@ fn a_feed_that_panics_is_reported_and_others_go_on() {
     started
         .recv_timeout(Duration::from_secs(10))
         .expect("another feed still starts");
-    app.close_library().unwrap();
+    app.close_library(None).unwrap();
     assert!(reports.try_recv().is_err(), "the panic is reported once");
 }
