@@ -25,7 +25,7 @@ struct SyncActivityStoreTests {
             moving: false,
             needsAttention: false,
             failure: nil,
-            attention: .ready(records: []),
+            attention: [],
             syncing: false,
             uploads: nil,
             downloads: nil,

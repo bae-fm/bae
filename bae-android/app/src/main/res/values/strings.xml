@@ -123,6 +123,8 @@
     <string name="settings_sync">Sync</string>
     <string name="settings_local_only">Local only</string>
     <string name="settings_sync_unconnected">Disconnected</string>
+    <string name="settings_sync_checking">Checking sync…</string>
+    <string name="settings_sync_unreadable">Couldn\'t read sync status</string>
     <string name="settings_reconnect">Reconnect</string>
     <string name="settings_pause_between_sides">Pause between sides and discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>

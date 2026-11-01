@@ -34,7 +34,13 @@ struct SyncStatusLine: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
-            PendingRecordsView(records: status.pending, perform: perform)
+            if let pending = status.pending {
+                PendingRecordsView(records: pending, perform: perform)
+            }
+            else {
+                ProgressView()
+                    .controlSize(.small)
+            }
         } label: {
             HStack {
                 Text(status.statusText)

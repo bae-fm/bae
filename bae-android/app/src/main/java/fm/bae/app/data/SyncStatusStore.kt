@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePendingRecords
+import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
@@ -22,17 +22,31 @@ data class SyncFailure(
     val offersDeviceReset: Boolean,
 )
 
+/**
+ * What the sync status line shows: checking, until the sync status's first read; unreadable, after a read that failed,
+ * until the next succeeds; or the indicator of the status as read.
+ */
+sealed interface SyncLine {
+    data object Checking : SyncLine
+
+    data object Unreadable : SyncLine
+
+    data class Read(
+        val indicator: BridgeSyncIndicator,
+    ) : SyncLine
+}
+
 /** Runtime sync state. The sync-status value stream is its only writer. */
 class SyncStatusStore {
     private val _error = MutableStateFlow<SyncFailure?>(null)
     val error: StateFlow<SyncFailure?> = _error.asStateFlow()
 
-    private val _indicator = MutableStateFlow<BridgeSyncIndicator>(BridgeSyncIndicator.Loading)
-    val indicator: StateFlow<BridgeSyncIndicator> = _indicator.asStateFlow()
+    private val _line = MutableStateFlow<SyncLine>(SyncLine.Checking)
+    val line: StateFlow<SyncLine> = _line.asStateFlow()
 
-    /** What coven is waiting on, each with the action the person can take on it. */
-    private val _pending = MutableStateFlow<BridgePendingRecords>(BridgePendingRecords.Loading)
-    val pending: StateFlow<BridgePendingRecords> = _pending.asStateFlow()
+    /** What coven is waiting on, each with the action the person can take on it; none until the status is read. */
+    private val _pending = MutableStateFlow<List<BridgePendingRecord>?>(null)
+    val pending: StateFlow<List<BridgePendingRecord>?> = _pending.asStateFlow()
 
     fun apply(
         status: BridgeSyncStatusSnapshot,
@@ -50,13 +64,13 @@ class SyncStatusStore {
                     )
                 }
             }
-        _indicator.value = status.indicator
+        _line.value = SyncLine.Read(status.indicator)
         _pending.value = status.pending
     }
 
     /** The sync status couldn't be read: the line shows the read's failure until a read succeeds. */
     fun fail(error: DisplayError) {
         _error.value = SyncFailure(error, canReconnect = false, offersDeviceReset = false)
-        _indicator.value = BridgeSyncIndicator.Unreadable
+        _line.value = SyncLine.Unreadable
     }
 }

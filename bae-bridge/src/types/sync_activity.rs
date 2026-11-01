@@ -13,7 +13,7 @@ pub struct BridgeSyncActivity {
     /// The sync failure the status line shows, such as being offline.
     pub failure: Option<super::BridgeError>,
     /// The pending records that need the person.
-    pub attention: super::BridgePendingRecords,
+    pub attention: Vec<super::BridgePendingRecord>,
     /// A sync pass is running.
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
@@ -39,7 +39,10 @@ impl BridgeSyncActivity {
             moving,
             needs_attention,
             failure: failure.map(super::BridgeError::from_core),
-            attention: super::BridgePendingRecords::from_core(attention),
+            attention: attention
+                .into_iter()
+                .map(super::BridgePendingRecord::from_core)
+                .collect(),
             syncing,
             uploads: uploads.map(BridgeUploadsInFlight::from_core),
             downloads: downloads.map(BridgeDownloadsInFlight::from_core),

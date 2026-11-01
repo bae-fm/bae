@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fm.bae.app.DisplayError
 import fm.bae.app.data.SyncFailure
+import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -28,7 +29,7 @@ class SyncFailureNoticeTest {
     @Test
     fun notConnectedOffersReconnecting() {
         compose.setContent {
-            BaeTheme { SyncFailureNotice(BridgeSyncIndicator.Unconnected, error = null, onReconnect = {}) }
+            BaeTheme { SyncFailureNotice(SyncLine.Read(BridgeSyncIndicator.Unconnected), error = null, onReconnect = {}) }
         }
 
         compose.onNodeWithText("Reconnect").assertIsDisplayed()
@@ -39,7 +40,7 @@ class SyncFailureNoticeTest {
         compose.setContent {
             BaeTheme {
                 SyncFailureNotice(
-                    BridgeSyncIndicator.Synced,
+                    SyncLine.Read(BridgeSyncIndicator.Synced),
                     error =
                         SyncFailure(
                             DisplayError("Update the app to continue syncing."),
@@ -62,7 +63,7 @@ class SyncFailureNoticeTest {
         compose.setContent {
             BaeTheme {
                 SyncFailureNotice(
-                    BridgeSyncIndicator.Synced,
+                    SyncLine.Read(BridgeSyncIndicator.Synced),
                     error =
                         SyncFailure(
                             DisplayError("Couldn't reach the network.", detail),
@@ -92,7 +93,7 @@ class SyncFailureNoticeTest {
     @Test
     fun syncedWithoutAFailureShowsNothing() {
         compose.setContent {
-            BaeTheme { SyncFailureNotice(BridgeSyncIndicator.Synced, error = null, onReconnect = {}) }
+            BaeTheme { SyncFailureNotice(SyncLine.Read(BridgeSyncIndicator.Synced), error = null, onReconnect = {}) }
         }
 
         compose.onNodeWithText("Reconnect").assertDoesNotExist()

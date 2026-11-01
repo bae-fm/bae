@@ -88,6 +88,8 @@
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">仅本地</string>
     <string name="settings_sync_unconnected">已断开连接</string>
+    <string name="settings_sync_checking">正在检查同步…</string>
+    <string name="settings_sync_unreadable">无法读取同步状态</string>
     <string name="settings_reconnect">重新连接</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>
     <string name="settings_side_pause_countdown">倒计时</string>

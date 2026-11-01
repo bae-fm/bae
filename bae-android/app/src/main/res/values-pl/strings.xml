@@ -88,6 +88,8 @@
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_local_only">Tylko lokalnie</string>
     <string name="settings_sync_unconnected">Rozłączono</string>
+    <string name="settings_sync_checking">Sprawdzanie synchronizacji…</string>
+    <string name="settings_sync_unreadable">Nie można odczytać stanu synchronizacji</string>
     <string name="settings_reconnect">Połącz ponownie</string>
     <string name="settings_pause_between_sides">Pauza między stronami i płytami</string>
     <string name="settings_side_pause_countdown">Odliczanie</string>

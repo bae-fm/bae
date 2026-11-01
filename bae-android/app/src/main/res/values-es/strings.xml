@@ -88,6 +88,8 @@
     <string name="settings_sync">Sincronización</string>
     <string name="settings_local_only">Solo local</string>
     <string name="settings_sync_unconnected">Desconectado</string>
+    <string name="settings_sync_checking">Comprobando sincronización…</string>
+    <string name="settings_sync_unreadable">No se pudo leer el estado de la sincronización</string>
     <string name="settings_reconnect">Reconectar</string>
     <string name="settings_pause_between_sides">Pausa entre caras y discos</string>
     <string name="settings_side_pause_countdown">Cuenta atrás</string>

@@ -344,7 +344,8 @@ pub struct BridgePlaybackContext {
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
     pub connected: bool,
-    pub pending: BridgePendingRecords,
+    /// What coven waits on, each with the action the person can take.
+    pub pending: Vec<crate::types::BridgePendingRecord>,
     pub indicator: BridgeSyncIndicator,
 }
 
@@ -363,7 +364,10 @@ impl BridgeSyncStatusSnapshot {
             indicator,
             connected,
             error: error.map(crate::types::BridgeError::from_core),
-            pending: crate::types::BridgePendingRecords::from_core(pending),
+            pending: pending
+                .into_iter()
+                .map(crate::types::BridgePendingRecord::from_core)
+                .collect(),
         }
     }
 }
@@ -371,13 +375,11 @@ impl BridgeSyncStatusSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncIndicator {
     Unconnected,
-    Loading,
     Stopped,
     Syncing,
     Synced,
     Offline,
     Failed,
-    Unreadable,
     Waiting { items: u64 },
 }
 impl BridgeSyncIndicator {
@@ -402,13 +404,11 @@ pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> Option<Stri
     Some(
         match indicator {
             BridgeSyncIndicator::Unconnected => return None,
-            BridgeSyncIndicator::Loading => "core.sync.loading",
             BridgeSyncIndicator::Stopped => "core.sync.stopped",
             BridgeSyncIndicator::Syncing => "core.sync.syncing",
             BridgeSyncIndicator::Synced => "core.sync.synced",
             BridgeSyncIndicator::Offline => "core.sync.offline",
             BridgeSyncIndicator::Failed => "core.sync.failed",
-            BridgeSyncIndicator::Unreadable => "core.sync.unreadable",
             BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
         }
         .to_string(),

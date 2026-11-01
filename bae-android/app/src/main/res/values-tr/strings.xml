@@ -88,6 +88,8 @@
     <string name="settings_sync">Eşzamanlama</string>
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_unconnected">Bağlantı kesildi</string>
+    <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
+    <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
     <string name="settings_side_pause_countdown">Geri sayım</string>

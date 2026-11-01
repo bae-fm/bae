@@ -2476,7 +2476,8 @@ E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)),
 its pending records, and why this device last failed to start sync. "Checking
 sync…" shows only until that is first read, and if it can't be read the line
 says "Couldn't read sync status", opening onto the error, until a read
-succeeds. Opening it lists each thing coven is waiting on, one of its pending
+succeeds. Those two are each app's own states around the read, with the
+words in the app's own catalog: core sends only the status it read. Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, in the order they arose, with an action wherever the person

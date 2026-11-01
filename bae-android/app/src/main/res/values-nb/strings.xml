@@ -92,6 +92,8 @@
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Bare lokalt</string>
     <string name="settings_sync_unconnected">Frakoblet</string>
+    <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
+    <string name="settings_sync_unreadable">Kunne ikke lese synkroniseringsstatus</string>
     <string name="settings_reconnect">Koble til på nytt</string>
     <string name="settings_pause_between_sides">Pause mellom sider og plater</string>
     <string name="settings_side_pause_countdown">Nedtelling</string>

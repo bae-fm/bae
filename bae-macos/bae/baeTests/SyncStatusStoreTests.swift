@@ -36,7 +36,7 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
                 connected: false,
-                pending: .loading,
+                pending: [],
                 indicator: .unconnected
             )
         )
@@ -75,18 +75,27 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: nil,
                 connected: true,
-                pending: .ready(records: [record]),
+                pending: [record],
                 indicator: .waiting(items: 1)
             )
         )
 
-        #expect(sync.indicator == .waiting(items: 1))
-        guard case .ready(let records) = sync.pending else {
-            Issue.record("the read records reach the list")
-            return
-        }
-        let first = try #require(records.first)
+        #expect(sync.line == .read(.waiting(items: 1)))
+        let first = try #require(sync.pending?.first)
         #expect(first.action == .retryOperation(id: 7))
+    }
+
+    /// Before the status is first read the line says it is checking, never
+    /// that the library is synced, and the list waits.
+    @MainActor
+    @Test("the line checks until the status is read")
+    func theLineChecksUntilTheStatusIsRead() {
+        let sync = SyncStatusStore()
+        #expect(sync.line == .checking)
+        #expect(sync.pending == nil)
+        sync.apply(status(syncReady: true))
+        #expect(sync.line == .read(.synced))
+        #expect(sync.pending == [])
     }
 
     @MainActor
@@ -108,7 +117,7 @@ struct SyncStatusStoreTests {
                     detail: "schema 17 required"
                 ),
                 connected: true,
-                pending: .ready(records: []),
+                pending: [],
                 indicator: .synced
             )
         )
@@ -122,7 +131,7 @@ struct SyncStatusStoreTests {
         BridgeSyncStatusSnapshot(
             error: nil,
             connected: syncReady,
-            pending: syncReady ? .ready(records: []) : .loading,
+            pending: [],
             indicator: syncReady ? .synced : .unconnected
         )
     }

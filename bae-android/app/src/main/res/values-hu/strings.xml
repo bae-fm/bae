@@ -92,6 +92,8 @@
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unconnected">Leválasztva</string>
+    <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
+    <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_reconnect">Újrakapcsolódás</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
     <string name="settings_side_pause_countdown">Visszaszámlálás</string>

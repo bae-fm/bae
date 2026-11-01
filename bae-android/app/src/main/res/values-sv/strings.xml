@@ -92,6 +92,8 @@
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Endast lokalt</string>
     <string name="settings_sync_unconnected">Frånkopplad</string>
+    <string name="settings_sync_checking">Kontrollerar synkronisering…</string>
+    <string name="settings_sync_unreadable">Det gick inte att läsa synkroniseringsstatus</string>
     <string name="settings_reconnect">Anslut igen</string>
     <string name="settings_pause_between_sides">Paus mellan sidor och skivor</string>
     <string name="settings_side_pause_countdown">Nedräkning</string>

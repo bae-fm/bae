@@ -8,11 +8,11 @@ private let logger = Logger.bae("PendingRecordsView")
 /// the record's action wherever the person can act. Without `perform` the list only informs, as
 /// while a library is still being restored.
 public struct PendingRecordsView: View {
-    public let records: BridgePendingRecords
+    public let records: [BridgePendingRecord]
     public let perform: ((BridgePendingRecord) async throws -> Void)?
 
     public init(
-        records: BridgePendingRecords,
+        records: [BridgePendingRecord],
         perform: ((BridgePendingRecord) async throws -> Void)?
     ) {
         self.records = records
@@ -20,16 +20,8 @@ public struct PendingRecordsView: View {
     }
 
     public var body: some View {
-        switch records {
-        case .loading:
-            ProgressView()
-                .controlSize(.small)
-        case .failed(let error):
-            ErrorDetailDisclosure(error: DisplayError(error))
-        case .ready(let records):
-            ForEach(records, id: \.self) { record in
-                PendingRecordRow(record: record, perform: perform)
-            }
+        ForEach(records, id: \.self) { record in
+            PendingRecordRow(record: record, perform: perform)
         }
     }
 }

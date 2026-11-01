@@ -77,25 +77,25 @@ struct SyncStatusSubscriptionTests {
         let appService = makeAppService(handle: handle)
         let store = appService.syncStatusStoreForTesting
         appService.startCommonSubscriptions()
-        #expect(store.indicator == .loading)
+        #expect(store.line == .checking)
 
         let synced = BridgeSyncStatusSnapshot(
             error: nil,
             connected: true,
-            pending: .ready(records: []),
+            pending: [],
             indicator: .synced
         )
         handle.deliverSyncStatus(synced)
-        try await Wait.until { store.indicator == .synced }
+        try await Wait.until { store.line == .read(.synced) }
         #expect(store.syncReady)
 
         handle.failSyncStatusRead(
             .Diagnostic(category: .database, detail: "the read failed")
         )
-        try await Wait.until { store.indicator == .unreadable }
+        try await Wait.until { store.line == .unreadable }
 
         handle.deliverSyncStatus(synced)
-        try await Wait.until { store.indicator == .synced }
+        try await Wait.until { store.line == .read(.synced) }
     }
 }
 
@@ -122,7 +122,7 @@ struct SyncActivitySubscriptionTests {
             moving: sending != nil,
             needsAttention: false,
             failure: nil,
-            attention: .ready(records: []),
+            attention: [],
             syncing: false,
             uploads: sending.map {
                 BridgeUploadsInFlight(

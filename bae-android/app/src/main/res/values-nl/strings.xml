@@ -88,6 +88,8 @@
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_sync_unconnected">Verbinding verbroken</string>
+    <string name="settings_sync_checking">Synchronisatie controleren…</string>
+    <string name="settings_sync_unreadable">Synchronisatiestatus kan niet worden gelezen</string>
     <string name="settings_reconnect">Opnieuw verbinden</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>
     <string name="settings_side_pause_countdown">Aftellen</string>

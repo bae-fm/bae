@@ -5,7 +5,6 @@ import fm.bae.app.ui.PreviewData
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
 
 class SyncActivityStoreTest {
@@ -28,7 +27,7 @@ class SyncActivityStoreTest {
             moving = false,
             needsAttention = false,
             failure = null,
-            attention = BridgePendingRecords.Ready(emptyList()),
+            attention = emptyList(),
             syncing = false,
             uploads = null,
             downloads = null,

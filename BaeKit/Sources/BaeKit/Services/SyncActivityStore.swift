@@ -73,9 +73,7 @@ public final class SyncActivityStore {
                 moving: true,
                 needsAttention: needsAttention,
                 failure: nil,
-                attention: .ready(
-                    records: needsAttention ? [previewSignIn] : []
-                ),
+                attention: needsAttention ? [previewSignIn] : [],
                 syncing: true,
                 uploads: BridgeUploadsInFlight(
                     summaryParts: [

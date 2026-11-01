@@ -61,7 +61,6 @@ import fm.bae.app.ui.components.color
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeUploadBar
 import uniffi.bae_bridge.BridgeUploadTransfer
@@ -197,29 +196,17 @@ private fun LazyListScope.attentionSection(
     activity.failure?.let { failure ->
         item { FailureDisclosure(context, failure) }
     }
-    when (val attention = activity.attention) {
-        BridgePendingRecords.Loading -> {
-            Unit
-        }
-
-        is BridgePendingRecords.Failed -> {
-            item { FailureDisclosure(context, attention.error) }
-        }
-
-        is BridgePendingRecords.Ready -> {
-            items(attention.records) { record ->
-                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-                    Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-                    ErrorDetailDisclosure(
-                        error =
-                            DisplayError(
-                                context.coreString(record.reason.key),
-                                record.reason.detail,
-                            ),
-                        lineColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+    items(activity.attention) { record ->
+        Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+            Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
+            ErrorDetailDisclosure(
+                error =
+                    DisplayError(
+                        context.coreString(record.reason.key),
+                        record.reason.detail,
+                    ),
+                lineColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
     item {

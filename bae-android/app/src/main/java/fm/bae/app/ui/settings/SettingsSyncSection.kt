@@ -105,11 +105,11 @@ private fun SyncStatus(
     onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
     val scope = rememberScreenScope()
-    val indicator by session.syncStatusStore.indicator.collectAsState()
+    val line by session.syncStatusStore.line.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
-    SyncStatusLine(indicator = indicator, onOpenPending = onOpenPending)
+    SyncStatusLine(line = line, onOpenPending = onOpenPending)
     SyncFailureNotice(
-        indicator = indicator,
+        line = line,
         error = error,
         onReconnect = { scope.launch { reconnectFailedSync(session.appHandle) } },
     )

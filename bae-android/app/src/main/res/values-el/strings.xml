@@ -92,6 +92,8 @@
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
     <string name="settings_sync_unconnected">Αποσυνδεδεμένο</string>
+    <string name="settings_sync_checking">Έλεγχος συγχρονισμού…</string>
+    <string name="settings_sync_unreadable">Δεν ήταν δυνατή η ανάγνωση της κατάστασης συγχρονισμού</string>
     <string name="settings_reconnect">Επανασύνδεση</string>
     <string name="settings_pause_between_sides">Παύση ανάμεσα σε πλευρές και δίσκους</string>
     <string name="settings_side_pause_countdown">Αντίστροφη μέτρηση</string>

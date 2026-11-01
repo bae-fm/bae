@@ -2,6 +2,7 @@ package fm.bae.app
 
 import android.os.Looper
 import fm.bae.app.data.SyncActivityStore
+import fm.bae.app.data.SyncLine
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.FakeAppHandle
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCountLabel
-import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
@@ -38,15 +38,15 @@ class SyncPullsTest {
         val session = openTestLibrary(handle, store)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         session.wireUp(scope)
-        assertEquals(BridgeSyncIndicator.Loading, store.indicator.value)
+        assertEquals(SyncLine.Checking, store.line.value)
 
         handle.syncStatus.deliver(status(BridgeSyncIndicator.Syncing))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(BridgeSyncIndicator.Syncing, store.indicator.value)
+        assertEquals(SyncLine.Read(BridgeSyncIndicator.Syncing), store.line.value)
 
         handle.syncStatus.deliver(status(BridgeSyncIndicator.Synced))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(BridgeSyncIndicator.Synced, store.indicator.value)
+        assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), store.line.value)
 
         runBlocking { session.dispose() }
         scope.cancel()
@@ -85,7 +85,7 @@ class SyncPullsTest {
             moving = uploads != null,
             needsAttention = false,
             failure = null,
-            attention = BridgePendingRecords.Ready(emptyList()),
+            attention = emptyList(),
             syncing = false,
             uploads = uploads,
             downloads = null,
@@ -96,7 +96,7 @@ class SyncPullsTest {
         BridgeSyncStatusSnapshot(
             error = null,
             connected = true,
-            pending = BridgePendingRecords.Ready(emptyList()),
+            pending = emptyList(),
             indicator = indicator,
         )
 }

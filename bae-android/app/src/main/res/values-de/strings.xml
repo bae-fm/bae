@@ -88,6 +88,8 @@
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_local_only">Nur lokal</string>
     <string name="settings_sync_unconnected">Getrennt</string>
+    <string name="settings_sync_checking">Synchronisierung wird geprüft…</string>
+    <string name="settings_sync_unreadable">Synchronisierungsstatus konnte nicht gelesen werden</string>
     <string name="settings_reconnect">Erneut verbinden</string>
     <string name="settings_pause_between_sides">Pause zwischen Seiten und Discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>

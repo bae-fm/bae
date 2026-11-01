@@ -1,21 +1,4 @@
-use super::{BridgeCloudProvider, BridgeError, BridgeMessage, BridgeMessageArg};
-
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgePendingRecords {
-    Loading,
-    Ready { records: Vec<BridgePendingRecord> },
-    Failed { error: BridgeError },
-}
-impl BridgePendingRecords {
-    pub(crate) fn from_core(items: Vec<bae_core::library::PendingItem>) -> Self {
-        Self::Ready {
-            records: items
-                .into_iter()
-                .map(BridgePendingRecord::from_core)
-                .collect(),
-        }
-    }
-}
+use super::{BridgeCloudProvider, BridgeMessage, BridgeMessageArg};
 
 /// One thing coven is waiting on: what it is about, why, and what the person
 /// can do about it.

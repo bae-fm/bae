@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePendingRecords
+import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
@@ -56,12 +56,27 @@ class SyncStatusStoreTest {
     fun theStatusLineAndPendingListFollowEachSnapshot() {
         val sync = SyncStatusStore()
         val waiting = BridgeSyncIndicator.Waiting(2uL)
-        val pending = BridgePendingRecords.Ready(emptyList())
+        assertEquals(SyncLine.Checking, sync.line.value)
+        assertEquals(null, sync.pending.value)
 
-        sync.apply(status(connected = true, error = null, indicator = waiting, pending = pending), errors)
+        sync.apply(status(connected = true, error = null, indicator = waiting), errors)
 
-        assertEquals(waiting, sync.indicator.value)
-        assertEquals(pending, sync.pending.value)
+        assertEquals(SyncLine.Read(waiting), sync.line.value)
+        assertEquals(emptyList<BridgePendingRecord>(), sync.pending.value)
+        assertEquals(null, sync.error.value)
+    }
+
+    @Test
+    fun aFailedReadShowsUnreadableUntilTheNextRead() {
+        val sync = SyncStatusStore()
+        val read = shown(failure)
+
+        sync.fail(read)
+        assertEquals(SyncLine.Unreadable, sync.line.value)
+        assertEquals(SyncFailure(read, canReconnect = false, offersDeviceReset = false), sync.error.value)
+
+        sync.apply(status(connected = true, error = null), errors)
+        assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), sync.line.value)
         assertEquals(null, sync.error.value)
     }
 
@@ -71,11 +86,10 @@ class SyncStatusStoreTest {
         connected: Boolean,
         error: BridgeException?,
         indicator: BridgeSyncIndicator = BridgeSyncIndicator.Synced,
-        pending: BridgePendingRecords = BridgePendingRecords.Loading,
     ) = BridgeSyncStatusSnapshot(
         error = error,
         connected = connected,
-        pending = pending,
+        pending = emptyList(),
         indicator = indicator,
     )
 }

@@ -94,6 +94,8 @@
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_unconnected">Odpojené</string>
+    <string name="settings_sync_checking">Kontrola synchronizácie…</string>
+    <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
     <string name="settings_reconnect">Znova pripojiť</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
     <string name="settings_side_pause_countdown">Odpočítavanie</string>

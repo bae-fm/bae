@@ -41,7 +41,6 @@ import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
-import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
@@ -289,22 +288,18 @@ object PreviewData {
             needsAttention = needsAttention,
             failure = null,
             attention =
-                BridgePendingRecords.Ready(
-                    records =
-                        if (needsAttention) {
-                            listOf(
-                                BridgePendingRecord(
-                                    subject =
-                                        BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
-                                    reason = BridgePendingReason("core.pending.reason.storage", null, emptyList()),
-                                    action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
-                                    actionKey = "core.pending.action.sign_in",
-                                ),
-                            )
-                        } else {
-                            emptyList()
-                        },
-                ),
+                if (needsAttention) {
+                    listOf(
+                        BridgePendingRecord(
+                            subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
+                            reason = BridgePendingReason("core.pending.reason.storage", null, emptyList()),
+                            action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
+                            actionKey = "core.pending.action.sign_in",
+                        ),
+                    )
+                } else {
+                    emptyList()
+                },
             syncing = true,
             uploads =
                 BridgeUploadsInFlight(

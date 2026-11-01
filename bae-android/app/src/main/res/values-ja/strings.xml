@@ -88,6 +88,8 @@
     <string name="settings_sync">同期</string>
     <string name="settings_local_only">ローカルのみ</string>
     <string name="settings_sync_unconnected">切断されました</string>
+    <string name="settings_sync_checking">同期を確認中…</string>
+    <string name="settings_sync_unreadable">同期の状態を読み取れませんでした</string>
     <string name="settings_reconnect">再接続</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>
     <string name="settings_side_pause_countdown">カウントダウン</string>

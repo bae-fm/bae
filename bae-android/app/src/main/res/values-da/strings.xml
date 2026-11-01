@@ -92,6 +92,8 @@
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Kun lokalt</string>
     <string name="settings_sync_unconnected">Forbindelsen er afbrudt</string>
+    <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
+    <string name="settings_sync_unreadable">Synkroniseringsstatus kunne ikke læses</string>
     <string name="settings_reconnect">Forbind igen</string>
     <string name="settings_pause_between_sides">Pause mellem sider og diske</string>
     <string name="settings_side_pause_countdown">Nedtælling</string>

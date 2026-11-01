@@ -44,7 +44,6 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.deviceName
-import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
@@ -59,7 +58,6 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
-import uniffi.bae_bridge.BridgePendingRecords
 
 private val logger = BaeLogger("bae.SyncPendingScreen")
 
@@ -151,7 +149,7 @@ internal fun SyncPendingScreen(
     onBack: () -> Unit,
 ) {
     val pending by session.syncStatusStore.pending.collectAsState()
-    val indicator by session.syncStatusStore.indicator.collectAsState()
+    val line by session.syncStatusStore.line.collectAsState()
     val failure by session.syncStatusStore.error.collectAsState()
     val context = LocalContext.current
     val scope = rememberScreenScope()
@@ -160,7 +158,7 @@ internal fun SyncPendingScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         PendingTopBar(onBack = onBack)
         Text(
-            text = syncIndicatorText(context, indicator),
+            text = syncLineText(context, line),
             style = ThemeText.heading.style,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
@@ -169,28 +167,22 @@ internal fun SyncPendingScreen(
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             SyncFailureNotice(
-                indicator = indicator,
+                line = line,
                 error = failure,
                 onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
             )
             DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
             runner.error?.let { ErrorDetailDisclosure(it) }
         }
-        when (val current = pending) {
-            BridgePendingRecords.Loading -> {
+        when (val records = pending) {
+            null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
 
-            is BridgePendingRecords.Failed -> {
-                context.displayError(current.error)?.let { shown ->
-                    ErrorDetailDisclosure(error = shown, modifier = Modifier.padding(ThemeSpace.edge))
-                }
-            }
-
-            is BridgePendingRecords.Ready -> {
-                PendingList(records = current.records, onAction = runner::run)
+            else -> {
+                PendingList(records = records, onAction = runner::run)
             }
         }
     }

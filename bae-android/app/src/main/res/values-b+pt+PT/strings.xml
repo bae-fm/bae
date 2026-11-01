@@ -92,6 +92,8 @@
     <string name="settings_sync">Sincronização</string>
     <string name="settings_local_only">Apenas local</string>
     <string name="settings_sync_unconnected">Desligado</string>
+    <string name="settings_sync_checking">A verificar a sincronização…</string>
+    <string name="settings_sync_unreadable">Não foi possível ler o estado da sincronização</string>
     <string name="settings_reconnect">Voltar a ligar</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
     <string name="settings_side_pause_countdown">Contagem decrescente</string>

@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// What the sync status line shows: checking before the sync status is first
+/// read, unreadable after a read failed, or the indicator of the status read.
+public enum SyncLine: Equatable, Sendable {
+    case checking
+    case unreadable
+    case read(BridgeSyncIndicator)
+}
+
 @Observable
 public final class SyncStatusStore {
     public private(set) var snapshot: BridgeSyncStatusSnapshot?
@@ -9,11 +17,16 @@ public final class SyncStatusStore {
         self.snapshot = snapshot
     }
     public var syncReady: Bool { snapshot?.connected == true }
-    public var indicator: BridgeSyncIndicator {
+    /// What the status line shows: checking until the status is first read,
+    /// unreadable after a read failed until the next succeeds, otherwise the
+    /// indicator of the status as read.
+    public var line: SyncLine {
         if readError != nil { return .unreadable }
-        return snapshot?.indicator ?? .loading
+        guard let snapshot else { return .checking }
+        return .read(snapshot.indicator)
     }
-    public var pending: BridgePendingRecords { snapshot?.pending ?? .loading }
+    /// What coven is waiting on; nil until the status is first read.
+    public var pending: [BridgePendingRecord]? { snapshot?.pending }
     public var error: DisplayError? {
         readError ?? snapshot?.error.flatMap { DisplayError($0) }
     }
@@ -30,6 +43,12 @@ public final class SyncStatusStore {
     /// The one line sync shows: what sync is doing, "Waiting: 3 items", or
     /// that the library isn't connected.
     public var statusText: String {
+        let indicator: BridgeSyncIndicator
+        switch line {
+        case .checking: return String(localized: "Checking sync…")
+        case .unreadable: return String(localized: "Couldn't read sync status")
+        case .read(let read): indicator = read
+        }
         guard let key = bridgeSyncIndicatorKey(indicator: indicator) else {
             return String(localized: "Not connected")
         }

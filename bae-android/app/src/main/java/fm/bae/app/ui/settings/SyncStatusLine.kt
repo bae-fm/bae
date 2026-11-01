@@ -27,6 +27,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.SyncFailure
+import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -45,12 +46,12 @@ import uniffi.bae_bridge.bridgeSyncIndicatorKey
  */
 @Composable
 internal fun SyncStatusLine(
-    indicator: BridgeSyncIndicator,
+    line: SyncLine,
     onOpenPending: () -> Unit,
 ) {
     val context = LocalContext.current
-    val text = syncIndicatorText(context, indicator)
-    val waiting = indicator is BridgeSyncIndicator.Waiting || indicator is BridgeSyncIndicator.Unreadable
+    val text = syncLineText(context, line)
+    val waiting = line == SyncLine.Unreadable || (line as? SyncLine.Read)?.indicator is BridgeSyncIndicator.Waiting
     Row(
         modifier = Modifier.fillMaxWidth().clickable(enabled = waiting, onClick = onOpenPending),
         verticalAlignment = Alignment.CenterVertically,
@@ -62,8 +63,22 @@ internal fun SyncStatusLine(
     }
 }
 
-/** The status line's words: core's for each state it names, this app's for not being connected. */
-internal fun syncIndicatorText(
+/**
+ * The status line's words: core's for each state of the status it names, this app's for checking, for a read that
+ * failed and for not being connected.
+ */
+internal fun syncLineText(
+    context: Context,
+    line: SyncLine,
+): String =
+    when (line) {
+        SyncLine.Checking -> context.getString(R.string.settings_sync_checking)
+        SyncLine.Unreadable -> context.getString(R.string.settings_sync_unreadable)
+        is SyncLine.Read -> syncIndicatorText(context, line.indicator)
+    }
+
+/** The words for a status as read: core's for each state it names, this app's for not being connected. */
+private fun syncIndicatorText(
     context: Context,
     indicator: BridgeSyncIndicator,
 ): String {
@@ -76,11 +91,11 @@ internal fun syncIndicatorText(
 
 @Composable
 internal fun SyncFailureNotice(
-    indicator: BridgeSyncIndicator,
+    line: SyncLine,
     error: SyncFailure?,
     onReconnect: () -> Unit,
 ) {
-    val canReconnect = indicator is BridgeSyncIndicator.Unconnected || error?.canReconnect == true
+    val canReconnect = line == SyncLine.Read(BridgeSyncIndicator.Unconnected) || error?.canReconnect == true
     if (error == null && !canReconnect) return
     Notice(StatusTone.WARNING) {
         Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
@@ -135,6 +150,6 @@ internal fun storageProvider(location: BridgeStorageLocation): BridgeCloudProvid
 @Composable
 private fun SyncStatusLinePreview() {
     BaeTheme {
-        SyncStatusLine(indicator = BridgeSyncIndicator.Waiting(3uL), onOpenPending = {})
+        SyncStatusLine(line = SyncLine.Read(BridgeSyncIndicator.Waiting(3uL)), onOpenPending = {})
     }
 }
