@@ -352,6 +352,7 @@
     <string name="add_device_instructions">On the new device, choose “Add device”, then scan this or type:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Create invite</string>
+    <string name="invite_creating">Creating the invite…</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
     <string name="invite_expires">Expires %1$s</string>

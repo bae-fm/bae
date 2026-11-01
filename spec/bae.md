@@ -2135,7 +2135,8 @@ that fails shows its error beside **Add**, to try again.
 
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
 and a role, then picks **In person** or **Send**. Her laptop shares the store's
-folder with his account and shows the invite. On S3, Ana makes an access key
+folder with his account, saying it is creating the invitation while that runs
+over the network, and shows the invite. On S3, Ana makes an access key
 for Dan instead of sharing with an account. Either way the invite carries the
 library's current name and Dan's, and Dan's phone starts joining as soon as it
 reads the code, with no form to fill in

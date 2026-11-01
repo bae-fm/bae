@@ -303,6 +303,7 @@
     <string name="add_device_instructions">Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
+    <string name="invite_creating">Vytváření pozvánky…</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_expires">Platnost vyprší %1$s</string>
     <string name="invite_cancel">Zrušit pozvánku</string>

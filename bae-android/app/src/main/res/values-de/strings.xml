@@ -297,6 +297,7 @@
     <string name="add_device_instructions">Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:</string>
     <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>
+    <string name="invite_creating">Einladung wird erstellt…</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_expires">Läuft ab: %1$s</string>
     <string name="invite_cancel">Einladung zurückziehen</string>

@@ -298,6 +298,7 @@
     <string name="add_device_instructions">No novo dispositivo, escolha “Adicionar dispositivo” e depois escaneie isto ou digite:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Criar convite</string>
+    <string name="invite_creating">Criando o convite…</string>
     <string name="invite_title">Convite</string>
     <string name="invite_expires">Expira em %1$s</string>
     <string name="invite_cancel">Cancelar convite</string>

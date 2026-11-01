@@ -294,6 +294,7 @@
     <string name="add_device_instructions">새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:</string>
     <string name="invite_email">이메일</string>
     <string name="invite_create">초대 만들기</string>
+    <string name="invite_creating">초대를 만드는 중…</string>
     <string name="invite_title">초대</string>
     <string name="invite_expires">만료: %1$s</string>
     <string name="invite_cancel">초대 취소</string>

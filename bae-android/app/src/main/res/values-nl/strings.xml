@@ -297,6 +297,7 @@
     <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>
+    <string name="invite_creating">Uitnodiging wordt gemaakt…</string>
     <string name="invite_title">Uitnodiging</string>
     <string name="invite_expires">Verloopt op %1$s</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>

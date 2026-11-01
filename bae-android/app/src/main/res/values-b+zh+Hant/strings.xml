@@ -294,6 +294,7 @@
     <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
+    <string name="invite_creating">正在建立邀請…</string>
     <string name="invite_title">邀請</string>
     <string name="invite_expires">到期時間：%1$s</string>
     <string name="invite_cancel">取消邀請</string>

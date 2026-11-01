@@ -125,6 +125,16 @@ struct InvitePersonSheet: View {
                     .padding(.horizontal)
             }
             HStack {
+                if task != nil {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(
+                        "Creating the invitation…",
+                        comment:
+                            "Invite sheet, while bae creates the invitation and gives the invited person access to the library's storage."
+                    )
+                    .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button("Create Invitation") { create() }
                     .buttonStyle(PrimaryButtonStyle())

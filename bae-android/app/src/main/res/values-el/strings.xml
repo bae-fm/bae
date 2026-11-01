@@ -296,6 +296,7 @@
     <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>
+    <string name="invite_creating">Δημιουργία της πρόσκλησης…</string>
     <string name="invite_title">Πρόσκληση</string>
     <string name="invite_expires">Λήγει %1$s</string>
     <string name="invite_cancel">Ακύρωση πρόσκλησης</string>

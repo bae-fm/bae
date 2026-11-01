@@ -294,6 +294,7 @@
     <string name="add_device_instructions">新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください：</string>
     <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>
+    <string name="invite_creating">招待を作成中…</string>
     <string name="invite_title">招待</string>
     <string name="invite_expires">有効期限：%1$s</string>
     <string name="invite_cancel">招待を取り消す</string>
