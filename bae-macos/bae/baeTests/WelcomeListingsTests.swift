@@ -54,11 +54,12 @@ struct WelcomeListingsTests {
         return LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
             makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
+            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
-            finishUnfinished: {}
+            finishUnfinished: { _ in }
         )
     }
 

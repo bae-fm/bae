@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +34,10 @@ import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
+import uniffi.bae_bridge.BridgeSetupProgress
+import uniffi.bae_bridge.BridgeSetupStep
 import uniffi.bae_bridge.bridgeClosingStepKey
+import uniffi.bae_bridge.bridgeSetupStepKey
 
 /** The screen of a call in flight, showing how far it has come. */
 @Composable
@@ -41,6 +46,7 @@ internal fun InProgressScreen(screen: AppScreen.InProgress) {
         AppScreen.Loading -> LoadingScreen(steps = null)
         is AppScreen.Opening -> LoadingScreen(steps = screen.steps)
         is AppScreen.Closing -> ClosingScreen(steps = screen.steps)
+        is AppScreen.FinishingRemovals -> SetupStepScreen(steps = screen.steps)
         is AppScreen.Resetting -> ResettingScreen(status = screen.status)
     }
 }
@@ -84,6 +90,41 @@ private fun ClosingScreen(steps: LatestSource<BridgeClosingStep>) {
     }
 }
 
+/**
+ * A setup call running: the step it runs, read from [steps] as it changes,
+ * over a bar of how much of it is done, counted where the step counts.
+ */
+@Composable
+private fun SetupStepScreen(steps: LatestSource<BridgeSetupProgress>) {
+    val context = LocalContext.current
+    val progress by remember(steps) { steps.changes() }.collectAsState(initial = null)
+    Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            val shown = progress
+            if (shown == null) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else {
+                Text(
+                    text = context.coreString(bridgeSetupStepKey(shown.step)),
+                    style = ThemeText.body.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (shown.total > 0uL) {
+                    LinearProgressIndicator(
+                        progress = { minOf(shown.done, shown.total).toFloat() / shown.total.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun LoadingScreenPreview() {
@@ -98,6 +139,19 @@ private fun OpeningScreenPreview() {
     BaeTheme {
         LoadingScreen(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 2uL, 5uL)).only,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FinishingRemovalsPreview() {
+    BaeTheme {
+        SetupStepScreen(
+            steps =
+                LatestStream
+                    .setupProgress(BridgeSetupProgress(BridgeSetupStep.FINISHING_REMOVALS, 1uL, 2uL))
+                    .only,
         )
     }
 }

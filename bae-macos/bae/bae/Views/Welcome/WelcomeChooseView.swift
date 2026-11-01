@@ -332,6 +332,11 @@ private struct RemovalErrorCallout: View {
                     Button("Retry") { removals.retryUnfinished() }
                         .disabled(removals.isRetrying)
                 }
+                if let finishing = removals.finishing {
+                    StepProgressLine(steps: finishing.steps) {
+                        EmptyView()
+                    }
+                }
             }
             Spacer(minLength: 0)
         }

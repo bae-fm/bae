@@ -77,11 +77,14 @@
                 makeRemovalSteps: {
                     LibraryClosingSteps(host: BaeHost.preview())
                 },
+                makeFinishingSteps: {
+                    LibrarySetupSteps(host: BaeHost.preview())
+                },
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
                 removeClosed: { _, _, _ in throw StubError.notImplemented },
                 removeUnopenable: { _ in throw StubError.notImplemented },
                 findUnfinished: { nil },
-                finishUnfinished: {}
+                finishUnfinished: { _ in }
             )
         }
     }

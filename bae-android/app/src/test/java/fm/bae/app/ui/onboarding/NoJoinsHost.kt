@@ -31,7 +31,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         setup: BridgeLibrarySetup,
     ): OpenedLibrary = unfaked("createLibrary")
 
-    override suspend fun finishRemovals() {
+    override suspend fun finishRemovals(setup: BridgeLibrarySetup) {
         unfaked("finishRemovals")
     }
 

@@ -9,6 +9,7 @@ import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryClosingSteps
 import fm.bae.app.data.LibraryOpenProgress
+import fm.bae.app.data.LibrarySetupProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
@@ -49,6 +50,7 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
+import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.OpenedLibrary
@@ -108,6 +110,11 @@ sealed interface AppScreen {
     /** A library opening by id, whose [steps] the screen draws once the open runs one. */
     data class Opening(
         val steps: LatestSource<BridgeOpenProgress>,
+    ) : InProgress
+
+    /** Finishing removals an earlier run left unfinished, whose [steps] count the removals as they finish. */
+    data class FinishingRemovals(
+        val steps: LatestSource<BridgeSetupProgress>,
     ) : InProgress
 
     /** The open library closing, or being removed, whose [steps] the screen shows as they run. */
@@ -639,9 +646,12 @@ object AppSessionHolder {
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ) {
-        onScreen(AppScreen.Loading)
+        val app = context.applicationContext as BaeApp
         try {
-            (context.applicationContext as BaeApp).host.finishRemovals()
+            LibrarySetupProgress(app.host, appScope, app.bugs).use { finishing ->
+                onScreen(AppScreen.FinishingRemovals(finishing.steps))
+                app.host.finishRemovals(finishing.setup)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {

@@ -118,22 +118,28 @@ impl UnfinishedRemoval {
 
 /// Complete every recorded removal: for a store coven no longer lists, delete
 /// bae's files for it, then its record; for one coven still lists, only the
-/// record, since the delete never happened.
+/// record, since the delete never happened. `finished` hears how many of the
+/// recorded removals are done of how many there are, when there are any: none
+/// of them once they are read, then each as it finishes.
 pub async fn finish_removals(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
+    finished: &(dyn Fn(u64, u64) + Send + Sync),
 ) -> Result<(), LibraryError> {
     let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
     let records = removal_records(app_dir, diagnostics).await?;
     if records.is_empty() {
         return Ok(());
     }
+    let total = records.len() as u64;
+    finished(0, total);
     let listed = listed_stores(app_dir).await?;
-    for id in records {
+    for (done, id) in (1..).zip(records) {
         if !listed.contains(&id) {
             delete_library_files(app_dir, diagnostics, id).await?;
         }
         delete_record(app_dir, diagnostics, id).await?;
+        finished(done, total);
     }
     Ok(())
 }

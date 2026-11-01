@@ -45,7 +45,7 @@ impl BridgeHost {
 
         steps.uncounted(Step::FinishingRemovals);
         tracing::info!("dev reset: finishing earlier unfinished removals");
-        self.finish_removals_now().await?;
+        self.finish_removals_now(steps).await?;
 
         let libraries = bae_core::config::Config::discover_libraries(&self.app_dir).await?;
         let total = libraries.len() as u64;

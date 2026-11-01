@@ -172,11 +172,33 @@ mod tests {
 
         caller.block_on(async {
             assert!(host.clone().unfinished_removal().await.unwrap().is_some());
-            assert!(host.clone().finish_removals().await.is_err());
+            assert!(host
+                .clone()
+                .finish_removals(crate::BridgeLibrarySetup::new(host.clone()))
+                .await
+                .is_err());
             std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o755)).unwrap();
-            host.clone().finish_removals().await.unwrap();
+            let setup = crate::BridgeLibrarySetup::new(host.clone());
+            host.clone().finish_removals(setup.clone()).await.unwrap();
+            let finishing = |done, total| {
+                Some(crate::types::BridgeFastValue::SetupProgress {
+                    progress: crate::types::BridgeSetupProgress {
+                        step: crate::types::BridgeSetupStep::FinishingRemovals,
+                        done,
+                        total,
+                    },
+                })
+            };
+            assert_eq!(
+                setup.written(),
+                vec![finishing(0, 0), finishing(0, 1), finishing(1, 1), None],
+                "finishing counts the removal it finishes"
+            );
             assert!(host.clone().unfinished_removal().await.unwrap().is_none());
-            host.clone().finish_removals().await.unwrap();
+            host.clone()
+                .finish_removals(crate::BridgeLibrarySetup::new(host.clone()))
+                .await
+                .unwrap();
         });
     }
 }

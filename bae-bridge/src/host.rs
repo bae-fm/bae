@@ -77,9 +77,22 @@ impl BridgeHost {
         .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))
     }
 
-    /// Finish every recorded removal, on the caller's task.
-    async fn finish_removals_now(&self) -> Result<(), BridgeError> {
-        Ok(self.diagnostics.finish_removals(&self.app_dir).await?)
+    /// Finish every recorded removal, on the caller's task, writing how many
+    /// are done of how many there are to `steps`.
+    async fn finish_removals_now(
+        &self,
+        steps: &crate::screens::SetupSteps,
+    ) -> Result<(), BridgeError> {
+        Ok(self
+            .diagnostics
+            .finish_removals(&self.app_dir, &|done, total| {
+                steps.step(
+                    crate::types::BridgeSetupStep::FinishingRemovals,
+                    done,
+                    total,
+                )
+            })
+            .await?)
     }
 
     /// Remove `store`, which isn't open, without opening it, on the caller's
@@ -293,14 +306,23 @@ impl BridgeHost {
             .await
     }
 
-    /// Complete every recorded removal. Safe to retry after any failure.
-    pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
+    /// Complete every recorded removal, writing how many are done of how
+    /// many there are into `setup`'s stream. Safe to retry after any failure.
+    pub async fn finish_removals(
+        self: Arc<Self>,
+        setup: Arc<crate::BridgeLibrarySetup>,
+    ) -> Result<(), BridgeError> {
         self.operations
             .clone()
             .run_to_completion(
                 self.clone(),
                 "finish library removals",
-                move || async move { self.finish_removals_now().await },
+                move || async move {
+                    let steps = setup.writer();
+                    // Uncounted until the removal records are read.
+                    steps.uncounted(crate::types::BridgeSetupStep::FinishingRemovals);
+                    self.finish_removals_now(&steps).await
+                },
             )
             .await
     }

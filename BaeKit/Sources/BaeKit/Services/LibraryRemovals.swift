@@ -23,7 +23,10 @@ public final class LibraryRemovals {
     public private(set) var unfinished: BridgeUnfinishedRemoval?
     /// The last removal failure, or why `unfinished` stopped.
     public private(set) var error: DisplayError?
-    public private(set) var isRetrying = false
+    /// Finishing unfinished removals, with its steps; nil while it doesn't
+    /// run.
+    public private(set) var finishing: LibrarySetupSteps?
+    public var isRetrying: Bool { finishing != nil }
 
     /// A new open of a closed library, whose steps the open's view draws.
     @ObservationIgnored
@@ -31,6 +34,10 @@ public final class LibraryRemovals {
     /// A new removal's steps, which the removed library's row draws.
     @ObservationIgnored
     private let makeRemovalSteps: @Sendable () -> LibraryClosingSteps
+    /// A new finishing of unfinished removals, whose steps the failure's
+    /// notice draws.
+    @ObservationIgnored
+    private let makeFinishingSteps: @Sendable () -> LibrarySetupSteps
     @ObservationIgnored
     private let unsentOfClosed:
         @Sendable (String, BridgeLibraryOpening) async throws
@@ -46,16 +53,19 @@ public final class LibraryRemovals {
     private let findUnfinished:
         @Sendable () async throws -> BridgeUnfinishedRemoval?
     @ObservationIgnored
-    private let finishUnfinished: @Sendable () async throws -> Void
+    private let finishUnfinished:
+        @Sendable (BridgeLibrarySetup) async throws -> Void
     @ObservationIgnored
     private var task: Task<Void, Never>?
 
     /// `unsentOfClosed` and `removeClosed` open the library, writing the
     /// open's steps into the opening's stream; `removeClosed` writes the
-    /// removal's steps into the closing's.
+    /// removal's steps into the closing's, and `finishUnfinished` how many
+    /// removals it finished into the setup's.
     public init(
         makeOpenProgress: @escaping @Sendable () -> LibraryOpenProgress,
         makeRemovalSteps: @escaping @Sendable () -> LibraryClosingSteps,
+        makeFinishingSteps: @escaping @Sendable () -> LibrarySetupSteps,
         unsentOfClosed:
             @escaping @Sendable (String, BridgeLibraryOpening) async throws
             -> BridgeUnsentWork,
@@ -67,10 +77,12 @@ public final class LibraryRemovals {
             @escaping @Sendable (String) async throws -> BridgeLibraryRemoval,
         findUnfinished:
             @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
-        finishUnfinished: @escaping @Sendable () async throws -> Void
+        finishUnfinished:
+            @escaping @Sendable (BridgeLibrarySetup) async throws -> Void
     ) {
         self.makeOpenProgress = makeOpenProgress
         self.makeRemovalSteps = makeRemovalSteps
+        self.makeFinishingSteps = makeFinishingSteps
         self.unsentOfClosed = unsentOfClosed
         self.removeClosed = removeClosed
         self.removeUnopenable = removeUnopenable
@@ -83,6 +95,7 @@ public final class LibraryRemovals {
         LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { libraryId, opening in
                 try await host.unsentBeforeRemoval(
                     libraryId: libraryId,
@@ -101,7 +114,9 @@ public final class LibraryRemovals {
                 try await host.removeUnopenableLibrary(libraryId: libraryId)
             },
             findUnfinished: { try await host.unfinishedRemoval() },
-            finishUnfinished: { try await host.finishRemovals() }
+            finishUnfinished: { setup in
+                try await host.finishRemovals(setup: setup)
+            }
         )
     }
 
@@ -269,14 +284,15 @@ public final class LibraryRemovals {
         )
         precondition(task == nil, "one library removal at a time")
         error = nil
-        isRetrying = true
+        let steps = makeFinishingSteps()
+        finishing = steps
         task = Task {
             defer {
-                isRetrying = false
+                finishing = nil
                 task = nil
             }
             do {
-                try await finishUnfinished()
+                try await finishUnfinished(steps.setup)
                 unfinished = nil
             }
             catch {

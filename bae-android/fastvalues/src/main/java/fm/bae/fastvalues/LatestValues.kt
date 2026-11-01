@@ -20,6 +20,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
+import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyedValueStream
@@ -130,6 +131,12 @@ class LatestStream<V : Any> private constructor(
                 (it as? BridgeFastValue.OpenProgress)?.progress
             }
 
+        /** How far a setup call has come, while it runs a step; a preview's holds [value], fed by nothing. */
+        fun setupProgress(value: BridgeSetupProgress? = null): LatestStream<BridgeSetupProgress> =
+            LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
+                (it as? BridgeFastValue.SetupProgress)?.progress
+            }
+
         /** The step a library's close runs, while it runs one; a preview's holds [value], fed by nothing. */
         fun closingSteps(value: BridgeClosingStep? = null): LatestStream<BridgeClosingStep> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
@@ -178,6 +185,14 @@ fun LatestStream<BridgeClosingStep>.feed(
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, closing::feedClosingSteps)
+
+/** Fill with the steps of the setup call [setup] is handed to. */
+@JvmName("feedSetupProgress")
+fun LatestStream<BridgeSetupProgress>.feed(
+    setup: BridgeLibrarySetup,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, setup::feedSetupSteps)
 
 /** Fill with where the restore or join [setup] is handed to stands. */
 @JvmName("feedBootstrapStatus")

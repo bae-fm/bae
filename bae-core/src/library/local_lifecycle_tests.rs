@@ -309,7 +309,7 @@ async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     assert!(!files_remain);
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop())
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert_eq!(home.stores().await, 1);
@@ -339,14 +339,22 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     assert!(shown.contains(&id.to_string()), "{shown}");
     assert!(files_remain);
     assert!(home.record(id).exists());
-    finish_removals(&home.app_dir, &Diagnostics::noop())
-        .await
-        .unwrap();
+    let finished = std::sync::Mutex::new(Vec::new());
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|done, total| {
+        finished.lock().unwrap().push((done, total))
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        finished.into_inner().unwrap(),
+        [(0, 1), (1, 1)],
+        "finishing counts the one removal it finishes"
+    );
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop())
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
 }
@@ -373,12 +381,14 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     assert!(home.record(id).exists());
     assert!(home.unfinished().await.unwrap().1);
 
-    assert!(finish_removals(&home.app_dir, &Diagnostics::noop())
-        .await
-        .is_err());
+    assert!(
+        finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
+            .await
+            .is_err()
+    );
     std::fs::remove_dir(home.app_dir.active_library_pointer()).unwrap();
     home.point_at(id);
-    finish_removals(&home.app_dir, &Diagnostics::noop())
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert_eq!(home.pointer(), None);
@@ -416,7 +426,7 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     assert!(home.unfinished().await.unwrap().1);
 
     set_writable(&home.app_dir.libraries(), true);
-    finish_removals(&home.app_dir, &Diagnostics::noop())
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert!(!home.directory(id).exists());
@@ -444,7 +454,7 @@ async fn files_without_a_removal_record_are_left_alone() {
     let (shown, _) = home.unfinished().await.unwrap();
     assert!(shown.contains(&removed.store_id().to_string()), "{shown}");
     assert!(!shown.contains(&hidden.to_string()), "{shown}");
-    finish_removals(&home.app_dir, &Diagnostics::noop())
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert!(!home.directory(removed.store_id()).exists());

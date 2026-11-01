@@ -200,13 +200,15 @@ impl BridgeDiagnostics {
         bae_core::library::remove_unopenable_library(app_dir, &self.inner, keychain, store).await
     }
 
-    /// Complete every recorded removal. A panic in its file work is reported
-    /// through this sink.
+    /// Complete every recorded removal, telling `finished` how many are done
+    /// of how many there are. A panic in its file work is reported through
+    /// this sink.
     pub(crate) async fn finish_removals(
         &self,
         app_dir: &bae_core::config::AppDir,
+        finished: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<(), bae_core::library::LibraryError> {
-        bae_core::library::finish_removals(app_dir, &self.inner).await
+        bae_core::library::finish_removals(app_dir, &self.inner, finished).await
     }
 
     /// The handle a bootstrap built, or its failure shipped as
