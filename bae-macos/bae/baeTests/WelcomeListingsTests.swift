@@ -53,8 +53,9 @@ struct WelcomeListingsTests {
         let bridge = bridge
         return LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
-            removeClosed: { libraryId, _ in await bridge.remove(libraryId) },
+            removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
             finishUnfinished: {}

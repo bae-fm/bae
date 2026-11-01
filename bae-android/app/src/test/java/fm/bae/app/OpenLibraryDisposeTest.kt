@@ -66,7 +66,7 @@ class OpenLibraryDisposeTest {
     fun removalDiscardsUnsentWorkThenReleasesTheHandle() {
         val (session, handle) = openLibrary()
 
-        val removal = runBlocking { session.removeFromDevice() }
+        val removal = runBlocking { session.removeFromDevice(null) }
 
         assertEquals(BridgeLibraryRemoval.Removed, removal)
         assertEquals(listOf("removeLibrary", "close"), handle.calls)
@@ -77,7 +77,7 @@ class OpenLibraryDisposeTest {
         val (session, handle) = openLibrary(failRemoval = true)
 
         assertThrows(BridgeException.Diagnostic::class.java) {
-            runBlocking { session.removeFromDevice() }
+            runBlocking { session.removeFromDevice(null) }
         }
 
         assertEquals(listOf("removeLibrary", "close"), handle.calls)
@@ -108,7 +108,7 @@ class OpenLibraryDisposeTest {
             calls.add("close")
         }
 
-        override suspend fun removeLibrary(): BridgeLibraryRemoval {
+        override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval {
             calls.add("removeLibrary")
             if (failRemoval) {
                 throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")

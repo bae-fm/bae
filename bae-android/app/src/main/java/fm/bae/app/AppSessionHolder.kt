@@ -110,7 +110,7 @@ sealed interface AppScreen {
         val steps: LatestSource<BridgeOpenProgress>,
     ) : InProgress
 
-    /** The open library closing, whose [steps] the screen shows as they run. */
+    /** The open library closing, or being removed, whose [steps] the screen shows as they run. */
     data class Closing(
         val steps: LatestSource<BridgeClosingStep>,
     ) : InProgress
@@ -600,11 +600,14 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
     ) {
         val session = checkNotNull(current) { "removing a library needs one open" }
-        onScreen(AppScreen.Loading)
         current = null
+        val app = context.applicationContext as BaeApp
         val removal =
             try {
-                session.removeFromDevice()
+                LibraryClosingSteps(app.host, appScope, app.bugs).use { removal ->
+                    onScreen(AppScreen.Closing(removal.steps))
+                    session.removeFromDevice(removal.closing)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {

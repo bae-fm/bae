@@ -210,8 +210,9 @@ pub struct BridgeLoadProgress {
     pub total: u64,
 }
 
-/// A step closing the open library runs, in the order they run. Mirrors
-/// `bae_core::library::ClosingStep`, after the desktop's own first step.
+/// A step closing or removing the open library runs, in the order they run.
+/// Mirrors `bae_core::library::ClosingStep`, after the desktop's own first
+/// step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClosingStep {
     /// Stopping the servers the desktop hosts for the library.
@@ -226,6 +227,10 @@ pub enum BridgeClosingStep {
     FinishingWork,
     /// Closing the library's database.
     ClosingStore,
+    /// Leaving the library and deleting its store on this device.
+    LeavingLibrary,
+    /// Deleting this device's preferences and caches for the library.
+    DeletingFiles,
 }
 
 impl BridgeClosingStep {
@@ -237,12 +242,14 @@ impl BridgeClosingStep {
             bae_core::library::ClosingStep::StoppingSync => Self::StoppingSync,
             bae_core::library::ClosingStep::FinishingWork => Self::FinishingWork,
             bae_core::library::ClosingStep::ClosingStore => Self::ClosingStore,
+            bae_core::library::ClosingStep::LeavingLibrary => Self::LeavingLibrary,
+            bae_core::library::ClosingStep::DeletingFiles => Self::DeletingFiles,
         }
     }
 }
 
-/// Localization key for a close's step, the line the app shows while the
-/// close runs it. The UI resolves it against the `Core` table.
+/// Localization key for a step of a close or a removal, the line the app
+/// shows while it runs. The UI resolves it against the `Core` table.
 #[uniffi::export]
 pub fn bridge_closing_step_key(step: BridgeClosingStep) -> String {
     match step {
@@ -252,6 +259,8 @@ pub fn bridge_closing_step_key(step: BridgeClosingStep) -> String {
         BridgeClosingStep::StoppingSync => "core.library.closing_step.stopping_sync",
         BridgeClosingStep::FinishingWork => "core.library.closing_step.finishing_work",
         BridgeClosingStep::ClosingStore => "core.library.closing_step.closing_store",
+        BridgeClosingStep::LeavingLibrary => "core.library.closing_step.leaving_library",
+        BridgeClosingStep::DeletingFiles => "core.library.closing_step.deleting_files",
     }
     .to_string()
 }

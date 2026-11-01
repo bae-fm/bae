@@ -86,16 +86,29 @@ impl AppHandle {
     }
 
     /// Stop services and leave the store before deleting its local files,
-    /// discarding what this device hasn't uploaded.
+    /// discarding what this device hasn't uploaded. Each step it runs is
+    /// written to `closing`'s stream, when the app shows the removal.
     pub async fn remove_library(
         self: std::sync::Arc<Self>,
+        closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
+        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
+            closing.writer()
+        });
         self.runtime
             .clone()
             .run_to_completion(self.clone(), "remove library", move || async move {
                 #[cfg(feature = "desktop")]
-                self.desktop.shutdown().await;
-                let removal = self.services.remove_library().await;
+                {
+                    steps.step(crate::types::BridgeClosingStep::StoppingServers);
+                    self.desktop.shutdown().await;
+                }
+                let removal = self
+                    .services
+                    .remove_library(&|step| {
+                        steps.step(crate::types::BridgeClosingStep::from_core(step))
+                    })
+                    .await;
                 if matches!(
                     removal,
                     Ok(()) | Err(bae_core::library::LibraryRemovalError::Unfinished(_))
@@ -136,7 +149,7 @@ mod tests {
             )
             .unwrap(),
         );
-        let host = crate::BridgeHost::new(
+        let host = crate::BridgeHost::with_test_keyring(
             crate::BridgeDiagnostics::noop(),
             crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
         )
@@ -146,7 +159,7 @@ mod tests {
             .libraries();
         std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
-        let result = caller.block_on(app.clone().remove_library()).unwrap();
+        let result = caller.block_on(app.clone().remove_library(None)).unwrap();
         let BridgeLibraryRemoval::Unfinished { removal } = result else {
             panic!("the directory left behind must be reported");
         };

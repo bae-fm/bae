@@ -28,14 +28,17 @@ public final class LibraryRemovals {
     /// A new open of a closed library, whose steps the open's view draws.
     @ObservationIgnored
     private let makeOpenProgress: @Sendable () -> LibraryOpenProgress
+    /// A new removal's steps, which the removed library's row draws.
+    @ObservationIgnored
+    private let makeRemovalSteps: @Sendable () -> LibraryClosingSteps
     @ObservationIgnored
     private let unsentOfClosed:
         @Sendable (String, BridgeLibraryOpening) async throws
             -> BridgeUnsentWork
     @ObservationIgnored
     private let removeClosed:
-        @Sendable (String, BridgeLibraryOpening) async throws
-            -> BridgeLibraryRemoval
+        @Sendable (String, BridgeLibraryOpening, BridgeLibraryClosing)
+            async throws -> BridgeLibraryRemoval
     @ObservationIgnored
     private let removeUnopenable:
         @Sendable (String) async throws -> BridgeLibraryRemoval
@@ -48,15 +51,18 @@ public final class LibraryRemovals {
     private var task: Task<Void, Never>?
 
     /// `unsentOfClosed` and `removeClosed` open the library, writing the
-    /// open's steps into the opening's stream.
+    /// open's steps into the opening's stream; `removeClosed` writes the
+    /// removal's steps into the closing's.
     public init(
         makeOpenProgress: @escaping @Sendable () -> LibraryOpenProgress,
+        makeRemovalSteps: @escaping @Sendable () -> LibraryClosingSteps,
         unsentOfClosed:
             @escaping @Sendable (String, BridgeLibraryOpening) async throws
             -> BridgeUnsentWork,
         removeClosed:
-            @escaping @Sendable (String, BridgeLibraryOpening) async throws
-            -> BridgeLibraryRemoval,
+            @escaping @Sendable (
+                String, BridgeLibraryOpening, BridgeLibraryClosing
+            ) async throws -> BridgeLibraryRemoval,
         removeUnopenable:
             @escaping @Sendable (String) async throws -> BridgeLibraryRemoval,
         findUnfinished:
@@ -64,6 +70,7 @@ public final class LibraryRemovals {
         finishUnfinished: @escaping @Sendable () async throws -> Void
     ) {
         self.makeOpenProgress = makeOpenProgress
+        self.makeRemovalSteps = makeRemovalSteps
         self.unsentOfClosed = unsentOfClosed
         self.removeClosed = removeClosed
         self.removeUnopenable = removeUnopenable
@@ -75,16 +82,18 @@ public final class LibraryRemovals {
     public static func live(host: BridgeHost) -> LibraryRemovals {
         LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
             unsentOfClosed: { libraryId, opening in
                 try await host.unsentBeforeRemoval(
                     libraryId: libraryId,
                     opening: opening
                 )
             },
-            removeClosed: { libraryId, opening in
+            removeClosed: { libraryId, opening, closing in
                 try await removeClosedLibrary(
                     libraryId,
                     opening: opening,
+                    closing: closing,
                     host: host
                 )
             },
@@ -111,11 +120,13 @@ public final class LibraryRemovals {
         }
     }
 
-    /// Leaving the store runs on an open handle, so the library opens first.
-    /// A removal that failed closes the handle it opened.
+    /// Leaving the store runs on an open handle, so the library opens first,
+    /// writing its steps to `opening`, then the removal writes its own to
+    /// `closing`. A removal that failed closes the handle it opened.
     nonisolated private static func removeClosedLibrary(
         _ libraryId: String,
         opening: BridgeLibraryOpening,
+        closing: BridgeLibraryClosing,
         host: BridgeHost
     ) async throws -> BridgeLibraryRemoval {
         let app = try await DetachedWork.run {
@@ -128,7 +139,7 @@ public final class LibraryRemovals {
             )
         }
         do {
-            return try await app.removeLibrary()
+            return try await app.removeLibrary(closing: closing)
         }
         catch {
             await close(app, libraryId: libraryId)
@@ -166,7 +177,8 @@ public final class LibraryRemovals {
         let progress = makeOpenProgress()
         opening = ClosedLibraryOpening(
             libraryId: library.id,
-            progress: progress
+            progress: progress,
+            removal: nil
         )
         defer { opening = nil }
         do {
@@ -203,12 +215,20 @@ public final class LibraryRemovals {
                 switch loss {
                 case .unsent:
                     let progress = makeOpenProgress()
+                    let removal = makeRemovalSteps()
                     opening = ClosedLibraryOpening(
                         libraryId: libraryId,
-                        progress: progress
+                        progress: progress,
+                        removal: removal
                     )
                     defer { opening = nil }
-                    record(try await removeClosed(libraryId, progress.opening))
+                    record(
+                        try await removeClosed(
+                            libraryId,
+                            progress.opening,
+                            removal.closing
+                        )
+                    )
                 case .uncounted:
                     record(try await removeUnopenable(libraryId))
                 }
@@ -270,8 +290,9 @@ public final class LibraryRemovals {
 }
 
 /// A library that isn't open which counting or removing it is opening, with
-/// the open's steps.
+/// the open's steps, and when removing it, the removal's.
 public struct ClosedLibraryOpening: Sendable {
     public let libraryId: String
     public let progress: LibraryOpenProgress
+    public let removal: LibraryClosingSteps?
 }

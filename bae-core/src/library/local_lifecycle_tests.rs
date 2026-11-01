@@ -118,12 +118,17 @@ impl Home {
     ) {
         let reached = tokio::sync::Notify::new();
         let diagnostics = Diagnostics::noop();
-        let removal =
-            super::local_lifecycle::remove_recorded(&self.app_dir, &diagnostics, id, async {
+        let removal = super::local_lifecycle::remove_recorded(
+            &self.app_dir,
+            &diagnostics,
+            id,
+            async {
                 delete.await?;
                 reached.notify_one();
                 std::future::pending().await
-            });
+            },
+            &|_| (),
+        );
         tokio::select! {
             result = removal => panic!("the removal was to stop partway: {result:?}"),
             () = reached.notified() => {}
@@ -474,6 +479,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
                     delete_may_finish.notified().await;
                     handle.delete_store(coven::IfUnsent::Refuse).await
                 },
+                &|_| (),
             )
             .await
         }

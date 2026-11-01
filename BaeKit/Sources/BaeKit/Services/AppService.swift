@@ -246,18 +246,22 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     /// Remove this library from this device, discarding what it hasn't
-    /// uploaded.
-    public func removeLibrary() async throws -> BridgeLibraryRemoval {
+    /// uploaded, writing each step to `removal`, whose steps the app shows.
+    public func removeLibrary(showing removal: LibraryClosingSteps) async throws
+        -> BridgeLibraryRemoval
+    {
         // Whatever the outcome this session ends: a failed removal closes
         // the library and opens it again in a new session.
         defer { networkPathReports.stop() }
-        let removal = try await appHandle.removeLibrary()
+        let removed = try await appHandle.removeLibrary(
+            closing: removal.closing
+        )
         // The store is gone. Ending the session ends the core's runtime off
         // the main actor, so releasing the handle has nothing left to wait for.
         try await DetachedWork.run { [appHandle] in
             try appHandle.closeLibrary(closing: nil)
         }
-        return removal
+        return removed
     }
 
     #if os(macOS)

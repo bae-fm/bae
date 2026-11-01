@@ -713,7 +713,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 
-    override suspend fun removeLibrary(): BridgeLibraryRemoval = unfaked("removeLibrary")
+    override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 
     override suspend fun unsentBeforeRemoval(): BridgeUnsentWork = unfaked("unsentBeforeRemoval")
 

@@ -506,6 +506,8 @@ fn produced_keys() -> Vec<String> {
         BridgeClosingStep::StoppingSync,
         BridgeClosingStep::FinishingWork,
         BridgeClosingStep::ClosingStore,
+        BridgeClosingStep::LeavingLibrary,
+        BridgeClosingStep::DeletingFiles,
     ] {
         keys.push(bridge_closing_step_key(step));
     }

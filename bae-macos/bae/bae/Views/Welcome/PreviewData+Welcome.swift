@@ -74,8 +74,11 @@
                 makeOpenProgress: {
                     LibraryOpenProgress(host: BaeHost.preview())
                 },
+                makeRemovalSteps: {
+                    LibraryClosingSteps(host: BaeHost.preview())
+                },
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
-                removeClosed: { _, _ in throw StubError.notImplemented },
+                removeClosed: { _, _, _ in throw StubError.notImplemented },
                 removeUnopenable: { _ in throw StubError.notImplemented },
                 findUnfinished: { nil },
                 finishUnfinished: {}

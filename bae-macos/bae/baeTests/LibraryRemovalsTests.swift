@@ -52,8 +52,9 @@ struct LibraryRemovalsClosedLibraryTests {
         let bridge = bridge
         return LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { libraryId, _ in await bridge.unsent(libraryId) },
-            removeClosed: { libraryId, _ in await bridge.remove(libraryId) },
+            removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { await bridge.removeUnopenable($0) },
             findUnfinished: { nil },
             finishUnfinished: {}
@@ -129,11 +130,12 @@ struct LibraryRemovalsClosedLibraryTests {
     func refusedUnopenableRemovalShowsError() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return BridgeUnsentWork(writes: 0, files: 0)
             },
-            removeClosed: { _, _ in
+            removeClosed: { _, _, _ in
                 Issue.record("the library isn't opened")
                 return .removed
             },
@@ -155,10 +157,11 @@ struct LibraryRemovalsClosedLibraryTests {
     func unreadableCountShowsError() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in
                 throw BridgeError.Diagnostic(category: .database, detail: "x")
             },
-            removeClosed: { _, _ in
+            removeClosed: { _, _, _ in
                 Issue.record("nothing is removed")
                 return .removed
             },
@@ -272,8 +275,9 @@ struct LibraryRemovalsUnfinishedTests {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
-            removeClosed: { _, _ in .removed },
+            removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _ in .removed },
             findUnfinished: { await bridge.find() },
             finishUnfinished: { try await bridge.finish() }
@@ -299,8 +303,9 @@ struct LibraryRemovalsUnfinishedTests {
     func stoppedBeforeTheDelete() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
-            removeClosed: { _, _ in .removed },
+            removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _ in .removed },
             findUnfinished: {
                 BridgeUnfinishedRemoval(
@@ -322,8 +327,9 @@ struct LibraryRemovalsUnfinishedTests {
     func nothingLeft() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
-            removeClosed: { _, _ in .removed },
+            removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _ in .removed },
             findUnfinished: { nil },
             finishUnfinished: {

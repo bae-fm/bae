@@ -152,6 +152,7 @@ pub async fn remove_local_library(
         diagnostics,
         handle.store_id(),
         handle.delete_store(coven::IfUnsent::Discard),
+        &|_| (),
     )
     .await
 }
@@ -175,6 +176,7 @@ pub async fn remove_unopenable_library(
         diagnostics,
         store_id,
         keychain.discard_store(&app_dir.store_layout().store_dir(&store_id)),
+        &|_| (),
     )
     .await
 }
@@ -205,12 +207,14 @@ pub async fn unsent_before_removal(
 }
 
 /// Record the removal of `store_id`, run `delete_store`, then delete bae's
-/// files and the record. A refused delete clears the record again.
+/// files and the record, telling `steps` as leaving and deleting start. A
+/// refused delete clears the record again.
 pub(crate) async fn remove_recorded(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
     store_id: coven::StoreId,
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
+    steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
 ) -> Result<(), LibraryRemovalError> {
     let _lock = RemovalLock::acquire(app_dir, diagnostics)
         .await
@@ -218,12 +222,14 @@ pub(crate) async fn remove_recorded(
     write_record(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Record)?;
+    steps(super::ClosingStep::LeavingLibrary);
     if let Err(error) = delete_store.await {
         if let Err(record) = delete_record(app_dir, diagnostics, store_id).await {
             warn!(%store_id, %record, "the removal record outlives coven's refusal; finding unfinished removals reports it");
         }
         return Err(error.into());
     }
+    steps(super::ClosingStep::DeletingFiles);
     delete_library_files(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)?;

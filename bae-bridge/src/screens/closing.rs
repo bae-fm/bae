@@ -1,7 +1,7 @@
-//! A library's close as the app follows it: the stream the close reports its
-//! steps in, which the close writes. The app makes the object (its
+//! A library's close or removal as the app follows it: the stream the call
+//! reports its steps in, which the call writes. The app makes the object (its
 //! constructor is the host's, whose runtime outlives the library's and pulls
-//! the stream), starts reading its steps, then hands it to the close.
+//! the stream), starts reading its steps, then hands it to the call.
 
 use std::sync::{Arc, Mutex};
 
@@ -9,8 +9,8 @@ use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeClosingStep, BridgeFastValue};
 
-/// The app makes one for each close it shows, starts reading its steps with
-/// [`Self::feed_closing_steps`], then hands it to the close.
+/// The app makes one for each close or removal it shows, starts reading its
+/// steps with [`Self::feed_closing_steps`], then hands it to the call.
 #[derive(uniffi::Object)]
 pub struct BridgeLibraryClosing {
     /// Where the stream's pulls run: the host's runtime.

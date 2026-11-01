@@ -652,9 +652,14 @@ extension AppDelegate {
         prepareForLibraryShutdown()
         screen = .loading
         let removals = requiredApplicationServices.libraryRemovals
+        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        closingSteps = steps
         forgetSlot.replace {
+            defer {
+                if self.closingSteps === steps { self.closingSteps = nil }
+            }
             do {
-                let removal = try await service.removeLibrary()
+                let removal = try await service.removeLibrary(showing: steps)
                 self.releaseLibrarySession(service)
                 removals.record(removal)
                 self.reloadLibraries()

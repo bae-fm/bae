@@ -335,12 +335,13 @@ class OpenLibrary internal constructor(
      * the local copy, discarding what this device hasn't sent. The handle is
      * closed whatever the outcome; a removal that failed leaves the library on
      * the device to be opened again, and one whose files remain carries its
-     * own retry.
+     * own retry. Each step it runs is written to [closing]'s stream, when a
+     * screen shows the removal.
      */
-    suspend fun removeFromDevice(): BridgeLibraryRemoval {
+    suspend fun removeFromDevice(closing: BridgeLibraryClosing?): BridgeLibraryRemoval {
         stopSessionServices()
         try {
-            return appHandle.removeLibrary()
+            return appHandle.removeLibrary(closing)
         } finally {
             release()
         }

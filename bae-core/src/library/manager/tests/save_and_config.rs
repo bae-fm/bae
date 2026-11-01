@@ -160,7 +160,7 @@ async fn removal_releases_custody_and_preferences() {
     manager.ensure_mcp_token().await.unwrap();
     manager.set_mcp_config(crate::config::McpConfig::disabled_default()).await.unwrap();
     manager.app_dir.save_active_library(manager.database.store_id()).unwrap();
-    manager.remove_library().await.unwrap();
+    manager.remove_library(&|_| ()).await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
     assert!(!manager.app_dir.registered_library(&id).exists());
     assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
@@ -184,7 +184,7 @@ async fn removal_discards_the_unsent_work_it_reports() {
     assert_eq!(work.files, 1);
     assert_eq!(manager.app_dir.store_layout().stores().await.unwrap().len(), 1);
 
-    manager.remove_library().await.unwrap();
+    manager.remove_library(&|_| ()).await.unwrap();
     assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!manager.app_dir.registered_library(&id).exists());
 }

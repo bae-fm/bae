@@ -2695,6 +2695,14 @@ deleted at once.
   opens its store just long enough to count. If Dan confirms, the laptop
   leaves without sending them. Refusing instead would tie his removal to
   uploads that may be stuck; the counts let him decide.
+- **What the removal shows while it runs.** Leaving waits on storage, and
+  deleting a large cache takes a while, so a removal reports each step as it
+  starts, through the same kind of stream a close reports in (§10.2): stopping
+  the desktop's servers, playback, and identification and import, ending the
+  library's background work, leaving the library, then deleting this device's
+  files. The apps show the step's name in place of a spinner: for the open
+  library on the screen the app waits on, and on the Mac, for a library that
+  isn't open, on its row once its open's steps are done.
 - **A library that can't open.** A library whose settings can't be read, or
   whose reset or restore stopped partway, can't be opened to count what it
   hasn't sent, nor to leave. Its confirmation says it can't be opened, so any

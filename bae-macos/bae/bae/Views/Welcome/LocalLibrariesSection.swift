@@ -27,6 +27,8 @@ struct LocalLibrariesSection: View {
                     isRemoving: removingLibraryId == library.id,
                     openSteps: opening?.libraryId == library.id
                         ? opening?.progress.steps : nil,
+                    removalSteps: opening?.libraryId == library.id
+                        ? opening?.removal?.steps : nil,
                     onOpen: onOpen,
                     onFinish: onFinish,
                     onRemove: onRemove,
@@ -41,13 +43,15 @@ struct LocalLibrariesSection: View {
 /// home, Open and Remove. A library whose settings can't be read says why,
 /// and doesn't open. One whose reset or restore stopped partway says which,
 /// and offers to finish it in place of Open. While counting or removing it
-/// opens the library, a step the open runs shows in place of the detail line.
+/// opens the library, a step the open runs shows in place of the detail line,
+/// and then a step the removal runs.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
     let deleteDisabled: Bool
     let isRemoving: Bool
     let openSteps: LatestSource<BridgeOpenProgress>?
+    let removalSteps: LatestSource<BridgeClosingStep>?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onRemove: (BridgeLibrary) -> Void
@@ -58,13 +62,16 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .themeText(.rowTitle)
                 // Every row keeps the detail line so rows share one height.
-                StepProgressLine(steps: openSteps) {
-                    Text(library.detailLine)
-                        .themeText(.detail)
-                        .foregroundStyle(
-                            library.isOpenable
-                                ? Color.secondary : StatusTone.danger.color
-                        )
+                StepProgressLine(steps: removalSteps) {
+                    StepProgressLine(steps: openSteps) {
+                        Text(library.detailLine)
+                            .themeText(.detail)
+                            .foregroundStyle(
+                                library.isOpenable
+                                    ? Color.secondary
+                                    : StatusTone.danger.color
+                            )
+                    }
                 }
             }
             Spacer(minLength: ThemeSpace.group)
