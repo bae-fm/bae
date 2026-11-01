@@ -62,8 +62,7 @@ struct IdentifierBand: View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
         switch run.discId {
         case .reading:
-            IdentifierChip(label: label) { ChipSpinner() }
-                .help("Reading…")
+            IdentifierChip(label: label) { ChipWait(text: Text("Reading…")) }
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
@@ -220,8 +219,7 @@ struct IdentifierBand: View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.isrc)
         switch run.isrc {
         case .reading:
-            IdentifierChip(label: label) { ChipSpinner() }
-                .help("Reading…")
+            IdentifierChip(label: label) { ChipWait(text: Text("Reading…")) }
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No ISRC in the files' tags")
@@ -297,7 +295,13 @@ extension IdentifierBand {
                 isWaiting: true,
                 onCommit: onEditTitleSearch
             ) {
-                ChipSpinner()
+                ChipWait(
+                    text: Text(
+                        "Waiting…",
+                        comment:
+                            "Find online ledger: in the title search chip, while the run asks about the folder's identifiers before it searches by these words."
+                    )
+                )
             }
         case .searched(let album, let artist, let cells):
             TitleSearchChip(

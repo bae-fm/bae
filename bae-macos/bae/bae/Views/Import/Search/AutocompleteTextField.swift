@@ -8,15 +8,11 @@ import SwiftUI
 /// auto-filled tail selected. Tab / Enter / losing focus commits the
 /// field value as-is (the selection just deselects — the text is
 /// already there). Deleting never re-triggers completion.
-///
-/// A small progress spinner overlays the trailing edge while
-/// `isLoading` is true.
 struct AutocompleteTextField: View {
     @Binding
     var text: String
     let placeholder: String
     let suggestions: [String]
-    let isLoading: Bool
     /// A request for the field to take the keyboard. Each new request (any
     /// value the field has not served yet; `0` is no request) moves the
     /// responder once, so the same request asked again after the person
@@ -28,22 +24,14 @@ struct AutocompleteTextField: View {
     var onEditingEnded: (() -> Void)?
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            InlineCompletionTextFieldNS(
-                text: $text,
-                placeholder: placeholder,
-                suggestions: suggestions,
-                focusRequest: focusRequest,
-                onSubmit: onSubmit,
-                onEditingEnded: onEditingEnded,
-            )
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
-                    .padding(.trailing, ThemeSpace.compact)
-                    .allowsHitTesting(false)
-            }
-        }
+        InlineCompletionTextFieldNS(
+            text: $text,
+            placeholder: placeholder,
+            suggestions: suggestions,
+            focusRequest: focusRequest,
+            onSubmit: onSubmit,
+            onEditingEnded: onEditingEnded,
+        )
     }
 
     nonisolated static func completionSelectionRange(
@@ -183,25 +171,11 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Idle") {
+    #Preview("Suggestions") {
         AutocompleteTextField(
             text: .constant(""),
             placeholder: "Artist",
             suggestions: ["Artist Name", "Album Title", "Label Name"],
-            isLoading: false,
-            onSubmit: {},
-        )
-        .frame(width: 260)
-        .padding()
-        .windowBackground()
-    }
-
-    #Preview("Loading with text") {
-        AutocompleteTextField(
-            text: .constant("Art"),
-            placeholder: "Artist",
-            suggestions: ["Artist Name"],
-            isLoading: true,
             onSubmit: {},
         )
         .frame(width: 260)

@@ -1119,6 +1119,13 @@ answer that picks nothing reads no pressing, and the pane shows none. A
 Disc ID often returns several pressings of one album: an exact clue is not a
 unique answer, and choosing between them is the person's.
 
+While the run is out, the pane names in words each thing it still waits on:
+a Disc ID or ISRC still being read from the folder, a catalog still being
+asked about a clue, the title search waiting on the clues, and the artwork
+still being read, which can add barcodes and catalog numbers. The search
+form says the artwork is still being read under the fields its text
+suggests to.
+
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, a tracklist that couldn't be
 checked, or a medium the folder rules out. The person then:

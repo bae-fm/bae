@@ -123,26 +123,35 @@ struct IdentifierWarning: View {
     }
 }
 
-/// The spinner a chip carries while what feeds it is still being read.
-struct ChipSpinner: View {
+/// The words a chip carries while what feeds it is still being read or
+/// asked: what it waits on.
+struct ChipWait: View {
+    let text: Text
+
     var body: some View {
-        ProgressView()
-            .controlSize(.small)
-            .scaleEffect(0.55)
-            .frame(width: ThemeIcon.small.size, height: ThemeIcon.small.size)
+        text
+            .themeText(.chip)
+            .foregroundStyle(.tertiary)
+            .fixedSize()
     }
 }
 
-/// A spinner closing the band while the artwork is still being read.
+/// A chip closing the band while the artwork is still being read.
 struct ScanningChip: View {
     var body: some View {
-        ChipSpinner()
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(
-                Theme.hover,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+        ChipWait(
+            text: Text(
+                "Reading artwork…",
+                comment:
+                    "Find online ledger: the chip closing the identifier band while bae still reads text from the folder's artwork, which can add barcodes and catalog numbers."
             )
+        )
+        .padding(.horizontal, ThemeSpace.compact)
+        .padding(.vertical, ThemeSpace.line)
+        .background(
+            Theme.hover,
+            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+        )
     }
 }
 
@@ -160,13 +169,13 @@ struct LookupCellView: View {
         case .notAsked:
             IdentifierDash()
         case .lookingUp:
-            ProgressView()
-                .controlSize(.small)
-                .scaleEffect(0.6)
-                .frame(
-                    width: ThemeIcon.small.size,
-                    height: ThemeIcon.small.size
+            ChipWait(
+                text: Text(
+                    "Searching…",
+                    comment:
+                        "Find online ledger: beside a catalog's name in an identifier's chip, while bae asks that catalog about the identifier."
                 )
+            )
         case .found(let count, let groups):
             LookupCountView(count: Int(count), groups: groups)
         case .noMatch:

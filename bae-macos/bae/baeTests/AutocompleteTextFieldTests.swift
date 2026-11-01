@@ -57,8 +57,7 @@ struct AutocompleteTextFieldTests {
             AutocompleteTextField(
                 text: harness.textBinding,
                 placeholder: "Album Title",
-                suggestions: harness.suggestions,
-                isLoading: false
+                suggestions: harness.suggestions
             ),
             size: NSSize(width: 280, height: 32)
         ) { window, host in

@@ -92,8 +92,8 @@ struct ImportSearchFormView: View {
         signals?.text.catalogValues ?? []
     }
 
-    /// Whether core is still producing suggestions, which shows a spinner in
-    /// each field.
+    /// Whether core is still reading the artwork, which can add
+    /// suggestions; the form says so under a field that offers them.
     private var isScanning: Bool {
         signals?.text.isScanning ?? false
     }
@@ -129,6 +129,15 @@ struct ImportSearchFormView: View {
                 Button("Search", action: submitSearch)
                     .controlSize(.small)
                     .disabled(isSearchDisabled)
+            }
+            if isScanning, activeTab != .barcode {
+                Text(
+                    "Reading the artwork for suggestions…",
+                    comment:
+                        "Find online search form, under the artist, album or catalog number field: bae still reads text from the folder's artwork, which can add suggestions."
+                )
+                .themeText(.body)
+                .foregroundStyle(.tertiary)
             }
             if let signalFailure {
                 Label(
@@ -167,7 +176,6 @@ struct ImportSearchFormView: View {
                 text: editing(\.searchArtist),
                 placeholder: String(localized: "Artist"),
                 suggestions: generalSuggestions,
-                isLoading: isScanning,
                 focusRequest: focusRequest,
                 onSubmit: submitSearch,
                 onEditingEnded: editingEnded,
@@ -176,7 +184,6 @@ struct ImportSearchFormView: View {
                 text: editing(\.searchAlbum),
                 placeholder: String(localized: "Album"),
                 suggestions: generalSuggestions,
-                isLoading: isScanning,
                 onSubmit: submitSearch,
                 onEditingEnded: editingEnded,
             )
@@ -185,7 +192,6 @@ struct ImportSearchFormView: View {
                 text: editing(\.searchCatalog),
                 placeholder: String(localized: "e.g. WPCR-80001"),
                 suggestions: catalogSuggestions,
-                isLoading: isScanning,
                 focusRequest: focusRequest,
                 onSubmit: submitSearch,
                 onEditingEnded: editingEnded,
