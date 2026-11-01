@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
@@ -220,7 +221,13 @@ internal fun LibrarySearchBar(
                 value = query,
                 onValueChange = onQueryChange,
                 modifier = Modifier.weight(1f).focusRequester(focusRequester),
-                placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                placeholder = {
+                    Text(
+                        stringResource(R.string.search_placeholder),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 singleLine = true,
                 colors =
                     TextFieldDefaults.colors(
