@@ -21,6 +21,7 @@
     <string name="sort_descending">Низходящо</string>
     <string name="library_empty_albums">Все още няма албуми</string>
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
+    <string name="library_reading">Четене на вашата библиотека…</string>
     <string name="library_load_more_albums_failed">Не могат да бъдат заредени още албуми.</string>
     <string name="library_load_more_artists_failed">Не могат да бъдат заредени още изпълнители.</string>
     <string name="library_load_more_composers_failed">Не могат да бъдат заредени още композитори.</string>

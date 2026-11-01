@@ -21,6 +21,7 @@
     <string name="sort_descending">Aflopend</string>
     <string name="library_empty_albums">Nog geen albums</string>
     <string name="library_load_failed">Kan je bibliotheek niet laden.</string>
+    <string name="library_reading">Je bibliotheek wordt gelezen…</string>
     <string name="library_load_more_albums_failed">Kan geen extra albums laden.</string>
     <string name="library_load_more_artists_failed">Kan geen extra artiesten laden.</string>
     <string name="library_load_more_composers_failed">Kan geen extra componisten laden.</string>

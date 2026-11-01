@@ -21,6 +21,7 @@
     <string name="sort_descending">Zostupne</string>
     <string name="library_empty_albums">Zatiaľ žiadne albumy</string>
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
+    <string name="library_reading">Načítava sa vaša knižnica…</string>
     <string name="library_load_more_albums_failed">Ďalšie albumy sa nepodarilo načítať.</string>
     <string name="library_load_more_artists_failed">Ďalších interpretov sa nepodarilo načítať.</string>
     <string name="library_load_more_composers_failed">Ďalších skladateľov sa nepodarilo načítať.</string>

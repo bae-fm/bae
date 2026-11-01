@@ -21,6 +21,7 @@
     <string name="sort_descending">降序</string>
     <string name="library_empty_albums">暂无专辑</string>
     <string name="library_load_failed">无法加载你的库。</string>
+    <string name="library_reading">正在读取你的资料库…</string>
     <string name="library_load_more_albums_failed">无法加载更多专辑。</string>
     <string name="library_load_more_artists_failed">无法加载更多艺人。</string>
     <string name="library_load_more_composers_failed">无法加载更多作曲家。</string>

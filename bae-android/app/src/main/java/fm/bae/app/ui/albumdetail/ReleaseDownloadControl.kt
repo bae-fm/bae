@@ -54,7 +54,9 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
+import uniffi.bae_bridge.BridgeReleaseStorageAction
 import uniffi.bae_bridge.bridgeReleasePlayabilityLine
+import uniffi.bae_bridge.bridgeTransferActionKey
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
@@ -227,6 +229,11 @@ private fun DownloadedControl(
         )
         if (unpinning) {
             CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
+            Text(
+                text = LocalContext.current.coreString(bridgeTransferActionKey(BridgeReleaseStorageAction.UNPIN)),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
             DownloadActionButton(stringResource(R.string.download_remove), Icons.Filled.Delete, onRemove)
         }

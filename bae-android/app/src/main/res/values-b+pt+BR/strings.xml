@@ -21,6 +21,7 @@
     <string name="sort_descending">Decrescente</string>
     <string name="library_empty_albums">Ainda sem álbuns</string>
     <string name="library_load_failed">Não foi possível carregar sua biblioteca.</string>
+    <string name="library_reading">Lendo sua biblioteca…</string>
     <string name="library_load_more_albums_failed">Não foi possível carregar mais álbuns.</string>
     <string name="library_load_more_artists_failed">Não foi possível carregar mais artistas.</string>
     <string name="library_load_more_composers_failed">Não foi possível carregar mais compositores.</string>

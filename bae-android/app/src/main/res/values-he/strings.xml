@@ -21,6 +21,7 @@
     <string name="sort_descending">יורד</string>
     <string name="library_empty_albums">עדיין אין אלבומים</string>
     <string name="library_load_failed">לא ניתן לטעון את הספרייה שלכם.</string>
+    <string name="library_reading">קורא את הספרייה שלך…</string>
     <string name="library_load_more_albums_failed">לא ניתן לטעון אלבומים נוספים.</string>
     <string name="library_load_more_artists_failed">לא ניתן לטעון אמנים נוספים.</string>
     <string name="library_load_more_composers_failed">לא ניתן לטעון מלחינים נוספים.</string>

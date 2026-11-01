@@ -21,6 +21,7 @@
     <string name="sort_descending">遞減</string>
     <string name="library_empty_albums">尚無專輯</string>
     <string name="library_load_failed">無法載入你的資料庫。</string>
+    <string name="library_reading">正在讀取你的資料庫…</string>
     <string name="library_load_more_albums_failed">無法載入更多專輯。</string>
     <string name="library_load_more_artists_failed">無法載入更多藝人。</string>
     <string name="library_load_more_composers_failed">無法載入更多作曲者。</string>
