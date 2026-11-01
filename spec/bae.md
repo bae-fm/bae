@@ -741,9 +741,12 @@ says how many of the tab's rows it keeps of how many it has.
 **Done.** A folder is Done when this device imported a release from its files.
 This device's record of the import is keyed by the folder's hash (§2.7), not
 its path, so a folder moved or renamed after its import stays Done. A Done row
-looks exactly like the row the folder had in Found — the same cover, title and
-artists, drawn the same way — and says nothing more but its release's upload:
-the tab says it is done. While files of the release wait in this device's
+shows the library release imported from the folder's files as the library
+holds it now — its album's title and credits, each printed as the library
+prints it, its cover, and the arrow of a release a catalog's record describes
+— so retitling the album, editing its credits or merging an artist they name
+changes the row in the same write. It says nothing more but its release's
+upload: the tab says it is done. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
 Storage Manager does (§4.2): Uploading while any file is being sent, beside a
 bar of the bytes of the release's whole size stored or sent, or Queued with no
@@ -1323,8 +1326,8 @@ Ana clicks Import. bae:
    found, what the person let the lookups use, where the pane was, the
    artist and label decisions it just resolved its credits and labels by,
    and the album picked for it. The draft, its source, its link and its
-   cover stay, since the Done row draws them (§3.2), and so do the clues,
-   since the imported folder's pane marks the files they were read off. An
+   cover stay, since the imported folder's pane draws its files from them,
+   and so do the clues, since that pane marks the files they were read off. An
    import that fails deletes none of it, so a retry reads what the person
    and the run settled.
 
@@ -3709,7 +3712,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order serves Done's and Skipped's windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
+| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order serves Done's and Skipped's windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list_tab_count`, `import_list_entry_count`, `import_list_group_entry_count` | how many placement rows each tab holds of each kind, how many of Found's releases each filter entry holds, and how many of each group's releases each entry holds, kept by triggers on the placement in the write that moves a row, so the list's counts read these and not the placement |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |

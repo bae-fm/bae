@@ -6,6 +6,7 @@ use super::{empty_db, exec_batch, folder_below};
 use std::collections::BTreeMap;
 
 mod candidates;
+mod done_rows;
 mod groupings;
 mod groups;
 mod list_reads;

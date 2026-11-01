@@ -4,18 +4,21 @@
 //! A release's row comes from its placement — what it shows, its state and
 //! what its commands are decided from — and the keyed rows beside it: its
 //! scan, its link and the records of the stored releases the link names, its
-//! draft's source, its cover and what is running for it, and, for a row with
-//! an imported release, how that release's upload stands. None of it opens
-//! the folder's files. A group's header says how many of its releases the
+//! draft's source, its cover and what is running for it. A row with an
+//! imported release reads the library release in their place — its cover
+//! and its catalog records — and how that release's upload stands. None of
+//! it opens the folder's files. A group's header says how many of its releases the
 //! filters keep, whether the list folds it, and whether its folder is offered
 //! to be read as one release, as its placement holds it.
 
+use super::super::files::cover_version_sql;
 use super::super::folder_scans;
 use super::super::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
 };
 use super::super::queued_uploads::release_upload_on;
+use super::super::read::get_release_records_on;
 use super::super::release_groupings::block_of;
 use super::super::source_releases::load_release_records_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
@@ -179,8 +182,9 @@ struct ReleaseRows {
     watched_folder_path: PathBuf,
     key: CandidateKey,
     display_path: String,
-    /// What the row shows: its draft's title and artists while it shows its
-    /// draft, else nothing past its folder's name.
+    /// What the row shows: an imported release's library album title and
+    /// credits, else its draft's title and artists while it shows its draft,
+    /// else nothing past its folder's name.
     summary: Option<TriageMetadataSummary>,
     listed: ListedColumns,
     name: String,
@@ -189,6 +193,8 @@ struct ReleaseRows {
     /// when its draft, link, lookup and cover are its own.
     current: bool,
     imported: Option<ImportedRelease>,
+    /// The version of the imported release's library cover, if it has one.
+    library_cover: Option<String>,
     block: (Option<String>, Option<String>, Option<String>),
     failure: Option<crate::import::ImportFailureReason>,
     facts: RuntimeFactColumns,
@@ -229,8 +235,8 @@ fn release_rows(
                     {RUNTIME_FACT_COLUMNS}, \
                     EXISTS (SELECT 1 FROM import_list_selection AS chosen \
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
-                    w.value ->> 0 AS window_position, {PROVENANCE_COLUMNS}, \
-                    {RELEASE_LINK_COLUMNS}, {cover} \
+                    w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
+                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover} \
              FROM json_each(:keys) AS w \
              JOIN import_list_placement AS p \
                  ON p.key = unhex(w.value ->> 1) AND p.item <> 'group' \
@@ -250,6 +256,7 @@ fn release_rows(
              LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
              ORDER BY window_position",
             cover = cover_read_columns(),
+            library_cover = cover_version_sql("origin.release_id"),
         ),
         named_params! {
             ":keys": serde_json::Value::from(keys).to_string(),
@@ -281,6 +288,7 @@ fn release_rows(
                     }),
                     None => None,
                 },
+                library_cover: row.get("library_cover")?,
                 block: (row.get(22)?, row.get(23)?, row.get(24)?),
                 failure: match failed {
                     true => Some(failure_reason_from_row(row)?),
@@ -340,9 +348,6 @@ fn candidate_item(
     release: ReleaseRows,
     header_position: Option<u64>,
 ) -> Result<WindowItemRows, DbError> {
-    let metadata_provenance = release.metadata_provenance.clone();
-    let release_link = release.release_link.clone();
-    let cover = release.cover.clone();
     let ListedRelease { basis, standing } = release.listed.clone().listed(&release.key)?;
     let facts = release.facts.facts(&release.key)?;
     let (blocked, subject, holder) = release.block.clone();
@@ -361,19 +366,50 @@ fn candidate_item(
         .transpose()?
         .flatten()
         .map(|upload| UploadProgress::of_release(&upload));
-    // A pressing's releases' records are read in this snapshot and put
-    // together after it ends; an album names its records itself.
-    let picked = match release_link.as_ref() {
-        Some(ReleaseLink::Pressing(pressing)) => {
-            Some(LinkedRows::Pressing(claimed_records(sql, pressing)?))
+    let shown = match release.imported.as_ref() {
+        // A release this device imported reads the library release: its
+        // cover, and the catalogs its records name.
+        Some(imported) => ShownRows {
+            metadata_provenance: None,
+            release_link: None,
+            reading: TriageReading::of_library(get_release_records_on(sql, &imported.release_id)?),
+            picked: None,
+            cover: crate::album_detail::cover_ref(
+                &imported.release_id,
+                release.library_cover.clone(),
+            )
+            .map(|image| crate::import::CoverImageSource::Library { image }),
+        },
+        None => {
+            let release_link = release.release_link.clone();
+            // A pressing's releases' records are read in this snapshot and
+            // put together after it ends; an album names its records itself.
+            let picked = match release_link.as_ref() {
+                Some(ReleaseLink::Pressing(pressing)) => {
+                    Some(LinkedRows::Pressing(claimed_records(sql, pressing)?))
+                }
+                Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
+                None => None,
+            };
+            ShownRows {
+                metadata_provenance: release.metadata_provenance.clone(),
+                reading: TriageReading::of(
+                    release.summary.as_ref(),
+                    release_link.as_ref(),
+                    Vec::new(),
+                ),
+                release_link,
+                picked,
+                cover: release
+                    .cover
+                    .as_ref()
+                    .map(|cover| {
+                        row_cover_source(sql, &release.watched_folder_path, &release.key, cover)
+                    })
+                    .transpose()?,
+            }
         }
-        Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
-        None => None,
     };
-    let cover = cover
-        .as_ref()
-        .map(|cover| row_cover_source(sql, &release.watched_folder_path, &release.key, cover))
-        .transpose()?;
     let row = TriageRow {
         candidate_key: release.key.clone(),
         folder_name: release.name.clone(),
@@ -382,22 +418,33 @@ fn candidate_item(
         actionable: basis.actionable,
         placement: basis.placement,
         action_basis: basis.clone(),
-        reading: TriageReading::of(release.summary.as_ref(), release_link.as_ref(), Vec::new()),
+        reading: shown.reading,
         metadata_summary: release.summary.clone(),
         cover: None,
         import_status,
         upload,
-        metadata_provenance,
-        release_link,
+        metadata_provenance: shown.metadata_provenance,
+        release_link: shown.release_link,
         selected: release.selected,
     };
     Ok(WindowItemRows::Candidate {
         row,
         live: crate::import::CandidateLiveState::of(&basis, facts, standing),
-        picked,
-        cover,
+        picked: shown.picked,
+        cover: shown.cover,
         header_position,
     })
+}
+
+/// What a release's row shows past its placement: the candidate's draft
+/// source, link and cover, or for an imported release the library
+/// release's.
+struct ShownRows {
+    metadata_provenance: Option<crate::import::MetadataProvenance>,
+    release_link: Option<ReleaseLink>,
+    reading: TriageReading,
+    picked: Option<LinkedRows>,
+    cover: Option<crate::import::CoverImageSource>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -407,9 +454,10 @@ pub(super) enum WindowItemRows {
         row: TriageRow,
         live: crate::import::CandidateLiveState,
         picked: Option<LinkedRows>,
-        /// The candidate's stored cover selection, as the row draws it.
-        /// Nothing stands in for an empty one: the row shows what the
-        /// candidate would commit with.
+        /// The candidate's stored cover selection, as the row draws it, or
+        /// an imported release's library cover. Nothing stands in for an
+        /// empty one: the row shows what the candidate would commit with, or
+        /// what the library release has.
         cover: Option<crate::import::CoverImageSource>,
         header_position: Option<u64>,
     },

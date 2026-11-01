@@ -96,6 +96,9 @@ impl BridgeCoverChoice {
 impl BridgeCoverImageSource {
     pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
         match source {
+            bae_core::import::CoverImageSource::Library { image } => Self::Library {
+                image: crate::types::BridgeImageRef::from_core(image),
+            },
             bae_core::import::CoverImageSource::Remote { image } => Self::Remote {
                 image: BridgeRemoteImageSet::from_core(image),
             },

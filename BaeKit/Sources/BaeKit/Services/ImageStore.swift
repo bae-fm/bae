@@ -37,10 +37,13 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// version of that file core read it from — the identity of these bytes.
     case embeddedCover(source: BridgeFileVersion, data: Data)
 
-    /// The render content for a cover the import flow offers: a candidate file
-    /// on disk, artwork its tags carry, or provider art at a URL.
+    /// The render content for a cover the import flow draws: a candidate file
+    /// on disk, artwork its tags carry, provider art at a URL, or the cover of
+    /// the library release imported from the folder.
     public init(bridge: BridgeCoverImageSource) {
         switch bridge {
+        case .library(let image):
+            self = .libraryImage(image)
         case .local(let file):
             self = .localFile(file)
         case .remote(let image):

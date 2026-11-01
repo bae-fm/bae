@@ -902,6 +902,10 @@ mirror_struct! {
 /// file to learn whether it changed.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverImageSource {
+    /// The cover of the library release imported from the folder's files.
+    Library {
+        image: BridgeImageRef,
+    },
     Remote {
         image: BridgeRemoteImageSet,
     },

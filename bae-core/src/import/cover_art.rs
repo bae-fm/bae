@@ -20,10 +20,15 @@ pub enum RemoteCoverGallery {
 }
 
 /// Where a cover's bytes are read from — a remote address, a file the folder
-/// holds, or the candidate's stored file-tag snapshot. Every source names the
-/// identity its bytes have, so a reader can cache what it drew under it.
+/// holds, the candidate's stored file-tag snapshot, or the library. Every
+/// source names the identity its bytes have, so a reader can cache what it
+/// drew under it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverImageSource {
+    /// The cover of the library release imported from the folder's files.
+    Library {
+        image: crate::album_detail::ImageRef,
+    },
     Remote {
         image: RemoteImageSet,
     },

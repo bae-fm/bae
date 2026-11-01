@@ -158,38 +158,37 @@ async fn the_filter_finds_one_or_two_characters() {
     assert!(lib.found_by(TriageTab::Pending, "q").await.is_empty());
 }
 
-/// A Done row shows the row it was in Found — its draft, or its folder while
-/// it has none — so that is what finds it, and nothing the library release
-/// says does.
+/// A Done row shows its library album's title, so that is what finds it, and
+/// nothing the candidate's draft or folder says does.
 #[tokio::test]
-async fn the_filter_finds_a_done_row_by_its_found_row() {
+async fn the_filter_finds_a_done_row_by_its_library_album() {
     let lib = Library::new().await;
     lib.run(&format!(
-        "{}{}{}{}{}",
+        "{}{}{}{}{}
+         UPDATE albums SET title = 'Second Album' WHERE id IN
+             (SELECT album_id FROM releases WHERE id = '{}');",
         scanned_with_states(&lib, &["Folder", "Other"]),
         lib.draft("Other", "Draft Title"),
         lib.credited("Other", "Draft Artist"),
         lib.imported("Folder", "2026-01-02T00:00:00Z"),
         lib.imported("Other", "2026-01-03T00:00:00Z"),
+        lib.release_id("Other"),
     ))
     .await;
     assert_eq!(
-        lib.found_by(TriageTab::Done, "folder").await,
-        ["candidate Folder"]
+        lib.found_by(TriageTab::Done, "album").await,
+        ["candidate Other", "candidate Folder"]
     );
-    for needle in ["draft title", "draft artist"] {
-        assert_eq!(
-            lib.found_by(TriageTab::Done, needle).await,
-            ["candidate Other"],
-            "{needle} is on the row"
+    assert_eq!(
+        lib.found_by(TriageTab::Done, "second").await,
+        ["candidate Other"]
+    );
+    for needle in ["folder", "draft title", "draft artist"] {
+        assert!(
+            lib.found_by(TriageTab::Done, needle).await.is_empty(),
+            "{needle} is not on a Done row"
         );
     }
-    assert!(
-        lib.found_by(TriageTab::Done, "album title")
-            .await
-            .is_empty(),
-        "the library release is not shown"
-    );
 }
 
 #[tokio::test]

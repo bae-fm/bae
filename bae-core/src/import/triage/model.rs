@@ -75,12 +75,13 @@ pub enum IdentificationStatus {
     FinalizationFailed { failure: crate::import::SaveFailure },
 }
 
-/// The candidate's stored draft as the row shows it, independent of what
-/// identification matched.
+/// The title and artists a row shows: the candidate's stored draft's,
+/// independent of what identification matched, or the library album's of a
+/// release this device imported.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriageMetadataSummary {
     pub album_title: String,
-    /// The draft's album credits, printed as one line.
+    /// The album credits, printed as one line.
     pub album_artists: String,
 }
 
@@ -100,19 +101,23 @@ impl TriageMetadataSummary {
 
 /// What a row's text column says about its release: nothing yet, a draft, a
 /// draft of a candidate linked to a catalog pressing, or one linked to an
-/// album whose pressing is unknown.
+/// album whose pressing is unknown; or, for a release this device imported,
+/// what the library release's catalog records describe.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
-    /// A draft of a candidate linked to no release.
+    /// A draft of a candidate linked to no release, or an imported release
+    /// no catalog record describes.
     Prefilled,
-    /// A draft of a candidate linked to a catalog pressing, with every
-    /// catalog that describes that pressing.
+    /// A draft of a candidate linked to a catalog pressing, or an imported
+    /// release a catalog's record of its pressing describes, with every
+    /// catalog that describes it.
     Identified {
         records: Vec<crate::import::ReleaseRecord>,
     },
-    /// A draft of a candidate linked to an album, with every catalog's record
+    /// A draft of a candidate linked to an album, or an imported release only
+    /// catalogs' records of its album describe, with every catalog's record
     /// of the album: the row says its pressing is unknown.
     IdentifiedAlbum {
         records: Vec<crate::import::ReleaseRecord>,
@@ -134,6 +139,21 @@ impl TriageReading {
             Some(ReleaseLink::Pressing(_)) => Self::Identified { records },
             Some(ReleaseLink::Album(_)) => Self::IdentifiedAlbum { records },
             None => Self::Prefilled,
+        }
+    }
+
+    /// How the row of a release this device imported reads: from the
+    /// catalog records of the library release, as the library holds them.
+    pub fn of_library(records: Vec<crate::import::ReleaseRecord>) -> Self {
+        if records.is_empty() {
+            Self::Prefilled
+        } else if records
+            .iter()
+            .any(|record| matches!(record, crate::import::ReleaseRecord::Pressing { .. }))
+        {
+            Self::Identified { records }
+        } else {
+            Self::IdentifiedAlbum { records }
         }
     }
 
@@ -163,8 +183,8 @@ pub struct TriageRow {
     /// What the row's commands are decided from in the tables.
     pub action_basis: CandidateActionBasis,
     pub metadata_summary: Option<TriageMetadataSummary>,
-    /// The cover the row draws: the chosen one, the matched artwork, or the
-    /// folder's default image.
+    /// The cover the row draws: the candidate's chosen one, or for a release
+    /// this device imported, the library release's.
     pub cover: Option<crate::import::CoverImageSource>,
     /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
@@ -174,9 +194,12 @@ pub struct TriageRow {
     /// row with an imported release, and `None` while none of its files
     /// waits. How far the bytes have got is the release's upload transfer.
     pub upload: Option<crate::library::UploadProgress>,
-    /// Where the candidate's draft was read from, once a source was applied.
+    /// Where the candidate's draft was read from, once a source was applied;
+    /// none for a release this device imported, which reads the library.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// What the candidate is linked to in the catalogs.
+    /// What the candidate is linked to in the catalogs; none for a release
+    /// this device imported, whose reading names the library release's
+    /// records.
     pub release_link: Option<ReleaseLink>,
     pub reading: TriageReading,
     /// Whether the person has selected the row.

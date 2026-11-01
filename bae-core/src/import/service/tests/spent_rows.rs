@@ -101,8 +101,8 @@ async fn spent_rows_candidate(
 /// The import's own write deletes what the candidate holds that nothing reads
 /// once its release is in — the verdict, its releases and its ledger, the
 /// lookup choices, where the pane was, the artist and label decisions and
-/// the picked album — and the folder's Done row still shows the draft it was
-/// imported from.
+/// the picked album — and the folder's Done row shows the library album the
+/// release was filed under.
 #[tokio::test]
 async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
     let test = setup_import_service().await;
@@ -150,7 +150,11 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
         )
         .await
         .unwrap();
-    assert_eq!(done, vec!["done|Box Set|Artist Name".to_string()]);
+    assert_eq!(
+        done,
+        vec!["done|Picked Album|".to_string()],
+        "the picked album, which credits nobody"
+    );
 }
 
 /// An import that fails leaves the candidate's rows as they were, so a retry

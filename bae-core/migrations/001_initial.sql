@@ -3927,11 +3927,13 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- display path, so the list's order follows the text it shows.
     unit_path           TEXT GENERATED ALWAYS AS (COALESCE(group_name, display_path))
         VIRTUAL COLLATE natural_order,
-    -- Whether a release shows its draft: once the draft is not blank, or once
-    -- a source or a link answered it. Otherwise it shows its folder's name.
+    -- Whether a release shows a title and artists: always once this device
+    -- imported it, and before then once its draft is not blank, or once a
+    -- source or a link answered it. Otherwise it shows its folder's name.
     has_summary         INTEGER CHECK (has_summary IN (0, 1)),
-    -- The text the row shows: the draft's album title and album artists once
-    -- it shows its draft, else the folder's name; for a folder that failed
+    -- The text the row shows: an imported release's library album title and
+    -- credits; else the draft's album title and album artists once it shows
+    -- its draft, else the folder's name; for a folder that failed
     -- validation, what its tags call it.
     shown_title         TEXT,
     shown_artists       TEXT,
@@ -4144,10 +4146,14 @@ FROM (
            CASE WHEN tab = 'pending' AND running_import IS NULL AND identification IS NULL
                 THEN stored_reason END AS needs_you_reason,
            CASE WHEN tab = 'done' THEN imported_at ELSE discovered_at END AS own_date,
+           -- An imported release shows its library album's title and
+           -- credits, as the library holds them now.
            CASE WHEN item = 'invalid' THEN COALESCE(tag_title, name)
+                WHEN imported THEN library_title
                 WHEN has_summary THEN draft_title
                 ELSE name END AS shown_title,
            CASE WHEN item = 'invalid' THEN tag_artist
+                WHEN imported THEN COALESCE(library_credit_line, '')
                 WHEN has_summary THEN COALESCE(credit_line, '') END AS shown_artists,
            CASE WHEN item = 'candidate' THEN tab = 'pending' AND failed END AS import_failed,
            CASE WHEN item = 'candidate' THEN
@@ -4272,13 +4278,34 @@ FROM (
                    st.identification, st.import_step AS running_import, st.save_failure_error,
                    t.album_title AS tag_title, t.artist AS tag_artist,
                    e.album_title AS draft_title,
+                   album.title AS library_title,
+                   -- The library album's credits as one line, as the library
+                   -- prints them: each credit's printed name (its credit
+                   -- name, else the name of the artist it shows as), after
+                   -- the join the credit before it states, or a comma.
+                   (SELECT group_concat(
+                           COALESCE((SELECT COALESCE(before.join_phrase, ', ')
+                                     FROM album_artists AS before
+                                     WHERE before.album_id = credit.album_id
+                                       AND before.position < credit.position
+                                     ORDER BY before.position DESC LIMIT 1), '')
+                           || COALESCE(printed.name, shown.name),
+                           '' ORDER BY credit.position)
+                    FROM album_artists AS credit
+                    JOIN artist_shown_as AS shown_as ON shown_as.artist_id = credit.artist_id
+                    JOIN artists AS shown ON shown.id = shown_as.shown_artist_id
+                    LEFT JOIN artist_credits AS printed
+                        ON printed.artist_id = credit.artist_id
+                       AND printed.name_key = credit.credit_key
+                    WHERE credit.album_id = album.id) AS library_credit_line,
                    CASE WHEN listed.item = 'candidate' THEN
-                       e.content_hash IS NOT NULL
-                       AND (NOT e.draft_blank
-                            OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS p
-                                       WHERE p.content_hash = e.content_hash)
-                            OR EXISTS (SELECT 1 FROM import_candidate_release_link AS l
-                                       WHERE l.content_hash = e.content_hash))
+                       origin.release_id IS NOT NULL
+                       OR (e.content_hash IS NOT NULL
+                           AND (NOT e.draft_blank
+                                OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS p
+                                           WHERE p.content_hash = e.content_hash)
+                                OR EXISTS (SELECT 1 FROM import_candidate_release_link AS l
+                                           WHERE l.content_hash = e.content_hash)))
                    END AS has_summary,
                    -- The draft's album credits as one line: each printed
                    -- name, after the join the credit before it states, or a
@@ -4308,6 +4335,7 @@ FROM (
             LEFT JOIN import_candidate_verdict AS v ON v.content_hash = s.content_hash
             LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash
             LEFT JOIN releases AS released ON released.id = origin.release_id
+            LEFT JOIN albums AS album ON album.id = released.album_id
             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = c.path
             LEFT JOIN scan_skipped_tags AS t
                 ON t.watched_folder_path = c.watched_folder_path AND t.candidate_path = c.path
@@ -5253,7 +5281,9 @@ BEGIN
     INSERT INTO import_list_replace (key) SELECT OLD.candidate_key UNION SELECT NEW.candidate_key;
 END;
 
--- A picked artist's name, or the credit name the draft prints for it.
+-- A picked artist's name, or the credit name the draft prints for it; and
+-- the name of an artist an imported release's album credits show as, or a
+-- credit name the album prints.
 CREATE TRIGGER IF NOT EXISTS import_list_on_artist_renamed AFTER UPDATE OF name ON artists
 WHEN OLD.name IS NOT NEW.name
 BEGIN
@@ -5261,6 +5291,14 @@ BEGIN
     SELECT c.path FROM import_candidate_album_artist_assignment AS a
     JOIN scan_candidate AS c ON c.content_hash = a.content_hash
     WHERE a.artist_id = NEW.id;
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (
+          SELECT credit.album_id FROM album_artists AS credit
+          JOIN artist_shown_as AS shown_as ON shown_as.artist_id = credit.artist_id
+          WHERE shown_as.shown_artist_id = NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_added AFTER INSERT ON artist_credits
@@ -5269,6 +5307,13 @@ BEGIN
     SELECT c.path FROM import_candidate_album_artist_assignment AS a
     JOIN scan_candidate AS c ON c.content_hash = a.content_hash
     WHERE a.artist_id = NEW.artist_id AND a.credit_key = NEW.name_key;
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (
+          SELECT credit.album_id FROM album_artists AS credit
+          WHERE credit.artist_id = NEW.artist_id AND credit.credit_key = NEW.name_key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_removed AFTER DELETE ON artist_credits
@@ -5277,6 +5322,13 @@ BEGIN
     SELECT c.path FROM import_candidate_album_artist_assignment AS a
     JOIN scan_candidate AS c ON c.content_hash = a.content_hash
     WHERE a.artist_id = OLD.artist_id AND a.credit_key = OLD.name_key;
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (
+          SELECT credit.album_id FROM album_artists AS credit
+          WHERE credit.artist_id = OLD.artist_id AND credit.credit_key = OLD.name_key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_changed
@@ -5288,6 +5340,80 @@ BEGIN
     JOIN scan_candidate AS c ON c.content_hash = a.content_hash
     WHERE (a.artist_id = OLD.artist_id AND a.credit_key = OLD.name_key)
        OR (a.artist_id = NEW.artist_id AND a.credit_key = NEW.name_key);
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (
+          SELECT credit.album_id FROM album_artists AS credit
+          WHERE (credit.artist_id = OLD.artist_id AND credit.credit_key = OLD.name_key)
+             OR (credit.artist_id = NEW.artist_id AND credit.credit_key = NEW.name_key));
+END;
+
+-- What an imported release's Done row shows of its library album: the
+-- album's title, its credits and the names they print. The Done rows of an
+-- album are those of its releases this device imported.
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_retitled AFTER UPDATE OF title ON albums
+WHEN OLD.title IS NOT NEW.title
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_release_moved AFTER UPDATE OF album_id ON releases
+WHEN OLD.album_id IS NOT NEW.album_id
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_credit_added AFTER INSERT ON album_artists
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id = NEW.album_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_credit_removed AFTER DELETE ON album_artists
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id = OLD.album_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_credit_changed
+AFTER UPDATE OF album_id, artist_id, position, credit_key, join_phrase ON album_artists
+WHEN (OLD.album_id, OLD.artist_id, OLD.position, OLD.credit_key, OLD.join_phrase)
+  IS NOT (NEW.album_id, NEW.artist_id, NEW.position, NEW.credit_key, NEW.join_phrase)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (OLD.album_id, NEW.album_id);
+END;
+
+-- A merge changing the artist a credit shows as moves the credits that print
+-- it.
+CREATE TRIGGER IF NOT EXISTS import_list_on_artist_shown_changed
+AFTER UPDATE OF shown_artist_id ON artist_shown_as
+WHEN OLD.shown_artist_id IS NOT NEW.shown_artist_id
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM releases AS r
+    JOIN local_release_origin AS o ON o.release_id = r.id
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE r.album_id IN (SELECT album_id FROM album_artists WHERE artist_id = NEW.artist_id);
 END;
 
 -- The time an imported release was written orders it on Done.

@@ -138,28 +138,34 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     assert_eq!(imported.summary.counts.done, 1);
 }
 
-/// A Done row is the row the folder was in Found — the same reading, cover
-/// and text — placed Done, its import status naming the one release this
-/// device imported from its files.
+/// A Done row reads the library release imported from the folder's files —
+/// its album's title and credits, its cover and the catalogs its records
+/// name — and nothing of the candidate's draft, link or cover; and an edit to
+/// the library release reaches the row.
 #[tokio::test]
-async fn a_done_row_is_the_row_it_was_in_found() {
+async fn a_done_row_reads_its_library_release() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
-    let found = rows(
-        &db.load_import_list(list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await)
-            .await
-            .unwrap(),
-    );
-    assert_eq!(found.len(), 1);
-
     record_import(&db, &candidate.files.content_hash()).await;
-    let done = rows(
-        &db.load_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await)
-            .await
-            .unwrap(),
-    );
+    let version = super::write_cover(&db, RELEASE_ID, "the library cover").await;
+    exec(
+        &db,
+        "INSERT INTO release_records (id, release_id, catalog, key, album_key, kind) \
+         VALUES ('record', ?1, 'musicbrainz', 'mb-release', 'mb-group', 'pressing')",
+        &[RELEASE_ID],
+    )
+    .await;
+    let mut live = db
+        .subscribe_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await);
+    let first = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let done = rows(&first);
     assert_eq!(done.len(), 1);
     let done = &done[0];
     assert_eq!(done.placement, crate::import::TriagePlacement::Done);
@@ -173,14 +179,55 @@ async fn a_done_row_is_the_row_it_was_in_found() {
         })
     );
     assert_eq!(
-        crate::import::TriageRow {
-            placement: found[0].placement,
-            action_basis: found[0].action_basis.clone(),
-            import_status: None,
-            ..done.clone()
-        },
-        found[0],
-        "everything the row shows is what it showed in Found"
+        done.metadata_summary,
+        Some(crate::import::TriageMetadataSummary {
+            album_title: "Album Title".to_string(),
+            album_artists: "Artist Name".to_string(),
+        })
+    );
+    assert_eq!(
+        done.cover,
+        Some(crate::import::CoverImageSource::Library {
+            image: crate::album_detail::ImageRef {
+                id: RELEASE_ID.to_string(),
+                version,
+                image_type: LibraryImageType::Cover,
+            },
+        })
+    );
+    assert_eq!(
+        done.reading,
+        crate::import::triage::TriageReading::Identified {
+            records: vec![crate::import::ReleaseRecord::new(
+                &crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    "mb-release"
+                ),
+                Some("mb-group".to_string()),
+            )],
+        }
+    );
+    assert_eq!(done.metadata_provenance, None);
+    assert_eq!(done.release_link, None);
+
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Retitled' WHERE id = ?1",
+        &[ALBUM_ID],
+    )
+    .await;
+    let retitled = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("retitling the album wakes the list")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(
+        rows(&retitled)[0]
+            .metadata_summary
+            .as_ref()
+            .map(|summary| summary.album_title.as_str()),
+        Some("Retitled")
     );
 }
 

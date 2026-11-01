@@ -233,7 +233,8 @@ async fn a_failed_import_is_founds_import_error() {
 }
 
 /// What this device imported from a folder's files puts it on Done, dated by
-/// when its release was written, whatever else is stored for it.
+/// when its release was written and showing its library album, whatever else
+/// is stored for it.
 #[tokio::test]
 async fn an_imported_release_is_done_dated_by_its_release() {
     let lib = Library::new().await;
@@ -260,7 +261,12 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         .await,
         moves([(
             lib.release("Album"),
-            Some(found("Album").on("done").dated(imported_at + 123))
+            Some(
+                found("Album")
+                    .on("done")
+                    .dated(imported_at + 123)
+                    .shown("Album Title", Some(""))
+            )
         )])
     );
     assert_eq!(
@@ -270,7 +276,12 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         .await,
         moves([(
             lib.release("Album"),
-            Some(found("Album").on("done").dated(imported_at + 1_000))
+            Some(
+                found("Album")
+                    .on("done")
+                    .dated(imported_at + 1_000)
+                    .shown("Album Title", Some(""))
+            )
         )])
     );
     assert_eq!(
@@ -280,7 +291,12 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         .await,
         moves([(
             lib.release("Album"),
-            Some(found("Album").on("done").dated(imported_at + 2_000))
+            Some(
+                found("Album")
+                    .on("done")
+                    .dated(imported_at + 2_000)
+                    .shown("Album Title", Some(""))
+            )
         )])
     );
     assert_eq!(
@@ -398,7 +414,12 @@ async fn a_release_whose_draft_is_gone_shows_its_folder() {
 /// both releases.
 #[tokio::test]
 async fn a_row_moved_to_other_files_moves_both_releases() {
-    let imported = |placed: Placed| placed.on("done").dated(1_767_225_600_000);
+    let imported = |placed: Placed| {
+        placed
+            .on("done")
+            .dated(1_767_225_600_000)
+            .shown("Album Title", Some(""))
+    };
     for (table, row, placed) in [
         (
             "import_candidate_failure",
