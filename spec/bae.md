@@ -3012,7 +3012,9 @@ while the picker is open. Desktops and Android browse the network themselves.
 The picker lists what discovery found from a device-local table, by name:
 one task merges every source's list and writes it whole, in one write per
 change, in the order the changes came. No discovery outlives the process
-that ran it, so the table is emptied as the library opens.
+that ran it, so the table is emptied as the library opens. Once the person
+picks a receiver, the picker names it while bae connects, until the cast
+starts or fails.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the

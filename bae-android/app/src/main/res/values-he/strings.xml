@@ -168,6 +168,7 @@
     <string name="cast_casting_to">משדר אל %1$s</string>
     <string name="cast_disconnect">התנתק</string>
     <string name="cast_looking_for_devices">מחפש מכשירים…</string>
+    <string name="cast_connecting">מתחבר אל %1$s…</string>
     <string name="cast_turn_off_title">לכבות את השידור?</string>
     <string name="cast_turn_off_message">פעולה זו תפסיק את השידור אל %1$s.</string>
     <string name="cast_turn_off_confirm">כבה</string>

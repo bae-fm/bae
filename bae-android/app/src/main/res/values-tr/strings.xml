@@ -166,6 +166,7 @@
     <string name="cast_casting_to">%1$s cihazına yayınlanıyor</string>
     <string name="cast_disconnect">Bağlantıyı kes</string>
     <string name="cast_looking_for_devices">Cihazlar aranıyor…</string>
+    <string name="cast_connecting">%1$s cihazına bağlanılıyor…</string>
     <string name="cast_turn_off_title">Yayınlama kapatılsın mı?</string>
     <string name="cast_turn_off_message">Bu, %1$s cihazına yayınlamayı durdurur.</string>
     <string name="cast_turn_off_confirm">Kapat</string>

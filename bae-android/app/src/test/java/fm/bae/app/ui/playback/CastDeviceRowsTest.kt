@@ -30,7 +30,7 @@ class CastDeviceRowsTest {
         compose.setContent {
             BaeTheme {
                 Column {
-                    CastDeviceRows(devices = devices, castingTo = null, onDisconnect = {}, onCast = {})
+                    CastDeviceRows(devices = devices, castingTo = null, connectingName = null, onDisconnect = {}, onCast = {})
                 }
             }
         }
@@ -42,5 +42,25 @@ class CastDeviceRowsTest {
 
         compose.onNodeWithText("Living Room Speaker").assertIsDisplayed()
         compose.onNodeWithText("Looking for devices…").assertDoesNotExist()
+    }
+
+    /** Connecting to a device can take a while, so the picker names the device it is connecting to until the cast starts. */
+    @Test
+    fun aConnectingCastNamesItsDevice() {
+        val speaker = BridgeCastDevice(id = "speaker-1", name = "Living Room Speaker", kind = BridgeRendererKind.CAST)
+        var connecting by mutableStateOf<String?>(null)
+        compose.setContent {
+            BaeTheme {
+                Column {
+                    CastDeviceRows(devices = listOf(speaker), castingTo = null, connectingName = connecting, onDisconnect = {}, onCast = {})
+                }
+            }
+        }
+
+        compose.onNodeWithText("Connecting to Living Room Speaker…").assertDoesNotExist()
+
+        connecting = speaker.name
+        compose.waitForIdle()
+        compose.onNodeWithText("Connecting to Living Room Speaker…").assertIsDisplayed()
     }
 }

@@ -165,6 +165,7 @@
     <string name="cast_casting_to">Caster til %1$s</string>
     <string name="cast_disconnect">Koble fra</string>
     <string name="cast_looking_for_devices">Ser etter enheter…</string>
+    <string name="cast_connecting">Kobler til %1$s…</string>
     <string name="cast_turn_off_title">Slå av castingen?</string>
     <string name="cast_turn_off_message">Dette stopper castingen til %1$s.</string>
     <string name="cast_turn_off_confirm">Slå av</string>

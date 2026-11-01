@@ -170,6 +170,7 @@
     <string name="cast_casting_to">Przesyłanie do %1$s</string>
     <string name="cast_disconnect">Rozłącz</string>
     <string name="cast_looking_for_devices">Wyszukiwanie urządzeń…</string>
+    <string name="cast_connecting">Łączenie z %1$s…</string>
     <string name="cast_turn_off_title">Wyłączyć przesyłanie?</string>
     <string name="cast_turn_off_message">Spowoduje to zatrzymanie przesyłania do %1$s.</string>
     <string name="cast_turn_off_confirm">Wyłącz</string>

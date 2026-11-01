@@ -166,6 +166,7 @@
     <string name="cast_casting_to">Übertragung an %1$s</string>
     <string name="cast_disconnect">Trennen</string>
     <string name="cast_looking_for_devices">Geräte werden gesucht …</string>
+    <string name="cast_connecting">Verbindung mit %1$s wird hergestellt…</string>
     <string name="cast_turn_off_title">Übertragung ausschalten?</string>
     <string name="cast_turn_off_message">Damit wird die Übertragung an %1$s beendet.</string>
     <string name="cast_turn_off_confirm">Ausschalten</string>

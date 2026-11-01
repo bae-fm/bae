@@ -169,6 +169,7 @@
     <string name="cast_casting_to">Prenáša sa do %1$s</string>
     <string name="cast_disconnect">Odpojiť</string>
     <string name="cast_looking_for_devices">Hľadajú sa zariadenia…</string>
+    <string name="cast_connecting">Pripája sa k %1$s…</string>
     <string name="cast_turn_off_title">Vypnúť prenášanie?</string>
     <string name="cast_turn_off_message">Týmto sa zastaví prenášanie do %1$s.</string>
     <string name="cast_turn_off_confirm">Vypnúť</string>

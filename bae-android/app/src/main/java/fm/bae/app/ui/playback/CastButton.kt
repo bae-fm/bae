@@ -119,6 +119,8 @@ private fun CastPickerSheet(
     val context = LocalContext.current
     val scope = rememberScreenScope()
     var castJob by remember { mutableStateOf<Job?>(null) }
+    // The device a cast is connecting to, while it does.
+    var connecting by remember { mutableStateOf<BridgeCastDevice?>(null) }
     // A failed cast shows here: a snackbar would sit behind the open sheet.
     var castFailure by remember { mutableStateOf<DisplayError?>(null) }
     val devices by session.castStore.devices.collectAsState()
@@ -145,6 +147,7 @@ private fun CastPickerSheet(
             CastDeviceRows(
                 devices = devices,
                 castingTo = castingTo,
+                connectingName = connecting?.name,
                 onDisconnect = {
                     session.cast.stopCasting()
                     onDismiss()
@@ -152,13 +155,16 @@ private fun CastPickerSheet(
                 onCast = { device ->
                     castJob?.cancel()
                     castFailure = null
+                    connecting = device
                     castJob =
                         scope.launch {
                             try {
                                 session.cast.castTo(device.id)
+                                connecting = null
                                 onDismiss()
                             } catch (e: BridgeException) {
                                 logger.error("Failed to cast to ${device.id}", e)
+                                connecting = null
                                 castFailure = context.displayError(e)
                             }
                         }
@@ -189,16 +195,20 @@ private fun PickerFailures(
     }
 }
 
-/** The casting row, if any, then the devices discovery has found so far. */
+/** The casting row, if any, the device a cast is connecting to, then the devices discovery has found so far. */
 @Composable
 internal fun CastDeviceRows(
     devices: List<BridgeCastDevice>,
     castingTo: BridgeRemoteDevice?,
+    connectingName: String?,
     onDisconnect: () -> Unit,
     onCast: (BridgeCastDevice) -> Unit,
 ) {
     if (castingTo != null) {
         CastingRow(deviceName = castingTo.name, onDisconnect = onDisconnect)
+    }
+    if (connectingName != null) {
+        WaitingRow(text = stringResource(R.string.cast_connecting, connectingName))
     }
     if (devices.isEmpty()) {
         LookingForDevicesRow()
@@ -216,6 +226,12 @@ internal fun CastDeviceRows(
 /** Discovery runs the whole time the picker is open, so an empty list is still looking. */
 @Composable
 private fun LookingForDevicesRow() {
+    WaitingRow(text = stringResource(R.string.cast_looking_for_devices))
+}
+
+/** A picker row for a wait: a spinner and what it waits on. */
+@Composable
+private fun WaitingRow(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
@@ -223,7 +239,7 @@ private fun LookingForDevicesRow() {
         CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         Text(
-            text = stringResource(R.string.cast_looking_for_devices),
+            text = text,
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

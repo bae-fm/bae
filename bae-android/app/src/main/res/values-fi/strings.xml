@@ -165,6 +165,7 @@
     <string name="cast_casting_to">Suoratoistetaan kohteeseen %1$s</string>
     <string name="cast_disconnect">Katkaise yhteys</string>
     <string name="cast_looking_for_devices">Etsitään laitteita…</string>
+    <string name="cast_connecting">Yhdistetään kohteeseen %1$s…</string>
     <string name="cast_turn_off_title">Otetaanko suoratoisto pois käytöstä?</string>
     <string name="cast_turn_off_message">Tämä lopettaa suoratoiston kohteeseen %1$s.</string>
     <string name="cast_turn_off_confirm">Ota pois käytöstä</string>

@@ -164,6 +164,7 @@
     <string name="cast_casting_to">%1$s(으)로 캐스트 중</string>
     <string name="cast_disconnect">연결 해제</string>
     <string name="cast_looking_for_devices">기기를 찾는 중…</string>
+    <string name="cast_connecting">%1$s에 연결 중…</string>
     <string name="cast_turn_off_title">캐스트를 끌까요?</string>
     <string name="cast_turn_off_message">%1$s(으)로의 캐스트가 중지됩니다.</string>
     <string name="cast_turn_off_confirm">끄기</string>
