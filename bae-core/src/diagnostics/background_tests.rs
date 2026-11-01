@@ -29,9 +29,10 @@ fn bug_reports_a_panic_and_hands_it_back() {
 #[test]
 fn bug_does_not_report_a_runtime_shutting_down() {
     let (diagnostics, reports) = reporting();
-    let failed = TaskFailed::Shutdown {
+    let failed = TaskFailed::Shutdown(coven::task::Shutdown {
         operation: "resize the cover",
-    };
+        outcome: coven::task::ShutdownOutcome::NotRun,
+    });
     assert_eq!(diagnostics.bug(failed.clone()), failed);
     assert!(reports.reports().is_empty());
 }

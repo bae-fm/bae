@@ -260,7 +260,7 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     std::fs::write(temp.path().join("changed/a.flac"), b"changed after the move").unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     let listed = pending_list_until(&mut values, |items| {
         items
             .iter()
@@ -302,18 +302,8 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
     std::fs::remove_file(temp.path().join("listed/a.flac")).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status_values();
-    let listed = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| matches!(&status.pending, Some(Ok(items)) if !items.is_empty())),
-    )
-    .await
-    .expect("the pending upload is listed")
-    .unwrap()
-    .clone();
-    let Some(Ok(items)) = listed.pending else {
-        unreachable!("waited for a listed record");
-    };
+    let mut values = manager.subscribe_sync_status();
+    let items = pending_list_until(&mut values, |items| !items.is_empty()).await;
     let item = items
         .iter()
         .find(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. }))

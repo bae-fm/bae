@@ -274,10 +274,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         super.init(unsafeFromHandle: handle)
     }
 
-    override func isSyncReady() -> Bool {
-        false
-    }
-
     // The service reports the network path as soon as it starts; nothing
     // here syncs.
     override func reportNetworkChange() {}

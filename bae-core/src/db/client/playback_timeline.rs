@@ -24,8 +24,7 @@ impl Database {
             .subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
     }
 
-    /// Where playback is now, as [`Self::subscribe_playback_timeline`] reads
-    /// it.
+    /// Where playback is now, as `subscribe_playback_timeline` reads it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn playback_timeline(&self) -> Result<PlaybackTimeline, DbError> {
         self.read(|sql| playback_timeline_on(&sql)).await

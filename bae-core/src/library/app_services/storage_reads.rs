@@ -17,7 +17,6 @@ impl AppServices {
         let (view_tx, mut views) = tokio::sync::watch::channel(initial);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
-        let mut cloud_home = manager.subscribe_cloud_home();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "storage browse",
@@ -38,13 +37,11 @@ impl AppServices {
                     manager.subscribe_storage_browse(request.clone()),
                     tx.clone(),
                 );
-                let mut last: Option<crate::db::StorageBrowseProjection> = None;
                 loop {
                     let value = tokio::select! {
                         event = query.recv() => match event {
                             None => return,
                             Some(Ok(projection)) => {
-                                last = Some(projection.clone());
                                 Ok(manager.resolve_storage_browse(projection))
                             }
                             Some(Err(error)) => Err(error),
@@ -54,16 +51,9 @@ impl AppServices {
                             let next = request_for(&views.borrow_and_update());
                             if next != request {
                                 request = next;
-                                last = None;
                                 query.set(request.clone());
                             }
                             continue;
-                        }
-                        changed = cloud_home.changed() => {
-                            if changed.is_err() { return; }
-                            cloud_home.borrow_and_update();
-                            let Some(projection) = last.clone() else { continue };
-                            Ok(manager.resolve_storage_browse(projection))
                         }
                     };
                     if tx.send(value).is_err() {

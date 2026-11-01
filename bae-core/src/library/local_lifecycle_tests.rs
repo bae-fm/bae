@@ -56,14 +56,10 @@ impl Home {
             )
             .await
             .unwrap();
-        let mut status = handle.subscribe_sync_status();
-        tokio::time::timeout(
-            std::time::Duration::from_secs(20),
-            status.wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. })),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        handle
+            .test_sync_status()
+            .wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. }))
+            .await;
     }
 
     /// The libraries whose saved restore codes this device offers, with the

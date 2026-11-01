@@ -15,8 +15,8 @@ pub struct SyncActivity {
     /// The sync failure the status line shows, such as being offline,
     /// unless a pending record in `attention` shows it already.
     pub failure: Option<UiError>,
-    /// The pending records that need the person; `None` until first read.
-    pub attention: Option<Result<Vec<PendingItem>, UiError>>,
+    /// The pending records that need the person.
+    pub attention: Vec<PendingItem>,
     /// A sync pass is running.
     pub syncing: bool,
     /// The files this device is sending now, if any.
@@ -124,13 +124,10 @@ impl SyncActivity {
         self.uploads.is_some() || self.downloads.is_some()
     }
 
-    /// Something needs the person: sync failed, a pending record waits on
-    /// them, or the list couldn't be read. The indicator shows a warning
-    /// while it does.
+    /// Something needs the person: sync failed, or a pending record waits
+    /// on them. The indicator shows a warning while it does.
     pub fn needs_attention(&self) -> bool {
-        self.failure.is_some()
-            || matches!(&self.attention, Some(Ok(items)) if !items.is_empty())
-            || matches!(&self.attention, Some(Err(_)))
+        self.failure.is_some() || !self.attention.is_empty()
     }
 }
 
@@ -138,7 +135,10 @@ impl SyncActivity {
 /// status, the upload queue's counts or the offline downloads changes it.
 /// Bytes moving change none of those, so they send nothing.
 pub struct SyncActivityStream {
-    status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
+    status: coven::LiveQuery<SyncStatusSnapshot>,
+    /// The sync status as last read; `None` before the first read and after
+    /// a failed one.
+    status_value: Option<SyncStatusSnapshot>,
     uploads: coven::LiveQuery<UploadQueueCounts>,
     /// The upload queue's counts as last read; `None` before the first read
     /// and after a failed one.
@@ -156,7 +156,8 @@ pub struct SyncActivityStream {
 impl SyncActivityStream {
     pub(crate) fn new(manager: crate::library::LibraryManager) -> Self {
         Self {
-            status: manager.subscribe_sync_status_values(),
+            status: manager.subscribe_sync_status(),
+            status_value: None,
             uploads: manager.subscribe_upload_counts(),
             upload_counts: None,
             downloads: manager.subscribe_download_counts(),
@@ -171,13 +172,21 @@ impl SyncActivityStream {
     /// change reads it again.
     pub async fn next(&mut self) -> Result<SyncActivity, UiError> {
         loop {
-            if self.started && self.download_counts.is_some() && self.upload_counts.is_some() {
+            if self.started
+                && self.status_value.is_some()
+                && self.download_counts.is_some()
+                && self.upload_counts.is_some()
+            {
                 tokio::select! {
-                    changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
+                    status = self.status.next() => self.take_status(status)?,
                     counts = self.uploads.next() => self.take_upload_counts(counts)?,
                     counts = self.downloads.next() => self.take_download_counts(counts)?,
                 }
             } else {
+                if self.status_value.is_none() {
+                    let status = self.status.next().await;
+                    self.take_status(status)?;
+                }
                 if self.download_counts.is_none() {
                     let counts = self.downloads.next().await;
                     self.take_download_counts(counts)?;
@@ -188,14 +197,44 @@ impl SyncActivityStream {
                 }
             }
             self.started = true;
-            let (Some(uploads), Some(downloads)) = (&self.upload_counts, &self.download_counts)
-            else {
-                unreachable!("both counts are read before the activity");
+            let (Some(status), Some(uploads), Some(downloads)) = (
+                &self.status_value,
+                &self.upload_counts,
+                &self.download_counts,
+            ) else {
+                unreachable!("the status and both counts are read before the activity");
             };
-            let activity = SyncActivity::new(&self.status.borrow_and_update(), uploads, downloads);
+            let activity = SyncActivity::new(status, uploads, downloads);
             if self.returned.as_ref() != Some(&activity) {
                 self.returned = Some(activity.clone());
                 return Ok(activity);
+            }
+        }
+    }
+
+    /// Hold the sync status as its live read delivered it; a failed read
+    /// fails the value, and so does the read ending with the library.
+    fn take_status(
+        &mut self,
+        status: Option<coven::CovenResult<SyncStatusSnapshot>>,
+    ) -> Result<(), UiError> {
+        match status {
+            Some(Ok(status)) => {
+                self.status_value = Some(status);
+                Ok(())
+            }
+            Some(Err(error)) => {
+                self.status_value = None;
+                self.returned = None;
+                let error = crate::library::LibraryError::from(error);
+                Err(UiError::diagnostic(error.category(), error))
+            }
+            None => {
+                self.status_value = None;
+                self.returned = None;
+                Err(UiError::internal(
+                    "the sync status's read ended with its library".to_string(),
+                ))
             }
         }
     }

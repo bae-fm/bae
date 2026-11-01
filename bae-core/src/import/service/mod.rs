@@ -100,13 +100,14 @@ struct PreparedMetadata {
     album_title: String,
 }
 
-/// A release-file row and its original as its destination stages it: on
-/// this device only, observed, or for the cloud, read whole once and kept
-/// whole here too once stored when the import asks for that. coven records
-/// the original on this device either way.
+/// A release-file row and its original, read whole once, with where its
+/// destination stages it: on this device only, or for the cloud, kept whole
+/// here too once stored when the import asks for that. coven records the
+/// original on this device either way, with the hashes its read found.
 pub(crate) struct PreparedImportFile {
     pub(crate) row: NewReleaseFile,
-    pub(crate) source: coven::UserSource,
+    pub(crate) original: coven::PreparedUserFile,
+    pub(crate) place: coven::Place,
 }
 
 fn destination_label(destination: ImportDestination) -> &'static str {

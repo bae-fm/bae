@@ -120,7 +120,6 @@ mod track;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::DiscogsCheck;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
-use sync_status::SyncStatusState;
 pub use sync_status::{pending_action, PendingAction, SyncRetryOutcome};
 
 /// Outcome of `resolve_records_target_album` — where a release should
@@ -382,12 +381,14 @@ impl From<crate::import::ImportError> for LibraryError {
     }
 }
 
-/// Sync activity and the things coven is waiting on that need attention.
-/// Each list is `None` until first read.
-#[derive(Debug, Clone)]
+/// Sync activity and the things coven is waiting on that need attention,
+/// read from coven's tables and bae's own in one go.
+#[derive(Debug, Clone, PartialEq)]
 pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
-    pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
+    pub pending: Vec<PendingItem>,
+    /// Why this device's last attempt to start sync failed, while that
+    /// stands.
     pub error: Option<crate::ui::UiError>,
     /// What the person's retry would do now, as coven decides it: run a
     /// pass, or be answered at once without one.
@@ -398,8 +399,6 @@ pub struct SyncStatusSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
     Unconnected,
-    /// Before the pending list's first read.
-    Loading,
     /// Storage is set up, but the sync loop isn't running.
     Stopped,
     Syncing,
@@ -407,8 +406,6 @@ pub enum SyncIndicator {
     Offline,
     /// The failure is the snapshot's `shown_failure()`.
     Failed,
-    /// The pending list couldn't be read; its error is the list's.
-    Unreadable,
     Waiting {
         items: usize,
     },
@@ -738,8 +735,6 @@ pub struct LibraryManager {
     /// The cloud-sync responsibility: the provider connection and the
     /// upload pause.
     sync: SyncController,
-    /// The sync banner's state and the stream the front-ends read it from.
-    sync_status: SyncStatusState,
     /// How to stop each transfer making a release local that this process
     /// runs.
     detach_cancels: crate::library::detach_cancels::DetachCancels,

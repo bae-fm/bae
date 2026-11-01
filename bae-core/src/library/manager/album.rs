@@ -115,7 +115,8 @@ impl LibraryManager {
         let Some(raw) = self.database.find_album_detail(album_id).await? else {
             return Ok(None);
         };
-        Ok(Some(self.resolve_album_detail(raw)))
+        let has_cloud_home = self.has_cloud_home().await?;
+        Ok(Some(self.resolve_album_detail(raw, has_cloud_home)))
     }
 
     pub(crate) fn subscribe_album_detail(
@@ -130,7 +131,10 @@ impl LibraryManager {
         &self,
         projection: crate::db::AlbumDetailProjection,
     ) -> Option<AlbumDetail> {
-        projection.detail.map(|raw| self.resolve_album_detail(raw))
+        let has_cloud_home = projection.has_cloud_home;
+        projection
+            .detail
+            .map(|raw| self.resolve_album_detail(raw, has_cloud_home))
     }
 
     /// The library albums a parsed, non-blank query finds, as the album
@@ -217,14 +221,17 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
-    /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins
-    /// artist names, formats labels, groups tracks by side, and builds
-    /// galleries.
-    pub(super) fn resolve_album_detail(&self, raw: crate::db::DbAlbumDetail) -> AlbumDetail {
+    /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`,
+    /// against whether storage is set up: joins artist names, formats labels,
+    /// groups tracks by side, and builds galleries.
+    pub(super) fn resolve_album_detail(
+        &self,
+        raw: crate::db::DbAlbumDetail,
+        has_cloud_home: bool,
+    ) -> AlbumDetail {
         let artist_names = crate::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
-        let has_cloud_home = self.has_cloud_home();
         let cover = crate::album_detail::cover_ref(&primary_release_id, raw.primary_cover_version);
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {

@@ -44,15 +44,12 @@ impl TestDevice {
     /// Stop the device's sync loop and wait until it has: the pass running
     /// ends first, and no pass starts until sync starts again.
     pub(crate) async fn stop_sync(&self) {
-        self.database().stop_sync();
+        self.database().stop_sync().await.unwrap();
         let mut status = self.database().subscribe_sync_status();
-        tokio::time::timeout(
-            SETTLE,
-            status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped)),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        crate::followed::value_matching(&mut status, |status| {
+            matches!(status.status, coven::SyncStatus::Stopped)
+        })
+        .await;
     }
 
     /// This device's connection to the shared storage; taking it offline
@@ -190,14 +187,10 @@ impl Library {
             )
             .await
             .unwrap();
-        let mut status = handle.subscribe_sync_status();
-        tokio::time::timeout(
-            SETTLE,
-            status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. })),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        handle
+            .test_sync_status()
+            .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
+            .await;
         Self {
             first: device(dir, app, handle, installation, storage.clone()),
             storage,
@@ -418,11 +411,20 @@ fn record_cycles(
     let mut status = database.subscribe_sync_status();
     let recorded = cycles.clone();
     let watcher = tokio::spawn(async move {
-        while status.changed().await.is_ok() {
-            let current = status.borrow_and_update().clone();
+        // Cycles from now on: the status as it stands is no cycle.
+        let mut previous = match status.next().await {
+            Some(Ok(snapshot)) => snapshot.status,
+            _ => return,
+        };
+        while let Some(Ok(snapshot)) = status.next().await {
+            let current = snapshot.status;
+            if current == previous {
+                continue;
+            }
+            previous = current.clone();
             let last = match &current {
                 coven::SyncStatus::Synced { .. } => format!("{current:?}"),
-                coven::SyncStatus::Failed { error } => format!("failed: {error}"),
+                coven::SyncStatus::Failed { error, .. } => format!("failed: {error}"),
                 _ => continue,
             };
             let mut cycles = recorded.lock().expect("cycle record");

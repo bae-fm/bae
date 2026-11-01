@@ -4,13 +4,18 @@ private final class SyncStatusValueSink: SyncStatusCallback,
     @unchecked Sendable
 {
     private let apply: @MainActor @Sendable (BridgeSyncStatusSnapshot) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
         apply:
-            @escaping @MainActor @Sendable (BridgeSyncStatusSnapshot) -> Void
+            @escaping @MainActor @Sendable (BridgeSyncStatusSnapshot) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
+        self.fail = fail
     }
+
+    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 
     func onValue(value: BridgeSyncStatusSnapshot) {
         Task { @MainActor in apply(value) }
@@ -150,9 +155,14 @@ final class CommonSubscriptions {
     private func syncSubscriptions() -> [LiveSubscription] {
         [
             appHandle.subscribeSyncStatus(
-                callback: SyncStatusValueSink { [syncStatusStore] value in
-                    syncStatusStore.apply(value)
-                }
+                callback: SyncStatusValueSink(
+                    apply: { [syncStatusStore] value in
+                        syncStatusStore.apply(value)
+                    },
+                    fail: { [syncStatusStore] error in
+                        syncStatusStore.fail(error)
+                    }
+                )
             ),
             appHandle.subscribeSyncActivity(
                 callback: SyncActivityValueSink(

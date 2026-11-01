@@ -23,17 +23,8 @@ async fn status_until(
     manager: &TestManager,
     accept: impl Fn(&SyncStatusSnapshot) -> bool,
 ) -> SyncStatusSnapshot {
-    let mut values = manager.subscribe_sync_status_values();
-    let waited = tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(accept))
-        .await
-        .map(|value| value.unwrap().clone());
-    waited.unwrap_or_else(|_| {
-        let value = values.borrow();
-        panic!(
-            "the status never came: {:?}, {:?}",
-            value.status, value.retry_effect
-        )
-    })
+    let mut values = manager.subscribe_sync_status();
+    crate::followed::value_matching(&mut values, accept).await
 }
 
 /// The next request fails as `failure`, answered with HTTP `response`, or
@@ -54,23 +45,19 @@ fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> 
 /// and its next pass.
 #[cfg(feature = "test-utils")]
 async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> SyncStatusSnapshot {
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.storage.set_faults(faults).await;
     manager.trigger_sync();
-    let waited = tokio::time::timeout(
-        std::time::Duration::from_secs(20),
-        values.wait_for(|value| {
-            matches!(
-                value.status,
-                coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
-            ) && matches!(&value.pending, Some(Ok(items))
-                if items.iter().any(|item| item.subject == PendingSubjectName::Connection))
-        }),
-    )
-    .await
-    .map(|value| value.unwrap().clone());
-    let failed =
-        waited.unwrap_or_else(|_| panic!("the pass never failed: {:?}", values.borrow().status));
+    let failed = crate::followed::value_matching(&mut values, |value| {
+        matches!(
+            value.status,
+            coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
+        ) && value
+            .pending
+            .iter()
+            .any(|item| item.subject == PendingSubjectName::Connection)
+    })
+    .await;
     manager.storage.set_faults(coven::Faults::none()).await;
     failed
 }
@@ -100,7 +87,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
             failed.status
         );
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), manager.retry_now())
+        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
             .await
             .expect("the retry's pass ends");
         assert!(
@@ -140,7 +127,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
             failed.status
         );
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), manager.retry_now())
+        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
             .await
             .expect("a held pass answers the retry at once");
         assert!(
@@ -177,7 +164,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
         coven::RetryEffect::CoolingDown { until: ends }
     );
     assert!(!cooling.retry_offered(), "{:?}", cooling.status);
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), manager.retry_now())
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
         .await
         .expect("a cooldown answers the retry at once");
     assert!(
@@ -199,7 +186,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     assert!(offline.retry_offered(), "{:?}", offline.retry_effect);
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), manager.retry_now())
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
         .await
         .expect("the retry's pass ends");
     assert!(

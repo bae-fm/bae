@@ -29,6 +29,9 @@ pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::Removed => C::DeviceRemoved,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -41,6 +44,9 @@ pub(super) fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
         E::Removed => C::DeviceRemoved,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Crypto(_) | E::Other(_) => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -76,7 +82,9 @@ fn local_failure_category(failure: coven::LocalFailure) -> C {
     match failure {
         F::Database => C::Database,
         F::KeyCustody => C::Keyring,
-        F::Disk | F::Crypto | F::Operation => C::Internal,
+        // A runtime shutting down dropped the work; the next process runs
+        // it again.
+        F::Disk | F::Crypto | F::Operation | F::Shutdown => C::Internal,
     }
 }
 
@@ -115,6 +123,9 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
         | E::KeyAlreadyUsed(_)
         | E::Damaged(_)
         | E::WrongStore { .. } => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -154,6 +165,9 @@ pub(super) fn key_category(error: &coven::KeyError) -> C {
         | E::ServiceNotRegistered
         | E::ServiceAlreadyRegistered
         | E::InvalidServiceName => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -167,6 +181,9 @@ pub(crate) fn creation_category(error: &coven::StoreCreationError) -> C {
         E::Sync(error) => sync_category(error),
         E::Cleanup { operation, .. } => creation_category(operation),
         E::PublishedButNotSynced { source, .. } => creation_category(source),
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -177,6 +194,9 @@ pub(crate) fn deletion_category(error: &coven::StoreDeletionError) -> C {
         E::Key(error) => key_category(error),
         E::Lock(_) | E::Unsent(_) => C::Config,
         E::File(_) => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 
@@ -193,6 +213,9 @@ pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Cleanup { operation, .. } => bootstrap_category(operation),
         E::Published { source, .. } => bootstrap_category(source),
         E::Cancelled | E::Directory(_) => C::Internal,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
     }
 }
 

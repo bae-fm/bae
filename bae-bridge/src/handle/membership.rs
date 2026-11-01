@@ -66,6 +66,7 @@ impl BridgeAddDevice {
 #[uniffi::export(callback_interface)]
 pub trait InvitesCallback: Send + Sync {
     fn on_value(&self, value: Vec<BridgeInvite>);
+    fn on_error(&self, error: BridgeError);
 }
 #[uniffi::export]
 impl AppHandle {
@@ -91,18 +92,16 @@ impl AppHandle {
         &self,
         callback: Box<dyn InvitesCallback>,
     ) -> Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_invites(),
-            move |invites| {
-                callback.on_value(
-                    invites
-                        .iter()
-                        .cloned()
-                        .map(BridgeInvite::from_core)
-                        .collect(),
-                )
-            },
-        )
+        self.live_subscription(move |services| async move {
+            let mut invites = services.subscribe_invites();
+            while let Some(result) = invites.next().await {
+                match result {
+                    Ok(invites) => callback
+                        .on_value(invites.into_iter().map(BridgeInvite::from_core).collect()),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+                }
+            }
+        })
     }
 }
 forward! {async this => {

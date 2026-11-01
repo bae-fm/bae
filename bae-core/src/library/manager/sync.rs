@@ -7,12 +7,13 @@ impl LibraryManager {
         Ok(self.database.storage_config().await?.is_some())
     }
 
-    pub fn has_cloud_home(&self) -> bool {
-        self.sync_status.snapshot().connected()
-    }
-
-    pub(crate) fn subscribe_cloud_home(&self) -> tokio::sync::watch::Receiver<bool> {
-        self.sync_status.subscribe_cloud_home()
+    /// Whether storage is set up on this device, as coven's sync status
+    /// says now.
+    pub async fn has_cloud_home(&self) -> Result<bool, LibraryError> {
+        Ok(!matches!(
+            self.database.coven_sync_status().await?,
+            coven::SyncStatus::Disconnected
+        ))
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
@@ -23,12 +24,18 @@ impl LibraryManager {
         self.sync.is_sync_paused().await
     }
 
-    pub fn is_sync_ready(&self) -> bool {
-        self.sync_status.snapshot().loop_running()
+    /// Whether coven's sync loop is running now: storage is set up and
+    /// syncing isn't stopped.
+    pub async fn is_sync_ready(&self) -> Result<bool, LibraryError> {
+        Ok(!matches!(
+            self.database.coven_sync_status().await?,
+            coven::SyncStatus::Disconnected | coven::SyncStatus::Stopped
+        ))
     }
 
-    pub fn get_sync_status(&self) -> SyncStatusSnapshot {
-        self.sync_status.snapshot()
+    /// The sync status now, as [`Self::subscribe_sync_status`] reads it.
+    pub async fn sync_status(&self) -> Result<SyncStatusSnapshot, LibraryError> {
+        Ok(self.database.sync_status().await?)
     }
 
     pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, LibraryError> {
@@ -43,8 +50,9 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub fn stop_sync(&self) {
-        self.database.stop_sync();
+    /// Stop the sync loop: returns once no pass runs.
+    pub async fn stop_sync(&self) -> Result<(), LibraryError> {
+        Ok(self.database.stop_sync().await?)
     }
 
     pub fn trigger_sync(&self) {
@@ -70,13 +78,17 @@ impl LibraryManager {
     /// never retry, and waits for new credentials hold. Automatic triggers
     /// use [`Self::trigger_sync`], which leaves every backoff in place.
     ///
-    /// The retry takes effect when called; the returned future resolves when
-    /// the first pass after it ends, with what came of it.
-    pub fn retry_now(
+    /// The retry is in place once this returns, with its answer to await:
+    /// the first pass after it ends, with what came of it. Deciding the
+    /// answer writes coven's retry state; a failed write is returned.
+    pub async fn retry_now(
         &self,
-    ) -> impl std::future::Future<Output = super::SyncRetryOutcome> + Send + 'static {
-        let answer = self.database.retry_now();
-        async move { answer.await.into() }
+    ) -> Result<
+        impl std::future::Future<Output = super::SyncRetryOutcome> + Send + 'static,
+        LibraryError,
+    > {
+        let answer = self.database.retry_now().await?;
+        Ok(async move { answer.await.into() })
     }
 
     pub async fn save_s3_config(
@@ -194,7 +206,18 @@ impl LibraryManager {
             },
             // A start that panicked started no loop, like one that failed:
             // the status line says why and offers Reconnect.
-            move |failed| failed_start.set_sync_error(Some(&failed.into())),
+            move |failed| {
+                let manager = failed_start.clone();
+                let error = LibraryError::from(failed);
+                let recorded = failed_start.spawn_supervised_task(
+                    "record the failed sync start",
+                    async move { manager.set_sync_error(Some(&error)).await },
+                    |_| {},
+                );
+                if let Err(error) = recorded {
+                    tracing::warn!(%error, "could not record the failed sync start");
+                }
+            },
         )
     }
 
@@ -211,7 +234,7 @@ impl LibraryManager {
         tracing::info!("startup sync attachment started");
         if let Err(error) = self.attach_and_start_sync().await {
             warn!("startup sync connect failed; opening library not connected: {error}");
-            self.set_sync_error(Some(&error));
+            self.set_sync_error(Some(&error)).await;
         }
         tracing::info!(
             attachment_ms = started.elapsed().as_millis(),
@@ -238,24 +261,29 @@ impl LibraryManager {
         if !self.is_sync_configured().await? {
             return Err(coven::SyncError::NoStorage.into());
         }
-        if !self.is_sync_ready() {
+        if !self.is_sync_ready().await? {
             if let Err(error) = self.attach_and_start_sync().await {
                 warn!("sync reconnect failed: {error}");
-                self.set_sync_error(Some(&error));
+                self.set_sync_error(Some(&error)).await;
                 return Err(error);
             }
         }
-        self.set_sync_error(None);
+        self.database.record_sync_start_failure(None).await?;
         self.trigger_sync();
         Ok(())
     }
 
-    /// Write the sync-status error the status line reads, in the failure's own
+    /// Record the failed start the status line reads, in the failure's own
     /// category, as the sync loop's failures are: a locked keychain reads as
-    /// locked, a refused sign-in as credentials. `None` clears it.
-    fn set_sync_error(&self, error: Option<&LibraryError>) {
-        self.sync_status
-            .set_error(error.map(|error| crate::ui::UiError::diagnostic(error.category(), error)));
+    /// locked, a refused sign-in as credentials. `None` clears it. A failure
+    /// to record it is logged and reported as a bug: the status line can't
+    /// say why sync didn't start.
+    async fn set_sync_error(&self, error: Option<&LibraryError>) {
+        let failure = error.map(|error| crate::ui::UiError::diagnostic(error.category(), error));
+        if let Err(error) = self.database.record_sync_start_failure(failure).await {
+            self.diagnostics
+                .report_bug("record why sync failed to start", &error);
+        }
     }
 }
 

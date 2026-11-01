@@ -67,7 +67,6 @@ import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
-import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
@@ -727,10 +726,6 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun getUploadsPaused(): Boolean = unfaked("getUploadsPaused")
-
-    override fun getSyncStatus(): BridgeSyncStatusSnapshot = unfaked("getSyncStatus")
-
-    override fun isSyncReady(): Boolean = unfaked("isSyncReady")
 
     override suspend fun reconnectSync() {
         unfaked("reconnectSync")

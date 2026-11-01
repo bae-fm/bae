@@ -49,6 +49,6 @@ pub enum BridgeLiveQueryCause {
 
 callbacks! {
 
-    SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
+    SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot) + on_error;
     SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;
 }

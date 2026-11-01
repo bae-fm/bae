@@ -16,13 +16,6 @@ pub enum LibraryOpening {
     Open(coven::CovenHandle),
 }
 
-/// Work that panicked, as the status line shows it: something that went
-/// wrong in bae.
-fn task_failure_shown(failed: TaskFailed) -> crate::ui::UiError {
-    let error = LibraryError::from(failed);
-    crate::ui::UiError::diagnostic(error.category(), error)
-}
-
 /// A subscription opened while its library closes, from a task the close is
 /// ending, has nothing left to read.
 fn subscription_unstarted(error: &LibraryError) {
@@ -88,6 +81,9 @@ impl LibraryManager {
         database.clear_transfers().await?;
         // Nor does discovery: the cast picker's list starts empty.
         database.clear_cast_devices().await?;
+        // Nor does an attempt to start sync: a failed start stands only in
+        // the process that made it.
+        database.record_sync_start_failure(None).await?;
         Ok(Self::assemble(
             database,
             app_dir,
@@ -137,7 +133,6 @@ impl LibraryManager {
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Self {
-        let sync_status = SyncStatusState::new(&database);
         let sync = SyncController::new(database.clone(), diagnostics.clone());
         let downloads = crate::library::Downloads::new(database.clone());
         #[cfg(desktop)]
@@ -159,7 +154,6 @@ impl LibraryManager {
             tasks: BackgroundTasks::default(),
             track_deletions: Arc::default(),
             sync,
-            sync_status,
             detach_cancels: Default::default(),
             downloads,
             #[cfg(desktop)]
@@ -354,7 +348,9 @@ impl LibraryManager {
     /// built on the manager (playback, import) end their own work when they
     /// are dropped.
     pub async fn close(&self) -> Result<(), LibraryError> {
-        self.database.stop_sync();
+        if let Err(error) = self.database.stop_sync().await {
+            warn!(%error, "stopping sync as the library closes failed");
+        }
         self.tasks.close().await;
         self.database.close().await?;
         Ok(())
@@ -525,64 +521,60 @@ impl LibraryManager {
         self.database.every_row_for_test().await.unwrap()
     }
 
-    /// Subscribe to the sync loop's status and what a retry would do, and
-    /// publish the current status line value. Call once after construction,
+    /// Follow the sync status to log its failure and report a failed pass,
+    /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.
     pub fn start(&self) -> Result<(), LibraryError> {
         let mut statuses = self.database.subscribe_sync_status();
-        let mut effects = self.database.subscribe_retry_effect();
         let lm = self.clone();
-        let stopped = self.clone();
         self.spawn_supervised_task(
-            "sync status subscription",
+            "sync status follower",
             async move {
-                let mut first = true;
-                loop {
-                    let status_changed = first || statuses.has_changed().unwrap_or(false);
-                    first = false;
-                    let status = statuses.borrow_and_update().clone();
-                    // coven publishes what a retry would do before the status a
-                    // pass leaves, so the effect read after it is at least as new.
-                    let effect = *effects.borrow_and_update();
-                    // `set_sync` logs the failure, once, as it appears or changes.
-                    if status_changed && matches!(status, coven::SyncStatus::Failed { .. }) {
-                        match lm.database.storage_config().await {
-                            Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
-                                provider: storage.provider(),
-                                operation: SyncOperation::Cycle,
-                            }),
-                            Ok(None) => {}
-                            Err(error) => {
-                                warn!(%error, "could not identify sync provider for diagnostics")
-                            }
+                let mut last: Option<SyncStatusSnapshot> = None;
+                while let Some(read) = statuses.next().await {
+                    let snapshot = match read {
+                        Ok(snapshot) => snapshot,
+                        Err(error) => {
+                            warn!(%error, "could not read the sync status");
+                            continue;
                         }
-                    }
-                    lm.sync_status.set_sync(status, effect);
-                    let open = tokio::select! {
-                        changed = statuses.changed() => changed.is_ok(),
-                        changed = effects.changed() => changed.is_ok(),
                     };
-                    if !open {
-                        break;
-                    }
+                    lm.follow_sync_status(last.as_ref(), &snapshot).await;
+                    last = Some(snapshot);
                 }
             },
-            // The status line stops following sync, and shows why.
-            move |failed| {
-                stopped
-                    .sync_status
-                    .set_error(Some(task_failure_shown(failed)))
+            |failed| {
+                tracing::error!(error = %failed, "the sync status follower ended");
             },
-        )?;
-        let pending = super::pending_item::PendingFollower::new(self.clone());
-        let stopped = self.clone();
-        self.spawn_supervised_task("pending sync records", pending.run(), move |failed| {
-            // The pending list stops following coven's records, and the
-            // status line says it couldn't read them.
-            stopped
-                .sync_status
-                .set_pending(Err(task_failure_shown(failed)));
-        })
+        )
+    }
+
+    /// Log a failure coven doesn't log itself, and report a failed pass to
+    /// diagnostics, when `snapshot` brings it after `last`.
+    async fn follow_sync_status(
+        &self,
+        last: Option<&SyncStatusSnapshot>,
+        snapshot: &SyncStatusSnapshot,
+    ) {
+        if let Some(crate::ui::UiError::Diagnostic { category, detail }) =
+            snapshot.failure_to_log(last)
+        {
+            tracing::warn!(?category, "sync failure: {detail}");
+        }
+        let failed = |snapshot: &SyncStatusSnapshot| match &snapshot.status {
+            coven::SyncStatus::Failed { error, .. } => Some(error.clone()),
+            _ => None,
+        };
+        if failed(snapshot).is_some() && last.and_then(failed) != failed(snapshot) {
+            match self.database.storage_config().await {
+                Ok(Some(storage)) => self.diagnostics.event(TelemetryEvent::SyncFailed {
+                    provider: storage.provider(),
+                    operation: SyncOperation::Cycle,
+                }),
+                Ok(None) => {}
+                Err(error) => warn!(%error, "could not identify sync provider for diagnostics"),
+            }
+        }
     }
 
     /// Every deletion of tracks from now on, none dropped, as the ids each
@@ -595,10 +587,9 @@ impl LibraryManager {
         deletions
     }
 
-    pub fn subscribe_sync_status_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot> {
-        self.sync_status.subscribe()
+    /// Follow the sync status, each value read from its tables in one go.
+    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<SyncStatusSnapshot> {
+        self.database.subscribe_sync_status()
     }
 
     /// Tell every reader these tracks are deleted.

@@ -466,9 +466,8 @@ impl AppServices {
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_sync!(manager, network_changed => network_changed() -> ());
     delegate_async!(manager, release_memory => release_memory() -> Result<(), crate::library::LibraryError>);
-    delegate_sync!(manager, retry_now => retry_now() -> impl std::future::Future<Output = crate::library::SyncRetryOutcome> + Send + 'static);
+    delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = crate::library::SyncRetryOutcome> + Send + 'static, crate::library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
-    delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), crate::library::LibraryError>);
@@ -525,7 +524,7 @@ impl AppServices {
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::Invite, crate::library::LibraryError>);
-    delegate_sync!(manager, subscribe_invites => subscribe_invites() -> tokio::sync::watch::Receiver<Vec<coven::Invite>>);
+    delegate_sync!(manager, subscribe_invites => subscribe_invites() -> coven::LiveQuery<Vec<coven::Invite>>);
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);
@@ -576,7 +575,7 @@ impl AppServices {
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), crate::library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
-    delegate_sync!(manager, has_cloud_home => has_cloud_home() -> bool);
+    delegate_async!(manager, has_cloud_home => has_cloud_home() -> Result<bool, crate::library::LibraryError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, crate::library::LibraryError>);
 
@@ -675,14 +674,9 @@ impl AppServices {
         )
     }
 
-    pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
-        self.inner.manager.get_sync_status()
-    }
-
-    pub fn subscribe_sync_status_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot> {
-        self.inner.manager.subscribe_sync_status_values()
+    /// Follow the sync status, each value read from its tables in one go.
+    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<crate::library::SyncStatusSnapshot> {
+        self.inner.manager.subscribe_sync_status()
     }
 
     pub async fn retry_pending_operation(

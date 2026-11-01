@@ -53,4 +53,10 @@ class SyncStatusStore {
         _indicator.value = status.indicator
         _pending.value = status.pending
     }
+
+    /** The sync status couldn't be read: the line shows the read's failure until a read succeeds. */
+    fun fail(error: DisplayError) {
+        _error.value = SyncFailure(error, canReconnect = false, offersDeviceReset = false)
+        _indicator.value = BridgeSyncIndicator.Unreadable
+    }
 }

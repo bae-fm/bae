@@ -25,9 +25,10 @@ impl Diagnostics {
     pub fn bug(&self, failed: TaskFailed) -> TaskFailed {
         match &failed {
             TaskFailed::Panicked { operation, .. } => self.report_bug(operation, &failed),
-            TaskFailed::Shutdown { operation } => {
+            TaskFailed::Shutdown(shutdown) => {
                 tracing::debug!(
-                    operation,
+                    operation = shutdown.operation,
+                    outcome = %shutdown.outcome,
                     "work ended unfinished: its runtime is shutting down"
                 );
             }

@@ -148,8 +148,9 @@ impl LibraryManager {
             .await?)
     }
 
-    /// This device's open invites, each with its request once one has arrived.
-    pub fn subscribe_invites(&self) -> tokio::sync::watch::Receiver<Vec<coven::Invite>> {
+    /// This device's open invites, each with its request once one has
+    /// arrived, live.
+    pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<coven::Invite>> {
         self.database.subscribe_invites()
     }
 

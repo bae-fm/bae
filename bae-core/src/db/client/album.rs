@@ -347,14 +347,19 @@ impl Database {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |album_id, sql| {
-                let Some(album_id) = album_id else {
-                    return Ok(None);
+                let has_cloud_home = cloud_home_on(&sql)?;
+                let detail = match album_id {
+                    Some(album_id) => {
+                        find_album_detail_on(&sql, album_id).map_err(CovenError::from)?
+                    }
+                    None => None,
                 };
-                find_album_detail_on(&sql, album_id).map_err(CovenError::from)
+                Ok((detail, has_cloud_home))
             })
-            .process(|detail| {
+            .process(|(detail, has_cloud_home)| {
                 Ok(AlbumDetailProjection {
                     detail: detail.map(AlbumDetailRows::process),
+                    has_cloud_home,
                 })
             })
     }
@@ -728,6 +733,9 @@ pub struct AlbumBrowseProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
+    /// Whether storage is set up on this device, as coven's sync status
+    /// says.
+    pub has_cloud_home: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

@@ -163,6 +163,7 @@ impl Database {
                     storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)
                         .map_err(CovenError::from)?;
                 let queues = storage_queues_on(&sql).map_err(CovenError::from)?;
+                let has_cloud_home = super::super::cloud_home_on(&sql)?;
                 let searching = search.is_some();
                 Ok((
                     request.clone(),
@@ -172,10 +173,20 @@ impl Database {
                     total_size,
                     selected,
                     queues,
+                    has_cloud_home,
                 ))
             })
             .process(
-                |(request, searching, windows, total_count, total_size, selected, queues)| {
+                |(
+                    request,
+                    searching,
+                    windows,
+                    total_count,
+                    total_size,
+                    selected,
+                    queues,
+                    has_cloud_home,
+                )| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -195,6 +206,7 @@ impl Database {
                         total_size,
                         selected: super::release_projection::process_storage_rows(selected)?,
                         queues,
+                        has_cloud_home,
                     })
                 },
             )

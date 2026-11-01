@@ -491,7 +491,7 @@ async fn reconnect_sync_refuses_a_library_with_no_provider() {
     let (manager, _temp) = setup_test_manager().await;
     let error = manager.reconnect_sync().await.unwrap_err();
     assert!(matches!(error, LibraryError::Sync(coven::SyncError::NoStorage)));
-    assert!(manager.get_sync_status().error.is_none());
+    assert!(manager.sync_status().await.unwrap().error.is_none());
 }
 
 #[tokio::test]
@@ -501,14 +501,14 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     connect_test_cloud(&manager).await;
     manager.storage.set_online(false);
     manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
-    tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }))).await.unwrap().unwrap();
-    assert!(manager.is_sync_ready(), "the loop keeps the failed connection retryable");
+    crate::followed::value_matching(&mut values, |value| matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })).await;
+    assert!(manager.is_sync_ready().await.unwrap(), "the loop keeps the failed connection retryable");
     manager.storage.set_online(true);
     clock.set(std::time::UNIX_EPOCH + std::time::Duration::from_secs(60));
     manager.reconnect_sync().await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
+    crate::followed::value_matching(&mut values, |value| matches!(value.status, coven::SyncStatus::Synced { .. })).await;
     manager.close().await.unwrap();
 }
 
@@ -524,15 +524,15 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
     let mut status = manager.database.subscribe_sync_status();
     manager.storage.set_online(false);
     manager.trigger_sync();
-    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Offline { .. }))).await.unwrap().unwrap();
+    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Offline { .. })).await;
     manager.storage.set_online(true);
     let requests = manager.storage.request_trace().len();
     manager.trigger_sync();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert_eq!(manager.storage.request_trace().len(), requests, "a sync request ran a pass inside the offline backoff");
-    assert!(matches!(*status.borrow(), coven::SyncStatus::Offline { .. }));
+    assert!(matches!(manager.sync_status().await.unwrap().status, coven::SyncStatus::Offline { .. }));
     manager.network_changed();
-    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
+    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Synced { .. })).await;
     manager.close().await.unwrap();
 }
 
@@ -551,7 +551,9 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;
     let recorded = manager
-        .get_sync_status()
+        .sync_status()
+        .await
+        .unwrap()
         .error
         .expect("the failed startup connect is recorded");
     let crate::ui::UiError::Diagnostic { category, .. } = &recorded;
@@ -566,7 +568,7 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
         .await
         .expect("the keychain answers the retry");
     assert!(
-        manager.get_sync_status().error.is_none(),
+        manager.sync_status().await.unwrap().error.is_none(),
         "the stale failure is gone the moment the retry runs"
     );
     manager.close().await.unwrap();

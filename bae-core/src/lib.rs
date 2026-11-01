@@ -25,6 +25,8 @@ pub mod logging;
 // the same predicate that gates `import`'s pipeline modules and `ebur128`
 // itself. Playback derives its gain from the stored measurements with plain
 // arithmetic, so mobile needs neither.
+#[cfg(any(test, feature = "test-utils"))]
+pub mod followed;
 #[cfg(desktop)]
 pub mod loudness;
 pub mod mediums;

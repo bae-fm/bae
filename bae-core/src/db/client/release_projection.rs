@@ -516,9 +516,15 @@ pub struct StorageBrowseProjection {
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,
     pub queues: crate::library::StorageQueues,
+    /// Whether storage is set up on this device, as coven's sync status
+    /// says.
+    pub has_cloud_home: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
+    /// Whether storage is set up on this device, as coven's sync status
+    /// says.
+    pub has_cloud_home: bool,
 }

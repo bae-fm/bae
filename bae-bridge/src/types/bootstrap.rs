@@ -79,15 +79,10 @@ impl BridgeBootstrapStatus {
                 confirmation: confirmation.map(|number| number.to_string()),
                 next_check: BridgeNextCheck::from_core(next_check),
             },
-            coven::BootstrapStatus::Loading => Self::Loading,
-            // coven reports an open's steps as a status from restore_device
-            // alone, and bae-core's restore over this device sends them to
-            // the open's progress instead.
-            coven::BootstrapStatus::Opening(progress) => {
-                unreachable!(
-                    "an open's step reaches the open's progress, never a status: {progress:?}"
-                )
-            }
+            coven::BootstrapStatus::Loading(_) => Self::Loading,
+            // A new installation's database opens before it connects, which
+            // the person sees as connecting.
+            coven::BootstrapStatus::Opening(_) => Self::Connecting,
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()

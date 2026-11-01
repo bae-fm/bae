@@ -591,13 +591,9 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
     let without = BridgePendingRecord::from_core(item.clone());
     assert_eq!(without.reason.detail, None);
 
-    item.wait.cause = Some(std::sync::Arc::new(coven::StorageError::Provider {
-        provider: coven::CloudProvider::S3,
-        failure: coven::StorageFailure::Network,
-        source: Box::new(std::io::Error::other(
-            "S3 request failed: dispatch failure: io error: connection refused",
-        )),
-    }));
+    item.wait.cause = Some(
+        "S3: Network: S3 request failed: dispatch failure: io error: connection refused".into(),
+    );
     let with = BridgePendingRecord::from_core(item);
     assert_eq!(with.subject.key, "core.pending.subject.connection");
     assert_eq!(with.reason.key, "core.pending.reason.storage");
@@ -783,4 +779,26 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
         bridge_candidate_key_text(grouping.into_bytes()),
         "grouping:g1"
     );
+}
+
+/// A new installation's database opens before it connects, so its open
+/// crosses as connecting; loading the store crosses as loading at every
+/// step.
+#[test]
+fn a_bootstrap_open_crosses_as_connecting_and_each_load_step_as_loading() {
+    use crate::types::BridgeBootstrapStatus;
+    let opening =
+        BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Opening(coven::Progress {
+            step: coven::OpenStep::Rebuilding,
+            done: 0,
+            total: 1,
+        }));
+    assert!(matches!(opening, BridgeBootstrapStatus::Connecting));
+    let loading =
+        BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Loading(coven::Progress {
+            step: coven::LoadStep::Reading,
+            done: 3,
+            total: 9,
+        }));
+    assert!(matches!(loading, BridgeBootstrapStatus::Loading));
 }

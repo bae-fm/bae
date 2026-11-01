@@ -364,13 +364,11 @@ impl BridgeSyncIndicator {
     pub(crate) fn from_core(value: bae_core::library::SyncIndicator) -> Self {
         match value {
             bae_core::library::SyncIndicator::Unconnected => Self::Unconnected,
-            bae_core::library::SyncIndicator::Loading => Self::Loading,
             bae_core::library::SyncIndicator::Stopped => Self::Stopped,
             bae_core::library::SyncIndicator::Syncing => Self::Syncing,
             bae_core::library::SyncIndicator::Synced => Self::Synced,
             bae_core::library::SyncIndicator::Offline => Self::Offline,
             bae_core::library::SyncIndicator::Failed => Self::Failed,
-            bae_core::library::SyncIndicator::Unreadable => Self::Unreadable,
             bae_core::library::SyncIndicator::Waiting { items } => Self::Waiting {
                 items: items as u64,
             },

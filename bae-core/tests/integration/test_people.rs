@@ -315,14 +315,14 @@ impl Household {
 
     /// Approve the first request among the owner's open invites.
     async fn approve(&self) {
-        let mut invites = self.owner.subscribe_invites();
-        let request = invites
-            .wait_for(|invites| invites.iter().any(|invite| invite.request.is_some()))
-            .await
-            .unwrap()
-            .iter()
-            .find_map(|invite| invite.request.clone())
-            .unwrap();
+        let mut invites = self.owner.subscribe(coven::Invite::list);
+        let request = bae_core::followed::value_matching(&mut invites, |invites| {
+            invites.iter().any(|invite| invite.request.is_some())
+        })
+        .await
+        .iter()
+        .find_map(|invite| invite.request.clone())
+        .unwrap();
         self.owner.approve_join_request(&request).await.unwrap();
     }
 }
@@ -473,7 +473,7 @@ fn a_replacement_invite_writes_no_profile() {
         // Rowan's profile reaches storage before the device is lost.
         lost.start_sync().await.unwrap();
         assert!(matches!(
-            lost.retry_now().await,
+            lost.retry_now().await.unwrap().await,
             coven::RetryOutcome::Synced { .. }
         ));
         lost.close().await.unwrap();

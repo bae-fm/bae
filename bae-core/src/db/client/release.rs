@@ -384,14 +384,18 @@ impl Database {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |release_id, sql| {
-                let Some(release_id) = release_id else {
-                    return Ok(None);
+                let has_cloud_home = cloud_home_on(&sql)?;
+                let context = match release_id {
+                    Some(release_id) => find_release_detail_context_on(&sql, release_id)
+                        .map_err(CovenError::from)?,
+                    None => None,
                 };
-                find_release_detail_context_on(&sql, release_id).map_err(CovenError::from)
+                Ok((context, has_cloud_home))
             })
-            .process(|context| {
+            .process(|(context, has_cloud_home)| {
                 Ok(ReleaseDetailProjection {
                     context: context.map(super::release_projection::ReleaseContextRows::process),
+                    has_cloud_home,
                 })
             })
     }
@@ -404,7 +408,7 @@ impl Database {
     }
     /// Seed a release-file row for tests, its file staged from the original
     /// at `original` as a local import stages it: on this device only, with
-    /// the original's path, size and modification time recorded.
+    /// the original's path, size, modification time and hashes recorded.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_file_for_test(
         &self,
@@ -425,19 +429,20 @@ impl Database {
         files: Vec<(NewReleaseFile, std::path::PathBuf)>,
     ) -> Result<Vec<coven::FileId>, DbError> {
         let mut rows = Vec::with_capacity(files.len());
-        let mut observed = Vec::with_capacity(files.len());
+        let mut prepared = Vec::with_capacity(files.len());
         for (file, original) in files {
-            observed.push(coven::observe_user_file(&original).await?);
+            prepared.push(coven::prepare_user_file(&original, |_| ()).await?);
             rows.push(file);
         }
         self.write_with_files(
             move |w| {
-                Ok(observed
+                Ok(prepared
                     .into_iter()
-                    .map(|observed| {
+                    .map(|original| {
                         w.put_user_file(
                             crate::sync::RELEASE_FILES_NAMESPACE,
-                            coven::UserSource::DeviceOnly(observed),
+                            original,
+                            coven::Place::DeviceOnly,
                         )
                     })
                     .collect::<Vec<_>>())
@@ -618,10 +623,10 @@ impl Database {
             .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
             .collect();
         // Each original is staged as a coven file, on this device only or for
-        // the cloud as its source says, which its row references.
-        let (rows_to_insert, originals): (Vec<NewReleaseFile>, Vec<coven::UserSource>) = files
+        // the cloud as its place says, which its row references.
+        let (rows_to_insert, originals): (Vec<NewReleaseFile>, Vec<_>) = files
             .into_iter()
-            .map(|prepared| (prepared.row, prepared.source))
+            .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
             .unzip();
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
@@ -635,7 +640,9 @@ impl Database {
                     .collect();
                 let originals: Vec<coven::FileId> = originals
                     .into_iter()
-                    .map(|source| w.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, source))
+                    .map(|(original, place)| {
+                        w.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, original, place)
+                    })
                     .collect();
                 Ok((images, originals))
             },

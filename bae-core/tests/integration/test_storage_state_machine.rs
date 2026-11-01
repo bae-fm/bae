@@ -236,11 +236,11 @@ async fn test_manage_refused_without_cloud_storage() {
     // No cloud home connected, so the sync loop is NOT running.
     let (db, mgr, _cloud) = setup_manager(&tmp).await;
     assert!(
-        !mgr.is_sync_ready(),
+        !mgr.is_sync_ready().await.unwrap(),
         "precondition: no cloud home / sync loop not running"
     );
     assert!(
-        !mgr.has_cloud_home(),
+        !mgr.has_cloud_home().await.unwrap(),
         "precondition: no cloud home connected"
     );
     let source_dir = tmp.path().join("originals");
@@ -342,10 +342,12 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     );
 }
 
-/// Attachment refuses an original changed since import. Nothing is queued,
-/// and the source files remain untouched.
+/// An original changed since import fails its release's move: the move
+/// queues without reading any original, and its upload finds the change
+/// before sending a byte. Nothing is stored, the move's record names the
+/// changed original, and the source files remain untouched.
 #[tokio::test]
-async fn truncated_source_refuses_attachment_without_queuing_work() {
+async fn truncated_source_fails_its_move_without_sending() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -357,16 +359,23 @@ async fn truncated_source_refuses_attachment_without_queuing_work() {
     .await;
 
     // Corrupt one original: fewer bytes on disk than its registered size.
-    tokio::fs::write(source_dir.join("a.flac"), b"x")
-        .await
-        .unwrap();
+    let changed = source_dir.join("a.flac");
+    tokio::fs::write(&changed, b"x").await.unwrap();
 
-    let error = mgr
-        .upload_release(&release_id, false)
-        .await
-        .expect_err("a source changed since import");
-    assert!(!error.to_string().is_empty());
+    mgr.upload_release(&release_id, false).await.unwrap();
+    assert_eq!(mgr.drain_uploads_expecting_work().await.unwrap(), 0);
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
+    let pending = mgr.sync_status().await.unwrap().pending;
+    assert!(
+        pending.iter().any(|item| matches!(
+            &item.wait.reason,
+            coven::PendingReason::Original {
+                failure: coven::FileSourceFailure::Changed,
+                path,
+            } if *path == changed
+        )),
+        "{pending:?}"
+    );
     for (name, _) in files {
         assert!(source_dir.join(name).exists());
     }

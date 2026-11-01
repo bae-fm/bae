@@ -538,64 +538,43 @@ impl ImportService {
             let import_id_for_progress = import_id.to_string();
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
             let reported_percent_for_progress = Arc::clone(&reported_percent);
-            // coven records the original as it finds it now, so what it
+            // coven reads the original whole and records it as it finds it
+            // now, on this device only or for the cloud alike, so what it
             // finds must be the file the scan read.
-            let source = match destination {
-                ImportDestination::Local => {
-                    let observed = coven::observe_user_file(&file.path)
-                        .await
-                        .map_err(|error| crate::import::ImportError::UnusableFile {
-                            detail: format!(
-                                "coven could not observe {} for import: {error}",
-                                file.path.display()
-                            ),
-                        })?;
-                    crate::import::file_identity::require_scanned_identity(
-                        file,
-                        observed.size(),
-                        observed.modified_at(),
-                    )?;
-                    coven::UserSource::DeviceOnly(observed)
+            let original = Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+                let completed = bytes_read_before_file + u128::from(consumed);
+                let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                let previous = reported_percent_for_progress
+                    .swap(percent, std::sync::atomic::Ordering::Relaxed);
+                if previous != percent {
+                    ImportService::emit_phase_progress_on(
+                        &event_tx,
+                        ImportRun {
+                            import_id: &import_id_for_progress,
+                            candidate_key: &candidate_key_for_progress,
+                        },
+                        &release_id_for_progress,
+                        Some(percent),
+                        ImportPhase::ReadingFiles,
+                    );
                 }
-                ImportDestination::Remote { pin } => {
-                    let prepared =
-                        Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
-                            let completed = bytes_read_before_file + u128::from(consumed);
-                            let percent = ((completed * 100) / total_bytes).min(100) as u8;
-                            let previous = reported_percent_for_progress
-                                .swap(percent, std::sync::atomic::Ordering::Relaxed);
-                            if previous != percent {
-                                ImportService::emit_phase_progress_on(
-                                    &event_tx,
-                                    ImportRun {
-                                        import_id: &import_id_for_progress,
-                                        candidate_key: &candidate_key_for_progress,
-                                    },
-                                    &release_id_for_progress,
-                                    Some(percent),
-                                    ImportPhase::ReadingFiles,
-                                );
-                            }
-                        }))
-                        .await
-                        .map_err(|error| {
-                            crate::import::ImportError::UnusableFile {
-                                detail: format!(
-                                    "coven could not prepare {} for import: {error}",
-                                    file.path.display()
-                                ),
-                            }
-                        })?;
-                    crate::import::file_identity::require_scanned_identity(
-                        file,
-                        prepared.size(),
-                        prepared.modified_at(),
-                    )?;
-                    match pin {
-                        true => coven::UserSource::CloudKeptHere(prepared),
-                        false => coven::UserSource::Cloud(prepared),
-                    }
-                }
+            }))
+            .await
+            .map_err(|error| crate::import::ImportError::UnusableFile {
+                detail: format!(
+                    "coven could not prepare {} for import: {error}",
+                    file.path.display()
+                ),
+            })?;
+            crate::import::file_identity::require_scanned_identity(
+                file,
+                original.size(),
+                original.modified_at(),
+            )?;
+            let place = match destination {
+                ImportDestination::Local => coven::Place::DeviceOnly,
+                ImportDestination::Remote { pin: true } => coven::Place::CloudKeptHere,
+                ImportDestination::Remote { pin: false } => coven::Place::Cloud,
             };
             bytes_read += u128::from(file.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
@@ -627,7 +606,8 @@ impl ImportService {
             file_ids.insert(file.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile {
                 row: db_file,
-                source,
+                original,
+                place,
             });
             debug!(
                 "Read file {}/{}: {}",

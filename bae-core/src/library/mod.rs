@@ -700,15 +700,17 @@ async fn with_profile(
 /// Coven checks storage and custody before replacing the installation. Calling
 /// it again finishes a reset that stopped after the new copy took the old
 /// one's place; for a restore that stopped there, coven refuses it and changes
-/// nothing. The returned handle is ready to open in bae; there is no post-reset
-/// notification.
+/// nothing. The reset loads the whole store from storage, as a restore does,
+/// and reports how far it has come to `on_status`. The returned handle is
+/// ready to open in bae; there is no post-reset notification.
 pub async fn reset_device(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
     device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     loading_builder(builder)
-        .reset_device(store, device_name)
+        .reset_device(store, device_name, on_status)
         .await
         .map_err(restore_error)
 }

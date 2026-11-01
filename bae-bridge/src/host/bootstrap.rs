@@ -354,6 +354,7 @@ impl BridgeDeviceReset {
                     self.host.builder(),
                     self.store,
                     &self.device_name,
+                    |_| {},
                 )
                 .await
                 {

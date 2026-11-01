@@ -170,6 +170,13 @@ internal class MembersModel(
                     override fun onValue(value: List<BridgeInvite>) {
                         scope.launch(Dispatchers.Main.immediate) { invites = value }
                     }
+
+                    override fun onError(error: BridgeException) {
+                        logger.error("reading the library's invites failed", error)
+                        scope.launch(Dispatchers.Main.immediate) {
+                            this@MembersModel.error = errors.display(error)
+                        }
+                    }
                 },
             )
         return {

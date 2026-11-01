@@ -9,10 +9,15 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::SyncStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_sync_status_values(),
-            move |value| callback.on_value(BridgeSyncStatusSnapshot::from_core(value.clone())),
-        )
+        self.live_subscription(move |services| async move {
+            let mut status = services.subscribe_sync_status();
+            while let Some(result) = status.next().await {
+                match result {
+                    Ok(value) => callback.on_value(BridgeSyncStatusSnapshot::from_core(value)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+                }
+            }
+        })
     }
 
     /// Everything sync is doing, for the activity indicator and its list:
@@ -61,16 +66,6 @@ forward! { sync this => {
     fn report_network_change() {
         this.services.network_changed();
     }
-
-    fn is_sync_ready() -> bool {
-        this.services.is_sync_ready()
-    }
-
-    fn get_sync_status() -> BridgeSyncStatusSnapshot {
-        crate::types::BridgeSyncStatusSnapshot::from_core(this.services.get_sync_status())
-    }
-
-
 } }
 
 forward! { async this => {
@@ -84,7 +79,7 @@ forward! { async this => {
     /// it; a pass held by a cooldown or such a failure answers at once.
     fn retry_now() -> crate::types::BridgeSyncRetryOutcome {
         Ok(crate::types::BridgeSyncRetryOutcome::from_core(
-            this.services.retry_now().await,
+            this.services.retry_now().await?.await,
         ))
     }
 

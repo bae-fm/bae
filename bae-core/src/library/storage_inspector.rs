@@ -29,7 +29,7 @@ pub struct StorageInspectorFile {
 
 /// A release file's queued upload as the inspector shows it: which file,
 /// whether it is being sent now, and why it waits when it does, with the
-/// error behind that while this process holds it. How far it has got is its
+/// error behind that when coven keeps it. How far it has got is its
 /// file's transfer, keyed by `file`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorUpload {
@@ -65,24 +65,18 @@ pub enum StorageInspectorTransfer {
 }
 
 impl StorageInspector {
-    /// The release `release_id` from one read of it, `rows`, each upload's
-    /// record with the error `causes` holds for it.
-    pub(crate) fn read(
-        release_id: &str,
-        rows: crate::db::DbStorageInspector,
-        causes: &coven::PendingCauses,
-    ) -> Self {
+    /// The release `release_id` from one read of it, `rows`.
+    pub(crate) fn read(release_id: &str, rows: crate::db::DbStorageInspector) -> Self {
         Self::of(
             release_id,
             rows.files,
             &rows.entries,
             rows.upload.map(ReleaseUpload::from_raw),
-            causes,
         )
     }
 
     /// The release `release_id`: its `files` in their order, each upload's
-    /// record with the error `causes` holds for it; its entry in each queue
+    /// record with the error behind it; its entry in each queue
     /// (`entries`, and its files waiting to upload, `upload`); while its
     /// download waits or runs, each file's pin and the download's count of
     /// them; and otherwise, while coven downloads a file it keeps here, each
@@ -92,7 +86,6 @@ impl StorageInspector {
         files: Vec<crate::db::DbStorageInspectorFile>,
         entries: &ReleaseQueueEntries,
         upload: Option<ReleaseUpload>,
-        causes: &coven::PendingCauses,
     ) -> Self {
         let pinning = if entries
             .download
@@ -118,10 +111,9 @@ impl StorageInspector {
                     } else {
                         UploadState::Waiting
                     },
-                    pending: upload.pending.map(|mut record| {
-                        record.cause = causes.cause(&record);
-                        PendingWait::of(&record, Some(release_id))
-                    }),
+                    pending: upload
+                        .pending
+                        .map(|record| PendingWait::of(&record, Some(release_id))),
                 }),
                 pin: match pinning {
                     Some(Pinning::Download) => Some(file.pin.unwrap_or(FilePin::Waiting)),

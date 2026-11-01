@@ -3,8 +3,10 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     assert_reading_progress(ImportDestination::Remote { pin: false }).await;
 }
 
+/// A local import reads each original whole too, for the hashes its move to
+/// the cloud is checked against, so its progress counts the bytes read.
 #[tokio::test]
-async fn local_file_preparation_reports_complete_progress() {
+async fn local_reading_progress_advances_while_coven_reads_a_dominant_file() {
     assert_reading_progress(ImportDestination::Local).await;
 }
 
@@ -18,6 +20,10 @@ async fn assert_reading_progress(destination: ImportDestination) {
         folder.join("00-track.flac"),
     )
     .unwrap();
+    let track_bytes = std::fs::metadata(folder.join("00-track.flac")).unwrap().len();
+    // The percent once the track, read first, is read: what counting whole
+    // files alone would report until the payload is read too.
+    let after_track = (track_bytes * 100 / (track_bytes + 1024 * 1024)) as u8;
     let (candidate_key, expectation) =
         store_scanned_candidate(&test, &folder, "Reading Progress Candidate").await;
     let service = &test.service;
@@ -58,10 +64,9 @@ async fn assert_reading_progress(destination: ImportDestination) {
     assert_eq!(reading_percents.first(), Some(&0));
     assert_eq!(reading_percents.last(), Some(&100));
     assert!(
-        matches!(destination, ImportDestination::Local) || reading_percents
-            .iter()
-            .any(|percent| (1..25).contains(percent)),
-        "a release dominated by one file must advance before that file finishes: {reading_percents:?}",
+        reading_percents.iter().any(|percent| (after_track + 1..100).contains(percent)),
+        "a release dominated by one file must advance while that file is read, past \
+         {after_track}%: {reading_percents:?}",
     );
     assert!(
         reading_percents.windows(2).all(|pair| pair[0] <= pair[1]),

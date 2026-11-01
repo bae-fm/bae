@@ -84,6 +84,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
         installation.builder(app_dir.store_layout()),
         store,
         "Replacement",
+        |_| {},
     )
     .await
     .unwrap();
@@ -173,13 +174,13 @@ async fn keys_replaced_elsewhere(
         .unwrap();
     laptop.start_sync().await.unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
-        let mut status = laptop.subscribe_sync_status();
+        let mut status = laptop.test_sync_status();
         while !matches!(
             laptop.restore_code().await,
             Err(coven::SyncError::MemberKeysReplaced { .. })
         ) {
             laptop.sync_now();
-            status.changed().await.unwrap();
+            status.next().await;
         }
     })
     .await

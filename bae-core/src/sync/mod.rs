@@ -477,6 +477,8 @@ mod tests {
         "source_release_unfetched",
         "source_release_barcode",
         "source_release_label",
+        // Why this device's last attempt to start sync failed.
+        "sync_start_failure",
     ];
 
     #[test]

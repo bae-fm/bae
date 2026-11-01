@@ -12,12 +12,13 @@ const RELEASE_MOVES: &str = "SELECT DISTINCT u.move FROM coven_uploads AS u \
 
 impl Database {
     /// Move every file of a release on this device only to the cloud, as one
-    /// move: each original is read whole now, and coven switches every file
-    /// to the cloud together once all are stored, changing no row.
-    /// `keep_here` keeps each file whole on this device too once stored.
-    /// Until then each file is read from its original here. The write that
-    /// queues the files ends the release's storage transition, the move's
-    /// admission.
+    /// move: coven reads no original now, since each upload checks the bytes
+    /// it sends against the hashes the import's read recorded, and switches
+    /// every file to the cloud together once all are stored, changing no
+    /// row. `keep_here` keeps each file whole on this device too once
+    /// stored. Until then each file is read from its original here. The
+    /// write that queues the files ends the release's storage transition,
+    /// the move's admission.
     pub(crate) async fn attach_release_files(
         &self,
         release_id: &str,
@@ -28,25 +29,13 @@ impl Database {
         if files.is_empty() {
             return Err(DbError::Message("release has no files".into()));
         }
-        let mut moving = Vec::with_capacity(files.len());
-        for file in files {
-            let original = self
-                .inner
-                .handle
-                .user_file(file.file)
-                .await?
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "release file {} has no original on this device",
-                        file.id
-                    ))
-                })?;
-            let prepared = coven::prepare_user_file(&original.path, |_| {}).await?;
-            moving.push(match keep_here {
-                true => coven::MoveFile::UserKeptHere(file.file, prepared),
-                false => coven::MoveFile::User(file.file, prepared),
-            });
-        }
+        let moving: Vec<coven::MoveFile> = files
+            .into_iter()
+            .map(|file| match keep_here {
+                true => coven::MoveFile::UserKeptHere(file.file),
+                false => coven::MoveFile::User(file.file),
+            })
+            .collect();
         self.write_with_files(
             |_| Ok(()),
             move |sql, ()| {

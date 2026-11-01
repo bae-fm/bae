@@ -69,13 +69,7 @@ fn shown(
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
 ) -> StorageInspector {
-    StorageInspector::of(
-        "selected",
-        files,
-        entries,
-        upload,
-        &coven::PendingCauses::default(),
-    )
+    StorageInspector::of("selected", files, entries, upload)
 }
 
 #[test]

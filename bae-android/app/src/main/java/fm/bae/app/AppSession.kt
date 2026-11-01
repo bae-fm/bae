@@ -170,6 +170,12 @@ class OpenLibrary internal constructor(
                             stores.syncStatus.apply(value, LocaleErrorDisplays(appContext))
                         }
                     }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            subscriptionFailed("sync status", error)?.let(stores.syncStatus::fail)
+                        }
+                    }
                 },
             )
         valueSubscriptions +=

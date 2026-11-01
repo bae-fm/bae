@@ -45,33 +45,19 @@ pub enum PendingSubjectName {
     Operation(coven::OperationKind),
 }
 
-/// Why a record waits, and what the person can do about it.
-#[derive(Debug, Clone)]
+/// Why a record waits, and what the person can do about it. Two waits are
+/// the same when they wait for the same reason, offer the same action, and
+/// name the same error behind it: a surface shows all three.
+#[derive(Debug, Clone, PartialEq)]
 pub struct PendingWait {
     /// The record's first unmet condition, kept as coven typed it.
     pub reason: coven::PendingReason,
-    /// The error behind `reason`, with every cause below it, while this
-    /// process holds it; a record read after a restart has none. coven holds
-    /// it for every record but the connection's, whose error the sync status
-    /// carries instead (`SyncStatusSnapshot::name_connection_cause`).
-    pub cause: Option<Arc<dyn std::error::Error + Send + Sync>>,
+    /// The text of the error behind `reason`, with every cause below it,
+    /// when the run that met it kept it; none after the store reopens.
+    /// coven keeps it beside every record but the connection's, whose error
+    /// the sync status keeps instead (`SyncStatusSnapshot::read`).
+    pub cause: Option<String>,
     pub action: PendingAction,
-}
-
-/// Two waits are the same when they wait for the same reason, offer the same
-/// action, and name the same error behind it: a surface shows all three.
-impl PartialEq for PendingWait {
-    fn eq(&self, other: &Self) -> bool {
-        let cause_text = |wait: &Self| {
-            wait.cause.as_ref().map(|cause| {
-                let cause: &(dyn std::error::Error + 'static) = cause.as_ref();
-                bae_util::error_text::CauseChain(cause).to_string()
-            })
-        };
-        self.reason == other.reason
-            && self.action == other.action
-            && cause_text(self) == cause_text(other)
-    }
 }
 
 impl PendingWait {
@@ -136,10 +122,8 @@ impl PendingItem {
     }
 
     /// A record as the library lists it: a file's named by its row.
-    fn listed(row: PendingRow, causes: &coven::PendingCauses) -> Self {
-        let mut record = row.record;
-        record.cause = causes.cause(&record);
-        Self::named(record, row.file_row)
+    pub(crate) fn listed(row: PendingRow) -> Self {
+        Self::named(row.record, row.file_row)
     }
 
     fn named(record: coven::PendingRecord, file_row: Option<FileRow>) -> Self {
@@ -184,54 +168,6 @@ impl From<FileRow> for PendingSubjectName {
             FileRow::DeletedReleaseFile => Self::DeletedReleaseFile,
             FileRow::ArtistImage => Self::ArtistImage,
             FileRow::Avatar => Self::Avatar,
-        }
-    }
-}
-
-/// Keeps the sync status's pending list current: coven's pending records,
-/// each named by its row, with the error behind it while this process holds
-/// one. The records and the errors come apart: a retry that fails for the
-/// same reason holds a new error under an unchanged record.
-pub(super) struct PendingFollower {
-    manager: LibraryManager,
-    rows: coven::LiveQuery<Vec<PendingRow>>,
-    causes: tokio::sync::watch::Receiver<coven::PendingCauses>,
-}
-
-impl PendingFollower {
-    pub(super) fn new(manager: LibraryManager) -> Self {
-        Self {
-            rows: manager.database.subscribe_pending_rows(),
-            causes: manager.database.subscribe_pending_causes(),
-            manager,
-        }
-    }
-
-    pub(super) async fn run(mut self) {
-        let mut read: Option<Result<Vec<PendingRow>, crate::ui::UiError>> = None;
-        loop {
-            tokio::select! {
-                Some(rows) = self.rows.next() => {
-                    read = Some(rows.map_err(|error| {
-                        warn!(%error, "could not read pending sync records");
-                        let error = LibraryError::from(error);
-                        crate::ui::UiError::diagnostic(error.category(), error)
-                    }));
-                }
-                Ok(()) = self.causes.changed() => {}
-                else => return,
-            }
-            // Errors that change before the first records are read wait for
-            // them.
-            let Some(read) = &read else { continue };
-            let causes = self.causes.borrow_and_update();
-            let items = read.clone().map(|rows| {
-                rows.into_iter()
-                    .map(|row| PendingItem::listed(row, &causes))
-                    .collect()
-            });
-            drop(causes);
-            self.manager.sync_status.set_pending(items);
         }
     }
 }

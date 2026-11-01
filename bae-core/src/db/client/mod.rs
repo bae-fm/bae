@@ -73,7 +73,10 @@ mod file_row;
 pub(crate) use file_row::FileRow;
 mod pending;
 mod queued_uploads;
+mod sync_start_failure;
+mod sync_status;
 pub(crate) use pending::PendingRow;
+use sync_status::cloud_home_on;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
 mod coven_capabilities;

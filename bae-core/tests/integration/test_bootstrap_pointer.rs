@@ -196,15 +196,11 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
             )
             .await
             .unwrap();
-        handle.stop_sync();
-        let mut status = handle.subscribe_sync_status();
-        tokio::time::timeout(
-            std::time::Duration::from_secs(20),
-            status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped)),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        handle.stop_sync().await.unwrap();
+        handle
+            .test_sync_status()
+            .wait_for(|status| matches!(status, coven::SyncStatus::Stopped))
+            .await;
         handle.forget_store_keys().await.unwrap();
         let id = handle.store_id();
         handle.close().await.unwrap();

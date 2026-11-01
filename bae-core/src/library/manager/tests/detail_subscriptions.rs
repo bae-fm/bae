@@ -143,3 +143,47 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
     values.set(None).unwrap();
     assert!(next_for(None).await.value.is_none());
 }
+
+/// A release's storage choices follow the cloud home within its one read:
+/// a local release offers none until storage is set up, then offers its
+/// upload, with nothing asked of the subscription in between.
+#[cfg(feature = "test-utils")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("local-source"),
+        "Test Album",
+        &[("a.flac", b"aaa")],
+    )
+    .await;
+    let services = crate::library::AppServices::for_test(manager.library.clone())
+        .await
+        .unwrap();
+    let values = services.subscribe_release_detail();
+    values.set(Some(release.id.clone())).unwrap();
+    let actions_until = |accept: fn(&[crate::album_detail::ReleaseStorageAction]) -> bool| {
+        let values = &values;
+        async move {
+            tokio::time::timeout(std::time::Duration::from_secs(20), async {
+                loop {
+                    let snapshot = values.next().await.expect("the release detail resolves");
+                    if let Some(detail) = snapshot.value {
+                        if accept(&detail.summary.storage_actions) {
+                            return detail.summary.storage_actions;
+                        }
+                    }
+                }
+            })
+            .await
+            .expect("the release detail shows the expected storage choices")
+        }
+    };
+    actions_until(|actions| actions.is_empty()).await;
+    connect_test_cloud(&manager).await;
+    assert_eq!(
+        actions_until(|actions| !actions.is_empty()).await,
+        vec![crate::album_detail::ReleaseStorageAction::Upload]
+    );
+}

@@ -290,6 +290,7 @@ include!("tests/transfers.rs");
 mod added_device;
 mod bound_images;
 mod detachment;
+mod invites;
 mod memory;
 mod other_device;
 mod panics;

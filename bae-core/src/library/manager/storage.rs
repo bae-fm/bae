@@ -58,15 +58,6 @@ impl LibraryManager {
         self.database.subscribe_uploads_paused()
     }
 
-    /// The errors behind pending records while this process holds them, by
-    /// record.
-    #[cfg(desktop)]
-    pub(crate) fn subscribe_pending_causes(
-        &self,
-    ) -> tokio::sync::watch::Receiver<coven::PendingCauses> {
-        self.database.subscribe_pending_causes()
-    }
-
     /// Retry failed uploads now: clear coven's durable retry delay and run its
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.
@@ -112,7 +103,8 @@ impl LibraryManager {
 
     /// Resume seeded uploads for one drain, then restore the fixture's pause
     /// setting. Coven's background uploader shares the drain lock, so count
-    /// confirmed queue removals regardless of which caller drained them.
+    /// the files that left the queue stored, whichever caller drained them.
+    /// A file leaves it unstored too, when its move failed.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
         let before = self
@@ -143,16 +135,24 @@ impl LibraryManager {
         if before.files.is_empty() {
             Ok(coven::DrainOutcome::QueueEmpty)
         } else {
-            let uploaded = before
-                .files
-                .iter()
-                .filter(|queued| {
-                    !after
-                        .files
-                        .iter()
-                        .any(|remaining| remaining.file == queued.file)
-                })
-                .count();
+            let mut uploaded = 0;
+            for queued in &before.files {
+                if after
+                    .files
+                    .iter()
+                    .any(|remaining| remaining.file == queued.file)
+                {
+                    continue;
+                }
+                let file = self
+                    .database
+                    .file_ref(queued.file)
+                    .await
+                    .map_err(|error| error.to_string())?;
+                if matches!(file.place(), coven::FilePlace::Cloud { .. }) {
+                    uploaded += 1;
+                }
+            }
             Ok(coven::DrainOutcome::Drained { uploaded })
         }
     }
@@ -188,7 +188,7 @@ impl LibraryManager {
             .await?;
         let total_count = self.database.get_storage_count(filter).await?;
 
-        let has_cloud_home = self.has_cloud_home();
+        let has_cloud_home = self.has_cloud_home().await?;
         let rows = raw_rows
             .into_iter()
             .map(|raw| StorageRow::from_raw(raw, has_cloud_home))
@@ -211,7 +211,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::StorageBrowseProjection,
     ) -> crate::library::StorageBrowseSnapshot {
-        let has_cloud_home = self.has_cloud_home();
+        let has_cloud_home = projection.has_cloud_home;
         let resolve = |raw: crate::db::DbStorageRow| StorageRow::from_raw(raw, has_cloud_home);
         let windows = projection
             .windows

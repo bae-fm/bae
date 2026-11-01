@@ -250,6 +250,9 @@ mod release_storage_action_tests;
 mod cast_devices_tests;
 
 #[cfg(test)]
+mod sync_start_failure_tests;
+
+#[cfg(test)]
 mod personal_order_tests;
 
 #[cfg(test)]

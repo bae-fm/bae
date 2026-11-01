@@ -69,7 +69,8 @@ impl Database {
                     .map(|prepared| {
                         batch.put_user_file(
                             crate::sync::RELEASE_FILES_NAMESPACE,
-                            coven::UserSource::Cloud(prepared),
+                            prepared,
+                            coven::Place::Cloud,
                         )
                     })
                     .collect();

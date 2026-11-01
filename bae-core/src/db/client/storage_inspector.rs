@@ -43,29 +43,34 @@ impl Database {
 /// `RELEASE_FILES_IN_ORDER`, each with where this device's pin of it stands
 /// and its upload while it waits in this device's queue, from coven's `coven_pins`,
 /// `coven_downloading` and `coven_uploads`, each joined by the coven file the
-/// row references, and the path of the original this device holds of it. A
-/// pin's download lists its file in `coven_downloading` before `coven_pins`
-/// holds a row for it.
+/// row references, the text of the error behind the upload's record when
+/// coven keeps one (`coven_pending`), and the path of the original this
+/// device holds of it. A pin's download lists its file in
+/// `coven_downloading` before `coven_pins` holds a row for it.
 pub(super) const INSPECTOR_FILES: &str = concat!(
     "SELECT ",
     release_file_columns!(),
     ", pin.file IS NOT NULL AS pin_kept, \
         downloading.file AS downloading_file, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
-        upload.pending AS upload_pending, original.path AS original_path \
+        upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
+        original.path AS original_path \
      FROM release_files AS f \
      LEFT JOIN coven_pins AS pin ON pin.file = f.file \
      LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
+     LEFT JOIN coven_pending AS upload_record \
+        ON upload_record.file = f.file AND upload_record.record = upload.pending \
      LEFT JOIN coven_user_files AS original ON original.file = f.file \
      WHERE f.release_id = ?1 \
      ORDER BY f.original_filename COLLATE natural_order, f.id"
 );
 
-/// The records of moves whose upload found an original missing or changed:
-/// what an upload whose own record says nothing waits for. coven keeps them
-/// on the move, naming the original by its path.
-const MOVE_RECORDS: &str = "SELECT record FROM coven_pending WHERE file IS NULL";
+/// The records of moves whose upload found an original missing or changed,
+/// with the error behind each when coven keeps one: what an upload whose own
+/// record says nothing waits for. coven keeps them on the move, naming the
+/// original by its path.
+const MOVE_RECORDS: &str = "SELECT record, cause FROM coven_pending WHERE file IS NULL";
 
 pub(super) fn inspector_files_on(
     sql: &SqlReadContext<'_>,
@@ -73,7 +78,9 @@ pub(super) fn inspector_files_on(
 ) -> Result<Vec<DbStorageInspectorFile>, DbError> {
     let moves: Vec<coven::PendingRecord> = sql
         .query(MOVE_RECORDS, [], |row| {
-            row.get::<_, coven::PendingRecord>(0)
+            let mut record = row.get::<_, coven::PendingRecord>(0)?;
+            record.cause = row.get(1)?;
+            Ok(record)
         })?
         .into_iter()
         .filter(|record| matches!(record.subject, coven::PendingSubject::Move { .. }))
@@ -103,7 +110,10 @@ pub(super) fn inspector_files_on(
                 file,
                 sending: row.get("upload_sending")?,
                 pending: match row.get::<_, Option<coven::PendingRecord>>("upload_pending")? {
-                    Some(record) => Some(record),
+                    Some(mut record) => {
+                        record.cause = row.get("upload_cause")?;
+                        Some(record)
+                    }
                     None => row
                         .get::<_, Option<Vec<u8>>>("original_path")?
                         .and_then(|path| move_record(&path)),

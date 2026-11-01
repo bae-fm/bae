@@ -29,8 +29,8 @@ impl Database {
             .subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
     }
 
-    /// The queue's last addition to Up Next, as
-    /// [`Self::subscribe_queue_addition`] reads it.
+    /// The queue's last addition to Up Next, as `subscribe_queue_addition`
+    /// reads it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_addition(&self) -> Result<Option<crate::queue::QueueAddition>, DbError> {
         self.read(|sql| queue_addition_on(&sql)).await

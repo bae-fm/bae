@@ -77,17 +77,6 @@ impl Database {
         self.inner.handle.storage_config().await
     }
 
-    pub(crate) fn subscribe_sync_status(&self) -> tokio::sync::watch::Receiver<coven::SyncStatus> {
-        self.inner.handle.subscribe_sync_status()
-    }
-
-    /// What `retry_now` would do if called now, decided as coven answers it.
-    pub(crate) fn subscribe_retry_effect(
-        &self,
-    ) -> tokio::sync::watch::Receiver<coven::RetryEffect> {
-        self.inner.handle.subscribe_retry_effect()
-    }
-
     pub(crate) async fn pending(&self) -> Result<Vec<coven::PendingRecord>, DbError> {
         self.inner.handle.pending().await.map_err(DbError::from)
     }
@@ -105,8 +94,10 @@ impl Database {
         Ok(self.inner.handle.release_memory().await?)
     }
 
-    pub(crate) fn stop_sync(&self) {
-        self.inner.handle.stop_sync();
+    /// Stop the sync loop: returns once no pass runs and the waiting
+    /// retries are answered; a failure writing that has failed the handle.
+    pub(crate) async fn stop_sync(&self) -> Result<(), coven::SyncError> {
+        self.inner.handle.stop_sync().await
     }
 
     pub(crate) async fn close(&self) -> Result<(), coven::SyncError> {
@@ -121,8 +112,10 @@ impl Database {
         self.inner.handle.network_changed();
     }
 
-    pub(crate) fn retry_now(&self) -> coven::RetryAnswer {
-        self.inner.handle.retry_now()
+    /// Retry now: the retry is in place once this returns, with its answer
+    /// to await.
+    pub(crate) async fn retry_now(&self) -> Result<coven::RetryAnswer, coven::SyncError> {
+        self.inner.handle.retry_now().await
     }
 
     /// Idle passes at most `interval` apart until the guard drops.
@@ -410,8 +403,10 @@ impl Database {
             .await
     }
 
-    pub(crate) fn subscribe_invites(&self) -> tokio::sync::watch::Receiver<Vec<coven::Invite>> {
-        self.inner.handle.subscribe_invites()
+    /// This device's open invites, each with its request once one has
+    /// arrived, live from coven's `coven_invites`.
+    pub(crate) fn subscribe_invites(&self) -> coven::LiveQuery<Vec<coven::Invite>> {
+        self.inner.handle.subscribe(coven::Invite::list)
     }
 
     pub(crate) async fn approve_join_request(

@@ -9,12 +9,11 @@
 #[cfg(feature = "test-utils")]
 async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_with_sync_loop(manager).await;
-    manager.database.stop_sync();
+    manager.database.stop_sync().await.unwrap();
     let mut status = manager.database.subscribe_sync_status();
-    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped))).await.unwrap().unwrap();
+    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Stopped)).await;
     manager.database.unlock_store_key().await.unwrap();
     manager.database.set_uploads_paused(true).await.unwrap();
-    manager.sync_status.set_status(status.borrow().clone());
     manager.storage.clone()
 }
 
@@ -22,8 +21,7 @@ async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
 async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
     manager.database.setup_s3_storage(manager.storage.config(), "Test Device", "test-key".into(), coven::SecretText::new("test-secret".into())).await.unwrap();
     let mut status = manager.database.subscribe_sync_status();
-    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
-    manager.sync_status.set_status(status.borrow().clone());
+    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Synced { .. })).await;
     manager.storage.clone()
 }
 

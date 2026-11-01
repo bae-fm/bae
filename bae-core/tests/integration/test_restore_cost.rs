@@ -57,16 +57,17 @@ impl Clock for BenchClock {
 /// One sync pass that starts after this call.
 async fn pass(handle: &CovenHandle, clock: &BenchClock) {
     let after = clock.now();
-    let mut status = handle.subscribe_sync_status();
-    status.borrow_and_update();
+    let mut status = handle.test_sync_status();
     handle.sync_now();
-    loop {
-        status.changed().await.unwrap();
-        match &*status.borrow_and_update() {
-            SyncStatus::Synced { finished_at } if *finished_at >= after => return,
-            SyncStatus::Failed { error } => panic!("{error:?}"),
-            _ => {}
-        }
+    let ended = status
+        .wait_for(|status| match status {
+            SyncStatus::Synced { finished_at } => *finished_at >= after,
+            SyncStatus::Failed { .. } => true,
+            _ => false,
+        })
+        .await;
+    if let SyncStatus::Failed { error, .. } = ended {
+        panic!("{error}");
     }
 }
 

@@ -358,7 +358,7 @@ impl LibraryManager {
         };
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
-            self.has_cloud_home(),
+            self.has_cloud_home().await?,
         )))
     }
 
@@ -387,6 +387,7 @@ impl LibraryManager {
             album_artists,
             release_index,
             is_compilation,
+            projection.has_cloud_home,
         ))
     }
 
@@ -397,8 +398,8 @@ impl LibraryManager {
         album_artists: Vec<crate::credits::LibraryCredit>,
         release_index: usize,
         is_compilation: bool,
+        has_cloud_home: bool,
     ) -> ReleaseDetail {
-        let has_cloud_home = self.has_cloud_home();
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             cover: crate::album_detail::cover_ref(release_id, raw.cover_version.clone()),
@@ -429,12 +430,14 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
+        let has_cloud_home = self.has_cloud_home().await?;
         Ok(Some(self.resolve_release_detail_context(
             release_id,
             raw,
             album_artists,
             release_index,
             is_compilation,
+            has_cloud_home,
         )))
     }
 

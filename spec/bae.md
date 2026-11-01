@@ -1285,12 +1285,14 @@ Ana clicks Import. bae:
    again fetches it again. While it fetches, the import's progress says
    "Fetching artist pictures…"; an import that creates no Discogs artist
    fetches nothing and its progress never says so.
-3. **Reads each file** where it sits, for a cloud import: coven hashes it, and
-   checks every later download against that hash. For a local import coven
-   only observes each file, recording its path, size and modification time;
-   its bytes are read when the release moves to the cloud (§4.2). Either way
-   a file whose size or modification time is no longer what the scan recorded
-   fails the import before any row is written.
+3. **Reads each file** whole where it sits, for a local import as for a
+   cloud one: coven records its path, size and modification time and hashes
+   its bytes, its content and each chunk, and the import's progress counts
+   the bytes read. A cloud import's upload checks what it sends against those
+   hashes, and so does a local release's later move to the cloud (§4.2),
+   which reads nothing again. A file whose size or modification time is no
+   longer what the scan recorded fails the import before any row is
+   written.
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
    track stores no loudness and plays unchanged. The same decode records
@@ -1579,7 +1581,7 @@ id of a coven file
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
 from the write that imports it on. A local import stages each file on the
 importing device only: coven records the original's path, size and
-modification time, reading none of its bytes
+modification time, and the hashes of the bytes the import read
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 Before that write, bae compares the size and modification time coven found
 with the ones its scan recorded, and refuses the import if a file changed in
@@ -1601,7 +1603,7 @@ to the cloud arrives, and changes when the device is removed. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":
 its files stay on it, and no device can move them to the cloud any more. Such
-a release offers nothing here, neither moving it to the cloud, which reads
+a release offers nothing here, neither moving it to the cloud, which uploads
 the originals, nor pinning it (§4.3). Playing it says it isn't uploaded yet.
 
 Whether this device can play a release, and whether it offers moving it to
@@ -1630,18 +1632,19 @@ release reads as local everywhere, and nothing about it reads as uploading.
 Waiting files draw no progress bar; a bar appears only while a file's bytes
 are moving.
 
-**Moving to the cloud.** Moving a release to the cloud reads each of its
-originals whole once, then records one move of all its files in one write
+**Moving to the cloud.** Moving a release to the cloud records one move of
+all its files in one write, reading none of them
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-No row of bae's changes. coven uploads each file, checking every chunk
-against what it read, and once the last is stored one write of coven's
-switches them all to the cloud. So other devices see the release local until
-its last file lands, and never half uploaded. Until then coven reads each file
-from its original, so this device keeps playing the release while it uploads,
-and the upload list shows it uploading. coven refuses the move if an original
-no longer has the size and modification time it recorded: the rows describe
-the file as imported, and a changed file would give every device audio that
-doesn't match them. A release moves only when every one of its files is on
+No row of bae's changes. coven uploads each file, checking every chunk it
+sends against the hashes the import's read recorded, and once the last is
+stored one write of coven's switches them all to the cloud. So other devices
+see the release local until its last file lands, and never half uploaded.
+Until then coven reads each file from its original, so this device keeps
+playing the release while it uploads, and the upload list shows it
+uploading. An original that changed since the import fails the move, even
+one that kept its size and modification time: the rows describe the file as
+imported, and a changed file would give every device audio that doesn't
+match them. A release moves only when every one of its files is on
 this device only and none is moving already; a release made local again
 (§4.4) moves like one imported here. The stored Pinned choice (Appendix C)
 asks coven to keep each file whole on this device once the move finishes:
@@ -1649,8 +1652,9 @@ coven pins it itself and downloads its copy from storage, never reading the
 original for the cache, and retries a failed download by itself.
 
 If an original goes missing before its upload, the move waits for it, the
-pending list naming the file. If one changes, the move fails: none of its
-files switches, and the pending list names the file and offers Cancel Upload.
+pending list naming the file. If one changed, its upload stops before a
+changed byte is sent and the move fails: none of its files switches, and the
+pending list names the file and offers Cancel Upload.
 
 **Cancelling an upload** while any of its files is still queued, or after its
 move failed, cancels the release's move in one write. Nothing was switched, so
@@ -2137,7 +2141,11 @@ His phone then writes his `people` row with that name while it joins.
 Everyone's devices show Dan by name.
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
-People: the person's name, marked invited, with when it expires. Only the
+People: the person's name, marked invited, with when it expires. The rows
+follow coven's list of this device's open invites
+([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
+which coven ends when the invite is approved, declined, cancelled or expires,
+so an expired invite leaves People when its lifetime ends. Only the
 device that made it shows the row, since only that device can act on it. The
 row's refresh button runs Retry Now for the library (§6.4), so the request
 shows the moment Dan says he has entered the code, without waiting for the next
@@ -2458,21 +2466,26 @@ pulling to refresh does.
 says "Waiting: 3 items". With none it names what sync is doing: Syncing,
 Synced, Offline, Sync failed, or Sync stopped when the library has a cloud home
 but isn't syncing. A failure's error sits under the line, unless a pending
-record shows it. "Checking sync…"
-shows only until the pending list is first read, and if it can't be read the
-line says "Couldn't read sync status", opening onto the error; so it does if
-following the list breaks, a bug reported as one. A break in following sync's
-own status puts that failure under the line. Opening it lists each thing coven is waiting on, one of its pending
+record shows it. The line is one read of the library's tables, followed as
+they change: coven's sync status and what a retry would do
+([coven api.md
+E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)),
+its pending records, and why this device last failed to start sync. "Checking
+sync…" shows only until that is first read, and if it can't be read the line
+says "Couldn't read sync status", opening onto the error, until a read
+succeeds. Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, in the order they arose, with an action wherever the person
 can act. A record whose condition changes keeps its place. The error behind
 a record sits behind a disclosure, to copy: its text names every cause below
-it, with secrets and URLs already cut by coven. Only the process that met the
-failure holds that error, so a record read after a restart has no details and
-offers none. The list follows those errors beside the records: a retry that
-fails for the same reason leaves its record as it was, and the list shows the
-error the retry met. The details are never the record's internal debug text. This list
+it, with secrets and URLs already cut by coven. coven keeps that text beside
+the record, written with it by the run that met the failure, and clears it as
+the library opens, so a record read after reopening has no details and offers
+none. A retry that fails for the same reason leaves its record as it was and
+writes the error it met, which the list then shows. The connection's record
+takes its text from the sync status, which keeps the error of the pass that
+failed on the connection. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
 Each record names what it is about in plain words. A file is named by the row
@@ -2541,14 +2554,22 @@ offers nothing.
   shows why and the person can restore again, and going back opens the
   library as it was.
 
-"Synced" means coven finished a pass and nothing is pending. Until the pending
-list has been read, or after a pass failed, the line says it is checking
-rather than claim the library is synced.
+"Synced" means coven finished a pass and nothing is pending. Until the status
+has been read the line says it is checking rather than claim the library is
+synced.
 
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or
   runs the next cycle now when already connected. A start that breaks on a
-  bug is reported as one and shows on the line the same way.
+  bug is reported as one and shows on the line the same way. Why the start
+  failed is a row of this device's (`sync_start_failure`), kept until a
+  reconnect gets under way and emptied as the library opens, since no attempt
+  outlives the process that made it. The row holds the failure's class, and
+  for a storage failure coven's reason with what that reason names (the
+  access a sign-in lacks, a size and its limit), each in a column of its own,
+  so the line words it as it words the same failure from a pass. A start
+  fails only in the classes coven's sync errors map to, or as a bug; a class
+  outside them is refused as a bug rather than kept.
 - **The network coming back.** Each attempt that finds no network backs off
   longer, up to five minutes. While Ana's phone is locked and idle, Android's
   Doze mode blocks bae's network (App Standby does the same to an app left

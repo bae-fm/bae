@@ -587,7 +587,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: Some(bae_core::ui::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
-        pending: None,
+        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
     };
 
@@ -615,7 +615,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
         status: coven::SyncStatus::Synced {
             finished_at: std::time::UNIX_EPOCH,
         },
-        pending: Some(Ok(Vec::new())),
+        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
     };
 
@@ -633,9 +633,10 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: None,
         status: coven::SyncStatus::Failed {
-            error: coven::SyncFailure::Storage(std::sync::Arc::new(failure.into())),
+            failure: coven::StatusFailure::Storage(failure),
+            error: "storage refused the pass".into(),
         },
-        pending: Some(Ok(vec![bae_core::library::PendingItem::before_open(
+        pending: vec![bae_core::library::PendingItem::before_open(
             coven::PendingRecord::new(
                 coven::PendingSubject::Connection,
                 coven::PendingReason::Storage {
@@ -644,7 +645,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
                     answered: true,
                 },
             ),
-        )])),
+        )],
         retry_effect: coven::RetryEffect::Pass,
     };
 
@@ -770,14 +771,11 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         bae_test_support::connect_storage(&manager, &storage).await;
         manager.set_sync_paused(false).await.expect("resume sync");
         manager.attach_and_start_sync_at_startup().await;
-        let mut status = manager.subscribe_sync_status_values();
-        tokio::time::timeout(
-            std::time::Duration::from_secs(20),
-            status.wait_for(|value| matches!(value.status, coven::SyncStatus::Synced { .. })),
-        )
-        .await
-        .expect("the library syncs")
-        .expect("sync status stays published");
+        let mut status = manager.subscribe_sync_status();
+        bae_core::followed::value_matching(&mut status, |value| {
+            matches!(value.status, coven::SyncStatus::Synced { .. })
+        })
+        .await;
     });
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))

@@ -77,14 +77,10 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             )
             .await
             .unwrap();
-        let mut status = handle.subscribe_sync_status();
-        tokio::time::timeout(
-            Duration::from_secs(20),
-            status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. })),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        handle
+            .test_sync_status()
+            .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
+            .await;
         let id = handle.store_id().to_string();
         handle.close().await.unwrap();
         storage
@@ -126,28 +122,20 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         .expect("startup returns while the provider's clock is held")
         .unwrap();
     startup.join().unwrap();
-    let mut status = app.services.subscribe_sync_status_values();
+    let mut status = app.services.subscribe_sync_status();
     app.runtime.block_on(async {
         storage.set_online(false);
         storage.set_faults(coven::Faults::none()).await;
         clock.time.set(clock.now() + Duration::from_secs(60));
-        let observed = tokio::time::timeout(
-            Duration::from_secs(20),
-            status.wait_for(|status| {
-                status.error.is_some()
-                    || matches!(
-                        status.status,
-                        coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
-                    )
-            }),
-        )
-        .await
-        .map(|result| result.map(|_| ()));
-        assert!(
-            matches!(observed, Ok(Ok(()))),
-            "startup failure must reach its observer: {:?}",
-            status.borrow()
-        );
+        // The startup failure reaches its observer, or this panics.
+        bae_core::followed::value_matching(&mut status, |status| {
+            status.error.is_some()
+                || matches!(
+                    status.status,
+                    coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
+                )
+        })
+        .await;
         app.services.close().await.unwrap();
     });
 }

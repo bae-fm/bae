@@ -8,40 +8,18 @@
 /// first list `matches` accepts.
 #[cfg(feature = "test-utils")]
 async fn pending_list_until(
-    values: &mut tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot>,
+    values: &mut coven::LiveQuery<crate::library::SyncStatusSnapshot>,
     matches: impl Fn(&[PendingItem]) -> bool,
 ) -> Vec<PendingItem> {
-    let reached = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| {
-            matches!(&status.pending, Some(Ok(items)) if matches(items))
-        }),
-    )
-    .await
-    .map(|value| match &value.unwrap().pending {
-        Some(Ok(items)) => items.clone(),
-        other => unreachable!("waited for a read list, got {other:?}"),
-    });
-    reached.unwrap_or_else(|_| {
-        let shown = values.borrow().pending.clone().map(|list| {
-            list.map(|items| {
-                items
-                    .iter()
-                    .map(|item| (item.subject.clone(), item.wait.reason.clone(), cause_text(item)))
-                    .collect::<Vec<_>>()
-            })
-        });
-        panic!("the pending list never reached the expected value: {shown:?}")
-    })
+    crate::followed::value_matching(values, |status| matches(&status.pending))
+        .await
+        .pending
 }
 
 /// The text of the error behind `item`, with every cause below it.
 #[cfg(feature = "test-utils")]
 fn cause_text(item: &PendingItem) -> Option<String> {
-    item.wait.cause.as_ref().map(|cause| {
-        let cause: &(dyn std::error::Error + 'static) = cause.as_ref();
-        bae_util::error_text::CauseChain(cause).to_string()
-    })
+    item.wait.cause.clone()
 }
 
 /// A file this device is uploading is named on the pending list by its file
@@ -50,7 +28,7 @@ fn cause_text(item: &PendingItem) -> Option<String> {
 #[tokio::test]
 async fn a_waiting_upload_is_named_by_its_file_and_album() {
     let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     // The upload can't read a source that moved, so it waits on the file.
     std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
@@ -68,13 +46,52 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
     .await;
 }
 
+/// An original changed since its import fails its release's move, even one
+/// that kept its size and modification time: the upload checks what it reads
+/// against the hashes the import's read recorded, so the pending list names
+/// the original as changed and no file switches to the cloud.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn an_original_changed_since_its_import_fails_the_move() {
+    let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
+    let mut values = manager.subscribe_sync_status();
+    manager.start().unwrap();
+    let path = temp.path().join("changed/a.flac");
+    let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
+    std::fs::write(&path, vec![b'b'; 1000]).unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(modified)
+        .unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+
+    pending_list_until(&mut values, |items| {
+        items.iter().any(|item| {
+            matches!(
+                &item.wait.reason,
+                coven::PendingReason::Original {
+                    failure: coven::FileSourceFailure::Changed,
+                    path: failed,
+                } if *failed == path
+            )
+        })
+    })
+    .await;
+    assert!(release_files(&manager, &release.id)
+        .await
+        .iter()
+        .all(|file| !file.stored));
+}
+
 /// A retry that fails for the same reason keeps its record as it was, and the
 /// list still shows the error the retry met, not the first attempt's.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_retry_that_fails_again_shows_its_own_error() {
     let (manager, _temp, _release, _file_id) = queued_upload_fixture("retried").await;
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     let refuse = |status: u16| coven::Faults {
         fail_next: 1,
@@ -110,7 +127,7 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
 #[tokio::test]
 async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     // The move whose original at `path` is missing, from its record.
     let missing_move = |path: std::path::PathBuf| {
@@ -204,7 +221,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
             .await
             .unwrap();
     }
-    let mut values = manager.subscribe_sync_status_values();
+    let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     home.set_faults(coven::Faults {
         fail_next: 1_000,
@@ -332,6 +349,41 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
                     .as_ref()
                     .and_then(|upload| upload.pending.as_ref())
                     .is_some_and(|wait| wait.cause.is_some())
+        })
+    })
+    .await;
+}
+
+/// An upload storage refused waits on its own record, and the inspector
+/// shows the error coven kept beside it.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_inspector_shows_the_error_an_upload_met() {
+    let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
+    let services = crate::library::AppServices::for_test(manager.library.clone())
+        .await
+        .unwrap();
+    let inspector = services.subscribe_storage_inspector();
+    inspector.set(Some(release.id.clone())).unwrap();
+    manager
+        .storage
+        .set_faults(coven::Faults {
+            fail_next: 1,
+            failure: coven::StorageFailure::Network,
+            response: Some(500),
+            ..coven::Faults::none()
+        })
+        .await;
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    inspector_until(&inspector, |value| {
+        value.files.iter().any(|row| {
+            row.file.id == file_id
+                && row
+                    .upload
+                    .as_ref()
+                    .and_then(|upload| upload.pending.as_ref())
+                    .and_then(|wait| wait.cause.as_deref())
+                    .is_some_and(|cause| cause.contains("500"))
         })
     })
     .await;

@@ -7,20 +7,12 @@ pub enum BridgePendingRecords {
     Failed { error: BridgeError },
 }
 impl BridgePendingRecords {
-    pub(crate) fn from_core(
-        value: Option<Result<Vec<bae_core::library::PendingItem>, bae_core::ui::UiError>>,
-    ) -> Self {
-        match value {
-            None => Self::Loading,
-            Some(Ok(items)) => Self::Ready {
-                records: items
-                    .into_iter()
-                    .map(BridgePendingRecord::from_core)
-                    .collect(),
-            },
-            Some(Err(error)) => Self::Failed {
-                error: BridgeError::from_core(error),
-            },
+    pub(crate) fn from_core(items: Vec<bae_core::library::PendingItem>) -> Self {
+        Self::Ready {
+            records: items
+                .into_iter()
+                .map(BridgePendingRecord::from_core)
+                .collect(),
         }
     }
 }
@@ -70,9 +62,9 @@ impl BridgePendingWait {
 pub struct BridgePendingReason {
     pub key: String,
     /// The text of the error behind the reason, with every cause below it,
-    /// while core holds that error: it names what the reason's class leaves
-    /// out, already redacted by coven. None when no error is held, as after a
-    /// restart; the UI then offers no details.
+    /// when coven kept it: it names what the reason's class leaves out,
+    /// already redacted by coven. None when none is kept, as after the
+    /// library reopens; the UI then offers no details.
     pub detail: Option<String>,
     pub causes: Vec<BridgePendingReason>,
 }
@@ -102,11 +94,7 @@ pub(crate) enum PendingReasonKind {
     MemberKeysReplaced,
 }
 impl BridgePendingReason {
-    pub(crate) fn from_core(
-        reason: coven::PendingReason,
-        cause: Option<std::sync::Arc<dyn std::error::Error + Send + Sync>>,
-    ) -> Self {
-        let detail = cause.map(|cause| cause.to_string());
+    pub(crate) fn from_core(reason: coven::PendingReason, detail: Option<String>) -> Self {
         use coven::PendingReason as R;
         use PendingReasonKind as K;
         let kind = match &reason {
