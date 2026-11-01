@@ -94,8 +94,8 @@ internal fun SettingsScreen(
         model.load()
     }
     DisposableEffect(model) {
-        model.watchName()
-        onDispose { model.stopWatchingName() }
+        model.watch()
+        onDispose { model.stopWatching() }
     }
 
     val self = model.self
@@ -124,6 +124,7 @@ internal fun SettingsScreen(
         SelfHistorySharing(
             session = session,
             self = self,
+            requested = model.requestedProfile,
             onReloadSelf = { scope.launch { model.loadSelf() } },
         )
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)

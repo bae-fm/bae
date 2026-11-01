@@ -336,4 +336,17 @@
     <string name="members_joining">Entrando</string>
     <string name="members_sharing_access">Compartilhando acesso</string>
     <string name="invite_granting">Compartilhando a biblioteca. O código aparecerá quando esta biblioteca sincronizar.</string>
+    <string name="settings_profile_making">Criando seu perfil…</string>
+    <string name="settings_profile_making_detail">Seu perfil aparecerá quando esta biblioteca sincronizar.</string>
+    <string name="settings_profile_refused">Não foi possível criar seu perfil. %1$s</string>
+    <string name="settings_profile_create_prompt">Crie seu perfil para que a biblioteca possa mostrar quem você é.</string>
+    <string name="settings_profile_create">Criar perfil</string>
+    <string name="operation_rejection_store_owner">A conta dona do armazenamento da biblioteca não pode ser removida.</string>
+    <string name="operation_rejection_person_gone">Essa pessoa não está mais na biblioteca.</string>
+    <string name="operation_rejection_device_gone">Esse dispositivo não está mais na biblioteca.</string>
+    <string name="operation_rejection_circle_gone">Esse círculo não existe mais.</string>
+    <string name="operation_rejection_no_admin_left">A biblioteca ficaria sem nenhum administrador.</string>
+    <string name="operation_rejection_keys_already_used">Essas chaves já estão em uso.</string>
+    <string name="operation_rejection_member_keys_changed">As chaves dessa pessoa foram substituídas nesse meio-tempo.</string>
+    <string name="operation_rejection_not_allowed">Este dispositivo não tem permissão para fazer essa alteração.</string>
 </resources>

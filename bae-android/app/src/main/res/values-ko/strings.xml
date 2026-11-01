@@ -332,4 +332,17 @@
     <string name="members_joining">참여 중</string>
     <string name="members_sharing_access">접근 권한 공유 중</string>
     <string name="invite_granting">라이브러리를 공유하는 중입니다. 이 라이브러리가 동기화되면 코드가 표시됩니다.</string>
+    <string name="settings_profile_making">프로필을 만드는 중…</string>
+    <string name="settings_profile_making_detail">이 라이브러리가 동기화되면 프로필이 표시됩니다.</string>
+    <string name="settings_profile_refused">프로필을 만들 수 없습니다. %1$s</string>
+    <string name="settings_profile_create_prompt">라이브러리에 내가 누구인지 표시되도록 프로필을 만드세요.</string>
+    <string name="settings_profile_create">프로필 만들기</string>
+    <string name="operation_rejection_store_owner">라이브러리 저장소를 소유한 계정은 제거할 수 없습니다.</string>
+    <string name="operation_rejection_person_gone">그 사람은 더 이상 라이브러리에 없습니다.</string>
+    <string name="operation_rejection_device_gone">그 기기는 더 이상 라이브러리에 없습니다.</string>
+    <string name="operation_rejection_circle_gone">그 서클은 더 이상 존재하지 않습니다.</string>
+    <string name="operation_rejection_no_admin_left">라이브러리에 관리자가 남지 않게 됩니다.</string>
+    <string name="operation_rejection_keys_already_used">그 키는 이미 사용 중입니다.</string>
+    <string name="operation_rejection_member_keys_changed">그사이에 그 사람의 키가 교체되었습니다.</string>
+    <string name="operation_rejection_not_allowed">이 기기는 그 변경을 할 수 없습니다.</string>
 </resources>

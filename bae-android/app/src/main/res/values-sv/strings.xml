@@ -333,4 +333,17 @@
     <string name="members_joining">Går med</string>
     <string name="members_sharing_access">Delar åtkomst</string>
     <string name="invite_granting">Biblioteket delas. Koden visas när det här biblioteket har synkroniserats.</string>
+    <string name="settings_profile_making">Skapar din profil …</string>
+    <string name="settings_profile_making_detail">Din profil visas när det här biblioteket har synkroniserats.</string>
+    <string name="settings_profile_refused">Din profil kunde inte skapas. %1$s</string>
+    <string name="settings_profile_create_prompt">Skapa din profil så att biblioteket kan visa vem du är.</string>
+    <string name="settings_profile_create">Skapa profil</string>
+    <string name="operation_rejection_store_owner">Kontot som äger bibliotekets lagring kan inte tas bort.</string>
+    <string name="operation_rejection_person_gone">Den personen finns inte längre i biblioteket.</string>
+    <string name="operation_rejection_device_gone">Den enheten finns inte längre i biblioteket.</string>
+    <string name="operation_rejection_circle_gone">Den kretsen finns inte längre.</string>
+    <string name="operation_rejection_no_admin_left">Biblioteket skulle inte ha någon administratör kvar.</string>
+    <string name="operation_rejection_keys_already_used">De nycklarna används redan.</string>
+    <string name="operation_rejection_member_keys_changed">Den personens nycklar byttes ut under tiden.</string>
+    <string name="operation_rejection_not_allowed">Den här enheten får inte göra den ändringen.</string>
 </resources>

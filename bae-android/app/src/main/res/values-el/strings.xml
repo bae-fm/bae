@@ -333,4 +333,17 @@
     <string name="members_joining">Συμμετέχει</string>
     <string name="members_sharing_access">Κοινή χρήση πρόσβασης</string>
     <string name="invite_granting">Γίνεται κοινή χρήση της βιβλιοθήκης. Ο κωδικός θα εμφανιστεί μόλις συγχρονιστεί αυτή η βιβλιοθήκη.</string>
+    <string name="settings_profile_making">Δημιουργείται το προφίλ σας…</string>
+    <string name="settings_profile_making_detail">Το προφίλ σας θα εμφανιστεί μόλις συγχρονιστεί αυτή η βιβλιοθήκη.</string>
+    <string name="settings_profile_refused">Δεν ήταν δυνατή η δημιουργία του προφίλ σας. %1$s</string>
+    <string name="settings_profile_create_prompt">Δημιουργήστε το προφίλ σας για να δείχνει η βιβλιοθήκη ποιος είστε.</string>
+    <string name="settings_profile_create">Δημιουργία προφίλ</string>
+    <string name="operation_rejection_store_owner">Ο λογαριασμός στον οποίο ανήκει ο χώρος αποθήκευσης της βιβλιοθήκης δεν μπορεί να αφαιρεθεί.</string>
+    <string name="operation_rejection_person_gone">Αυτό το άτομο δεν είναι πλέον στη βιβλιοθήκη.</string>
+    <string name="operation_rejection_device_gone">Αυτή η συσκευή δεν είναι πλέον στη βιβλιοθήκη.</string>
+    <string name="operation_rejection_circle_gone">Αυτός ο κύκλος δεν υπάρχει πλέον.</string>
+    <string name="operation_rejection_no_admin_left">Η βιβλιοθήκη δεν θα είχε κανέναν διαχειριστή.</string>
+    <string name="operation_rejection_keys_already_used">Αυτά τα κλειδιά χρησιμοποιούνται ήδη.</string>
+    <string name="operation_rejection_member_keys_changed">Τα κλειδιά αυτού του ατόμου αντικαταστάθηκαν στο μεταξύ.</string>
+    <string name="operation_rejection_not_allowed">Αυτή η συσκευή δεν επιτρέπεται να κάνει αυτή την αλλαγή.</string>
 </resources>

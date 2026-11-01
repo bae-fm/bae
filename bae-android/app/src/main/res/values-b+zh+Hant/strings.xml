@@ -332,4 +332,17 @@
     <string name="members_joining">正在加入</string>
     <string name="members_sharing_access">正在共享存取權限</string>
     <string name="invite_granting">正在共享資料庫。此資料庫同步後，代碼就會出現。</string>
+    <string name="settings_profile_making">正在建立你的個人檔案…</string>
+    <string name="settings_profile_making_detail">此資料庫同步後，你的個人檔案就會出現。</string>
+    <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>
+    <string name="settings_profile_create_prompt">建立你的個人檔案，讓資料庫能顯示你是誰。</string>
+    <string name="settings_profile_create">建立個人檔案</string>
+    <string name="operation_rejection_store_owner">擁有資料庫儲存空間的帳號無法移除。</string>
+    <string name="operation_rejection_person_gone">此人已不在資料庫中。</string>
+    <string name="operation_rejection_device_gone">此裝置已不在資料庫中。</string>
+    <string name="operation_rejection_circle_gone">此圈子已不存在。</string>
+    <string name="operation_rejection_no_admin_left">資料庫將沒有管理員。</string>
+    <string name="operation_rejection_keys_already_used">這些金鑰已在使用中。</string>
+    <string name="operation_rejection_member_keys_changed">在此期間，此人的金鑰已被替換。</string>
+    <string name="operation_rejection_not_allowed">此裝置無權進行該變更。</string>
 </resources>

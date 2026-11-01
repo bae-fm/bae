@@ -277,6 +277,18 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// The profile this person asked for, until it is written: none before
+    /// they ask and once it is.
+    RequestedProfileSubscription:
+        Option<bae_core::people::RequestedProfile>
+            => Option<crate::types::BridgeRequestedProfile>,
+    converted by |requested: Option<bae_core::people::RequestedProfile>| {
+        requested.map(crate::types::BridgeRequestedProfile::from_core)
+    },
+    built by requested_profile
+}
+
+pulled_values! {
     /// This person's ratings.
     RatingsSubscription:
         Vec<bae_core::collections::Rating> => Vec<crate::types::BridgeRating>,

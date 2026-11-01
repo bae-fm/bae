@@ -333,4 +333,17 @@
     <string name="members_joining">Tilslutter sig</string>
     <string name="members_sharing_access">Deler adgang</string>
     <string name="invite_granting">Biblioteket deles. Koden vises, når dette bibliotek er synkroniseret.</string>
+    <string name="settings_profile_making">Opretter din profil…</string>
+    <string name="settings_profile_making_detail">Din profil vises, når dette bibliotek er synkroniseret.</string>
+    <string name="settings_profile_refused">Din profil kunne ikke oprettes. %1$s</string>
+    <string name="settings_profile_create_prompt">Opret din profil, så biblioteket kan vise, hvem du er.</string>
+    <string name="settings_profile_create">Opret profil</string>
+    <string name="operation_rejection_store_owner">Kontoen, der ejer bibliotekets lager, kan ikke fjernes.</string>
+    <string name="operation_rejection_person_gone">Den person er ikke længere i biblioteket.</string>
+    <string name="operation_rejection_device_gone">Den enhed er ikke længere i biblioteket.</string>
+    <string name="operation_rejection_circle_gone">Den kreds findes ikke længere.</string>
+    <string name="operation_rejection_no_admin_left">Biblioteket ville ikke have nogen administrator tilbage.</string>
+    <string name="operation_rejection_keys_already_used">De nøgler er allerede i brug.</string>
+    <string name="operation_rejection_member_keys_changed">Den persons nøgler blev udskiftet i mellemtiden.</string>
+    <string name="operation_rejection_not_allowed">Denne enhed har ikke tilladelse til at foretage den ændring.</string>
 </resources>

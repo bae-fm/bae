@@ -76,6 +76,41 @@ impl BridgePersonProfile {
     }
 }
 
+/// The profile this device's person asked for, until it is written.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRequestedProfile {
+    pub name: String,
+    pub state: BridgeRequestedProfileState,
+}
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeRequestedProfileState {
+    /// The person's private circle is being made; the profile is written
+    /// once sync has made it.
+    Making,
+    /// The library refused the circle; asking again asks anew.
+    Refused {
+        reason: super::BridgeOperationRejection,
+    },
+}
+impl BridgeRequestedProfile {
+    pub(crate) fn from_core(value: bae_core::people::RequestedProfile) -> Self {
+        let bae_core::people::RequestedProfile { name, state } = value;
+        Self {
+            name,
+            state: match state {
+                bae_core::people::RequestedProfileState::Making => {
+                    BridgeRequestedProfileState::Making
+                }
+                bae_core::people::RequestedProfileState::Refused(reason) => {
+                    BridgeRequestedProfileState::Refused {
+                        reason: super::BridgeOperationRejection::from_core(reason),
+                    }
+                }
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeRating {
     pub person: String,

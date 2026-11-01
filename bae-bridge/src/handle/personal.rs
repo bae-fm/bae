@@ -28,6 +28,17 @@ impl AppHandle {
         crate::screens::profiles(self.services.subscribe_profiles(), self.runtime.clone())
     }
 
+    /// The profile this person asked for, until it is written, now and
+    /// after each change.
+    pub fn subscribe_requested_profile(
+        &self,
+    ) -> std::sync::Arc<crate::RequestedProfileSubscription> {
+        crate::screens::requested_profile(
+            self.services.subscribe_requested_profile(),
+            self.runtime.clone(),
+        )
+    }
+
     /// This person's ratings, now and after each change.
     pub fn subscribe_ratings(&self) -> std::sync::Arc<crate::RatingsSubscription> {
         crate::screens::ratings(self.services.subscribe_ratings(), self.runtime.clone())

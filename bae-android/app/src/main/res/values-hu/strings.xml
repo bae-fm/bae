@@ -333,4 +333,17 @@
     <string name="members_joining">Csatlakozik</string>
     <string name="members_sharing_access">Hozzáférés megosztása</string>
     <string name="invite_granting">A könyvtár megosztása folyamatban. A kód akkor jelenik meg, amikor ez a könyvtár szinkronizál.</string>
+    <string name="settings_profile_making">A profilod létrehozása…</string>
+    <string name="settings_profile_making_detail">A profilod akkor jelenik meg, amikor ez a könyvtár szinkronizál.</string>
+    <string name="settings_profile_refused">Nem sikerült létrehozni a profilodat. %1$s</string>
+    <string name="settings_profile_create_prompt">Hozd létre a profilodat, hogy a könyvtár meg tudja mutatni, ki vagy.</string>
+    <string name="settings_profile_create">Profil létrehozása</string>
+    <string name="operation_rejection_store_owner">A könyvtár tárhelyét birtokló fiók nem távolítható el.</string>
+    <string name="operation_rejection_person_gone">Ez a személy már nincs a könyvtárban.</string>
+    <string name="operation_rejection_device_gone">Ez az eszköz már nincs a könyvtárban.</string>
+    <string name="operation_rejection_circle_gone">Ez a kör már nem létezik.</string>
+    <string name="operation_rejection_no_admin_left">A könyvtárnak nem maradna adminisztrátora.</string>
+    <string name="operation_rejection_keys_already_used">Ezek a kulcsok már használatban vannak.</string>
+    <string name="operation_rejection_member_keys_changed">Ennek a személynek a kulcsait időközben lecserélték.</string>
+    <string name="operation_rejection_not_allowed">Ez az eszköz nem végezheti el ezt a módosítást.</string>
 </resources>

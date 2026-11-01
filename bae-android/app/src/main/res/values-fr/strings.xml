@@ -336,4 +336,17 @@
     <string name="members_joining">Adhésion en cours</string>
     <string name="members_sharing_access">Partage de l’accès</string>
     <string name="invite_granting">Partage de la bibliothèque. Le code apparaîtra une fois cette bibliothèque synchronisée.</string>
+    <string name="settings_profile_making">Création de votre profil…</string>
+    <string name="settings_profile_making_detail">Votre profil apparaîtra une fois cette bibliothèque synchronisée.</string>
+    <string name="settings_profile_refused">Votre profil n’a pas pu être créé. %1$s</string>
+    <string name="settings_profile_create_prompt">Créez votre profil pour que la bibliothèque puisse indiquer qui vous êtes.</string>
+    <string name="settings_profile_create">Créer le profil</string>
+    <string name="operation_rejection_store_owner">Le compte propriétaire du stockage de la bibliothèque ne peut pas être retiré.</string>
+    <string name="operation_rejection_person_gone">Cette personne ne fait plus partie de la bibliothèque.</string>
+    <string name="operation_rejection_device_gone">Cet appareil ne fait plus partie de la bibliothèque.</string>
+    <string name="operation_rejection_circle_gone">Ce cercle n’existe plus.</string>
+    <string name="operation_rejection_no_admin_left">La bibliothèque n’aurait plus d’administrateur.</string>
+    <string name="operation_rejection_keys_already_used">Ces clés sont déjà utilisées.</string>
+    <string name="operation_rejection_member_keys_changed">Les clés de cette personne ont été remplacées entre-temps.</string>
+    <string name="operation_rejection_not_allowed">Cet appareil n’est pas autorisé à effectuer cette modification.</string>
 </resources>

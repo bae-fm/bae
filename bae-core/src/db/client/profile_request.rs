@@ -102,7 +102,33 @@ pub(super) fn end_profile_request(
     Ok(())
 }
 
+/// The request as this device's person sees it: a circle that landed is
+/// still being made into their profile.
+fn requested_profile(request: ProfileRequest) -> Result<crate::people::RequestedProfile, DbError> {
+    use crate::people::RequestedProfileState;
+    let state = match request.state()? {
+        ProfileRequestState::Making | ProfileRequestState::Made => RequestedProfileState::Making,
+        ProfileRequestState::Refused(reason) => RequestedProfileState::Refused(reason),
+    };
+    Ok(crate::people::RequestedProfile {
+        name: request.name,
+        state,
+    })
+}
+
 impl Database {
+    /// The profile this device's person asked for, until it is written,
+    /// live.
+    pub(crate) fn subscribe_requested_profile(
+        &self,
+    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
+        self.inner.handle.subscribe(|sql| {
+            Ok(profile_request_on(&sql)?
+                .map(requested_profile)
+                .transpose()?)
+        })
+    }
+
     /// The profile request, live: it reruns as the request is made or ends
     /// and as its circle's operation ends.
     pub(crate) fn subscribe_profile_request(&self) -> coven::LiveQuery<Option<ProfileRequest>> {

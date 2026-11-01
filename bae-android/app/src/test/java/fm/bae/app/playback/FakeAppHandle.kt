@@ -96,6 +96,7 @@ import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.RatingsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
+import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
@@ -711,6 +712,8 @@ internal open class FakeAppHandle(
     override fun subscribePlaylists(): PlaylistsSubscription = unfaked("subscribePlaylists")
 
     override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
+
+    override fun subscribeRequestedProfile(): RequestedProfileSubscription = unfaked("subscribeRequestedProfile")
 
     override fun subscribeRatings(): RatingsSubscription = unfaked("subscribeRatings")
 

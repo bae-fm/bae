@@ -335,4 +335,17 @@
     <string name="members_joining">Tritt bei</string>
     <string name="members_sharing_access">Zugriff wird geteilt</string>
     <string name="invite_granting">Die Bibliothek wird geteilt. Der Code erscheint, sobald diese Bibliothek synchronisiert ist.</string>
+    <string name="settings_profile_making">Dein Profil wird erstellt …</string>
+    <string name="settings_profile_making_detail">Dein Profil erscheint, sobald diese Bibliothek synchronisiert ist.</string>
+    <string name="settings_profile_refused">Dein Profil konnte nicht erstellt werden. %1$s</string>
+    <string name="settings_profile_create_prompt">Erstelle dein Profil, damit die Bibliothek zeigen kann, wer du bist.</string>
+    <string name="settings_profile_create">Profil erstellen</string>
+    <string name="operation_rejection_store_owner">Das Konto, dem der Speicher der Bibliothek gehört, kann nicht entfernt werden.</string>
+    <string name="operation_rejection_person_gone">Diese Person ist nicht mehr in der Bibliothek.</string>
+    <string name="operation_rejection_device_gone">Dieses Gerät ist nicht mehr in der Bibliothek.</string>
+    <string name="operation_rejection_circle_gone">Diesen Kreis gibt es nicht mehr.</string>
+    <string name="operation_rejection_no_admin_left">Die Bibliothek hätte dann keinen Admin mehr.</string>
+    <string name="operation_rejection_keys_already_used">Diese Schlüssel werden bereits verwendet.</string>
+    <string name="operation_rejection_member_keys_changed">Die Schlüssel dieser Person wurden inzwischen ersetzt.</string>
+    <string name="operation_rejection_not_allowed">Dieses Gerät darf diese Änderung nicht vornehmen.</string>
 </resources>

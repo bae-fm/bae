@@ -4,8 +4,9 @@ import os.log
 
 private let logger = Logger.bae("MembershipStore")
 
-/// The store's members joined with their profiles, and the invites this
-/// device has open. Membership, profiles and invites are subscribed; each
+/// The store's members joined with their profiles, the profile this device's
+/// person asked for, and the invites this device has open. Membership,
+/// profiles, the requested profile and invites are subscribed; each
 /// change of membership or profiles rereads core's joined list of people and
 /// this device's person.
 @MainActor
@@ -16,6 +17,8 @@ public final class MembershipStore {
     public private(set) var selfIsAdmin = false
     /// This device's person's profile, nil until they have one.
     public private(set) var selfProfile: BridgePersonProfile?
+    /// The profile this device's person asked for, until it is written.
+    public private(set) var requestedProfile: BridgeRequestedProfile?
     /// This device's open invites, each with a sent invite's request once
     /// it arrives.
     public private(set) var invites: [BridgeInvite] = []
@@ -58,6 +61,13 @@ public final class MembershipStore {
                     ScreenSubscription(
                         handle.subscribeProfiles(),
                         onValue: { [weak store] _ in store?.readPeople() },
+                        onError: { [weak store] error in store?.fail(error) }
+                    ),
+                    ScreenSubscription(
+                        handle.subscribeRequestedProfile(),
+                        onValue: { [weak store] requested in
+                            store?.requestedProfile = requested
+                        },
                         onError: { [weak store] error in store?.fail(error) }
                     ),
                     ScreenSubscription(
@@ -106,6 +116,7 @@ public final class MembershipStore {
             people: [BridgePerson],
             selfIsAdmin: Bool,
             invites: [BridgeInvite] = [],
+            requestedProfile: BridgeRequestedProfile? = nil,
             addedDevice: BridgeActiveDevice? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
@@ -125,6 +136,7 @@ public final class MembershipStore {
             )
             store.selfIsAdmin = selfIsAdmin
             store.invites = invites
+            store.requestedProfile = requestedProfile
             store.readPeople()
             return store
         }

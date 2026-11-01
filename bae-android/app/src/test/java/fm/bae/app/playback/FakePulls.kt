@@ -6,10 +6,12 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeQueueSnapshot
+import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.QueueSubscription
+import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 
 /**
@@ -44,6 +46,17 @@ internal class FakeLibraryNameSubscription : LibraryNameSubscription(NoHandle) {
     val pulls = PullChannel<String>()
 
     override suspend fun next(): String = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** The requested profile a test hands the app. */
+internal class FakeRequestedProfileSubscription : RequestedProfileSubscription(NoHandle) {
+    val pulls = PullChannel<BridgeRequestedProfile?>()
+
+    override suspend fun next(): BridgeRequestedProfile? = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

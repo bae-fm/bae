@@ -332,4 +332,17 @@
     <string name="members_joining">正在加入</string>
     <string name="members_sharing_access">正在共享访问权限</string>
     <string name="invite_granting">正在共享资料库。此资料库同步后，代码就会出现。</string>
+    <string name="settings_profile_making">正在创建你的个人资料…</string>
+    <string name="settings_profile_making_detail">此资料库同步后，你的个人资料就会出现。</string>
+    <string name="settings_profile_refused">无法创建你的个人资料。%1$s</string>
+    <string name="settings_profile_create_prompt">创建你的个人资料，以便库能显示你是谁。</string>
+    <string name="settings_profile_create">创建个人资料</string>
+    <string name="operation_rejection_store_owner">拥有资料库存储空间的账户无法移除。</string>
+    <string name="operation_rejection_person_gone">此人已不在资料库中。</string>
+    <string name="operation_rejection_device_gone">此设备已不在资料库中。</string>
+    <string name="operation_rejection_circle_gone">此圈子已不存在。</string>
+    <string name="operation_rejection_no_admin_left">资料库将没有管理员。</string>
+    <string name="operation_rejection_keys_already_used">这些密钥已在使用中。</string>
+    <string name="operation_rejection_member_keys_changed">在此期间，此人的密钥已被替换。</string>
+    <string name="operation_rejection_not_allowed">此设备无权进行该更改。</string>
 </resources>

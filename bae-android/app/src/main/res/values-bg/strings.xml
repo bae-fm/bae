@@ -335,4 +335,17 @@
     <string name="members_joining">Присъединява се</string>
     <string name="members_sharing_access">Споделя се достъп</string>
     <string name="invite_granting">Библиотеката се споделя. Кодът ще се покаже, след като тази библиотека се синхронизира.</string>
+    <string name="settings_profile_making">Профилът ви се създава…</string>
+    <string name="settings_profile_making_detail">Профилът ви ще се появи, след като тази библиотека се синхронизира.</string>
+    <string name="settings_profile_refused">Профилът ви не можа да бъде създаден. %1$s</string>
+    <string name="settings_profile_create_prompt">Създайте профила си, за да може библиотеката да показва кой сте.</string>
+    <string name="settings_profile_create">Създай профил</string>
+    <string name="operation_rejection_store_owner">Акаунтът, който притежава хранилището на библиотеката, не може да бъде премахнат.</string>
+    <string name="operation_rejection_person_gone">Този човек вече не е в библиотеката.</string>
+    <string name="operation_rejection_device_gone">Това устройство вече не е в библиотеката.</string>
+    <string name="operation_rejection_circle_gone">Този кръг вече не съществува.</string>
+    <string name="operation_rejection_no_admin_left">Библиотеката щеше да остане без администратор.</string>
+    <string name="operation_rejection_keys_already_used">Тези ключове вече се използват.</string>
+    <string name="operation_rejection_member_keys_changed">Междувременно ключовете на този човек бяха заменени.</string>
+    <string name="operation_rejection_not_allowed">Това устройство няма право да направи тази промяна.</string>
 </resources>

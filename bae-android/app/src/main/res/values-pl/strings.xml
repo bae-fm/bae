@@ -341,4 +341,17 @@
     <string name="members_joining">Dołącza</string>
     <string name="members_sharing_access">Udostępnianie dostępu</string>
     <string name="invite_granting">Udostępnianie biblioteki. Kod pojawi się po zsynchronizowaniu tej biblioteki.</string>
+    <string name="settings_profile_making">Tworzenie Twojego profilu…</string>
+    <string name="settings_profile_making_detail">Twój profil pojawi się po zsynchronizowaniu tej biblioteki.</string>
+    <string name="settings_profile_refused">Nie udało się utworzyć Twojego profilu. %1$s</string>
+    <string name="settings_profile_create_prompt">Utwórz swój profil, aby biblioteka mogła pokazać, kim jesteś.</string>
+    <string name="settings_profile_create">Utwórz profil</string>
+    <string name="operation_rejection_store_owner">Nie można usunąć konta, które jest właścicielem miejsca na dane biblioteki.</string>
+    <string name="operation_rejection_person_gone">Tej osoby nie ma już w bibliotece.</string>
+    <string name="operation_rejection_device_gone">Tego urządzenia nie ma już w bibliotece.</string>
+    <string name="operation_rejection_circle_gone">Ten krąg już nie istnieje.</string>
+    <string name="operation_rejection_no_admin_left">W bibliotece nie zostałby żaden administrator.</string>
+    <string name="operation_rejection_keys_already_used">Te klucze są już używane.</string>
+    <string name="operation_rejection_member_keys_changed">Klucze tej osoby zostały w międzyczasie zastąpione.</string>
+    <string name="operation_rejection_not_allowed">To urządzenie nie może wprowadzić tej zmiany.</string>
 </resources>

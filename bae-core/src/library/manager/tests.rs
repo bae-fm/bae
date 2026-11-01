@@ -295,6 +295,7 @@ mod memory;
 mod other_device;
 mod panics;
 mod primary_release;
+mod profile_request;
 mod scrub_points_sync;
 #[cfg(feature = "oauth-providers")]
 mod sign_in;

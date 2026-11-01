@@ -335,4 +335,17 @@
     <string name="members_joining">Katılıyor</string>
     <string name="members_sharing_access">Erişim paylaşılıyor</string>
     <string name="invite_granting">Kitaplık paylaşılıyor. Kod, bu kitaplık eşitlendiğinde görünür.</string>
+    <string name="settings_profile_making">Profiliniz oluşturuluyor…</string>
+    <string name="settings_profile_making_detail">Profiliniz bu kitaplık eşitlendiğinde görünür.</string>
+    <string name="settings_profile_refused">Profiliniz oluşturulamadı. %1$s</string>
+    <string name="settings_profile_create_prompt">Kitaplığın kim olduğunuzu gösterebilmesi için profilinizi oluşturun.</string>
+    <string name="settings_profile_create">Profil oluştur</string>
+    <string name="operation_rejection_store_owner">Kitaplığın depolama alanının sahibi olan hesap kaldırılamaz.</string>
+    <string name="operation_rejection_person_gone">Bu kişi artık kitaplıkta değil.</string>
+    <string name="operation_rejection_device_gone">Bu cihaz artık kitaplıkta değil.</string>
+    <string name="operation_rejection_circle_gone">Bu çevre artık yok.</string>
+    <string name="operation_rejection_no_admin_left">Kitaplıkta hiç yönetici kalmazdı.</string>
+    <string name="operation_rejection_keys_already_used">Bu anahtarlar zaten kullanılıyor.</string>
+    <string name="operation_rejection_member_keys_changed">Bu kişinin anahtarları bu arada değiştirildi.</string>
+    <string name="operation_rejection_not_allowed">Bu cihazın bu değişikliği yapmasına izin verilmiyor.</string>
 </resources>

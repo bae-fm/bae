@@ -341,4 +341,17 @@
     <string name="members_joining">Приєднується</string>
     <string name="members_sharing_access">Надається доступ</string>
     <string name="invite_granting">Бібліотекою діляться. Код з’явиться, щойно ця бібліотека синхронізується.</string>
+    <string name="settings_profile_making">Створюється ваш профіль…</string>
+    <string name="settings_profile_making_detail">Ваш профіль з’явиться, щойно ця бібліотека синхронізується.</string>
+    <string name="settings_profile_refused">Не вдалося створити ваш профіль. %1$s</string>
+    <string name="settings_profile_create_prompt">Створіть свій профіль, щоб бібліотека могла показувати, хто ви.</string>
+    <string name="settings_profile_create">Створити профіль</string>
+    <string name="operation_rejection_store_owner">Обліковий запис, якому належить сховище бібліотеки, не можна вилучити.</string>
+    <string name="operation_rejection_person_gone">Цієї людини вже немає в бібліотеці.</string>
+    <string name="operation_rejection_device_gone">Цього пристрою вже немає в бібліотеці.</string>
+    <string name="operation_rejection_circle_gone">Цього кола більше не існує.</string>
+    <string name="operation_rejection_no_admin_left">У бібліотеці не залишилося б жодного адміністратора.</string>
+    <string name="operation_rejection_keys_already_used">Ці ключі вже використовуються.</string>
+    <string name="operation_rejection_member_keys_changed">Тим часом ключі цієї людини було замінено.</string>
+    <string name="operation_rejection_not_allowed">Цьому пристрою не дозволено вносити цю зміну.</string>
 </resources>

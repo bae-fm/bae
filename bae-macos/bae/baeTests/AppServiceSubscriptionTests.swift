@@ -457,6 +457,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         invites
     }
 
+    override func subscribeRequestedProfile() -> RequestedProfileSubscription {
+        SilentRequestedProfile()
+    }
+
     func deliverInvites(_ value: [BridgeInvite]) {
         invites.values.deliver(value)
     }
@@ -770,6 +774,27 @@ private final class SilentProfiles: ProfilesSubscription, @unchecked Sendable {
     }
 
     override func next() async throws -> [BridgePersonProfile] {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// A requested profile that never changes: a pull waits until cancelled.
+private final class SilentRequestedProfile: RequestedProfileSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<BridgeRequestedProfile?>()
+
+    init() {
+        super.init(noHandle: RequestedProfileSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeRequestedProfile? {
         try await values.next()
     }
 

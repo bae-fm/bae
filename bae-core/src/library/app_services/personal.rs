@@ -10,6 +10,7 @@ impl AppServices {
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), crate::people::ProfileError>);
     delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, crate::people::ProfileError>);
     delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<crate::people::PersonProfile>);
+    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<crate::people::RequestedProfile>);
     delegate_async!(manager, people => people() -> Result<Vec<crate::people::Person>, LibraryError>);
     delegate_async!(manager, own_person => own_person() -> Result<Option<crate::people::Person>, LibraryError>);
     delegate_async!(manager, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);

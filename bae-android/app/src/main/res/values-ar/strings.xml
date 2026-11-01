@@ -347,4 +347,17 @@
     <string name="members_joining">ينضم</string>
     <string name="members_sharing_access">جارٍ مشاركة الوصول</string>
     <string name="invite_granting">جارٍ مشاركة المكتبة. يظهر الرمز بعد مزامنة هذه المكتبة.</string>
+    <string name="settings_profile_making">جارٍ إنشاء ملف تعريفك…</string>
+    <string name="settings_profile_making_detail">يظهر ملف تعريفك بعد مزامنة هذه المكتبة.</string>
+    <string name="settings_profile_refused">تعذّر إنشاء ملف تعريفك. %1$s</string>
+    <string name="settings_profile_create_prompt">أنشئ ملف تعريفك لتتمكن المكتبة من إظهار هويتك.</string>
+    <string name="settings_profile_create">إنشاء ملف تعريف</string>
+    <string name="operation_rejection_store_owner">لا يمكن إزالة الحساب الذي يملك مساحة تخزين المكتبة.</string>
+    <string name="operation_rejection_person_gone">لم يعد هذا الشخص في المكتبة.</string>
+    <string name="operation_rejection_device_gone">لم يعد هذا الجهاز في المكتبة.</string>
+    <string name="operation_rejection_circle_gone">لم تعد هذه الدائرة موجودة.</string>
+    <string name="operation_rejection_no_admin_left">لن يبقى للمكتبة أي مسؤول.</string>
+    <string name="operation_rejection_keys_already_used">هذه المفاتيح مستخدمة بالفعل.</string>
+    <string name="operation_rejection_member_keys_changed">استُبدلت مفاتيح هذا الشخص في هذه الأثناء.</string>
+    <string name="operation_rejection_not_allowed">لا يُسمح لهذا الجهاز بإجراء هذا التغيير.</string>
 </resources>

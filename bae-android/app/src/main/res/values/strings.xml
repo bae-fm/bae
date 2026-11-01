@@ -392,4 +392,17 @@
     <string name="members_joining">Joining</string>
     <string name="members_sharing_access">Sharing access</string>
     <string name="invite_granting">Sharing the library. The code shows once this library syncs.</string>
+    <string name="settings_profile_making">Making your profile…</string>
+    <string name="settings_profile_making_detail">Your profile appears once this library syncs.</string>
+    <string name="settings_profile_refused">Your profile couldn’t be made. %1$s</string>
+    <string name="settings_profile_create_prompt">Create your profile so the library can show who you are.</string>
+    <string name="settings_profile_create">Create profile</string>
+    <string name="operation_rejection_store_owner">The account that owns the library’s storage can’t be removed.</string>
+    <string name="operation_rejection_person_gone">That person is no longer in the library.</string>
+    <string name="operation_rejection_device_gone">That device is no longer in the library.</string>
+    <string name="operation_rejection_circle_gone">That circle no longer exists.</string>
+    <string name="operation_rejection_no_admin_left">The library would have no admin left.</string>
+    <string name="operation_rejection_keys_already_used">Those keys are already in use.</string>
+    <string name="operation_rejection_member_keys_changed">That person’s keys were replaced in the meantime.</string>
+    <string name="operation_rejection_not_allowed">This device isn’t allowed to make that change.</string>
 </resources>

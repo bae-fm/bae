@@ -333,4 +333,17 @@
     <string name="members_joining">Liittyy</string>
     <string name="members_sharing_access">Jaetaan käyttöoikeutta</string>
     <string name="invite_granting">Kirjastoa jaetaan. Koodi näkyy, kun tämä kirjasto on synkronoitu.</string>
+    <string name="settings_profile_making">Profiiliasi luodaan…</string>
+    <string name="settings_profile_making_detail">Profiilisi näkyy, kun tämä kirjasto on synkronoitu.</string>
+    <string name="settings_profile_refused">Profiiliasi ei voitu luoda. %1$s</string>
+    <string name="settings_profile_create_prompt">Luo profiilisi, jotta kirjasto voi näyttää, kuka olet.</string>
+    <string name="settings_profile_create">Luo profiili</string>
+    <string name="operation_rejection_store_owner">Kirjaston tallennustilan omistavaa tiliä ei voi poistaa.</string>
+    <string name="operation_rejection_person_gone">Tämä henkilö ei ole enää kirjastossa.</string>
+    <string name="operation_rejection_device_gone">Tämä laite ei ole enää kirjastossa.</string>
+    <string name="operation_rejection_circle_gone">Tätä piiriä ei ole enää olemassa.</string>
+    <string name="operation_rejection_no_admin_left">Kirjastoon ei jäisi yhtään ylläpitäjää.</string>
+    <string name="operation_rejection_keys_already_used">Nämä avaimet ovat jo käytössä.</string>
+    <string name="operation_rejection_member_keys_changed">Tämän henkilön avaimet vaihdettiin sillä välin.</string>
+    <string name="operation_rejection_not_allowed">Tällä laitteella ei ole lupaa tehdä tätä muutosta.</string>
 </resources>

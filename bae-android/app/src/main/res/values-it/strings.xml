@@ -336,4 +336,17 @@
     <string name="members_joining">Si sta unendo</string>
     <string name="members_sharing_access">Condivisione dell’accesso</string>
     <string name="invite_granting">Condivisione della libreria. Il codice comparirà quando questa libreria si sarà sincronizzata.</string>
+    <string name="settings_profile_making">Creazione del tuo profilo…</string>
+    <string name="settings_profile_making_detail">Il tuo profilo comparirà quando questa libreria si sarà sincronizzata.</string>
+    <string name="settings_profile_refused">Non è stato possibile creare il tuo profilo. %1$s</string>
+    <string name="settings_profile_create_prompt">Crea il tuo profilo così la libreria può mostrare chi sei.</string>
+    <string name="settings_profile_create">Crea profilo</string>
+    <string name="operation_rejection_store_owner">L’account proprietario dello spazio di archiviazione della libreria non può essere rimosso.</string>
+    <string name="operation_rejection_person_gone">Quella persona non fa più parte della libreria.</string>
+    <string name="operation_rejection_device_gone">Quel dispositivo non fa più parte della libreria.</string>
+    <string name="operation_rejection_circle_gone">Quella cerchia non esiste più.</string>
+    <string name="operation_rejection_no_admin_left">La libreria resterebbe senza amministratori.</string>
+    <string name="operation_rejection_keys_already_used">Quelle chiavi sono già in uso.</string>
+    <string name="operation_rejection_member_keys_changed">Nel frattempo le chiavi di quella persona sono state sostituite.</string>
+    <string name="operation_rejection_not_allowed">Questo dispositivo non è autorizzato a fare quella modifica.</string>
 </resources>

@@ -336,4 +336,17 @@
     <string name="members_joining">Se alătură</string>
     <string name="members_sharing_access">Se partajează accesul</string>
     <string name="invite_granting">Se partajează biblioteca. Codul apare după ce această bibliotecă se sincronizează.</string>
+    <string name="settings_profile_making">Se creează profilul tău…</string>
+    <string name="settings_profile_making_detail">Profilul tău apare după ce această bibliotecă se sincronizează.</string>
+    <string name="settings_profile_refused">Profilul tău nu a putut fi creat. %1$s</string>
+    <string name="settings_profile_create_prompt">Creează-ți profilul ca biblioteca să poată arăta cine ești.</string>
+    <string name="settings_profile_create">Creează profilul</string>
+    <string name="operation_rejection_store_owner">Contul care deține spațiul de stocare al bibliotecii nu poate fi eliminat.</string>
+    <string name="operation_rejection_person_gone">Persoana respectivă nu mai este în bibliotecă.</string>
+    <string name="operation_rejection_device_gone">Dispozitivul respectiv nu mai este în bibliotecă.</string>
+    <string name="operation_rejection_circle_gone">Cercul respectiv nu mai există.</string>
+    <string name="operation_rejection_no_admin_left">Biblioteca ar rămâne fără niciun administrator.</string>
+    <string name="operation_rejection_keys_already_used">Aceste chei sunt deja folosite.</string>
+    <string name="operation_rejection_member_keys_changed">Între timp, cheile acestei persoane au fost înlocuite.</string>
+    <string name="operation_rejection_not_allowed">Acest dispozitiv nu are permisiunea să facă această modificare.</string>
 </resources>

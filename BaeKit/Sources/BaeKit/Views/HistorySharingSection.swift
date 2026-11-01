@@ -5,8 +5,9 @@ private let logger = Logger.bae("HistorySharingSection")
 
 /// Who sees what this person plays: only them, or the household. A change
 /// applies to new plays; earlier plays keep the audience they were recorded
-/// in. A person without a profile yet — a join that couldn't write it —
-/// creates one here first.
+/// in. A person without a profile yet — a join that couldn't ask for it —
+/// creates one here first; the section says while it is being made, and
+/// why the library refused it.
 public struct HistorySharingSection: View {
     @Environment(MembershipStore.self)
     private var store
@@ -44,7 +45,20 @@ public struct HistorySharingSection: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
             }
+            else if let requested = store.requestedProfile,
+                case .making = requested.state
+            {
+                ProgressView("Making your profile…")
+                Text("Your profile appears once this library syncs.")
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+            }
             else if store.members != nil {
+                if let requested = store.requestedProfile,
+                    case .refused(let reason) = requested.state
+                {
+                    ErrorText("Your profile couldn't be made. \(reason.label)")
+                }
                 Text("Create your profile so the library can show who you are.")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)

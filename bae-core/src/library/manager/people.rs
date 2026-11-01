@@ -54,6 +54,13 @@ impl LibraryManager {
         self.database.avatar(person).await
     }
 
+    /// The profile this person asked for, until it is written, live.
+    pub fn subscribe_requested_profile(
+        &self,
+    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
+        self.database.subscribe_requested_profile()
+    }
+
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<crate::people::PersonProfile>> {
         self.database.subscribe_profiles()
     }

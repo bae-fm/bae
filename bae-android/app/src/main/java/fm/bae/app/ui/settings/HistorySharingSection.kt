@@ -10,6 +10,10 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -19,6 +23,12 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.PersonNameField
+import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.WaitingIndicator
+import uniffi.bae_bridge.BridgeOperationRejection
+import uniffi.bae_bridge.BridgeRequestedProfile
+import uniffi.bae_bridge.BridgeRequestedProfileState
 import uniffi.bae_bridge.BridgeSharing
 
 /**
@@ -41,12 +51,15 @@ internal fun HistorySharingSection(
 
 /**
  * History sharing for this device's person, once read: the choice when they
- * have a profile, or why it couldn't be read, with Retry.
+ * have a profile; without one, the profile they asked for while it is made,
+ * or the form to ask for it, saying why the library refused the last one; or
+ * why the person couldn't be read, with Retry.
  */
 @Composable
 internal fun SelfHistorySharing(
     session: OpenLibrary,
     self: SelfRead,
+    requested: BridgeRequestedProfile?,
     onReloadSelf: () -> Unit,
 ) {
     when (self) {
@@ -55,9 +68,21 @@ internal fun SelfHistorySharing(
         }
 
         is SelfRead.Loaded -> {
-            self.person?.profile?.let { profile ->
+            self.person?.let { person ->
                 SectionDivider()
-                HistorySharingSection(session = session, sharing = profile.historySharing, onChanged = onReloadSelf)
+                when (val profile = person.profile) {
+                    null -> {
+                        ProfileSetup(session = session, requested = requested)
+                    }
+
+                    else -> {
+                        HistorySharingSection(
+                            session = session,
+                            sharing = profile.historySharing,
+                            onChanged = onReloadSelf,
+                        )
+                    }
+                }
             }
         }
 
@@ -69,6 +94,63 @@ internal fun SelfHistorySharing(
             ) {
                 Eyebrow(text = stringResource(R.string.settings_history))
                 ReadFailure(error = self.error, onRetry = onReloadSelf)
+            }
+        }
+    }
+}
+
+/** A person with no profile yet: the one they asked for while it is made, or the form that asks for it. */
+@Composable
+private fun ProfileSetup(
+    session: OpenLibrary,
+    requested: BridgeRequestedProfile?,
+) {
+    ProfileSetupContent(requested = requested) { name ->
+        session.messages.perform("create the person's profile") {
+            session.appHandle.createProfile(name)
+        }
+    }
+}
+
+@Composable
+private fun ProfileSetupContent(
+    requested: BridgeRequestedProfile?,
+    onCreate: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        Eyebrow(text = stringResource(R.string.settings_history))
+        when (val state = requested?.state) {
+            is BridgeRequestedProfileState.Making -> {
+                WaitingIndicator(text = stringResource(R.string.settings_profile_making))
+                Text(
+                    text = stringResource(R.string.settings_profile_making_detail),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            is BridgeRequestedProfileState.Refused, null -> {
+                if (state is BridgeRequestedProfileState.Refused) {
+                    val reason = stringResource(state.reason.labelRes())
+                    Text(
+                        text = stringResource(R.string.settings_profile_refused, reason),
+                        style = ThemeText.body.style,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_profile_create_prompt),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                var name by rememberSaveable { mutableStateOf("") }
+                PersonNameField(name) { name = it }
+                PrimaryButton(onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
+                    Text(stringResource(R.string.settings_profile_create))
+                }
             }
         }
     }
@@ -107,6 +189,32 @@ private fun HistorySharingContent(
             text = stringResource(R.string.settings_history_explanation),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ProfileSetupRefusedPreview() {
+    BaeTheme {
+        ProfileSetupContent(
+            requested =
+                BridgeRequestedProfile(
+                    name = "Robin",
+                    state = BridgeRequestedProfileState.Refused(BridgeOperationRejection.NOT_ALLOWED),
+                ),
+            onCreate = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ProfileSetupMakingPreview() {
+    BaeTheme {
+        ProfileSetupContent(
+            requested = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making),
+            onCreate = {},
         )
     }
 }

@@ -332,4 +332,17 @@
     <string name="members_joining">参加中</string>
     <string name="members_sharing_access">アクセスを共有中</string>
     <string name="invite_granting">ライブラリを共有しています。このライブラリが同期されるとコードが表示されます。</string>
+    <string name="settings_profile_making">プロフィールを作成しています…</string>
+    <string name="settings_profile_making_detail">このライブラリが同期されると、プロフィールが表示されます。</string>
+    <string name="settings_profile_refused">プロフィールを作成できませんでした。%1$s</string>
+    <string name="settings_profile_create_prompt">ライブラリにあなたが誰かを表示できるよう、プロフィールを作成してください。</string>
+    <string name="settings_profile_create">プロフィールを作成</string>
+    <string name="operation_rejection_store_owner">ライブラリのストレージを所有するアカウントは削除できません。</string>
+    <string name="operation_rejection_person_gone">その人はもうライブラリにいません。</string>
+    <string name="operation_rejection_device_gone">そのデバイスはもうライブラリにありません。</string>
+    <string name="operation_rejection_circle_gone">そのサークルはもう存在しません。</string>
+    <string name="operation_rejection_no_admin_left">ライブラリに管理者がいなくなります。</string>
+    <string name="operation_rejection_keys_already_used">それらのキーはすでに使用されています。</string>
+    <string name="operation_rejection_member_keys_changed">その間に、その人のキーが置き換えられました。</string>
+    <string name="operation_rejection_not_allowed">このデバイスにはその変更を行う権限がありません。</string>
 </resources>

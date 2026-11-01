@@ -338,4 +338,17 @@
     <string name="members_joining">מצטרף</string>
     <string name="members_sharing_access">משתף גישה</string>
     <string name="invite_granting">הספרייה משותפת. הקוד יופיע אחרי שהספרייה הזו תסונכרן.</string>
+    <string name="settings_profile_making">הפרופיל שלכם נוצר…</string>
+    <string name="settings_profile_making_detail">הפרופיל שלכם יופיע אחרי שהספרייה הזו תסונכרן.</string>
+    <string name="settings_profile_refused">לא ניתן היה ליצור את הפרופיל שלכם. %1$s</string>
+    <string name="settings_profile_create_prompt">צרו את הפרופיל שלכם כדי שהספרייה תוכל להראות מי אתם.</string>
+    <string name="settings_profile_create">יצירת פרופיל</string>
+    <string name="operation_rejection_store_owner">לא ניתן להסיר את החשבון שבבעלותו האחסון של הספרייה.</string>
+    <string name="operation_rejection_person_gone">האדם הזה כבר לא בספרייה.</string>
+    <string name="operation_rejection_device_gone">המכשיר הזה כבר לא בספרייה.</string>
+    <string name="operation_rejection_circle_gone">המעגל הזה כבר לא קיים.</string>
+    <string name="operation_rejection_no_admin_left">לא היה נשאר לספרייה אף מנהל.</string>
+    <string name="operation_rejection_keys_already_used">המפתחות האלה כבר בשימוש.</string>
+    <string name="operation_rejection_member_keys_changed">המפתחות של האדם הזה הוחלפו בינתיים.</string>
+    <string name="operation_rejection_not_allowed">למכשיר הזה אין הרשאה לבצע את השינוי הזה.</string>
 </resources>

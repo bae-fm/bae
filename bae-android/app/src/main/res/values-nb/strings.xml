@@ -333,4 +333,17 @@
     <string name="members_joining">Blir med</string>
     <string name="members_sharing_access">Deler tilgang</string>
     <string name="invite_granting">Biblioteket deles. Koden vises når dette biblioteket er synkronisert.</string>
+    <string name="settings_profile_making">Oppretter profilen din …</string>
+    <string name="settings_profile_making_detail">Profilen din vises når dette biblioteket er synkronisert.</string>
+    <string name="settings_profile_refused">Profilen din kunne ikke opprettes. %1$s</string>
+    <string name="settings_profile_create_prompt">Opprett profilen din slik at biblioteket kan vise hvem du er.</string>
+    <string name="settings_profile_create">Opprett profil</string>
+    <string name="operation_rejection_store_owner">Kontoen som eier bibliotekets lagring, kan ikke fjernes.</string>
+    <string name="operation_rejection_person_gone">Den personen er ikke lenger i biblioteket.</string>
+    <string name="operation_rejection_device_gone">Den enheten er ikke lenger i biblioteket.</string>
+    <string name="operation_rejection_circle_gone">Den kretsen finnes ikke lenger.</string>
+    <string name="operation_rejection_no_admin_left">Biblioteket ville ikke ha noen administrator igjen.</string>
+    <string name="operation_rejection_keys_already_used">Disse nøklene er allerede i bruk.</string>
+    <string name="operation_rejection_member_keys_changed">Nøklene til den personen ble byttet ut i mellomtiden.</string>
+    <string name="operation_rejection_not_allowed">Denne enheten har ikke lov til å gjøre den endringen.</string>
 </resources>

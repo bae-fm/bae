@@ -338,4 +338,17 @@
     <string name="members_joining">Pridružuje se</string>
     <string name="members_sharing_access">Dijeli se pristup</string>
     <string name="invite_granting">Knjižnica se dijeli. Kôd će se pojaviti kad se ova knjižnica sinkronizira.</string>
+    <string name="settings_profile_making">Izrađuje se vaš profil…</string>
+    <string name="settings_profile_making_detail">Vaš profil pojavit će se kad se ova knjižnica sinkronizira.</string>
+    <string name="settings_profile_refused">Vaš profil nije bilo moguće izraditi. %1$s</string>
+    <string name="settings_profile_create_prompt">Izradite svoj profil kako bi fonoteka mogla pokazati tko ste.</string>
+    <string name="settings_profile_create">Izradi profil</string>
+    <string name="operation_rejection_store_owner">Račun koji je vlasnik pohrane knjižnice ne može se ukloniti.</string>
+    <string name="operation_rejection_person_gone">Ta osoba više nije u knjižnici.</string>
+    <string name="operation_rejection_device_gone">Taj uređaj više nije u knjižnici.</string>
+    <string name="operation_rejection_circle_gone">Taj krug više ne postoji.</string>
+    <string name="operation_rejection_no_admin_left">Knjižnica ne bi imala nijednog administratora.</string>
+    <string name="operation_rejection_keys_already_used">Ti se ključevi već koriste.</string>
+    <string name="operation_rejection_member_keys_changed">Ključevi te osobe u međuvremenu su zamijenjeni.</string>
+    <string name="operation_rejection_not_allowed">Ovaj uređaj nema dopuštenje za tu promjenu.</string>
 </resources>

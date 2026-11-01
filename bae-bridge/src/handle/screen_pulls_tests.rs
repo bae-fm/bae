@@ -76,11 +76,25 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
 
     let name = handle.subscribe_library_name();
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);
+    let requested = handle.subscribe_requested_profile();
+    assert!(pull_until(&handle, || Box::pin(requested.clone().next()), |_| true).is_none());
     handle
         .runtime
         .block_on(handle.clone().create_profile("Ana".to_string()))
         .unwrap();
-    // The profile is written once sync has made Ana's private circle.
+    assert_eq!(
+        pull_until(
+            &handle,
+            || Box::pin(requested.clone().next()),
+            Option::is_some
+        ),
+        Some(crate::types::BridgeRequestedProfile {
+            name: "Ana".into(),
+            state: crate::types::BridgeRequestedProfileState::Making,
+        })
+    );
+    // The profile is written once sync has made Ana's private circle, and
+    // the request ends with it.
     handle
         .runtime
         .block_on(syncing.attach_and_start_sync())
@@ -89,6 +103,11 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         &handle,
         || Box::pin(profiles.clone().next()),
         |profiles: &Vec<crate::types::BridgePersonProfile>| profiles.len() == 1,
+    );
+    pull_until(
+        &handle,
+        || Box::pin(requested.clone().next()),
+        Option::is_none,
     );
 
     handle.runtime.block_on(name.clone().cancel()).unwrap();

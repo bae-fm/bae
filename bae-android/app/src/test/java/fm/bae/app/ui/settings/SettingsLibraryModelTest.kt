@@ -5,6 +5,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
+import fm.bae.app.playback.FakeRequestedProfileSubscription
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +22,11 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeRequestedProfile
+import uniffi.bae_bridge.BridgeRequestedProfileState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameSubscription
+import uniffi.bae_bridge.RequestedProfileSubscription
 
 /**
  * A failed read of this device's person or of the library's name stays a
@@ -128,6 +132,33 @@ class SettingsLibraryModelTest {
         assertEquals(LibraryNameRead.Named("Household"), model.name)
     }
 
+    /** The request ends in the write that makes the person's profile, so each change of it reads the person again. */
+    @Test
+    fun eachRequestedProfileValueReadsThePersonAgain() {
+        val handle =
+            SettingsHandle(ownPerson = listOf(Result.success(PreviewData.person()), Result.success(PreviewData.person())))
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        model.watchRequestedProfile()
+        val making = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making)
+
+        handle.requested
+            .last()
+            .pulls
+            .deliver(making)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(making, model.requestedProfile)
+        assertEquals(1, handle.reads)
+
+        handle.requested
+            .last()
+            .pulls
+            .deliver(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(null, model.requestedProfile)
+        assertEquals(2, handle.reads)
+        model.stopWatchingRequestedProfile()
+    }
+
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
     /** Core's answer for what each failure shows: a cancellation shows nothing. */
@@ -143,11 +174,15 @@ class SettingsLibraryModelTest {
     private class SettingsHandle(
         private val ownPerson: List<Result<BridgePerson?>> = emptyList(),
     ) : FakeAppHandle() {
-        private var reads = 0
+        var reads = 0
+            private set
         val names = mutableListOf<FakeLibraryNameSubscription>()
+        val requested = mutableListOf<FakeRequestedProfileSubscription>()
 
         override suspend fun ownPerson(): BridgePerson? = ownPerson[reads++].getOrThrow()
 
         override fun subscribeLibraryName(): LibraryNameSubscription = FakeLibraryNameSubscription().also(names::add)
+
+        override fun subscribeRequestedProfile(): RequestedProfileSubscription = FakeRequestedProfileSubscription().also(requested::add)
     }
 }

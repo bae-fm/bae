@@ -1,0 +1,63 @@
+//! The profile a person asked for, as the library shows it while their
+//! private circle is made, and once the library refuses it (§5.4).
+
+use crate::people::{RequestedProfile, RequestedProfileState};
+use crate::sync::test_devices::run_two_device_test;
+
+/// Robin asks for her profile on her tablet while it is offline, and her
+/// laptop removes the tablet before the request syncs. The tablet shows the
+/// profile being made; once it syncs and applies its own removal, coven
+/// refuses the circle, and the tablet shows why. Asking again there is
+/// refused too, and the refusal stays shown.
+#[test]
+fn a_profile_request_shows_the_refusal_of_its_circle() {
+    run_two_device_test(async |devices| {
+        let tablet = devices.b();
+        tablet.stop_sync().await;
+        let mut requested = tablet.manager().subscribe_requested_profile();
+        crate::followed::value_matching(&mut requested, Option::is_none).await;
+        tablet.manager().create_profile("Robin").await.unwrap();
+        crate::followed::value_matching(&mut requested, |requested| {
+            requested
+                == &Some(RequestedProfile {
+                    name: "Robin".into(),
+                    state: RequestedProfileState::Making,
+                })
+        })
+        .await;
+
+        let tablet_id = tablet.database().device_id();
+        let laptop = devices.a();
+        let tablet_active = || async {
+            laptop
+                .manager()
+                .get_members()
+                .await
+                .unwrap()
+                .members
+                .iter()
+                .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
+        };
+        laptop
+            .wait_until("the tablet's registration", tablet_active)
+            .await;
+        laptop.manager().remove_device(tablet_id).await.unwrap();
+        laptop
+            .wait_until("the tablet's removal", || async { !tablet_active().await })
+            .await;
+
+        tablet.database().start_sync().await.unwrap();
+        let refused = RequestedProfile {
+            name: "Robin".into(),
+            state: RequestedProfileState::Refused(coven::OperationRejection::NotAllowed),
+        };
+        crate::followed::value_matching(&mut requested, |requested| {
+            requested.as_ref() == Some(&refused)
+        })
+        .await;
+        assert!(tablet.manager().create_profile("Robin").await.is_err());
+        let mut after = tablet.manager().subscribe_requested_profile();
+        let first = after.next().await.unwrap().unwrap();
+        assert_eq!(first, Some(refused));
+    });
+}

@@ -40,6 +40,24 @@ pub struct PersonProfile {
     pub avatar_id: Option<coven::FileId>,
 }
 
+/// The profile this device's person asked for, until it is written: coven
+/// is making their private circle, or the library refused it (§5.4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RequestedProfile {
+    pub name: String,
+    pub state: RequestedProfileState,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RequestedProfileState {
+    /// The circle is being made; the profile is written once its entry
+    /// lands, with sync running.
+    Making,
+    /// The library refused the circle. Asking again acknowledges this and
+    /// asks anew.
+    Refused(coven::OperationRejection),
+}
+
 /// One of this device's open invites, with the pending record of its
 /// operation when coven holds one: a refused check or a failed grant, which
 /// the person ends by cancelling the invite (§5.6).

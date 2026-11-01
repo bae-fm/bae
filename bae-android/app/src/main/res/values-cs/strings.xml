@@ -341,4 +341,17 @@
     <string name="members_joining">Připojuje se</string>
     <string name="members_sharing_access">Sdílí se přístup</string>
     <string name="invite_granting">Knihovna se sdílí. Kód se zobrazí, jakmile se tato knihovna synchronizuje.</string>
+    <string name="settings_profile_making">Vytváří se váš profil…</string>
+    <string name="settings_profile_making_detail">Váš profil se objeví, jakmile se tato knihovna synchronizuje.</string>
+    <string name="settings_profile_refused">Váš profil se nepodařilo vytvořit. %1$s</string>
+    <string name="settings_profile_create_prompt">Vytvořte si profil, aby knihovna mohla ukázat, kdo jste.</string>
+    <string name="settings_profile_create">Vytvořit profil</string>
+    <string name="operation_rejection_store_owner">Účet, který vlastní úložiště knihovny, nelze odebrat.</string>
+    <string name="operation_rejection_person_gone">Tato osoba už v knihovně není.</string>
+    <string name="operation_rejection_device_gone">Toto zařízení už v knihovně není.</string>
+    <string name="operation_rejection_circle_gone">Tento okruh už neexistuje.</string>
+    <string name="operation_rejection_no_admin_left">V knihovně by nezůstal žádný správce.</string>
+    <string name="operation_rejection_keys_already_used">Tyto klíče se už používají.</string>
+    <string name="operation_rejection_member_keys_changed">Klíče této osoby byly mezitím nahrazeny.</string>
+    <string name="operation_rejection_not_allowed">Toto zařízení nemá oprávnění provést tuto změnu.</string>
 </resources>

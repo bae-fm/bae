@@ -2119,6 +2119,15 @@ history setting.
   refusal and asks anew in the same write. A circle already made for the
   person, by a profile write that failed after it, is used at once: asking
   writes the profile in one write.
+- **Settings shows a profile not written yet.** Under listening history, a
+  person with no profile gets their name field and **Create Profile**. While
+  their circle is being made it says the profile is being made and appears
+  once the library syncs, in place of the form, following `profile_request`
+  and coven's outcome as one read. A refused circle shows why the library
+  refused it, as coven gives the reason (the change wasn't allowed from this
+  device, say), above the form, which asks again. Each change of that read
+  reads the person again, since the request ends in the write that makes
+  their profile.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:
