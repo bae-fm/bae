@@ -113,9 +113,10 @@ jobs:
         cargo nextest run -p bae-catalogs
         cargo nextest run -p bae-loc
         cargo nextest run -p bae-theme
-        # Both editions: default features are baeium's, `desktop` the full build's.
+        # Both editions: default features are baeium's, `desktop` the full build's,
+        # with the debug Mac app's dev reset, so its tests run too.
         cargo nextest run -p bae-bridge --lib
-        cargo nextest run -p bae-bridge --lib --features desktop
+        cargo nextest run -p bae-bridge --lib --features desktop,dev-reset
         cargo nextest run -p bae-automation
         cargo nextest run -p bae-subsonic
         cargo nextest run -p bae-cast

@@ -3,11 +3,17 @@ package fm.bae.fastvalues
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.VisibleForTesting
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
 import uniffi.bae_bridge.BridgeLibraryOpening
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
@@ -19,11 +25,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 // The one place the app touches the bridge's KeyedValueStream: values core
 // sends many times a second (transfer bytes and rates, the playing track's
-// position, a library open's steps) arrive in a stream the
-// bridge holds and writes itself, and the only reader of a value is
-// FrameFollowing, which hands it to the View drawing that key once per
-// display frame. App code passes streams and sources around; it never holds a
-// value, so no Compose state can change with one.
+// position, a library open's steps, where a restore or join stands) arrive in
+// a stream the bridge holds and writes itself. FrameFollowing hands a value to
+// the View drawing that key once per display frame; `changes` hands one that
+// changes now and then, such as where a join stands, to the screen as it
+// changes. App code passes streams and sources around; it holds no value of
+// its own.
 // scripts/keyed-value-stream-boundary.py keeps every other file off the
 // bridge's stream.
 
@@ -97,6 +104,12 @@ class LatestStream<V : Any> private constructor(
         fun trackPositions(values: Map<String, BridgeTrackPosition>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
+        /** Where a restore or join stands, while it runs; a preview's holds [value], fed by nothing. */
+        fun bootstrapStatus(value: BridgeBootstrapStatus? = null): LatestStream<BridgeBootstrapStatus> =
+            LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
+                (it as? BridgeFastValue.BootstrapStatus)?.status
+            }
+
         /** How far a library's open has come, while it runs a step; a preview's holds [value], fed by nothing. */
         fun openProgress(value: BridgeOpenProgress? = null): LatestStream<BridgeOpenProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
@@ -125,6 +138,10 @@ fun LatestStream<BridgeDownloadTransferProgress>.feed(appHandle: AppHandleInterf
 @JvmName("feedOpenProgress")
 fun LatestStream<BridgeOpenProgress>.feed(opening: BridgeLibraryOpening): LatestFeed = fed { opening.feedOpenSteps(it) }
 
+/** Fill with where the restore or join [setup] is handed to stands. */
+@JvmName("feedBootstrapStatus")
+fun LatestStream<BridgeBootstrapStatus>.feed(setup: BridgeLibrarySetup): LatestFeed = fed { setup.feedSetupSteps(it) }
+
 /** Fill from core. */
 @JvmName("feedTrackPositions")
 fun LatestStream<BridgeTrackPosition>.feed(appHandle: AppHandleInterface) = fed { appHandle.feedPlaybackPositions(it) }
@@ -147,6 +164,37 @@ data class LatestSource<V : Any> internal constructor(
 ) {
     internal val latest: V? get() = stream.latest(key)
 }
+
+/**
+ * The key's value each time it changes, for a screen whose value changes now
+ * and then, such as where a join stands: while the key holds a value it is
+ * read ten times a second and emitted when it changed; while it holds none,
+ * nothing runs until it starts again. A value that comes and goes between two
+ * reads is never seen.
+ */
+fun <V : Any> LatestSource<V>.changes(): Flow<V?> =
+    channelFlow {
+        val started = Channel<Unit>(Channel.CONFLATED)
+        val changed = { started.trySend(Unit).let { } }
+        stream.activity.watch(key, changed)
+        try {
+            var shown = latest
+            send(shown)
+            while (true) {
+                if (shown == null) started.receive() else delay(READ_EVERY_MS)
+                val now = latest
+                if (now != shown) {
+                    shown = now
+                    send(now)
+                }
+            }
+        } finally {
+            stream.activity.stopWatching(key, changed)
+        }
+    }
+
+/** How often [changes] reads a key that holds a value. */
+private const val READ_EVERY_MS = 100L
 
 /** Which keys started or stopped holding a value, told to the Views watching each on the main thread. */
 internal class KeyActivity : KeyActivityCallback {

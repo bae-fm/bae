@@ -1,11 +1,6 @@
 use super::*;
 use crate::types::*;
 
-#[uniffi::export(callback_interface)]
-pub trait BootstrapCallback: Send + Sync {
-    fn on_status(&self, status: BridgeBootstrapStatus);
-}
-
 #[derive(uniffi::Object)]
 pub struct BootstrapCancellation {
     cancel: tokio::sync::watch::Sender<bool>,
@@ -44,6 +39,38 @@ impl BridgeJoinControl {
         self.control.check_now();
     }
 }
+impl BridgeHost {
+    /// The libraries whose restore codes are saved for this person, by
+    /// store, on the caller's task.
+    #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
+    pub(super) async fn saved_restore_codes_now(&self) -> Result<Vec<coven::StoreId>, BridgeError> {
+        Ok(self
+            .keychain
+            .saved_restore_codes(&self.app_dir)
+            .await
+            .map_err(|error| {
+                BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+            })?
+            .iter()
+            .map(coven::SavedRestoreEntry::store_id)
+            .collect())
+    }
+
+    /// Delete `store`'s saved restore code, on the caller's task.
+    #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
+    pub(super) async fn forget_saved_restore_code_now(
+        &self,
+        store: coven::StoreId,
+    ) -> Result<(), BridgeError> {
+        self.keychain
+            .forget_saved_restore_code(store)
+            .await
+            .map_err(|error| {
+                BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+            })
+    }
+}
+
 struct CancelOnDrop(Arc<BootstrapCancellation>);
 impl Drop for CancelOnDrop {
     fn drop(&mut self) {
@@ -106,11 +133,12 @@ impl BridgeHost {
         code: String,
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
-        callback: Box<dyn BootstrapCallback>,
+        setup: Arc<crate::BridgeLibrarySetup>,
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
+        let steps = setup.writer();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore library", move || async move {
@@ -119,7 +147,7 @@ impl BridgeHost {
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
-                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    |status| steps.bootstrap(status),
                     &cancel,
                 )
                 .await
@@ -144,7 +172,7 @@ impl BridgeHost {
         code: String,
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
-        callback: Box<dyn BootstrapCallback>,
+        setup: Arc<crate::BridgeLibrarySetup>,
         opening: Arc<crate::BridgeLibraryOpening>,
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
@@ -152,6 +180,7 @@ impl BridgeHost {
         let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
+        let steps = setup.writer();
         self.operations
             .clone()
             .run_to_completion(
@@ -165,7 +194,7 @@ impl BridgeHost {
                         &code,
                         credentials.map(BridgeS3Credentials::into_core),
                         &device_name,
-                        |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                        |status| steps.bootstrap(status),
                         report,
                         &cancel,
                     )
@@ -183,11 +212,12 @@ impl BridgeHost {
         saved: Arc<BridgeSavedRestoreCode>,
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
-        callback: Box<dyn BootstrapCallback>,
+        setup: Arc<crate::BridgeLibrarySetup>,
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
+        let steps = setup.writer();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore saved library", move || async move {
@@ -196,7 +226,7 @@ impl BridgeHost {
                     &saved.saved,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
-                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    |status| steps.bootstrap(status),
                     &cancel,
                 )
                 .await
@@ -216,9 +246,10 @@ impl BridgeHost {
         self: Arc<Self>,
         code: String,
         device_name: String,
-        callback: Box<dyn BootstrapCallback>,
+        setup: Arc<crate::BridgeLibrarySetup>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let steps = setup.writer();
         self.operations
             .clone()
             .run("BridgeHost.join_with_invite", move || async move {
@@ -227,7 +258,7 @@ impl BridgeHost {
                     &code,
                     &device_name,
                     Arc::new(coven::SystemClock),
-                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    |status| steps.bootstrap(status),
                     &control.control,
                 )
                 .await;
@@ -267,9 +298,10 @@ impl BridgeHost {
     pub async fn resume_join(
         self: Arc<Self>,
         join: Arc<BridgeUnfinishedJoin>,
-        callback: Box<dyn BootstrapCallback>,
+        setup: Arc<crate::BridgeLibrarySetup>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let steps = setup.writer();
         self.operations
             .clone()
             .run("BridgeHost.resume_join", move || async move {
@@ -277,7 +309,7 @@ impl BridgeHost {
                     || self.builder(),
                     &join.join,
                     Arc::new(coven::SystemClock),
-                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    |status| steps.bootstrap(status),
                     &control.control,
                 )
                 .await;

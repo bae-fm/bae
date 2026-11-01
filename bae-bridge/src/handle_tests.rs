@@ -821,7 +821,10 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     .unwrap();
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = caller
-        .block_on(host.clone().create_library(Some("Released Library".into())))
+        .block_on(host.clone().create_library(
+            Some("Released Library".into()),
+            crate::BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop()),
+        ))
         .unwrap();
     let app = opened.open(50, false).unwrap();
     let id = opened.library_id();

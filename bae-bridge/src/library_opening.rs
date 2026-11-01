@@ -36,10 +36,7 @@ impl BridgeLibraryOpening {
     pub fn feed_open_steps(&self, activity: Box<dyn KeyActivityCallback>) -> Arc<KeyedValueStream> {
         let values = self.diagnostics.stream_values(activity);
         *self.steps.lock().unwrap() = Some(values.clone());
-        Arc::new(KeyedValueStream::new(
-            values,
-            bae_core::library::CancellationToken::new(),
-        ))
+        crate::screens::setup_steps(values)
     }
 }
 

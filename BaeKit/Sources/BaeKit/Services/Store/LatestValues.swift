@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import os
 
 #if os(macOS)
@@ -406,6 +407,50 @@ extension LatestStream where Value == BridgeOpenProgress {
     }
 }
 
+extension LatestStream where Value == BridgeSetupProgress {
+    /// How far a setup call has come, while it runs a step; a preview's
+    /// holds `value` and nothing feeds it.
+    public static func setupProgress(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .setupProgress(let progress) = $0 {
+                progress
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the steps of the call `setup` is handed to.
+    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
+        fed { setup.feedSetupSteps(activity: $0) }
+    }
+}
+
+extension LatestStream where Value == BridgeBootstrapStatus {
+    /// Where a restore or join stands, while it runs; a preview's holds
+    /// `value` and nothing feeds it.
+    public static func bootstrapStatus(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .bootstrapStatus(let status) = $0 {
+                status
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with where the restore or join `setup` is handed to stands.
+    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
+        fed { setup.feedSetupSteps(activity: $0) }
+    }
+}
+
 extension LatestStream {
     /// The value of a stream that holds one, for the native view that draws
     /// it.
@@ -490,7 +535,7 @@ extension LatestStream where Value == BridgePreviewPosition {
 }
 
 /// One key of a fast stream, which a view hands to the native view that
-/// draws it. Only `FrameFollowing` reads its value.
+/// draws it. Only `FrameFollowing` and `FollowedValue` read its value.
 public struct LatestSource<Value: Sendable & Equatable>: Sendable {
     fileprivate let stream: LatestStream<Value>
     fileprivate let key: Data
@@ -551,6 +596,65 @@ private final class KeyActivity: KeyActivityCallback, Sendable {
                 changed()
             }
         }
+    }
+}
+
+/// A SwiftUI screen's reading of one key of a stream whose value changes
+/// now and then, such as where a join stands: while the key holds a value,
+/// it is read ten times a second and published when it changed; while it
+/// holds none, nothing runs. A value that comes and goes between two reads
+/// is never shown.
+@MainActor
+@Observable
+public final class FollowedValue<Value: Sendable & Equatable> {
+    public private(set) var value: Value?
+    @ObservationIgnored
+    private let source: LatestSource<Value>
+    @ObservationIgnored
+    private var watch: KeyActivity.Watch?
+    @ObservationIgnored
+    private var reading: Task<Void, Never>?
+
+    public init(_ source: LatestSource<Value>) {
+        self.source = source
+        watch = source.stream.activity.watch(source.key) { [weak self] in
+            self?.activityChanged()
+        }
+        activityChanged()
+    }
+
+    /// Stop reading: the value stays as it last was.
+    public func stop() {
+        if let watch { source.stream.activity.stopWatching(watch) }
+        watch = nil
+        reading?.cancel()
+        reading = nil
+    }
+
+    private func activityChanged() {
+        read()
+        if value != nil, reading == nil {
+            reading = Task { @MainActor [weak self] in
+                while true {
+                    do { try await Task.sleep(for: .milliseconds(100)) }
+                    catch { return }
+                    guard let self, self.read() else { return }
+                }
+            }
+        }
+    }
+
+    /// Publish the key's value if it changed; whether it holds one, which
+    /// ends the reading when it doesn't.
+    @discardableResult
+    private func read() -> Bool {
+        let latest = source.latest
+        if latest != value { value = latest }
+        if latest == nil {
+            reading?.cancel()
+            reading = nil
+        }
+        return latest != nil
     }
 }
 

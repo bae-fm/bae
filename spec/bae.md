@@ -3134,6 +3134,21 @@ or switches on, the restore over this device's copy, and, on the Mac, the
 row of a library that isn't open while removing it counts what it would
 lose.
 
+**How far a setup call has come.** Each call that sets a library up before
+one is open reports through a stream of its own, of the same kind as an
+open's steps, which the app makes for that call and hands to it: a restore or
+a join reports where it stands (connecting, waiting for approval with the
+confirmation number and when it checks next, loading, or the records it waits
+on), and creating a library reports its one step. The debug Mac app's dev
+reset is one such call: it reports finishing earlier removals, removing each
+library on this device (counted by library), deleting their saved restore
+codes (counted by code), deleting bae's files on this device, creating the
+profile's library, setting it up, and connecting it to its storage, and the
+first step that fails stops it. The apps read these steps from the stream
+like an open's, never from a callback, and show the step's name over a bar:
+counted where the step is counted, moving without a count where it is not,
+never a bare spinner.
+
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
 holding it.
@@ -3446,7 +3461,8 @@ release's or track's id as UTF-8, or a candidate's key.
   reported as a bug; the library's others go on.
 - **Fast values** — transfer bytes and rates, file shares, export
   percents, playback and preview positions, import percents, and how far a
-  bulk action has got, which core sends many times a second — reach an app
+  bulk action has got, which core sends many times a second, and the steps
+  of an open and of a setup call — reach an app
   only in a `KeyedValueStream`, keyed by release, file, track or candidate,
   never in a callback, a
   record field or a subscription value. A `feed_*` call starts writing one
@@ -3457,7 +3473,9 @@ release's or track's id as UTF-8, or a candidate's key.
   started or stopped holding a value, never a value that moved; a throw from
   it is reported as a bug, and while a panic unwinds it is not called. The native
   view drawing a key reads the key's latest value once per display frame
-  while it holds one; nothing the UI framework observes holds a fast value.
+  while it holds one; nothing the UI framework observes holds a fast value,
+  apart from where a restore or join stands, which changes now and then and
+  which the screen reads ten times a second while the call runs.
 - **Pulled subscriptions** — the browse and download lists, the searches,
   the import list and its counts, and the reads of which selected albums are gone and which
   offered releases the library holds — are objects the app asks for each

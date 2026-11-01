@@ -59,12 +59,15 @@ struct SavedRestoreCodesTests {
         let keychain = keychain
         return LibrarySetup(
             listLibraries: { throw SavedCodesTestError.notUsed },
-            createLibrary: { throw SavedCodesTestError.notUsed },
+            createLibrary: { _ in throw SavedCodesTestError.notUsed },
             savedRestoreCodes: { await keychain.list() },
             forgetSavedRestoreCode: { try await keychain.forget($0) },
             unfinishedJoins: { [] },
             makeBootstrap: {
                 preconditionFailure("the saved-code list starts no restore")
+            },
+            makeSetupSteps: {
+                preconditionFailure("the saved-code list starts no setup call")
             }
         )
     }

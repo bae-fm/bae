@@ -58,7 +58,7 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .themeText(.rowTitle)
                 // Every row keeps the detail line so rows share one height.
-                OpenProgressLine(steps: openSteps) {
+                StepProgressLine(steps: openSteps) {
                     Text(library.detailLine)
                         .themeText(.detail)
                         .foregroundStyle(

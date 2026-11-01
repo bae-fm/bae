@@ -20,7 +20,10 @@ fn open_library_reporting(
     .unwrap();
     let opened = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(host.create_library(Some("Subscribed Library".into())))
+        .block_on(host.create_library(
+            Some("Subscribed Library".into()),
+            crate::BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop()),
+        ))
         .unwrap();
     opened.open(50, false).unwrap()
 }

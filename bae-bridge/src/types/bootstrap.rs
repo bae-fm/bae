@@ -35,7 +35,7 @@ impl BridgeRestoreCodeShare {
     }
 }
 
-#[derive(Clone, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeBootstrapStatus {
     Connecting,
     /// The request is sent. `confirmation` is set for a sent invite, as coven
@@ -142,6 +142,54 @@ pub fn bridge_open_step_key(step: BridgeOpenStep) -> String {
     match step {
         BridgeOpenStep::Rebuilding => "core.library.open_step.rebuilding",
         BridgeOpenStep::Migrating => "core.library.open_step.migrating",
+    }
+    .to_string()
+}
+
+/// A step a setup call runs before a library is open, or while one is first
+/// set up, in the order a dev reset runs them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSetupStep {
+    /// Finishing removals of libraries an earlier run left unfinished.
+    FinishingRemovals,
+    /// Removing libraries from this device, counted by library.
+    RemovingLibraries,
+    /// Deleting saved restore codes, counted by code.
+    ForgettingRestoreCodes,
+    /// Deleting bae's own files on this device.
+    ClearingAppData,
+    /// Creating a library.
+    CreatingLibrary,
+    /// Starting a new library and setting its preferences.
+    SettingUpLibrary,
+    /// Connecting a library to its cloud storage.
+    ConnectingStorage,
+}
+
+/// How far a setup step has come: the step, and how many of its units are
+/// done out of its total; a total of 0 is a step with nothing to count. Its
+/// stream's one key, `""`, holds it while the step runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSetupProgress {
+    pub step: BridgeSetupStep,
+    pub done: u64,
+    pub total: u64,
+}
+
+/// Localization key for a setup step, the line over its progress bar. The
+/// UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_setup_step_key(step: BridgeSetupStep) -> String {
+    match step {
+        BridgeSetupStep::FinishingRemovals => "core.library.setup_step.finishing_removals",
+        BridgeSetupStep::RemovingLibraries => "core.library.setup_step.removing_libraries",
+        BridgeSetupStep::ForgettingRestoreCodes => {
+            "core.library.setup_step.forgetting_restore_codes"
+        }
+        BridgeSetupStep::ClearingAppData => "core.library.setup_step.clearing_app_data",
+        BridgeSetupStep::CreatingLibrary => "core.library.setup_step.creating_library",
+        BridgeSetupStep::SettingUpLibrary => "core.library.setup_step.setting_up_library",
+        BridgeSetupStep::ConnectingStorage => "core.library.setup_step.connecting_storage",
     }
     .to_string()
 }

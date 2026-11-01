@@ -31,6 +31,9 @@ struct WelcomeChooseView: View {
 
     @State
     private var isCreating = false
+    /// The running create's steps, which show under the buttons.
+    @State
+    private var createSteps: LibrarySetupSteps?
     @State
     private var createTask: Task<Void, Never>?
     @State
@@ -179,6 +182,10 @@ struct WelcomeChooseView: View {
             else {
                 populatedActions
             }
+            if let createSteps {
+                StepProgressLine(steps: createSteps.steps) { EmptyView() }
+                    .frame(maxWidth: StepProgressLayout.width)
+            }
             if let error {
                 ErrorDetailDisclosure(error: error)
             }
@@ -187,16 +194,9 @@ struct WelcomeChooseView: View {
         .padding()
     }
 
-    /// The Create button's label, a spinner while a create runs.
-    @ViewBuilder
+    /// The Create button's label.
     private var createButtonLabel: some View {
-        if isCreating {
-            ProgressView()
-                .controlSize(.small)
-        }
-        else {
-            Text("Create new library")
-        }
+        Text("Create new library")
     }
 
     /// The width the first-run buttons share.
@@ -249,10 +249,15 @@ extension WelcomeChooseView {
         isCreating = true
         error = nil
         let create = setup.createLibrary
+        let steps = setup.setupSteps()
+        createSteps = steps
         createTask = Task {
-            defer { isCreating = false }
+            defer {
+                isCreating = false
+                createSteps = nil
+            }
             do {
-                let library = try await create()
+                let library = try await create(steps.setup)
                 onLibraryReady(library, nil)
             }
             catch {

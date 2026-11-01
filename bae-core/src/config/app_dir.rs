@@ -38,6 +38,14 @@ impl AppDir {
         Ok(Self { path })
     }
 
+    /// Delete everything under the app directory, leaving it empty: a dev
+    /// reset's fresh start.
+    #[cfg(feature = "dev-reset")]
+    pub fn clear(&self) -> std::io::Result<()> {
+        std::fs::remove_dir_all(&self.path)?;
+        std::fs::create_dir(&self.path)
+    }
+
     /// The directory every registered library's own directory is in.
     pub fn libraries(&self) -> PathBuf {
         self.path.join(LIBRARIES_DIRNAME)

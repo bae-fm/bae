@@ -2,9 +2,10 @@
     import BaeKit
 
     extension AppDelegate {
-        /// Run the `--dev-reset` launch, then open the library it created. A
-        /// failure stops the reset where it happened and shows on the welcome
-        /// screen; nothing after it runs.
+        /// Run the `--dev-reset` launch, then open the library it created.
+        /// The loading screen shows each step core reports; a failure stops
+        /// the reset where it happened and shows on the welcome screen;
+        /// nothing after it runs.
         func runDevReset(profilePath: String, keyringReady: Bool) {
             guard keyringReady else {
                 baeAppLogger.error(
@@ -14,20 +15,16 @@
                 return
             }
             let services = requiredApplicationServices
-            guard let home = baeAppProcessEnvironment["HOME"], !home.isEmpty
-            else {
-                preconditionFailure("HOME is unset, so ~/.bae has no location")
-            }
-            let reset = DevReset.live(
-                host: services.host,
-                home: home,
-                deviceName: services.deviceName
-            )
+            let steps = LibrarySetupSteps(diagnostics: services.diagnostics)
+            setupSteps = steps
             screen = .loading
             Task {
+                defer { setupSteps = nil }
                 do {
-                    let libraryId = try await reset.run(
-                        profilePath: profilePath
+                    let libraryId = try await services.host.devReset(
+                        profile: readDevResetProfile(path: profilePath),
+                        deviceName: services.deviceName,
+                        setup: steps.setup
                     )
                     libraries = try await services.host.listLibraries()
                     openLocalLibrary(id: libraryId)

@@ -37,6 +37,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
+import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -98,7 +99,12 @@ internal fun OnboardingScreen(
             OnboardingFlow(
                 scope,
                 context,
-                OnboardingCore(app.host, ::BootstrapCancellation) { LibraryOpenProgress(app.diagnostics) },
+                OnboardingCore(
+                    app.host,
+                    ::BootstrapCancellation,
+                    { LibraryOpenProgress(app.diagnostics) },
+                    { LibrarySetupStatus.of(app.diagnostics) },
+                ),
                 oauthProvidersError,
                 restoreOver,
                 onBootstrapped,

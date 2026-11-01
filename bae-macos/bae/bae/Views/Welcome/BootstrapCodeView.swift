@@ -70,7 +70,7 @@ struct BootstrapCodeView: View {
                     .padding(.bottom, ThemeSpace.related)
             }
             if let status = form.status {
-                OpenProgressLine(steps: form.openSteps) {
+                StepProgressLine(steps: form.openSteps) {
                     BootstrapStatusView(status: status)
                 }
                 .padding(.horizontal)

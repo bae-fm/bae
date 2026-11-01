@@ -145,6 +145,16 @@ pub enum BridgeFastValue {
     /// How far an open of a library has come; a stream's one key, `""`,
     /// while the open runs a step.
     OpenProgress { progress: super::BridgeOpenProgress },
+    /// How far a setup call has come; a stream's one key, `""`, while it
+    /// runs a step.
+    SetupProgress {
+        progress: super::BridgeSetupProgress,
+    },
+    /// Where a restore or a join stands; a stream's one key, `""`, while it
+    /// runs.
+    BootstrapStatus {
+        status: super::BridgeBootstrapStatus,
+    },
     /// How far a bulk action over an import list's selection has got; a
     /// stream's one key, `""`, while the action runs.
     #[cfg(feature = "desktop")]

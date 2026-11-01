@@ -7,8 +7,9 @@ import Foundation
 public final class LibrarySetup: Sendable, Observable {
     public let listLibraries: @Sendable () async throws -> [BridgeLibrary]
     /// Create a library named by core's default generator, returning its open
-    /// store.
-    public let createLibrary: @Sendable () async throws -> OpenedLibrary
+    /// store, its step written into the setup's stream.
+    public let createLibrary:
+        @Sendable (BridgeLibrarySetup) async throws -> OpenedLibrary
     /// Restore codes coven saved in iCloud Keychain, including ones bae
     /// can't read. Throws when the keychain refuses the lookup — locked, or
     /// the display asleep — which a screen listing them must not read as "no
@@ -25,17 +26,22 @@ public final class LibrarySetup: Sendable, Observable {
         @Sendable () async throws -> [BridgeUnfinishedJoin]
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
+    /// A new setup call's steps, read through the process's sink.
+    private let makeSetupSteps: @Sendable () -> LibrarySetupSteps
 
     public init(
         listLibraries: @escaping @Sendable () async throws -> [BridgeLibrary],
-        createLibrary: @escaping @Sendable () async throws -> OpenedLibrary,
+        createLibrary:
+            @escaping @Sendable (BridgeLibrarySetup) async throws ->
+            OpenedLibrary,
         savedRestoreCodes:
             @escaping @Sendable () async throws -> [BridgeSavedRestoreEntry],
         forgetSavedRestoreCode:
             @escaping @Sendable (_ libraryId: String) async throws -> Void,
         unfinishedJoins:
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
-        makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap
+        makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap,
+        makeSetupSteps: @escaping @Sendable () -> LibrarySetupSteps
     ) {
         self.listLibraries = listLibraries
         self.createLibrary = createLibrary
@@ -43,7 +49,11 @@ public final class LibrarySetup: Sendable, Observable {
         self.forgetSavedRestoreCode = forgetSavedRestoreCode
         self.unfinishedJoins = unfinishedJoins
         self.makeBootstrap = makeBootstrap
+        self.makeSetupSteps = makeSetupSteps
     }
+
+    /// The steps of a setup call about to start, for its view to draw.
+    public func setupSteps() -> LibrarySetupSteps { makeSetupSteps() }
 
     /// The production wiring over the process's host and sink.
     public static func live(
@@ -53,7 +63,9 @@ public final class LibrarySetup: Sendable, Observable {
     ) -> LibrarySetup {
         LibrarySetup(
             listLibraries: { try await host.listLibraries() },
-            createLibrary: { try await host.createLibrary(name: nil) },
+            createLibrary: {
+                try await host.createLibrary(name: nil, setup: $0)
+            },
             savedRestoreCodes: { try await host.savedRestoreCodes() },
             forgetSavedRestoreCode: {
                 try await host.forgetSavedRestoreCode(libraryId: $0)
@@ -65,7 +77,8 @@ public final class LibrarySetup: Sendable, Observable {
                     diagnostics: diagnostics,
                     deviceName: deviceName
                 )
-            }
+            },
+            makeSetupSteps: { LibrarySetupSteps(diagnostics: diagnostics) }
         )
     }
 
@@ -95,7 +108,7 @@ public final class LibrarySetup: Sendable, Observable {
         ) -> LibrarySetup {
             LibrarySetup(
                 listLibraries: { libraries },
-                createLibrary: { throw StubError.notImplemented },
+                createLibrary: { _ in throw StubError.notImplemented },
                 savedRestoreCodes: { savedCodes },
                 forgetSavedRestoreCode: { _ in
                     throw StubError.notImplemented
@@ -111,6 +124,9 @@ public final class LibrarySetup: Sendable, Observable {
                         diagnostics: diagnostics,
                         deviceName: "Preview Device"
                     )
+                },
+                makeSetupSteps: {
+                    LibrarySetupSteps(diagnostics: BaeDiagnostics.disabled())
                 }
             )
         }

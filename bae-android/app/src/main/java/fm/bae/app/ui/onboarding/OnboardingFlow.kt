@@ -5,18 +5,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
-import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
+import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.deviceName
 import fm.bae.app.displayError
 import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.changes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BootstrapCallback
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -27,6 +27,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHostInterface
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeJoinControl
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOAuthAccess
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeS3Credentials
@@ -176,14 +177,16 @@ internal fun codeReadStep(
 
 /**
  * The core onboarding runs against: the [host] that restores and joins,
- * [newCancellation], which makes the stop each restore is handed, and
+ * [newCancellation], which makes the stop each restore is handed,
  * [newOpenProgress], which makes the open a restore over this device's copy
- * reports its steps in.
+ * reports its steps in, and [newSetupStatus], which makes the stream each
+ * restore or join reports where it stands in.
  */
 internal class OnboardingCore(
     val host: BridgeHostInterface,
     val newCancellation: () -> BootstrapCancellation,
     val newOpenProgress: () -> LibraryOpenProgress,
+    val newSetupStatus: () -> LibrarySetupStatus,
 )
 
 /**
@@ -327,13 +330,13 @@ internal class OnboardingFlow(
         when (val entry = from.entry) {
             is RestoreOver -> {
                 val opening = core.newOpenProgress()
-                run(from, running::cancel, opening) { callback ->
+                run(from, running::cancel, opening) { setup ->
                     core.host.restoreReplacingDevice(
                         entry.libraryId,
                         from.code,
                         credentials,
                         deviceName(context),
-                        callback,
+                        setup,
                         opening.opening,
                         running,
                     )
@@ -341,8 +344,8 @@ internal class OnboardingFlow(
             }
 
             CodeEntry.NewDevice -> {
-                run(from, running::cancel) { callback ->
-                    core.host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
+                run(from, running::cancel) { setup ->
+                    core.host.restoreFromCode(from.code, credentials, deviceName(context), setup, running)
                 }
             }
         }
@@ -354,8 +357,8 @@ internal class OnboardingFlow(
         credentials: BridgeS3Credentials?,
     ) {
         val running = core.newCancellation()
-        run(from, running::cancel) { callback ->
-            core.host.restoreFromSavedCode(from.saved.code, credentials, deviceName(context), callback, running)
+        run(from, running::cancel) { setup ->
+            core.host.restoreFromSavedCode(from.saved.code, credentials, deviceName(context), setup, running)
         }
     }
 
@@ -366,10 +369,10 @@ internal class OnboardingFlow(
     private fun join(from: OnboardingStep.Invite) {
         val control = BridgeJoinControl()
         joining = control
-        run(from, control::cancel) { callback ->
+        run(from, control::cancel) { setup ->
             when (val start = from.start) {
-                is JoinStart.Code -> core.host.joinWithInvite(start.code, deviceName(context), callback, control)
-                is JoinStart.Unfinished -> core.host.resumeJoin(start.join, callback, control)
+                is JoinStart.Code -> core.host.joinWithInvite(start.code, deviceName(context), setup, control)
+                is JoinStart.Unfinished -> core.host.resumeJoin(start.join, setup, control)
             }
         }
     }
@@ -393,27 +396,23 @@ internal class OnboardingFlow(
         from: OnboardingStep.CodeRead,
         cancel: () -> Unit,
         opening: LibraryOpenProgress? = null,
-        start: suspend (BootstrapCallback) -> BridgeBootstrapResult,
+        start: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
     ) {
         error = null
         step = OnboardingStep.Running(from, status = null, openSteps = opening?.steps)
         cancellation = cancel
         scope.launch {
-            val statuses =
-                ConflatedProgressDelivery<BridgeBootstrapStatus>(scope) { status ->
-                    val current = step
-                    if (current is OnboardingStep.Running) step = current.copy(status = status)
+            val setup = core.newSetupStatus()
+            val following =
+                launch {
+                    setup.statuses.changes().collect { status ->
+                        val current = step
+                        if (status != null && current is OnboardingStep.Running) step = current.copy(status = status)
+                    }
                 }
             try {
-                val result =
-                    start(
-                        object : BootstrapCallback {
-                            override fun onStatus(status: BridgeBootstrapStatus) {
-                                statuses.offer(status)
-                            }
-                        },
-                    )
-                statuses.closeAndJoin()
+                val result = start(setup.setup)
+                following.cancel()
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
                         step = OnboardingStep.EnterCode(from.entry)
@@ -438,17 +437,16 @@ internal class OnboardingFlow(
                 }
             } catch (e: BridgeException.Cancelled) {
                 logger.debug("onboarding cancelled by the person", e)
-                statuses.closeAndJoin()
+                following.cancel()
                 step = from.formStep()
-            } catch (e: CancellationException) {
-                statuses.close()
-                throw e
             } catch (e: BridgeException) {
                 logger.error("restoring or joining failed", e)
-                statuses.closeAndJoin()
+                following.cancel()
                 step = from.formStep()
                 error = context.displayError(e)
             } finally {
+                following.cancel()
+                setup.close()
                 opening?.close()
                 if (cancellation === cancel) {
                     cancellation = null

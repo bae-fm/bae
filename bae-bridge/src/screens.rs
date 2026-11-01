@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use crate::keyed_values::{KeyedValueStream, StreamValues};
 use crate::types::BridgeError;
 
 /// A live query's values as the app pulls them: `$object` holds core's
@@ -157,4 +158,14 @@ pulled_values! {
     ConfigSubscription: bae_core::config::Config => crate::types::BridgeConfig,
     converted by |config: bae_core::config::Config| crate::types::BridgeConfig::from_core(&config),
     built by config
+}
+
+/// A setup call's steps, or an open's, as the app reads them: the stream's
+/// one key, `""`, while the call runs a step. The call that is handed the
+/// stream's values writes them; cancelling the stream ends what it holds.
+pub(crate) fn setup_steps(values: Arc<StreamValues>) -> Arc<KeyedValueStream> {
+    Arc::new(KeyedValueStream::new(
+        values,
+        bae_core::library::CancellationToken::new(),
+    ))
 }

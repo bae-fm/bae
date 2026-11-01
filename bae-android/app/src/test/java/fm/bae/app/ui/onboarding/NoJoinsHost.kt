@@ -1,7 +1,6 @@
 package fm.bae.app.ui.onboarding
 
 import fm.bae.app.playback.unfaked
-import uniffi.bae_bridge.BootstrapCallback
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeDeviceReset
@@ -9,6 +8,7 @@ import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeSavedRestoreCode
 import uniffi.bae_bridge.BridgeSavedRestoreEntry
@@ -26,7 +26,10 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
 
     override suspend fun savedRestoreCodes(): List<BridgeSavedRestoreEntry> = emptyList()
 
-    override suspend fun createLibrary(name: String?): OpenedLibrary = unfaked("createLibrary")
+    override suspend fun createLibrary(
+        name: String?,
+        setup: BridgeLibrarySetup,
+    ): OpenedLibrary = unfaked("createLibrary")
 
     override suspend fun finishRemovals() {
         unfaked("finishRemovals")
@@ -54,7 +57,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
     override suspend fun joinWithInvite(
         code: String,
         deviceName: String,
-        callback: BootstrapCallback,
+        setup: BridgeLibrarySetup,
         control: BridgeJoinControl,
     ): BridgeBootstrapResult = unfaked("joinWithInvite")
 
@@ -67,7 +70,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         code: String,
         credentials: BridgeS3Credentials?,
         deviceName: String,
-        callback: BootstrapCallback,
+        setup: BridgeLibrarySetup,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreFromCode")
 
@@ -75,7 +78,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         saved: BridgeSavedRestoreCode,
         credentials: BridgeS3Credentials?,
         deviceName: String,
-        callback: BootstrapCallback,
+        setup: BridgeLibrarySetup,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreFromSavedCode")
 
@@ -84,14 +87,14 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         code: String,
         credentials: BridgeS3Credentials?,
         deviceName: String,
-        callback: BootstrapCallback,
+        setup: BridgeLibrarySetup,
         opening: BridgeLibraryOpening,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreReplacingDevice")
 
     override suspend fun resumeJoin(
         join: BridgeUnfinishedJoin,
-        callback: BootstrapCallback,
+        setup: BridgeLibrarySetup,
         control: BridgeJoinControl,
     ): BridgeBootstrapResult = unfaked("resumeJoin")
 }

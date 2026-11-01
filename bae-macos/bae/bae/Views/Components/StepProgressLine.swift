@@ -2,15 +2,36 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// The step a library's open runs, over a bar of how much of it is done,
-/// set straight from the open's stream once per display frame. Between steps
-/// it is hidden and tells `onStepping`, so SwiftUI swaps what it shows only
-/// as a step starts or ends, never as one moves.
-final class OpenProgressNSView: NSView {
+/// A step a long call runs, as a progress line shows it: its name, and how
+/// much of it is done, nil while there is nothing to count.
+protocol ProgressStep: Sendable, Equatable {
+    var title: String { get }
+    var fraction: Double? { get }
+}
+
+extension BridgeOpenProgress: ProgressStep {
+    var title: String { localizedCoreString(bridgeOpenStepKey(step: step)) }
+    var fraction: Double? {
+        total > 0 ? Double(done) / Double(total) : 0
+    }
+}
+
+extension BridgeSetupProgress: ProgressStep {
+    var title: String { localizedCoreString(bridgeSetupStepKey(step: step)) }
+    var fraction: Double? {
+        total > 0 ? Double(done) / Double(total) : nil
+    }
+}
+
+/// The step a library's open or a setup call runs, over a bar of how much
+/// of it is done, set straight from the call's stream once per display
+/// frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
+/// swaps what it shows only as a step starts or ends, never as one moves.
+final class StepProgressNSView<Step: ProgressStep>: NSView {
     private let label = NSTextField(labelWithString: "")
     private let bar: ProgressTrackNSView
     private let stack: NSStackView
-    private lazy var following = FrameFollowing<BridgeOpenProgress>(
+    private lazy var following = FrameFollowing<Step>(
         view: self
     ) { [weak self] progress in self?.show(progress) }
     var onStepping: (Bool) -> Void = { _ in }
@@ -61,7 +82,7 @@ final class OpenProgressNSView: NSView {
     /// Follow `progress`, telling `onStepping` whether a step runs the next
     /// time the line shows, whatever it last told: a new SwiftUI place, or a
     /// new open, starts from nothing told.
-    func follow(_ progress: LatestSource<BridgeOpenProgress>) {
+    func follow(_ progress: LatestSource<Step>) {
         told = nil
         following.follow(progress)
     }
@@ -70,17 +91,13 @@ final class OpenProgressNSView: NSView {
         following.stop()
     }
 
-    private func show(_ progress: BridgeOpenProgress?) {
+    private func show(_ progress: Step?) {
         if let progress {
-            let title = localizedCoreString(
-                bridgeOpenStepKey(step: progress.step)
-            )
+            let title = progress.title
             if label.stringValue != title {
                 label.stringValue = title
             }
-            bar.progress =
-                progress.total > 0
-                ? Double(progress.done) / Double(progress.total) : 0
+            bar.progress = progress.fraction
         }
         let stepping = progress != nil
         isHidden = !stepping
@@ -90,31 +107,31 @@ final class OpenProgressNSView: NSView {
     }
 }
 
-/// SwiftUI's place for an open's steps: it hands the native line the open's
+/// SwiftUI's place for a call's steps: it hands the native line the call's
 /// stream, never a value, and takes no room between steps.
-private struct OpenProgressBar: NSViewRepresentable {
+private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent
     @Environment(\.colorScheme)
     private var colorScheme
-    let steps: LatestSource<BridgeOpenProgress>
+    let steps: LatestSource<Step>
     let onStepping: (Bool) -> Void
 
-    func makeNSView(context _: Context) -> OpenProgressNSView {
-        let view = OpenProgressNSView(accent: fill)
+    func makeNSView(context _: Context) -> StepProgressNSView<Step> {
+        let view = StepProgressNSView<Step>(accent: fill)
         view.onStepping = onStepping
         view.follow(steps)
         return view
     }
 
-    func updateNSView(_ view: OpenProgressNSView, context _: Context) {
+    func updateNSView(_ view: StepProgressNSView<Step>, context _: Context) {
         view.accent = fill
         view.onStepping = onStepping
         view.follow(steps)
     }
 
     static func dismantleNSView(
-        _ view: OpenProgressNSView,
+        _ view: StepProgressNSView<Step>,
         coordinator _: ()
     ) {
         view.stopFollowing()
@@ -122,7 +139,7 @@ private struct OpenProgressBar: NSViewRepresentable {
 
     func sizeThatFits(
         _ proposal: ProposedViewSize,
-        nsView: OpenProgressNSView,
+        nsView: StepProgressNSView<Step>,
         context _: Context
     ) -> CGSize? {
         CGSize(
@@ -136,17 +153,17 @@ private struct OpenProgressBar: NSViewRepresentable {
     }
 }
 
-/// What shows while a library opens: `idle` until the open runs a step,
-/// then the step's name over a bar of how much of it is done, in its place.
-/// With no open to follow, `idle` alone.
-struct OpenProgressLine<Idle: View>: View {
-    let steps: LatestSource<BridgeOpenProgress>?
+/// What shows while a library opens or a setup call runs: `idle` until the
+/// call runs a step, then the step's name over a bar of how much of it is
+/// done, in its place. With no call to follow, `idle` alone.
+struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
+    let steps: LatestSource<Step>?
     let idle: Idle
     @State
     private var stepping = false
 
     init(
-        steps: LatestSource<BridgeOpenProgress>?,
+        steps: LatestSource<Step>?,
         @ViewBuilder idle: () -> Idle
     ) {
         self.steps = steps
@@ -159,7 +176,7 @@ struct OpenProgressLine<Idle: View>: View {
                 idle
             }
             if let steps {
-                OpenProgressBar(steps: steps) { started in
+                StepProgressBar(steps: steps) { started in
                     // The line can start following during a SwiftUI
                     // update, which mustn't change state itself.
                     DispatchQueue.main.async { stepping = started }
@@ -171,7 +188,7 @@ struct OpenProgressLine<Idle: View>: View {
 
 #if DEBUG
     #Preview("Migrating") {
-        OpenProgressLine(
+        StepProgressLine(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -189,7 +206,7 @@ struct OpenProgressLine<Idle: View>: View {
     }
 
     #Preview("Rebuilding") {
-        OpenProgressLine(
+        StepProgressLine(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -206,8 +223,26 @@ struct OpenProgressLine<Idle: View>: View {
         .padding()
     }
 
+    #Preview("Removing libraries") {
+        StepProgressLine(
+            steps:
+                LatestStream.setupProgress(
+                    holding: BridgeSetupProgress(
+                        step: .removingLibraries,
+                        done: 1,
+                        total: 3
+                    )
+                )
+                .only
+        ) {
+            EmptyView()
+        }
+        .frame(width: 320)
+        .padding()
+    }
+
     #Preview("Between steps") {
-        OpenProgressLine(steps: LatestStream.openProgress().only) {
+        StepProgressLine(steps: LatestStream.openProgress().only) {
             ProgressView("Loading...")
         }
         .frame(width: 320)
@@ -215,7 +250,7 @@ struct OpenProgressLine<Idle: View>: View {
     }
 #endif
 
-/// How wide an open's line is where it stands alone, on a loading screen.
-enum OpenProgressLayout {
+/// How wide a call's line is where it stands alone, on a loading screen.
+enum StepProgressLayout {
     static let width: CGFloat = 360
 }

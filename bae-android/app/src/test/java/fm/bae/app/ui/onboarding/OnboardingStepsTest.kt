@@ -37,7 +37,7 @@ class OnboardingStepsTest {
                     OnboardingFlow(
                         scope,
                         context,
-                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress),
+                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                         null,
                         restoreOver,
                     ) {}

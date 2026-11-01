@@ -20,7 +20,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         code: String,
         credentials _: BridgeS3Credentials?,
         deviceName _: String,
-        callback _: any BootstrapCallback,
+        setup _: BridgeLibrarySetup,
         cancellation _: BootstrapCancellation
     ) async throws -> BridgeBootstrapResult {
         record.yield(code)

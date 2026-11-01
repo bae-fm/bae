@@ -77,6 +77,22 @@ impl BridgeHost {
         .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))
     }
 
+    /// Finish every recorded removal, on the caller's task.
+    async fn finish_removals_now(&self) -> Result<(), BridgeError> {
+        Ok(self.diagnostics.finish_removals(&self.app_dir).await?)
+    }
+
+    /// Remove `store`, which isn't open, without opening it, on the caller's
+    /// task.
+    async fn remove_unopenable_library_now(
+        &self,
+        store: coven::StoreId,
+    ) -> Result<(), bae_core::library::LibraryRemovalError> {
+        self.diagnostics
+            .remove_unopenable_library(&self.app_dir, &self.keychain, store)
+            .await
+    }
+
     fn builder(&self) -> coven::CovenBuilder {
         let builder = self
             .keychain
@@ -270,9 +286,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     crate::BridgeLibraryRemoval::from_core(
-                        self.diagnostics
-                            .remove_unopenable_library(&self.app_dir, &self.keychain, store)
-                            .await,
+                        self.remove_unopenable_library_now(store).await,
                     )
                 },
             )
@@ -286,16 +300,20 @@ impl BridgeHost {
             .run_to_completion(
                 self.clone(),
                 "finish library removals",
-                move || async move { Ok(self.diagnostics.finish_removals(&self.app_dir).await?) },
+                move || async move { self.finish_removals_now().await },
             )
             .await
     }
 
+    /// Create a library, named `name` or a generated name, its one step
+    /// written into `setup`'s stream.
     pub async fn create_library(
         self: Arc<Self>,
         name: Option<String>,
+        setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<Arc<crate::OpenedLibrary>, BridgeError> {
         let builder = self.builder();
+        let steps = setup.writer();
         let name = match name {
             Some(name) => {
                 bae_core::library_name::LibraryName::parse(&name).map_err(BridgeError::config)?
@@ -305,6 +323,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run_to_completion(self.clone(), "create library", move || async move {
+                steps.uncounted(crate::types::BridgeSetupStep::CreatingLibrary);
                 let handle = bae_core::library::create_library(builder, name).await?;
                 Ok(Arc::new(crate::OpenedLibrary::new(handle, self)))
             })
@@ -408,6 +427,8 @@ pub fn init_app_on_fixture(
 mod bootstrap;
 pub use bootstrap::*;
 mod closing_libraries;
+#[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
+mod dev_reset;
 
 #[cfg(test)]
 mod tests {
@@ -422,7 +443,10 @@ mod tests {
         .unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
         let opened = caller
-            .block_on(host.clone().create_library(Some("Session Library".into())))
+            .block_on(host.clone().create_library(
+                Some("Session Library".into()),
+                crate::BridgeLibrarySetup::new(BridgeDiagnostics::noop()),
+            ))
             .unwrap();
         let app = opened.open(50, false).unwrap();
         let id = opened.library_id();

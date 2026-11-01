@@ -36,12 +36,15 @@ struct WelcomeListingsTests {
         let bridge = bridge
         return LibrarySetup(
             listLibraries: { await bridge.listLibraries() },
-            createLibrary: { throw WelcomeTestError.notUsed },
+            createLibrary: { _ in throw WelcomeTestError.notUsed },
             savedRestoreCodes: { await bridge.savedRestoreCodes() },
             forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },
             unfinishedJoins: { [] },
             makeBootstrap: {
                 preconditionFailure("the welcome's lists start no restore")
+            },
+            makeSetupSteps: {
+                preconditionFailure("the welcome's lists start no setup call")
             }
         )
     }

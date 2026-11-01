@@ -33,7 +33,7 @@ class SavedCodesSectionTest {
             val scope = rememberCoroutineScope()
             val flow =
                 remember {
-                    OnboardingFlow(scope, context, OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress), null, null) {}
+                    OnboardingFlow(scope, context, OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus), null, null) {}
                 }
             BaeTheme { OnboardingSteps(flow) }
         }

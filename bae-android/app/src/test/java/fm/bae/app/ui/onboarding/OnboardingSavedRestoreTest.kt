@@ -43,7 +43,7 @@ class OnboardingSavedRestoreTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress),
+                OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                 oauthProvidersError,
                 null,
             ) {}
@@ -131,7 +131,7 @@ class OnboardingSavedRestoreTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(SavedCodesHost(listOf(dropboxCode)), ::FakeBootstrapCancellation, ::unfakedOpenProgress),
+                OnboardingCore(SavedCodesHost(listOf(dropboxCode)), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                 null,
                 RestoreOver(libraryId = "library-1", title = "Restore this library", message = "Warning", onBack = {}),
             ) {}

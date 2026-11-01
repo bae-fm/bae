@@ -27,7 +27,7 @@ impl BridgePendingRecords {
 
 /// One thing coven is waiting on: what it is about, why, and what the person
 /// can do about it.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingRecord {
     /// What the record is about: a file by its name and album, anything else
     /// by what it is.
@@ -50,7 +50,7 @@ impl BridgePendingRecord {
 }
 
 /// Why a file in the upload queue waits, and what the person can do about it.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingWait {
     pub reason: BridgePendingReason,
     pub action: BridgePendingAction,
@@ -66,7 +66,7 @@ impl BridgePendingWait {
 
 /// Why a record waits, as a catalog key, with the error behind it and the
 /// reasons an undo that could not finish is made of.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingReason {
     pub key: String,
     /// The text of the error behind the reason, with every cause below it,
@@ -156,7 +156,7 @@ impl BridgePendingReason {
     }
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgePendingAction {
     Wait,
     UpdateApp,

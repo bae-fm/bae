@@ -82,10 +82,10 @@ struct MainWindowRoot: View {
     private var detailContent: some View {
         switch appDelegate.screen {
         case .loading:
-            OpenProgressLine(steps: appDelegate.openProgress?.steps) {
+            StepProgressLine(steps: appDelegate.openProgress?.steps) {
                 ProgressView("Switching libraries...")
             }
-            .frame(maxWidth: OpenProgressLayout.width)
+            .frame(maxWidth: StepProgressLayout.width)
         case .welcome:
             ProgressView()
         case .resetRequired(let libraryId):
@@ -181,10 +181,12 @@ struct MainWindowRoot: View {
         switch appDelegate.screen {
         case .loading:
             Spacer()
-            OpenProgressLine(steps: appDelegate.openProgress?.steps) {
-                ProgressView("Loading...")
+            StepProgressLine(steps: appDelegate.setupSteps?.steps) {
+                StepProgressLine(steps: appDelegate.openProgress?.steps) {
+                    ProgressView("Loading...")
+                }
             }
-            .frame(maxWidth: OpenProgressLayout.width)
+            .frame(maxWidth: StepProgressLayout.width)
             Spacer()
         case .welcome:
             welcomeView(

@@ -25,6 +25,7 @@ import os.log
 
 private func discoverInitialLibraries(
     host: BridgeHost,
+    diagnostics: BridgeDiagnostics,
     environment: [String: String]
 ) async throws -> [BridgeLibrary] {
     var libraries = try await host.listLibraries()
@@ -34,7 +35,10 @@ private func discoverInitialLibraries(
         {
             // Opened and closed so the fixture can be written into it when the
             // launch opens it by id.
-            let created = try await host.createLibrary(name: nil)
+            let created = try await host.createLibrary(
+                name: nil,
+                setup: BridgeLibrarySetup(diagnostics: diagnostics)
+            )
             let app = try created.open(
                 positionUpdateIntervalMs: 200,
                 restorePlayback: false
@@ -65,6 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The library open in flight by id, whose steps the loading screen
     /// shows; nil while nothing opens one.
     var openProgress: LibraryOpenProgress?
+    /// The setup call in flight before any library opens, such as a dev
+    /// reset, whose steps the loading screen shows; nil while none runs.
+    var setupSteps: LibrarySetupSteps?
     var loadError: LoadError?
     /// What launch found wrong. Set once, at launch, and kept for the run
     /// whatever opens or fails after.
@@ -228,12 +235,14 @@ extension AppDelegate {
     /// files remain to delete.
     func loadInitialState(canOpenLibraries: Bool) {
         let host = requiredApplicationServices.host
+        let diagnostics = requiredApplicationServices.diagnostics
         let removals = requiredApplicationServices.libraryRemovals
         Task {
             await removals.loadUnfinished()
             do {
                 libraries = try await discoverInitialLibraries(
                     host: host,
+                    diagnostics: diagnostics,
                     environment: baeAppProcessEnvironment
                 )
             }
