@@ -163,21 +163,6 @@ pub enum BridgeFastValue {
     },
 }
 
-/// Which keys of a stream started or stopped holding a value.
-#[uniffi::export(callback_interface)]
-pub trait KeyActivityCallback: Send + Sync {
-    /// These keys started or stopped holding a value; `latest` says which.
-    /// Called on the thread that writes the stream.
-    fn on_keys_changed(&self, keys: Vec<Vec<u8>>);
-}
-
-/// A stream's read failing. The stream holds nothing until a read succeeds
-/// again.
-#[uniffi::export(callback_interface)]
-pub trait StreamFailureCallback: Send + Sync {
-    fn on_error(&self, error: BridgeError);
-}
-
 /// A queued download's phase. How far an active one has gone is its
 /// release's value in the download `KeyedValueStream`.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]

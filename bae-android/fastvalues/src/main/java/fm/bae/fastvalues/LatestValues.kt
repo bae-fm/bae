@@ -3,6 +3,9 @@ package fm.bae.fastvalues
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.VisibleForTesting
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.pulled
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -17,16 +20,16 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
-import uniffi.bae_bridge.KeyActivityCallback
 import uniffi.bae_bridge.KeyedValueStream
-import uniffi.bae_bridge.StreamFailureCallback
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 // The one place the app touches the bridge's KeyedValueStream: values core
 // sends many times a second (transfer bytes and rates, the playing track's
 // position, a library open's steps, where a restore or join stands) arrive in
-// a stream the bridge holds and writes itself. FrameFollowing hands a value to
+// a stream the bridge holds and writes itself. The app pulls which keys
+// started or stopped holding a value, through a ScreenSubscription, and tells
+// the Views watching those keys. FrameFollowing hands a value to
 // the View drawing that key once per display frame; `changes` hands one that
 // changes now and then, such as where a join stands, to the screen as it
 // changes. App code passes streams and sources around; it holds no value of
@@ -64,8 +67,8 @@ class LatestStream<V : Any> private constructor(
 
     /**
      * A test's write of [key] into a stream [written] made, telling the Views
-     * watching it when it starts or stops holding a value. App code never
-     * writes a stream; only core does.
+     * watching it on the main thread when it starts or stops holding a value.
+     * App code never writes a stream; only core does.
      */
     @VisibleForTesting
     fun write(
@@ -74,15 +77,24 @@ class LatestStream<V : Any> private constructor(
     ) {
         val values = checkNotNull(preview) { "only a written stream is written" }
         val held = if (value == null) values.remove(key) else values.put(key, value)
-        if ((held == null) != (value == null)) activity.onKeysChanged(listOf(key.encodeToByteArray()))
+        if ((held == null) != (value == null)) mainThread.post { activity.keysChanged(listOf(key.encodeToByteArray())) }
     }
 
-    /** Hold what [open] starts feeding, until the returned feed is cancelled. */
-    internal fun fed(open: (KeyActivityCallback) -> KeyedValueStream): LatestFeed {
+    /**
+     * Hold what [open] starts feeding, pulling which keys started or stopped
+     * in [scope] until the returned feed is cancelled. [onError] hears each
+     * failed read on the main thread, and the pulls go on.
+     */
+    internal fun fed(
+        scope: CoroutineScope,
+        onError: (BridgeException) -> Unit,
+        open: () -> KeyedValueStream,
+    ): LatestFeed {
         check(preview == null && fed == null) { "a stream is fed twice" }
-        val stream = open(activity)
+        val stream = open()
         fed = stream
-        return LatestFeed(stream)
+        val pulls = ScreenSubscription(pulled(stream::next, stream::cancel), scope, activity::keysChanged, onError)
+        return LatestFeed(pulls)
     }
 
     companion object {
@@ -124,33 +136,55 @@ private const val ONLY_KEY = ""
 /** The value of a stream that holds one, for the View that draws it. */
 val <V : Any> LatestStream<V>.only: LatestSource<V> get() = source(ONLY_KEY)
 
+// Each feed is pulled in the scope it is handed, the one it lives in. Only
+// the upload total's feed has failed reads; any other stream's failed read is
+// a bug, which its caller reports through `reportBug`.
+
 /** Fill from core, telling [onError] on the main thread each failed read. */
 fun LatestStream<BridgeUploadTransfer>.feed(
     appHandle: AppHandleInterface,
+    scope: CoroutineScope,
     onError: (BridgeException) -> Unit,
-): LatestFeed = fed { appHandle.feedUploadTotalTransfer(it, StreamFailureSink(onError)) }
+): LatestFeed = fed(scope, onError, appHandle::feedUploadTotalTransfer)
 
 /** Fill from core. */
-fun LatestStream<BridgeDownloadTransferProgress>.feed(appHandle: AppHandleInterface): LatestFeed =
-    fed { appHandle.feedDownloadTransfers(it) }
+@JvmName("feedDownloadTransfers")
+fun LatestStream<BridgeDownloadTransferProgress>.feed(
+    appHandle: AppHandleInterface,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, appHandle::feedDownloadTransfers)
 
 /** Fill with the steps of the open [opening] is handed to. */
 @JvmName("feedOpenProgress")
-fun LatestStream<BridgeOpenProgress>.feed(opening: BridgeLibraryOpening): LatestFeed = fed { opening.feedOpenSteps(it) }
+fun LatestStream<BridgeOpenProgress>.feed(
+    opening: BridgeLibraryOpening,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, opening::feedOpenSteps)
 
 /** Fill with where the restore or join [setup] is handed to stands. */
 @JvmName("feedBootstrapStatus")
-fun LatestStream<BridgeBootstrapStatus>.feed(setup: BridgeLibrarySetup): LatestFeed = fed { setup.feedSetupSteps(it) }
+fun LatestStream<BridgeBootstrapStatus>.feed(
+    setup: BridgeLibrarySetup,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, setup::feedSetupSteps)
 
 /** Fill from core. */
 @JvmName("feedTrackPositions")
-fun LatestStream<BridgeTrackPosition>.feed(appHandle: AppHandleInterface) = fed { appHandle.feedPlaybackPositions(it) }
+fun LatestStream<BridgeTrackPosition>.feed(
+    appHandle: AppHandleInterface,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, appHandle::feedPlaybackPositions)
 
 /** A fed stream's feed, which stops when cancelled; the stream then holds nothing. */
 class LatestFeed internal constructor(
-    private val stream: KeyedValueStream,
+    private val pulls: ScreenSubscription<List<ByteArray>>,
 ) {
-    fun cancel() = stream.cancel()
+    /** Stop pulling and cancel the stream. */
+    fun cancel() = pulls.stop()
 }
 
 /**
@@ -196,10 +230,12 @@ fun <V : Any> LatestSource<V>.changes(): Flow<V?> =
 /** How often [changes] reads a key that holds a value. */
 private const val READ_EVERY_MS = 100L
 
+/** The main thread, where a written stream tells the Views watching a key. */
+private val mainThread by lazy { Handler(Looper.getMainLooper()) }
+
 /** Which keys started or stopped holding a value, told to the Views watching each on the main thread. */
-internal class KeyActivity : KeyActivityCallback {
+internal class KeyActivity {
     private val watchers = ConcurrentHashMap<String, MutableSet<() -> Unit>>()
-    private val main by lazy { Handler(Looper.getMainLooper()) }
 
     /** Run [changed] on the main thread each time [key] starts or stops holding a value, until [stopWatching]. */
     fun watch(
@@ -217,23 +253,10 @@ internal class KeyActivity : KeyActivityCallback {
     }
 
     /**
-     * Post once to the main thread for the keys that started or stopped, for the Views watching them. The
-     * bridge names a key by its bytes; every key this app watches is an id, whose bytes are its UTF-8.
+     * Tell the Views watching the keys that started or stopped; called on the main thread. The bridge
+     * names a key by its bytes; every key this app watches is an id, whose bytes are its UTF-8.
      */
-    override fun onKeysChanged(keys: List<ByteArray>) {
-        val watching = keys.flatMap { watchers[it.decodeToString()]?.toList().orEmpty() }
-        if (watching.isEmpty()) return
-        main.post { watching.forEach { it() } }
-    }
-}
-
-/** A fed stream's failed read, told on the main thread. */
-private class StreamFailureSink(
-    private val fail: (BridgeException) -> Unit,
-) : StreamFailureCallback {
-    private val main by lazy { Handler(Looper.getMainLooper()) }
-
-    override fun onError(error: BridgeException) {
-        main.post { fail(error) }
+    fun keysChanged(keys: List<ByteArray>) {
+        keys.flatMap { watchers[it.decodeToString()]?.toList().orEmpty() }.forEach { it() }
     }
 }

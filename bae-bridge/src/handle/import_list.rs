@@ -46,7 +46,6 @@ impl AppHandle {
     ) -> Result<std::sync::Arc<crate::ImportListSubscription>, BridgeError> {
         let runtime = self.runtime.clone();
         let services = self.services.clone();
-        let diagnostics = self.diagnostics.clone();
         runtime
             .clone()
             .run("AppHandle.subscribe_import_list", move || async move {
@@ -54,12 +53,7 @@ impl AppHandle {
                     .subscribe_import_list(view.into_core())
                     .await
                     .map_err(BridgeError::from)?;
-                Ok(crate::screens::import_list(
-                    inner,
-                    services,
-                    runtime,
-                    diagnostics,
-                ))
+                Ok(crate::screens::import_list(inner, services, runtime))
             })
             .await
     }

@@ -90,7 +90,7 @@ internal fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    // The process-lifetime host and sink built at app launch; restore and
+    // The process-lifetime host and bug reports built at app launch; restore and
     // join run over them.
     val app = context.applicationContext as BaeApp
     val flow =
@@ -101,8 +101,8 @@ internal fun OnboardingScreen(
                 OnboardingCore(
                     app.host,
                     ::BootstrapCancellation,
-                    { LibraryOpenProgress(app.diagnostics) },
-                    { LibrarySetupStatus.of(app.diagnostics) },
+                    { LibraryOpenProgress(app.host, scope, app.bugs) },
+                    { LibrarySetupStatus.of(app.host, scope, app.bugs) },
                 ),
                 oauthProvidersError,
                 restoreOver,

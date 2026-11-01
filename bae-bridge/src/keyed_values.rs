@@ -3,108 +3,135 @@
 //! as UTF-8, or a candidate's key, which need not be text.
 //!
 //! A host never receives such a value in a callback, a record field or a
-//! subscription value. An `AppHandle` `feed_*` call starts writing one
-//! stream on the bridge's side and hands back the `KeyedValueStream` it
-//! writes; the host reads a key's latest value with `latest` when the native
-//! view drawing that key draws a frame. The only callback a stream makes is
-//! which keys started or stopped holding a value, so a view knows when to
-//! start and stop drawing; a value moving tells nothing.
+//! subscription value. A stream built in [`crate::screens`] is written on the
+//! bridge's side; the host reads a key's latest value with `latest` when the
+//! native view drawing that key draws a frame. What the host pulls, as it
+//! pulls every screen value, is which keys started or stopped holding a value,
+//! so a view knows when to start and stop drawing, and a failed read of the
+//! feed; a value moving tells nothing.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::collections::{BTreeSet, HashMap};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use bae_core::diagnostics::Diagnostics;
 use bae_core::library::CancellationToken;
+use tokio::sync::Notify;
 
-use crate::types::{BridgeFastValue, KeyActivityCallback};
+use crate::operation_runtime::OperationRuntime;
+use crate::types::{BridgeError, BridgeFastValue};
 
-/// The latest value of each key, and who hears keys come and go.
+/// The latest value of each key, and what the host has not pulled yet.
 pub(crate) struct StreamValues {
     /// Each change to what the stream holds is one insert, remove or whole
-    /// replace of the map, none of which panics partway, so a poisoned lock
-    /// says nothing about it; and both `Drop`s below take it, where a panic
-    /// must not start.
+    /// replace of the map and of what is unpulled, none of which panics
+    /// partway, so a poisoned lock says nothing about it; and both `Drop`s
+    /// below take it, where a panic must not start.
     held: Mutex<Held>,
-    activity: Box<dyn KeyActivityCallback>,
-    /// Where a throw from `activity` is reported.
-    diagnostics: Diagnostics,
+    /// Woken when something unpulled arrives. A wake with no pull waiting is
+    /// kept for the next pull.
+    unpulled: Notify,
+}
+
+struct Held {
+    values: Values,
+    /// The keys that started or stopped holding a value since the last pull,
+    /// a key that came and went once.
+    keys: BTreeSet<Vec<u8>>,
+    /// The feed's latest failed read since the last pull.
+    failure: Option<BridgeError>,
+}
+
+/// What a stream holds and what is unpulled; a poisoned lock says nothing
+/// about it (see [`StreamValues::held`]).
+fn lock(held: &Mutex<Held>) -> MutexGuard<'_, Held> {
+    held.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// What a stream holds: each key's value until the stream is cancelled,
 /// and nothing from then on.
-enum Held {
+enum Values {
     Open(HashMap<Vec<u8>, BridgeFastValue>),
     Cancelled,
 }
 
 impl StreamValues {
-    pub(crate) fn new(
-        activity: Box<dyn KeyActivityCallback>,
-        diagnostics: Diagnostics,
-    ) -> Arc<Self> {
+    pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
-            held: Mutex::new(Held::Open(HashMap::new())),
-            activity,
-            diagnostics,
+            held: Mutex::new(Held {
+                values: Values::Open(HashMap::new()),
+                keys: BTreeSet::new(),
+                failure: None,
+            }),
+            unpulled: Notify::new(),
         })
     }
 
     fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
-        match &*self.held.lock().unwrap_or_else(PoisonError::into_inner) {
-            Held::Open(values) => values.get(key).cloned(),
-            Held::Cancelled => None,
+        match &lock(&self.held).values {
+            Values::Open(values) => values.get(key).cloned(),
+            Values::Cancelled => None,
         }
     }
 
-    /// Change the values, then tell the keys `change` says started or
-    /// stopped holding one. A cancelled stream takes no change.
+    /// Change the values, and keep the keys `change` says started or stopped
+    /// holding one for the next pull. A cancelled stream takes no change.
     fn write(&self, change: impl FnOnce(&mut HashMap<Vec<u8>, BridgeFastValue>) -> Vec<Vec<u8>>) {
-        let started_or_stopped =
-            match &mut *self.held.lock().unwrap_or_else(PoisonError::into_inner) {
-                Held::Open(values) => change(values),
-                Held::Cancelled => Vec::new(),
-            };
-        self.tell(started_or_stopped);
-    }
-
-    /// Hold nothing from now on, whatever writes it, and tell the keys that
-    /// held a value.
-    fn cancel(&self) {
-        let stopped = match std::mem::replace(
-            &mut *self.held.lock().unwrap_or_else(PoisonError::into_inner),
-            Held::Cancelled,
-        ) {
-            Held::Open(values) => {
-                let mut keys: Vec<Vec<u8>> = values.into_keys().collect();
-                keys.sort();
-                keys
-            }
-            Held::Cancelled => Vec::new(),
+        let mut held = lock(&self.held);
+        let started_or_stopped = match &mut held.values {
+            Values::Open(values) => change(values),
+            Values::Cancelled => return,
         };
-        self.tell(stopped);
-    }
-
-    /// Tell the host the keys that started or stopped holding a value. Both
-    /// `Drop`s below tell it, and a drop can run while a panic unwinds, where
-    /// a host throw would be a second panic and abort the process: then the
-    /// stream holds its new values and the host is not told.
-    fn tell(&self, started_or_stopped: Vec<Vec<u8>>) {
         if started_or_stopped.is_empty() {
             return;
         }
-        if std::thread::panicking() {
-            tracing::warn!(
-                keys = started_or_stopped.len(),
-                "not telling the host which keys changed while a panic unwinds"
-            );
+        held.keys.extend(started_or_stopped);
+        drop(held);
+        self.unpulled.notify_one();
+    }
+
+    /// The feed's read failed; the next pull after the keys it emptied
+    /// answers with `error`. A cancelled stream takes none.
+    fn fail(&self, error: BridgeError) {
+        let mut held = lock(&self.held);
+        if let Values::Cancelled = held.values {
             return;
         }
-        if let Err(failed) = crate::host_calls::host_call(
-            |failed| self.diagnostics.bug(failed),
-            "tell the host which keys changed",
-            || self.activity.on_keys_changed(started_or_stopped),
-        ) {
-            tracing::debug!("the host's keys stay as it last heard them: {failed}");
+        held.failure = Some(error);
+        drop(held);
+        self.unpulled.notify_one();
+    }
+
+    /// Hold nothing from now on, whatever writes it; the next pull answers
+    /// with the keys that held a value, and every one after it that the
+    /// stream was cancelled.
+    fn cancel(&self) {
+        let mut held = lock(&self.held);
+        if let Values::Open(values) = std::mem::replace(&mut held.values, Values::Cancelled) {
+            held.keys.extend(values.into_keys());
+        }
+        held.failure = None;
+        drop(held);
+        self.unpulled.notify_one();
+    }
+
+    /// What the host has not pulled: the keys that started or stopped since
+    /// the last pull, in byte order; else the feed's failed read; else, on a
+    /// cancelled stream, that it was cancelled. Waits while there is none.
+    async fn next(&self) -> Result<Vec<Vec<u8>>, BridgeError> {
+        loop {
+            let unpulled = self.unpulled.notified();
+            {
+                let mut held = lock(&self.held);
+                if !held.keys.is_empty() {
+                    return Ok(std::mem::take(&mut held.keys).into_iter().collect());
+                }
+                if let Some(failure) = held.failure.take() {
+                    return Err(failure);
+                }
+                if let Values::Cancelled = held.values {
+                    return Err(BridgeError::Cancelled);
+                }
+            }
+            unpulled.await;
         }
     }
 }
@@ -117,11 +144,21 @@ impl StreamValues {
 pub struct KeyedValueStream {
     values: Arc<StreamValues>,
     stop: CancellationToken,
+    /// Where a pull runs.
+    runtime: OperationRuntime,
 }
 
 impl KeyedValueStream {
-    pub(crate) fn new(values: Arc<StreamValues>, stop: CancellationToken) -> Self {
-        Self { values, stop }
+    pub(crate) fn new(
+        values: Arc<StreamValues>,
+        stop: CancellationToken,
+        runtime: OperationRuntime,
+    ) -> Self {
+        Self {
+            values,
+            stop,
+            runtime,
+        }
     }
 }
 
@@ -137,6 +174,24 @@ impl KeyedValueStream {
     pub fn cancel(&self) {
         self.stop.cancel();
         self.values.cancel();
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl KeyedValueStream {
+    /// The keys that started or stopped holding a value since the last
+    /// pull, in byte order, a key that came and went once: `latest` says
+    /// which. Waits until one does. A failed read of the feed answers as that
+    /// error once the keys it emptied are pulled; the stream fills again with
+    /// the next read. Once cancelled, the next pull answers with the keys
+    /// that held a value then, and every pull after it that it was cancelled.
+    pub async fn next(self: Arc<Self>) -> Result<Vec<Vec<u8>>, BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("KeyedValueStream.next", move || async move {
+                self.values.next().await
+            })
+            .await
     }
 }
 
@@ -178,16 +233,22 @@ impl StreamWriter {
     /// The stream names every key in `all`, and none other.
     pub(crate) fn reset(&self, all: HashMap<Vec<u8>, BridgeFastValue>) {
         self.values.write(|values| {
-            let mut changed: Vec<Vec<u8>> = values
+            let changed: Vec<Vec<u8>> = values
                 .keys()
                 .filter(|key| !all.contains_key(*key))
                 .chain(all.keys().filter(|key| !values.contains_key(*key)))
                 .cloned()
                 .collect();
-            changed.sort();
             *values = all;
             changed
         });
+    }
+
+    /// The feed's read failed: the stream holds nothing until the next read
+    /// fills it, and the host pulls `error`.
+    pub(crate) fn fail(&self, error: BridgeError) {
+        self.reset(HashMap::new());
+        self.values.fail(error);
     }
 }
 

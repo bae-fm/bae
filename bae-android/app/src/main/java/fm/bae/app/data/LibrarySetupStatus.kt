@@ -1,13 +1,15 @@
 package fm.bae.app.data
 
 import androidx.annotation.VisibleForTesting
+import fm.bae.app.BugReports
 import fm.bae.fastvalues.LatestFeed
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.feed
 import fm.bae.fastvalues.only
+import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.BridgeBootstrapStatus
-import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrarySetup
 
 /**
@@ -28,11 +30,19 @@ internal class LibrarySetupStatus private constructor(
     }
 
     companion object {
-        /** A setup whose stream reports a throw from its activity callback to [diagnostics], the process's sink. */
-        fun of(diagnostics: BridgeDiagnostics): LibrarySetupStatus {
-            val setup = BridgeLibrarySetup(diagnostics)
+        /**
+         * A setup whose statuses are pulled on [host]'s runtime, in [scope]; a failed pull is a bug,
+         * reported to [bugs].
+         */
+        fun of(
+            host: BridgeHost,
+            scope: CoroutineScope,
+            bugs: BugReports,
+        ): LibrarySetupStatus {
+            val setup = BridgeLibrarySetup(host)
             val stream = LatestStream.bootstrapStatus()
-            return LibrarySetupStatus(setup, stream, stream.feed(setup))
+            val feed = stream.feed(setup, scope) { bugs.report("read a setup's statuses", it) }
+            return LibrarySetupStatus(setup, stream, feed)
         }
 
         /** A test's: [setup] stands in for the bridge's, and the test writes [stream] in place of core. */

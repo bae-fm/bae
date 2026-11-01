@@ -5,7 +5,7 @@ Values core sends many times a second reach an app only in the bridge's
 `KeyedValueStream`, and each app reads them only in its attach API, which
 hands each value to the native view drawing its key once per display frame.
 So no other app file may touch the stream: not its type, not the bridge
-calls that make one, not the value enum it holds or its callbacks, and not
+calls that make one, not the value enum it holds, and not
 the test writer that stands in for core. What the attach API's file is, per
 app, is `ATTACH_FILES`; what touches the stream is read from the bridge's
 own signatures, so a new feed is covered as it is added.
@@ -60,14 +60,11 @@ APPS = (
     ),
 )
 
-# The bridge's shape for fast values: the stream, the value it holds, its
-# callbacks. A bridge call that hands out a stream or takes its activity
-# callback is found from its signature.
+# The bridge's shape for fast values: the stream and the value it holds. A
+# bridge call that hands out a stream is found from its signature.
 STREAM_NAMES = (
     "KeyedValueStream",
     "BridgeFastValue",
-    "KeyActivityCallback",
-    "StreamFailureCallback",
 )
 # What a test writes a stream through in place of core.
 TEST_WRITER_NAMES = ("LatestTestWriter",)
@@ -87,9 +84,8 @@ def is_generated(relative: str) -> bool:
 
 
 def bridge_stream_calls(root: Path) -> tuple[set[str], list[str]]:
-    """The bridge calls that hand out a stream or take its activity
-    callback, as the generated bindings name them, and the stream names the
-    bridge no longer declares."""
+    """The bridge calls that hand out a stream, as the generated bindings
+    name them, and the stream names the bridge no longer declares."""
     calls: set[str] = set()
     declared: set[str] = set()
     for path in sorted((root / BRIDGE_ROOT).rglob("*.rs")):
@@ -121,7 +117,7 @@ def bridge_stream_calls(root: Path) -> tuple[set[str], list[str]]:
                 for i in range(open_paren, signature_end)
                 if tokens[i].kind == "id"
             }
-            if names & {"KeyedValueStream", "KeyActivityCallback"}:
+            if "KeyedValueStream" in names:
                 calls.add(camel_case(following.text))
     missing = [name for name in STREAM_NAMES if name not in declared]
     return calls, missing

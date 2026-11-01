@@ -429,6 +429,7 @@ pub use bootstrap::*;
 mod closing_libraries;
 #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
 mod dev_reset;
+mod steps;
 
 #[cfg(test)]
 mod tests {
@@ -445,7 +446,7 @@ mod tests {
         let opened = caller
             .block_on(host.clone().create_library(
                 Some("Session Library".into()),
-                crate::BridgeLibrarySetup::new(BridgeDiagnostics::noop()),
+                crate::BridgeLibrarySetup::new(host.clone()),
             ))
             .unwrap();
         let app = opened.open(50, false).unwrap();

@@ -26,7 +26,7 @@ public final class LibrarySetup: Sendable, Observable {
         @Sendable () async throws -> [BridgeUnfinishedJoin]
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
-    /// A new setup call's steps, read through the process's sink.
+    /// A new setup call's steps, pulled on the process's host.
     private let makeSetupSteps: @Sendable () -> LibrarySetupSteps
 
     public init(
@@ -55,12 +55,10 @@ public final class LibrarySetup: Sendable, Observable {
     /// The steps of a setup call about to start, for its view to draw.
     public func setupSteps() -> LibrarySetupSteps { makeSetupSteps() }
 
-    /// The production wiring over the process's host and sink.
-    public static func live(
-        host: BridgeHost,
-        diagnostics: BridgeDiagnostics,
-        deviceName: String
-    ) -> LibrarySetup {
+    /// The production wiring over the process's host.
+    public static func live(host: BridgeHost, deviceName: String)
+        -> LibrarySetup
+    {
         LibrarySetup(
             listLibraries: { try await host.listLibraries() },
             createLibrary: {
@@ -72,13 +70,9 @@ public final class LibrarySetup: Sendable, Observable {
             },
             unfinishedJoins: { try await host.unfinishedJoins() },
             makeBootstrap: {
-                LibraryBootstrap(
-                    host: host,
-                    diagnostics: diagnostics,
-                    deviceName: deviceName
-                )
+                LibraryBootstrap(host: host, deviceName: deviceName)
             },
-            makeSetupSteps: { LibrarySetupSteps(diagnostics: diagnostics) }
+            makeSetupSteps: { LibrarySetupSteps(host: host) }
         )
     }
 
@@ -115,35 +109,13 @@ public final class LibrarySetup: Sendable, Observable {
                 },
                 unfinishedJoins: { [] },
                 makeBootstrap: {
-                    let diagnostics = BaeDiagnostics.disabled()
-                    return LibraryBootstrap(
-                        host: BaeHost.make(
-                            diagnostics: diagnostics,
-                            appDir: previewAppDir()
-                        ),
-                        diagnostics: diagnostics,
+                    LibraryBootstrap(
+                        host: BaeHost.preview(),
                         deviceName: "Preview Device"
                     )
                 },
-                makeSetupSteps: {
-                    LibrarySetupSteps(diagnostics: BaeDiagnostics.disabled())
-                }
+                makeSetupSteps: { LibrarySetupSteps(host: BaeHost.preview()) }
             )
-        }
-
-        /// A fresh bae directory under the temporary directory.
-        private static func previewAppDir() -> BridgeAppDir {
-            let home = FileManager.default.temporaryDirectory
-                .appendingPathComponent("bae-preview-\(UUID().uuidString)")
-                .path
-            do {
-                return try BridgeAppDir(home: home)
-            }
-            catch {
-                preconditionFailure(
-                    "The preview's bae directory could not be created: \(error)"
-                )
-            }
         }
     #endif
 }

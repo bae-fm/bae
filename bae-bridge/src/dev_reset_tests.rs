@@ -79,13 +79,13 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
         caller
             .block_on(host.clone().create_library(
                 Some(name.into()),
-                crate::BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop()),
+                crate::BridgeLibrarySetup::new(host.clone()),
             ))
             .unwrap();
     }
     let stray = root.path().join(".bae").join("stray-file");
     std::fs::write(&stray, "left by an earlier run").unwrap();
-    let setup = crate::BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop());
+    let setup = crate::BridgeLibrarySetup::new(host.clone());
 
     let error = caller
         .block_on(host.clone().dev_reset(

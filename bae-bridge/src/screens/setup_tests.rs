@@ -3,25 +3,16 @@
 use super::*;
 use crate::types::{BridgeBootstrapStatus, BridgeSetupProgress, BridgeSetupStep};
 
-/// How many times the stream said a key started or stopped.
-#[derive(Default)]
-struct Heard(Mutex<usize>);
-
-struct Activity(Arc<Heard>);
-
-impl KeyActivityCallback for Activity {
-    fn on_keys_changed(&self, _keys: Vec<Vec<u8>>) {
-        *self.0 .0.lock().unwrap() += 1;
-    }
-}
-
 /// The stream's one key holds where the call is while it runs, and nothing
 /// once the call's writing ends.
 #[test]
 fn the_stream_holds_the_running_step_until_the_call_ends() {
-    let setup = BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop());
-    let heard = Arc::new(Heard::default());
-    let stream = setup.feed_setup_steps(Box::new(Activity(heard.clone())));
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let setup = library_setup(OperationRuntime::new(
+        runtime.handle().clone(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    ));
+    let stream = setup.feed_setup_steps();
     let steps = setup.writer();
 
     steps.step(BridgeSetupStep::RemovingLibraries, 1, 3);
@@ -35,6 +26,11 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
             },
         })
     );
+    assert_eq!(
+        runtime.block_on(stream.clone().next()),
+        Ok(vec![Vec::new()]),
+        "the key started"
+    );
     steps.bootstrap(coven::BootstrapStatus::Connecting);
     assert_eq!(
         stream.latest(Vec::new()),
@@ -45,7 +41,11 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
 
     drop(steps);
     assert_eq!(stream.latest(Vec::new()), None);
-    assert_eq!(*heard.0.lock().unwrap(), 2, "the key started, then stopped");
+    assert_eq!(
+        runtime.block_on(stream.clone().next()),
+        Ok(vec![Vec::new()]),
+        "the key stopped"
+    );
 }
 
 /// Creating a library runs one step, which ends with the call.
@@ -57,7 +57,7 @@ fn creating_a_library_reports_its_step() {
         crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
-    let setup = BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop());
+    let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
     caller
         .block_on(host.create_library(Some("Created".into()), setup.clone()))

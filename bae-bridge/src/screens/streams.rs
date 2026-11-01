@@ -11,7 +11,8 @@ use std::sync::Arc;
 use bae_core::library::{AppServices, CancellationToken};
 
 use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
-use crate::types::{BridgeError, BridgeFastValue, KeyActivityCallback, StreamFailureCallback};
+use crate::operation_runtime::OperationRuntime;
+use crate::types::{BridgeError, BridgeFastValue};
 
 /// The key of a stream that holds one value.
 const ONLY_KEY: &[u8] = b"";
@@ -28,22 +29,21 @@ impl<F: FnOnce(CancellationToken, Writes)> RunFeed for F {}
 
 /// A new stream, its `writes` handed to `run`.
 fn feed<Fut>(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
     writes: impl FnOnce(AppServices, StreamWriter) -> Fut + Send + 'static,
 ) -> Arc<KeyedValueStream>
 where
     Fut: Future<Output = ()> + Send + 'static,
 {
-    let values = StreamValues::new(activity, diagnostics);
+    let values = StreamValues::new();
     let stop = CancellationToken::new();
     let writer = StreamWriter::new(values.clone());
     run(
         stop.clone(),
         Box::new(move |services| Box::pin(writes(services, writer))),
     );
-    Arc::new(KeyedValueStream::new(values, stop))
+    Arc::new(KeyedValueStream::new(values, stop, runtime))
 }
 
 /// Write each batch of a release transfer watch: every release a `Reset`
@@ -103,228 +103,174 @@ fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_core::library::Fil
 
 /// The stream [`AppHandle::feed_release_upload_transfers`](crate::AppHandle::feed_release_upload_transfers) hands out.
 pub(crate) fn release_upload_transfers(
-    activity: Box<dyn KeyActivityCallback>,
-    failure: Box<dyn StreamFailureCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            use bae_core::library::OutboxTransferChange;
-            let upload = |transfer| BridgeFastValue::ReleaseUpload {
-                transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
+    feed(runtime, run, move |services, writer| async move {
+        use bae_core::library::OutboxTransferChange;
+        let upload = |transfer| BridgeFastValue::ReleaseUpload {
+            transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
+        };
+        let mut transfers = services.watch_outbox_transfers();
+        while let Some(changes) = transfers.next().await {
+            let changes = match changes {
+                Ok(changes) => changes,
+                Err(error) => {
+                    writer.fail(BridgeError::database_query(error));
+                    continue;
+                }
             };
-            let mut transfers = services.watch_outbox_transfers();
-            while let Some(changes) = transfers.next().await {
-                let changes = match changes {
-                    Ok(changes) => changes,
-                    Err(error) => {
-                        writer.reset(HashMap::new());
-                        failure.on_error(BridgeError::database_query(error));
-                        continue;
+            for change in changes {
+                match change {
+                    OutboxTransferChange::Updated {
+                        release_id,
+                        transfer,
+                    } => writer.set(release_id, upload(transfer)),
+                    OutboxTransferChange::Removed { release_id } => {
+                        writer.remove(release_id.as_bytes())
                     }
-                };
-                for change in changes {
-                    match change {
-                        OutboxTransferChange::Updated {
-                            release_id,
-                            transfer,
-                        } => writer.set(release_id, upload(transfer)),
-                        OutboxTransferChange::Removed { release_id } => {
-                            writer.remove(release_id.as_bytes())
-                        }
-                        // The total is its own stream.
-                        OutboxTransferChange::TotalUpdated(_) => {}
-                        OutboxTransferChange::Reset(all) => writer.reset(
-                            all.releases
-                                .into_iter()
-                                .map(|(release_id, transfer)| {
-                                    (release_id.into_bytes(), upload(transfer))
-                                })
-                                .collect(),
-                        ),
-                    }
+                    // The total is its own stream.
+                    OutboxTransferChange::TotalUpdated(_) => {}
+                    OutboxTransferChange::Reset(all) => writer.reset(
+                        all.releases
+                            .into_iter()
+                            .map(|(release_id, transfer)| {
+                                (release_id.into_bytes(), upload(transfer))
+                            })
+                            .collect(),
+                    ),
                 }
             }
-        },
-    )
+        }
+    })
 }
 
 /// The stream [`AppHandle::feed_upload_total_transfer`](crate::AppHandle::feed_upload_total_transfer) hands out.
 pub(crate) fn upload_total_transfer(
-    activity: Box<dyn KeyActivityCallback>,
-    failure: Box<dyn StreamFailureCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut total = services.watch_outbox_total_transfer();
-            while let Some(transfer) = total.next().await {
-                match transfer.map(upload_total) {
-                    Ok(Some(total)) => writer.set(ONLY_KEY, total),
-                    Ok(None) => writer.remove(ONLY_KEY),
-                    Err(error) => {
-                        writer.remove(ONLY_KEY);
-                        failure.on_error(BridgeError::database_query(error));
-                    }
-                }
+    feed(runtime, run, move |services, writer| async move {
+        let mut total = services.watch_outbox_total_transfer();
+        while let Some(transfer) = total.next().await {
+            match transfer.map(upload_total) {
+                Ok(Some(total)) => writer.set(ONLY_KEY, total),
+                Ok(None) => writer.remove(ONLY_KEY),
+                Err(error) => writer.fail(BridgeError::database_query(error)),
             }
-        },
-    )
+        }
+    })
 }
 
 /// The stream [`AppHandle::feed_upload_file_shares`](crate::AppHandle::feed_upload_file_shares) hands out.
 pub(crate) fn upload_file_shares(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut files = services.watch_upload_file_transfers();
-            while let Some(changes) = files.next().await {
-                write_file_changes(&writer, changes);
-            }
-        },
-    )
+    feed(runtime, run, move |services, writer| async move {
+        let mut files = services.watch_upload_file_transfers();
+        while let Some(changes) = files.next().await {
+            write_file_changes(&writer, changes);
+        }
+    })
 }
 
 /// The stream [`AppHandle::feed_pin_file_shares`](crate::AppHandle::feed_pin_file_shares) hands out.
 pub(crate) fn pin_file_shares(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut files = services.watch_pin_file_transfers();
-            while let Some(changes) = files.next().await {
-                write_file_changes(&writer, changes);
-            }
-        },
-    )
+    feed(runtime, run, move |services, writer| async move {
+        let mut files = services.watch_pin_file_transfers();
+        while let Some(changes) = files.next().await {
+            write_file_changes(&writer, changes);
+        }
+    })
 }
 
 /// The stream [`AppHandle::feed_download_transfers`](crate::AppHandle::feed_download_transfers) hands out.
 pub(crate) fn download_transfers(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut transfers = services.watch_download_transfers();
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |progress| BridgeFastValue::Download {
-                    progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-                });
-            }
-        },
-    )
+    feed(runtime, run, move |services, writer| async move {
+        let mut transfers = services.watch_download_transfers();
+        while let Some(changes) = transfers.next().await {
+            write_release_changes(&writer, changes, |progress| BridgeFastValue::Download {
+                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+            });
+        }
+    })
 }
 
 /// The stream [`AppHandle::feed_playback_positions`](crate::AppHandle::feed_playback_positions) hands out.
 pub(crate) fn playback_positions(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut positions = services.subscribe_playback_positions();
-            loop {
-                let held = track_positions(&positions.borrow_and_update());
-                writer.reset(held);
-                if positions.changed().await.is_err() {
-                    return;
-                }
+    feed(runtime, run, move |services, writer| async move {
+        let mut positions = services.subscribe_playback_positions();
+        loop {
+            let held = track_positions(&positions.borrow_and_update());
+            writer.reset(held);
+            if positions.changed().await.is_err() {
+                return;
             }
-        },
-    )
+        }
+    })
 }
 
 #[cfg(feature = "desktop")]
 /// The stream [`AppHandle::feed_preview_position`](crate::AppHandle::feed_preview_position) hands out.
 pub(crate) fn preview_position(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut positions = services.subscribe_playback_positions();
-            loop {
-                let preview = positions.borrow_and_update().preview.clone();
-                match preview {
-                    Some(position) => writer.set(
-                        ONLY_KEY,
-                        BridgeFastValue::PreviewPosition {
-                            position: crate::types::BridgePreviewPosition::from_core(position),
-                        },
-                    ),
-                    None => writer.remove(ONLY_KEY),
-                }
-                if positions.changed().await.is_err() {
-                    return;
-                }
+    feed(runtime, run, move |services, writer| async move {
+        let mut positions = services.subscribe_playback_positions();
+        loop {
+            let preview = positions.borrow_and_update().preview.clone();
+            match preview {
+                Some(position) => writer.set(
+                    ONLY_KEY,
+                    BridgeFastValue::PreviewPosition {
+                        position: crate::types::BridgePreviewPosition::from_core(position),
+                    },
+                ),
+                None => writer.remove(ONLY_KEY),
             }
-        },
-    )
+            if positions.changed().await.is_err() {
+                return;
+            }
+        }
+    })
 }
 
 #[cfg(feature = "desktop")]
 /// The stream [`AppHandle::feed_import_percents`](crate::AppHandle::feed_import_percents) hands out.
 pub(crate) fn import_percents(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut percents = services.watch_import_percents();
-            loop {
-                let held: HashMap<Vec<u8>, BridgeFastValue> = percents
-                    .borrow_and_update()
-                    .iter()
-                    .map(|(key, percent)| {
-                        (
-                            key.as_bytes().to_vec(),
-                            BridgeFastValue::ImportPercent { percent: *percent },
-                        )
-                    })
-                    .collect();
-                writer.reset(held);
-                if percents.changed().await.is_err() {
-                    return;
-                }
+    feed(runtime, run, move |services, writer| async move {
+        let mut percents = services.watch_import_percents();
+        loop {
+            let held: HashMap<Vec<u8>, BridgeFastValue> = percents
+                .borrow_and_update()
+                .iter()
+                .map(|(key, percent)| {
+                    (
+                        key.as_bytes().to_vec(),
+                        BridgeFastValue::ImportPercent { percent: *percent },
+                    )
+                })
+                .collect();
+            writer.reset(held);
+            if percents.changed().await.is_err() {
+                return;
             }
-        },
-    )
+        }
+    })
 }
 
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on
@@ -332,23 +278,17 @@ pub(crate) fn import_percents(
 #[cfg(desktop)]
 /// The stream [`AppHandle::feed_export_percents`](crate::AppHandle::feed_export_percents) hands out.
 pub(crate) fn export_percents(
-    activity: Box<dyn KeyActivityCallback>,
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(
-        activity,
-        diagnostics,
-        run,
-        move |services, writer| async move {
-            let mut transfers = services.watch_output_transfers();
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
-                    percent,
-                });
-            }
-        },
-    )
+    feed(runtime, run, move |services, writer| async move {
+        let mut transfers = services.watch_output_transfers();
+        while let Some(changes) = transfers.next().await {
+            write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
+                percent,
+            });
+        }
+    })
 }
 
 /// The playing track's position as its stream holds it: under its track's

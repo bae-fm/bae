@@ -25,7 +25,6 @@ import os.log
 
 private func discoverInitialLibraries(
     host: BridgeHost,
-    diagnostics: BridgeDiagnostics,
     environment: [String: String]
 ) async throws -> [BridgeLibrary] {
     var libraries = try await host.listLibraries()
@@ -37,7 +36,7 @@ private func discoverInitialLibraries(
             // launch opens it by id.
             let created = try await host.createLibrary(
                 name: nil,
-                setup: BridgeLibrarySetup(diagnostics: diagnostics)
+                setup: BridgeLibrarySetup(host: host)
             )
             let app = try created.open(
                 positionUpdateIntervalMs: 200,
@@ -238,14 +237,12 @@ extension AppDelegate {
     /// files remain to delete.
     func loadInitialState(canOpenLibraries: Bool) {
         let host = requiredApplicationServices.host
-        let diagnostics = requiredApplicationServices.diagnostics
         let removals = requiredApplicationServices.libraryRemovals
         Task {
             await removals.loadUnfinished()
             do {
                 libraries = try await discoverInitialLibraries(
                     host: host,
-                    diagnostics: diagnostics,
                     environment: baeAppProcessEnvironment
                 )
             }
@@ -278,7 +275,7 @@ extension AppDelegate {
         loadError = nil
         screen = .loading
         let progress = LibraryOpenProgress(
-            diagnostics: requiredApplicationServices.diagnostics
+            host: requiredApplicationServices.host
         )
         openProgress = progress
         opener.open(libraryId: libraryId, progress: progress) {
@@ -417,7 +414,6 @@ extension AppDelegate {
     func resetDevice(libraryId: String) {
         let host = requiredApplicationServices.host
         let deviceName = requiredApplicationServices.deviceName
-        let diagnostics = requiredApplicationServices.diagnostics
         let startedFrom = screen
         let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
         if open != nil {
@@ -431,7 +427,7 @@ extension AppDelegate {
                     try await self.close(open)
                     self.screen = .loading
                 }
-                let steps = DeviceResetSteps(diagnostics: diagnostics)
+                let steps = DeviceResetSteps(host: host)
                 self.resetSteps = steps
                 defer {
                     steps.stop()

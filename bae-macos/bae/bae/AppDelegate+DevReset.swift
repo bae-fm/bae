@@ -15,7 +15,7 @@
                 return
             }
             let services = requiredApplicationServices
-            let steps = LibrarySetupSteps(diagnostics: services.diagnostics)
+            let steps = LibrarySetupSteps(host: services.host)
             setupSteps = steps
             screen = .loading
             Task {

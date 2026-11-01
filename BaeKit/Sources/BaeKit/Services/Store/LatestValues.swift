@@ -6,6 +6,8 @@ import os
     import AppKit
 #endif
 
+private let logger = Logger.bae("LatestValues")
+
 // The one place the app touches the bridge's `KeyedValueStream`: values core
 // sends many times a second (transfer bytes and rates, file shares, export
 // percents, playback and preview positions, import percents, a library
@@ -13,8 +15,13 @@ import os
 // only reader of a value is `FrameFollowing`, which hands it to the native
 // view drawing that key once per display frame. App code passes streams and
 // sources around; it never holds a value, so nothing SwiftUI observes can
-// change with one. `scripts/keyed-value-stream-boundary.py` keeps every other
-// file off the bridge's stream.
+// change with one. Which keys started or stopped holding a value is pulled
+// through `ScreenSubscription`, as every screen value is.
+// `scripts/keyed-value-stream-boundary.py` keeps every other file off the
+// bridge's stream.
+
+// The bridge's stream is pulled like every other bridge pull object.
+extension KeyedValueStream: PulledSubscription {}
 
 /// The latest value of each key of one fast stream, for the native views
 /// that draw a key. Until it is fed it holds nothing, and a preview's holds
@@ -112,18 +119,33 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     }
 
     /// Hold what `open` starts feeding, until the returned feed is
-    /// cancelled or dropped.
-    fileprivate func fed(_ open: (KeyActivity) -> KeyedValueStream)
-        -> LatestFeed
-    {
-        let stream = open(activity)
+    /// cancelled or dropped, pulling which keys started or stopped holding a
+    /// value for the views watching them. A feed with failed reads hands each
+    /// to `onFailedRead`; a pulled failure of any other feed is a bug.
+    fileprivate func fed(
+        onFailedRead: (@MainActor @Sendable (any Error) -> Void)? = nil,
+        _ open: () -> KeyedValueStream
+    ) -> LatestFeed {
+        let stream = open()
         backing.withLockUnchecked { backing in
             guard case .unfed = backing else {
                 preconditionFailure("a \(Value.self) stream is fed twice")
             }
             backing = .fed(stream)
         }
-        return LatestFeed(stream: stream)
+        let activity = activity
+        let streamName = "\(Value.self)"
+        return LatestFeed(
+            stream: stream,
+            pulls: ScreenSubscription(
+                stream,
+                onValue: { keys in activity.keysChanged(keys) },
+                onError: onFailedRead ?? { error in
+                    reportStreamBug(error, stream: streamName)
+                }
+            ),
+            activity: activity
+        )
     }
 }
 
@@ -176,28 +198,54 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
                 return held != (values[key] != nil)
             }
             if started {
-                activity.onKeysChanged(keys: [key])
+                let activity = activity
+                Task { @MainActor in activity.keysChanged([key]) }
             }
         }
     }
 #endif
 
 /// A fed stream's feed, which stops when it is cancelled or dropped; the
-/// stream then holds nothing.
+/// stream then holds nothing, and every view watching one of its keys is
+/// told, so it reads that the key holds none.
 public final class LatestFeed: Sendable {
     private let stream: KeyedValueStream
+    private let pulls: ScreenSubscription<KeyedValueStream>
+    private let activity: KeyActivity
 
-    fileprivate init(stream: KeyedValueStream) {
+    fileprivate init(
+        stream: KeyedValueStream,
+        pulls: ScreenSubscription<KeyedValueStream>,
+        activity: KeyActivity
+    ) {
         self.stream = stream
+        self.pulls = pulls
+        self.activity = activity
     }
 
     public func cancel() {
-        stream.cancel()
+        end()
     }
 
     deinit {
-        stream.cancel()
+        end()
     }
+
+    private func end() {
+        stream.cancel()
+        pulls.stop()
+        let activity = activity
+        Task { @MainActor in activity.everyKeyChanged() }
+    }
+}
+
+/// A pulled failure of a stream whose feed has no failed reads: the bridge
+/// broke its own guarantee, so it is reported to the crash reporter core
+/// reports its bugs to. The pulls go on.
+private func reportStreamBug(_ error: any Error, stream: String) {
+    let detail = "the \(stream) stream answered \(String(reflecting: error))"
+    logger.error("\(detail)")
+    CoreBugReporter().report(operation: "KeyedValueStream.next", detail: detail)
 }
 
 /// The key a stream that holds one value holds it under.
@@ -224,11 +272,8 @@ extension LatestStream where Value == BridgeReleaseUploadTransfer {
         from appHandle: AppHandle,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> LatestFeed {
-        fed {
-            appHandle.feedReleaseUploadTransfers(
-                activity: $0,
-                failure: StreamFailureSink(onError)
-            )
+        fed(onFailedRead: onError) {
+            appHandle.feedReleaseUploadTransfers()
         }
     }
 }
@@ -253,12 +298,7 @@ extension LatestStream where Value == BridgeUploadTransfer {
         from appHandle: AppHandle,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> LatestFeed {
-        fed {
-            appHandle.feedUploadTotalTransfer(
-                activity: $0,
-                failure: StreamFailureSink(onError)
-            )
-        }
+        fed(onFailedRead: onError) { appHandle.feedUploadTotalTransfer() }
     }
 }
 
@@ -280,12 +320,12 @@ extension LatestStream where Value == Double {
 
     /// Fill with the files being sent.
     public func feedUploads(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedUploadFileShares(activity: $0) }
+        fed { appHandle.feedUploadFileShares() }
     }
 
     /// Fill with the files being downloaded to keep whole.
     public func feedPins(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedPinFileShares(activity: $0) }
+        fed { appHandle.feedPinFileShares() }
     }
 }
 
@@ -307,7 +347,7 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
 
     /// Fill from core.
     public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedDownloadTransfers(activity: $0) }
+        fed { appHandle.feedDownloadTransfers() }
     }
 }
 
@@ -330,7 +370,7 @@ extension LatestStream where Value == UInt8 {
     #if os(macOS)
         /// Fill from core.
         public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedExportPercents(activity: $0) }
+            fed { appHandle.feedExportPercents() }
         }
     #endif
 }
@@ -354,7 +394,7 @@ extension LatestStream where Value == UInt32 {
     #if os(macOS)
         /// Fill from core.
         public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedImportPercents(activity: $0) }
+            fed { appHandle.feedImportPercents() }
         }
     #endif
 }
@@ -380,7 +420,7 @@ extension LatestStream where Value == UInt32 {
         public func feed(from list: any ImportListSubscriptionProtocol)
             -> LatestFeed
         {
-            fed { list.selectionActionProgress(activity: $0) }
+            fed { list.selectionActionProgress() }
         }
     }
 #endif
@@ -403,7 +443,7 @@ extension LatestStream where Value == BridgeOpenProgress {
 
     /// Fill with the steps of the open `opening` is handed to.
     public func feed(from opening: BridgeLibraryOpening) -> LatestFeed {
-        fed { opening.feedOpenSteps(activity: $0) }
+        fed { opening.feedOpenSteps() }
     }
 }
 
@@ -425,7 +465,7 @@ extension LatestStream where Value == BridgeSetupProgress {
 
     /// Fill with the steps of the call `setup` is handed to.
     public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
-        fed { setup.feedSetupSteps(activity: $0) }
+        fed { setup.feedSetupSteps() }
     }
 }
 
@@ -447,7 +487,7 @@ extension LatestStream where Value == BridgeBootstrapStatus {
 
     /// Fill with where the restore or join `setup` is handed to stands.
     public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
-        fed { setup.feedSetupSteps(activity: $0) }
+        fed { setup.feedSetupSteps() }
     }
 }
 
@@ -475,7 +515,7 @@ extension LatestStream where Value == BridgeTrackPosition {
 
     /// Fill from core.
     public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedPlaybackPositions(activity: $0) }
+        fed { appHandle.feedPlaybackPositions() }
     }
 
     /// Show `key` at `progress` of its length, as the seek the person just
@@ -529,7 +569,7 @@ extension LatestStream where Value == BridgePreviewPosition {
     #if os(macOS)
         /// Fill from core.
         public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedPreviewPosition(activity: $0) }
+            fed { appHandle.feedPreviewPosition() }
         }
     #endif
 }
@@ -549,8 +589,8 @@ public struct LatestSource<Value: Sendable & Equatable>: Sendable {
 }
 
 /// Which keys started or stopped holding a value, told to the native views
-/// watching each on the main thread. A value moving tells nothing.
-private final class KeyActivity: KeyActivityCallback, Sendable {
+/// watching each on the main actor. A value moving tells nothing.
+private final class KeyActivity: Sendable {
     struct Watch: Hashable, Sendable {
         let key: Data
         let id: Int
@@ -584,17 +624,25 @@ private final class KeyActivity: KeyActivityCallback, Sendable {
         }
     }
 
-    /// Hop to the main thread once for the keys that started or stopped,
-    /// for the views watching them.
-    func onKeysChanged(keys: [Data]) {
+    /// Tell the views watching `keys` that each started or stopped.
+    @MainActor
+    func keysChanged(_ keys: [Data]) {
         let watching = watchers.withLock { watchers in
             keys.flatMap { (watchers.byKey[$0] ?? [:]).values }
         }
-        guard !watching.isEmpty else { return }
-        Task { @MainActor in
-            for changed in watching {
-                changed()
-            }
+        for changed in watching {
+            changed()
+        }
+    }
+
+    /// Tell every watching view to read its key again: the stream ended.
+    @MainActor
+    func everyKeyChanged() {
+        let watching = watchers.withLock { watchers in
+            watchers.byKey.values.flatMap(\.values)
+        }
+        for changed in watching {
+            changed()
         }
     }
 }
@@ -655,19 +703,6 @@ public final class FollowedValue<Value: Sendable & Equatable> {
             reading = nil
         }
         return latest != nil
-    }
-}
-
-/// A fed stream's failed read, told on the main thread.
-private final class StreamFailureSink: StreamFailureCallback, Sendable {
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(_ fail: @escaping @MainActor @Sendable (any Error) -> Void) {
-        self.fail = fail
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
     }
 }
 

@@ -17,8 +17,6 @@ pub struct ImportListSubscription {
     inner: bae_core::import::ImportListSubscription,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
-    /// Where a throw from a progress stream's host callback is reported.
-    diagnostics: bae_core::diagnostics::Diagnostics,
     /// Where the next bulk action reports how far it has got: the stream
     /// [`Self::selection_action_progress`] last handed out.
     selection_progress: std::sync::Mutex<Option<std::sync::Arc<crate::keyed_values::StreamValues>>>,
@@ -28,13 +26,11 @@ pub(crate) fn import_list(
     inner: bae_core::import::ImportListSubscription,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
-    diagnostics: bae_core::diagnostics::Diagnostics,
 ) -> std::sync::Arc<ImportListSubscription> {
     std::sync::Arc::new(ImportListSubscription {
         inner,
         services,
         runtime,
-        diagnostics,
         selection_progress: std::sync::Mutex::new(None),
     })
 }
@@ -48,13 +44,13 @@ impl ImportListSubscription {
     /// nothing from then on, a running action's included.
     pub fn selection_action_progress(
         &self,
-        activity: Box<dyn crate::types::KeyActivityCallback>,
     ) -> std::sync::Arc<crate::keyed_values::KeyedValueStream> {
-        let values = crate::keyed_values::StreamValues::new(activity, self.diagnostics.clone());
+        let values = crate::keyed_values::StreamValues::new();
         *self.selection_progress.lock().unwrap() = Some(values.clone());
         std::sync::Arc::new(crate::keyed_values::KeyedValueStream::new(
             values,
             bae_core::library::CancellationToken::new(),
+            self.runtime.clone(),
         ))
     }
 }

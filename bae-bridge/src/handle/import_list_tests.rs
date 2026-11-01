@@ -131,18 +131,6 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         .expect("cancel the list");
 }
 
-/// Every batch of keys a stream says started or stopped.
-#[derive(Default)]
-struct HeardKeys(std::sync::Mutex<Vec<Vec<Vec<u8>>>>);
-
-struct Activity(Arc<HeardKeys>);
-
-impl crate::types::KeyActivityCallback for Activity {
-    fn on_keys_changed(&self, keys: Vec<Vec<u8>>) {
-        self.0 .0.lock().unwrap().push(keys);
-    }
-}
-
 /// A bulk action writes its progress into the stream the app reads while it
 /// runs, and the stream empties as it ends; once the app cancels that
 /// stream, an action run after writes nothing into it.
@@ -197,8 +185,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         snapshot.selection_revision >= revision && snapshot.selection.count == 1
     });
 
-    let read = Arc::new(HeardKeys::default());
-    let progress = list.selection_action_progress(Box::new(Activity(read.clone())));
+    let progress = list.selection_action_progress();
     handle
         .runtime
         .block_on(
@@ -207,8 +194,8 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         )
         .unwrap();
     assert_eq!(
-        std::mem::take(&mut *read.0.lock().unwrap()),
-        vec![vec![Vec::<u8>::new()], vec![Vec::new()]],
+        handle.runtime.block_on(progress.clone().next()),
+        Ok(vec![Vec::<u8>::new()]),
         "the action's progress came and went"
     );
     assert_eq!(progress.latest(Vec::new()), None);
@@ -221,8 +208,9 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
                 .run_selection_action(crate::types::BridgeCandidateAction::Skip),
         )
         .unwrap();
-    assert!(
-        read.0.lock().unwrap().is_empty(),
+    assert_eq!(
+        handle.runtime.block_on(progress.clone().next()),
+        Err(crate::types::BridgeError::Cancelled),
         "a cancelled stream hears no later action"
     );
     assert_eq!(progress.latest(Vec::new()), None);

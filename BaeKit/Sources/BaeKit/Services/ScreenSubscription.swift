@@ -149,7 +149,8 @@ public struct PulledValues<Value: Sendable>: PulledSubscription {
 }
 
 // Every bridge object a screen pulls from, read only through
-// `ScreenSubscription`.
+// `ScreenSubscription`. The fast values' stream conforms in
+// `LatestValues.swift`, the one file that touches it.
 extension PlaybackValuesSubscription: PulledSubscription {}
 extension PlaybackTimelineSubscription: PulledSubscription {}
 extension QueueAdditionsSubscription: PulledSubscription {}

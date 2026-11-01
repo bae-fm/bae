@@ -17,12 +17,10 @@ fn open_library_reporting(
         crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
+    let setup = crate::BridgeLibrarySetup::new(host.clone());
     let opened = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(host.create_library(
-            Some("Subscribed Library".into()),
-            crate::BridgeLibrarySetup::new(crate::BridgeDiagnostics::noop()),
-        ))
+        .block_on(host.create_library(Some("Subscribed Library".into()), setup))
         .unwrap();
     opened.open(50, false).unwrap()
 }

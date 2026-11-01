@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.AddedDeviceSubscription
 import uniffi.bae_bridge.AlbumBrowseSubscription
@@ -79,7 +80,6 @@ import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.InvitesSubscription
-import uniffi.bae_bridge.KeyActivityCallback
 import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
@@ -96,7 +96,6 @@ import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.RatingsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
-import uniffi.bae_bridge.StreamFailureCallback
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
@@ -164,23 +163,17 @@ internal open class FakeAppHandle(
 
     override fun subscribeDownloadBrowse(): DownloadBrowseSubscription = unfaked("subscribeDownloadBrowse")
 
-    override fun feedDownloadTransfers(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedDownloadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
 
-    override fun feedReleaseUploadTransfers(
-        activity: KeyActivityCallback,
-        failure: StreamFailureCallback,
-    ): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedReleaseUploadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun feedUploadTotalTransfer(
-        activity: KeyActivityCallback,
-        failure: StreamFailureCallback,
-    ): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedUploadTotalTransfer(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun feedUploadFileShares(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedUploadFileShares(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun feedPinFileShares(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedPinFileShares(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun subscribeCastDevices(): CastDevicesSubscription = FakeCastDevicesSubscription()
 
@@ -192,7 +185,7 @@ internal open class FakeAppHandle(
 
     override fun subscribePlaybackTimeline(): PlaybackTimelineSubscription = FakePlaybackTimelineSubscription()
 
-    override fun feedPlaybackPositions(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedPlaybackPositions(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun triggerSync() {}
 
@@ -765,11 +758,20 @@ internal open class FakeAppHandle(
     }
 }
 
-/** A stream nothing feeds, which holds nothing. */
+/** A stream nothing feeds, which holds nothing: each pull waits until it is cancelled. */
 internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
+    private val cancelled = CompletableDeferred<Unit>()
+
     override fun latest(key: ByteArray): BridgeFastValue? = null
 
-    override fun cancel() = Unit
+    override suspend fun next(): List<ByteArray> {
+        cancelled.await()
+        throw BridgeException.Cancelled()
+    }
+
+    override fun cancel() {
+        cancelled.complete(Unit)
+    }
 }
 
 /** A cast device list nothing delivers: each pull waits until cancelled. */

@@ -141,9 +141,7 @@ struct ImportListPageSourceTests {
         func runSelectionAction(
             action _: BridgeCandidateAction
         ) async throws -> [BridgeSelectionActionFailure] { [] }
-        func selectionActionProgress(
-            activity _: any KeyActivityCallback
-        ) -> KeyedValueStream {
+        func selectionActionProgress() -> KeyedValueStream {
             KeyedValueStream(noHandle: KeyedValueStream.NoHandle())
         }
 

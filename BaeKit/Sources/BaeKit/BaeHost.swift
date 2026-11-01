@@ -1,3 +1,5 @@
+import Foundation
+
 /// Builds the process-lifetime `BridgeHost` the app holds for its whole run:
 /// the object that carries bae's directory, the OAuth applications, and the
 /// runtime that create, restore, join and sign-in run on.
@@ -39,4 +41,24 @@ public enum BaeHost {
             )
         }
     }
+
+    #if DEBUG
+        /// A host over a fresh bae directory under the temporary directory,
+        /// for a preview's attempt, which reads no real library.
+        public static func preview() -> BridgeHost {
+            let home = FileManager.default.temporaryDirectory
+                .appendingPathComponent("bae-preview-\(UUID().uuidString)")
+                .path
+            let appDir: BridgeAppDir
+            do {
+                appDir = try BridgeAppDir(home: home)
+            }
+            catch {
+                preconditionFailure(
+                    "The preview's bae directory could not be created: \(error)"
+                )
+            }
+            return make(diagnostics: BaeDiagnostics.disabled(), appDir: appDir)
+        }
+    #endif
 }

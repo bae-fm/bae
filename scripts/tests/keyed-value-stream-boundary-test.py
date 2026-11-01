@@ -73,8 +73,8 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
                 root,
                 KOTLIN_VIEW,
                 "package fm.bae.app.ui\n\n"
-                "fun fixture(appHandle: AppHandleInterface, activity: Activity) {\n"
-                "    appHandle.feedDownloadTransfers(activity)\n"
+                "fun fixture(appHandle: AppHandleInterface) {\n"
+                "    appHandle.feedDownloadTransfers()\n"
                 "}\n",
             )
             self.assertEqual(
@@ -145,12 +145,12 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
             self.write(
                 root,
                 relative,
-                'var label = $"{stream} KeyedValueStream";\nKeyActivityCallback activity;\n',
+                'var label = $"{stream} KeyedValueStream";\nBridgeFastValue value;\n',
             )
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:2: touches the bridge's KeyActivityCallback, "
+                    f"{relative}:2: touches the bridge's BridgeFastValue, "
                     "which only an attach API may"
                 ],
             )
@@ -192,15 +192,12 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
                 root,
                 f"{BOUNDARY.BRIDGE_ROOT}/handle/fixture_levels.rs",
                 "impl AppHandle {\n"
-                "    pub fn feed_meter_levels(\n"
-                "        &self,\n"
-                "        activity: Box<dyn KeyActivityCallback>,\n"
-                "    ) -> Arc<KeyedValueStream> {\n"
+                "    pub fn feed_meter_levels(&self) -> Arc<KeyedValueStream> {\n"
                 "        todo!()\n"
                 "    }\n"
                 "}\n",
             )
-            self.write(root, SWIFT_VIEW, "_ = appHandle.feedMeterLevels(activity: a)\n")
+            self.write(root, SWIFT_VIEW, "_ = appHandle.feedMeterLevels()\n")
             self.assertEqual(
                 BOUNDARY.check(root),
                 [

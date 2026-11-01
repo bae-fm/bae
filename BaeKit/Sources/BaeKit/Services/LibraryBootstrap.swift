@@ -16,21 +16,15 @@ public final class LibraryBootstrap {
     /// The steps of the open a restore over this device's copy runs when
     /// this device already holds the code's keys; nil for any other attempt.
     public private(set) var openSteps: LatestSource<BridgeOpenProgress>?
+    /// The process's host, which runs each attempt and pulls its steps.
     private let host: BridgeHost
-    /// The process's sink, which a restore's open reports a throw to.
-    private let diagnostics: BridgeDiagnostics
     private let deviceName: String
     private var cancelAttempt: (() -> Void)?
     private var joinControl: BridgeJoinControl?
     private var running = false
 
-    public init(
-        host: BridgeHost,
-        diagnostics: BridgeDiagnostics,
-        deviceName: String
-    ) {
+    public init(host: BridgeHost, deviceName: String) {
         self.host = host
-        self.diagnostics = diagnostics
         self.deviceName = deviceName
     }
 
@@ -73,7 +67,7 @@ public final class LibraryBootstrap {
         code: String,
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
-        let progress = LibraryOpenProgress(diagnostics: diagnostics)
+        let progress = LibraryOpenProgress(host: host)
         openSteps = progress.steps
         defer { openSteps = nil }
         return try await runRestore { setup, cancellation in
@@ -159,7 +153,7 @@ public final class LibraryBootstrap {
         precondition(!running, "one bootstrap attempt at a time")
         running = true
         cancelAttempt = cancel
-        let setup = BridgeLibrarySetup(diagnostics: diagnostics)
+        let setup = BridgeLibrarySetup(host: host)
         let stream = LatestStream<BridgeBootstrapStatus>.bootstrapStatus()
         let feed = stream.feed(from: setup)
         followed = FollowedValue(stream.only)

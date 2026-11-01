@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use super::*;
 use crate::keyed_values::KeyedValueStream;
-use crate::types::{KeyActivityCallback, StreamFailureCallback};
 
 impl AppHandle {
     /// Where a stream's feed runs: as the library's work, until the stream
@@ -22,62 +21,35 @@ impl AppHandle {
 impl AppHandle {
     /// Write how far each release with files being sent has got, and how
     /// fast its files go, into a stream by release id. A failed read empties
-    /// the stream and tells `failure`; the next read fills it again.
-    pub fn feed_release_upload_transfers(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-        failure: Box<dyn StreamFailureCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::release_upload_transfers(
-            activity,
-            failure,
-            self.diagnostics.clone(),
-            self.run_feed(),
-        )
+    /// the stream and is pulled as an error; the next read fills it again.
+    pub fn feed_release_upload_transfers(&self) -> Arc<KeyedValueStream> {
+        crate::screens::release_upload_transfers(self.runtime.clone(), self.run_feed())
     }
 
     /// Write the files being sent together into a stream's one key, `""`,
     /// while any file is being sent; with none, the stream holds nothing. A
-    /// failed read empties the stream and tells `failure`; the next read
-    /// fills it again.
-    pub fn feed_upload_total_transfer(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-        failure: Box<dyn StreamFailureCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::upload_total_transfer(
-            activity,
-            failure,
-            self.diagnostics.clone(),
-            self.run_feed(),
-        )
+    /// failed read empties the stream and is pulled as an error; the next
+    /// read fills it again.
+    pub fn feed_upload_total_transfer(&self) -> Arc<KeyedValueStream> {
+        crate::screens::upload_total_transfer(self.runtime.clone(), self.run_feed())
     }
 
     /// Write the share of each file being sent its object has moved into
     /// a stream by file id.
-    pub fn feed_upload_file_shares(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::upload_file_shares(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_upload_file_shares(&self) -> Arc<KeyedValueStream> {
+        crate::screens::upload_file_shares(self.runtime.clone(), self.run_feed())
     }
 
     /// Write the share of each file being downloaded to keep whole its
     /// object has moved into a stream by file id.
-    pub fn feed_pin_file_shares(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::pin_file_shares(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_pin_file_shares(&self) -> Arc<KeyedValueStream> {
+        crate::screens::pin_file_shares(self.runtime.clone(), self.run_feed())
     }
 
     /// Write each downloading release's bytes and rate into a stream by
     /// release id.
-    pub fn feed_download_transfers(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::download_transfers(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_download_transfers(&self) -> Arc<KeyedValueStream> {
+        crate::screens::download_transfers(self.runtime.clone(), self.run_feed())
     }
 }
 
@@ -85,11 +57,8 @@ impl AppHandle {
 impl AppHandle {
     /// Write where the playing track is into a stream keyed by track id, the
     /// playing track's alone, with the seeks applied so far.
-    pub fn feed_playback_positions(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::playback_positions(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_playback_positions(&self) -> Arc<KeyedValueStream> {
+        crate::screens::playback_positions(self.runtime.clone(), self.run_feed())
     }
 }
 
@@ -98,20 +67,14 @@ impl AppHandle {
 impl AppHandle {
     /// Write where the preview is in its clip into a stream's one key, `""`,
     /// while a preview is loaded.
-    pub fn feed_preview_position(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::preview_position(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_preview_position(&self) -> Arc<KeyedValueStream> {
+        crate::screens::preview_position(self.runtime.clone(), self.run_feed())
     }
 
     /// Write how far through its step each running import is into a stream
     /// by candidate key.
-    pub fn feed_import_percents(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::import_percents(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_import_percents(&self) -> Arc<KeyedValueStream> {
+        crate::screens::import_percents(self.runtime.clone(), self.run_feed())
     }
 }
 
@@ -121,10 +84,7 @@ impl AppHandle {
 #[uniffi::export]
 impl AppHandle {
     /// Write each exporting release's percent into a stream by release id.
-    pub fn feed_export_percents(
-        &self,
-        activity: Box<dyn KeyActivityCallback>,
-    ) -> Arc<KeyedValueStream> {
-        crate::screens::export_percents(activity, self.diagnostics.clone(), self.run_feed())
+    pub fn feed_export_percents(&self) -> Arc<KeyedValueStream> {
+        crate::screens::export_percents(self.runtime.clone(), self.run_feed())
     }
 }

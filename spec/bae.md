@@ -3511,9 +3511,14 @@ release's or track's id as UTF-8, or a candidate's key.
   store closes; one started on a closed library writes nothing and is
   reported as a bug, and one that panics ends with the panic reported while
   the library's other streams go on. A read that fails empties
-  it until the next read fills it whole. Its one callback names the keys that
-  started or stopped holding a value, never a value that moved; a throw from
-  it is reported as a bug, and while a panic unwinds it is not called. The native
+  it until the next read fills it whole. What the app pulls from a stream,
+  through the same helper as every screen subscription, is the keys that
+  started or stopped holding a value since its last pull, a key that came
+  and went once, never a value that moved; and a failed read, once the keys
+  it emptied are pulled. Once cancelled, a pull answers with the keys that
+  held a value, and every pull after it that the stream was cancelled. The
+  pulls of an open's or a setup call's stream run on the host's runtime,
+  which is why the app makes those objects from the host. The native
   view drawing a key reads the key's latest value once per display frame
   while it holds one; nothing the UI framework observes holds a fast value,
   apart from where a restore or join stands, which changes now and then and

@@ -236,15 +236,6 @@ impl BridgeDiagnostics {
         crate::operation_runtime::OperationRuntime::new(runtime, self.inner.clone())
     }
 
-    /// A stream's values, a throw from the host's `activity` callback
-    /// reported to this sink.
-    pub(crate) fn stream_values(
-        &self,
-        activity: Box<dyn crate::types::KeyActivityCallback>,
-    ) -> Arc<crate::keyed_values::StreamValues> {
-        crate::keyed_values::StreamValues::new(activity, self.inner.clone())
-    }
-
     fn emit_app_start_failed(&self, error: &BootstrapError) {
         self.inner.event(TelemetryEvent::AppStartFailed {
             kind: app_start_failure_kind(error),

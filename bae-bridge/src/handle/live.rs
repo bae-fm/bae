@@ -7,9 +7,8 @@ impl AppHandle {
     /// Run `body`, a feed writing a stream, as the library's own work until
     /// `stop` is cancelled or the library closes. `body` receives the
     /// services, and is built on the runtime rather than on the caller. A
-    /// panic in it — the host's activity callback throwing, which uniffi
-    /// raises as a panic, or the bridge's own bug — ends that one feed and is
-    /// reported; the library's other work goes on.
+    /// panic in it, a bug, ends that one feed and is reported; the library's
+    /// other work goes on.
     pub(super) fn deliver_until<Fut>(
         &self,
         stop: bae_core::library::CancellationToken,

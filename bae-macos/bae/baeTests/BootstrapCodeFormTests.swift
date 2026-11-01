@@ -2,18 +2,19 @@ import BaeKit
 import Testing
 
 /// A host whose restore from a code reports the code it was given, then ends
-/// as cancelled; no other call is made by these tests.
+/// as cancelled; no other call is made by these tests. It is the test host's
+/// core object, which the attempt's setup is made on.
 private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     let restoredCodes: AsyncStream<String>
     private let record: AsyncStream<String>.Continuation
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
-        super.init(noHandle: NoHandle())
+        super.init(unsafeFromHandle: TestHost.shared.uniffiCloneHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
-        preconditionFailure("a recording host has no core object")
+        preconditionFailure("a recording host is made by init()")
     }
 
     override func restoreFromCode(
@@ -62,11 +63,7 @@ struct BootstrapCodeFormTests {
             entry: .restore(nil),
             decodeCode: { _ in info },
             makeBootstrap: {
-                LibraryBootstrap(
-                    host: host,
-                    diagnostics: BaeDiagnostics.disabled(),
-                    deviceName: "Test Mac"
-                )
+                LibraryBootstrap(host: host, deviceName: "Test Mac")
             },
             unfinishedJoins: { [] },
             onLibraryReady: { _, _ in

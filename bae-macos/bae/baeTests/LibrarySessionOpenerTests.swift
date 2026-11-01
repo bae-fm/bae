@@ -12,7 +12,6 @@ import Testing
 @Suite("LibrarySessionOpener")
 struct LibrarySessionOpenerTests {
     private typealias TestOpener = LibrarySessionOpener<FakeHandle, AppService>
-    private let diagnostics = BaeDiagnostics.disabled()
 
     @Test("a keychain that refused is not a failure the user has to act on")
     func refusedKeychainIsItsOwnOutcome() async {
@@ -32,7 +31,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -62,7 +61,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -97,11 +96,11 @@ struct LibrarySessionOpenerTests {
         let second = OutcomeWaiter()
         opener.open(
             libraryId: "parked",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { first.record($0) }
         opener.open(
             libraryId: "failing",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { second.record($0) }
 
         // The second open runs to completion while the first is parked.
@@ -143,7 +142,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-3",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -175,7 +174,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-4",
-            progress: LibraryOpenProgress(diagnostics: diagnostics)
+            progress: LibraryOpenProgress(host: TestHost.shared)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 

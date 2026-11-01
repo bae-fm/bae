@@ -175,7 +175,8 @@ class OpenLibrary internal constructor(
         screenSubscriptions += playbackValues(scope)
         screenSubscriptions += queueAdditions(scope)
         screenSubscriptions += playbackTimeline(scope)
-        streamFeeds += playback.trackPositions.feed(appHandle)
+        streamFeeds +=
+            playback.trackPositions.feed(appHandle, scope) { bugs.report("read the playing track's position", it) }
         subscribeToTransfers(scope)
         screenSubscriptions +=
             ScreenSubscription(
@@ -199,7 +200,7 @@ class OpenLibrary internal constructor(
             )
         streamFeeds +=
             stores.transfers.downloads.releaseProgress
-                .feed(appHandle)
+                .feed(appHandle, scope) { bugs.report("read the download transfers", it) }
         screenSubscriptions +=
             ScreenSubscription(
                 appHandle.subscribeUploadsPaused().let { pulled(it::next, it::cancel) },
@@ -209,7 +210,7 @@ class OpenLibrary internal constructor(
             )
         // Nothing on Android draws one file's or release's upload, so only the total crosses.
         streamFeeds +=
-            stores.transfers.outbox.filesBeingSent.feed(appHandle) { error ->
+            stores.transfers.outbox.filesBeingSent.feed(appHandle, scope) { error ->
                 subscriptionFailed("upload transfer", error)
             }
     }

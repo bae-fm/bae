@@ -31,8 +31,8 @@ extension BridgeHost {
 
 /// One device reset as the app follows it: the setup the reset is handed,
 /// and where it stands, read off that setup's stream. Make one for each
-/// reset and stop it once the reset ends. A throw while the stream is read
-/// is reported to `diagnostics`, the process's sink.
+/// reset and stop it once the reset ends. Its stream is pulled on `host`'s
+/// runtime.
 @MainActor
 @Observable
 public final class DeviceResetSteps {
@@ -45,8 +45,8 @@ public final class DeviceResetSteps {
     @ObservationIgnored
     private let feed: LatestFeed
 
-    public init(diagnostics: BridgeDiagnostics) {
-        setup = BridgeLibrarySetup(diagnostics: diagnostics)
+    public init(host: BridgeHost) {
+        setup = BridgeLibrarySetup(host: host)
         let stream = LatestStream<BridgeBootstrapStatus>.bootstrapStatus()
         feed = stream.feed(from: setup)
         followed = FollowedValue(stream.only)

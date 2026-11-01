@@ -400,9 +400,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         syncStatus
     }
 
-    override func feedDownloadTransfers(
-        activity _: any KeyActivityCallback
-    ) -> KeyedValueStream {
+    override func feedDownloadTransfers() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 
@@ -422,9 +420,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         timeline
     }
 
-    override func feedPlaybackPositions(
-        activity _: any KeyActivityCallback
-    ) -> KeyedValueStream {
+    override func feedPlaybackPositions() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 
@@ -432,17 +428,11 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentUploadsPaused()
     }
 
-    override func feedReleaseUploadTransfers(
-        activity _: any KeyActivityCallback,
-        failure _: any StreamFailureCallback
-    ) -> KeyedValueStream {
+    override func feedReleaseUploadTransfers() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 
-    override func feedUploadTotalTransfer(
-        activity _: any KeyActivityCallback,
-        failure _: any StreamFailureCallback
-    ) -> KeyedValueStream {
+    override func feedUploadTotalTransfer() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 
@@ -810,10 +800,13 @@ private final class FakeQueueAdditions: QueueAdditionsSubscription,
     override func cancel() async throws { additions.cancel() }
 }
 
-/// A stream nothing feeds, which holds nothing.
+/// A stream nothing feeds, which holds nothing: a pull waits until the
+/// stream is cancelled, then answers that it was.
 private final class NoopKeyedValueStream: KeyedValueStream,
     @unchecked Sendable
 {
+    private let keys = PullQueue<[Data]>()
+
     init() {
         super.init(noHandle: KeyedValueStream.NoHandle())
     }
@@ -826,5 +819,11 @@ private final class NoopKeyedValueStream: KeyedValueStream,
         nil
     }
 
-    override func cancel() {}
+    override func next() async throws -> [Data] {
+        try await keys.next()
+    }
+
+    override func cancel() {
+        keys.cancel()
+    }
 }

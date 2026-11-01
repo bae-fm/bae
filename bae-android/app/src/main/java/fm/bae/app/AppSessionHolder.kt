@@ -371,7 +371,7 @@ object AppSessionHolder {
         val app = context.applicationContext as BaeApp
         try {
             val handle =
-                LibraryOpenProgress(app.diagnostics).use { progress ->
+                LibraryOpenProgress(app.host, appScope, app.bugs).use { progress ->
                     onScreen(AppScreen.Opening(progress.steps))
                     withContext(Dispatchers.IO) {
                         // The "Restore on launch" preference (default on): off
@@ -503,7 +503,7 @@ object AppSessionHolder {
         }
         val result =
             try {
-                LibrarySetupStatus.of(app.diagnostics).use { setup ->
+                LibrarySetupStatus.of(app.host, appScope, app.bugs).use { setup ->
                     coroutineScope {
                         val following =
                             launch {

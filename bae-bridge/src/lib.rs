@@ -13,6 +13,8 @@ mod bridge_utils;
 mod dev_reset;
 mod handle;
 mod host;
+// Only a phone calls into its host: its audio focus and sign-in presenter.
+#[cfg(any(test, not(desktop)))]
 mod host_calls;
 mod init;
 mod keyed_values;
