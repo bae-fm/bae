@@ -205,13 +205,78 @@ enum SnapshotTestSupport {
             request.recognitionLanguages = languages
         }
         try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return (request.results ?? [])
+        let image = try #require(NSBitmapImageRep(data: png))
+        let observed = (request.results ?? [])
             .map { observation in
                 RecognizedLine(
                     text: observation.topCandidates(1).first?.string ?? "",
                     boundingBox: observation.boundingBox
                 )
             }
+        return joiningSplitLines(
+            observed,
+            imageSize: CGSize(
+                width: image.pixelsWide,
+                height: image.pixelsHigh
+            )
+        )
+    }
+
+    /// Vision can return one drawn line as two observations, split at a word
+    /// space, as it splits a monospaced line. Observations on one baseline
+    /// with less than a line's height between them are words of one drawn
+    /// line, joined left to right; anything further apart, such as a button
+    /// beside a line, stays its own. Lines keep the order Vision read their
+    /// first words in.
+    private static func joiningSplitLines(
+        _ observed: [RecognizedLine],
+        imageSize: CGSize
+    ) -> [RecognizedLine] {
+        var lines: [(first: Int, line: RecognizedLine)] = []
+        let leftToRight = observed.indices.sorted {
+            observed[$0].boundingBox.minX < observed[$1].boundingBox.minX
+        }
+        for index in leftToRight {
+            let next = observed[index]
+            if let at = lines.firstIndex(where: {
+                adjoin($0.line, next, imageSize: imageSize)
+            }) {
+                let (first, line) = lines[at]
+                lines[at] = (
+                    min(first, index),
+                    RecognizedLine(
+                        text: line.text + " " + next.text,
+                        boundingBox: line.boundingBox.union(next.boundingBox)
+                    )
+                )
+            }
+            else {
+                lines.append((index, next))
+            }
+        }
+        return lines.sorted { $0.first < $1.first }.map(\.line)
+    }
+
+    /// Whether `one` and `other` sit on one baseline, a word space apart.
+    private static func adjoin(
+        _ one: RecognizedLine,
+        _ other: RecognizedLine,
+        imageSize: CGSize
+    ) -> Bool {
+        let first = pixels(one.boundingBox, imageSize: imageSize)
+        let second = pixels(other.boundingBox, imageSize: imageSize)
+        let height = max(first.height, second.height)
+        let gap = max(first.minX, second.minX) - min(first.maxX, second.maxX)
+        return abs(first.midY - second.midY) < height / 2 && gap < height
+    }
+
+    private static func pixels(_ box: CGRect, imageSize: CGSize) -> CGRect {
+        CGRect(
+            x: box.minX * imageSize.width,
+            y: box.minY * imageSize.height,
+            width: box.width * imageSize.width,
+            height: box.height * imageSize.height
+        )
     }
 
 }
