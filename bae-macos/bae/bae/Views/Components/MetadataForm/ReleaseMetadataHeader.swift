@@ -690,9 +690,6 @@ private struct ArtistAssignmentsEditor: View {
                 Button("Add", action: addTypedArtist)
                     .disabled(trimmedQuery.isEmpty)
             }
-            if search?.isSearching == true {
-                ProgressView().controlSize(.small)
-            }
             if let error = search?.error {
                 ErrorDetailDisclosure(error: error)
             }

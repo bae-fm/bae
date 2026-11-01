@@ -184,8 +184,8 @@ struct StorageManagerView: View {
                 }
             }
             else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The first page is a local read; nothing shows until it lands.
+                Color.clear
             }
         }
     }

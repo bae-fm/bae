@@ -21,7 +21,6 @@
     <string name="sort_descending">Décroissant</string>
     <string name="library_empty_albums">Aucun album pour l\'instant</string>
     <string name="library_load_failed">Impossible de charger votre bibliothèque.</string>
-    <string name="library_reading">Lecture de votre bibliothèque…</string>
     <string name="library_load_more_albums_failed">Impossible de charger plus d\'albums.</string>
     <string name="library_load_more_artists_failed">Impossible de charger plus d\'artistes.</string>
     <string name="library_load_more_composers_failed">Impossible de charger plus de compositeurs.</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">Local uniquement</string>
     <string name="settings_sync_unconnected">Déconnecté</string>
     <string name="settings_sync_checking">Vérification de la synchronisation…</string>
-    <string name="members_reading">Lecture des membres de cette bibliothèque…</string>
-    <string name="sync_pending_reading">Lecture de ce qui est en attente…</string>
     <string name="settings_sync_unreadable">Impossible de lire l’état de la synchronisation</string>
     <string name="settings_reconnect">Reconnecter</string>
     <string name="settings_pause_between_sides">Pause entre les faces et les disques</string>

@@ -21,7 +21,6 @@
     <string name="sort_descending">Synkende</string>
     <string name="library_empty_albums">Ingen album ennå</string>
     <string name="library_load_failed">Biblioteket ditt kunne ikke lastes inn.</string>
-    <string name="library_reading">Leser biblioteket ditt…</string>
     <string name="library_load_more_albums_failed">Kunne ikke laste inn flere album.</string>
     <string name="library_load_more_artists_failed">Kunne ikke laste inn flere artister.</string>
     <string name="library_load_more_composers_failed">Kunne ikke laste inn flere komponister.</string>
@@ -94,8 +93,6 @@
     <string name="settings_local_only">Bare lokalt</string>
     <string name="settings_sync_unconnected">Frakoblet</string>
     <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
-    <string name="members_reading">Leser hvem som er i dette biblioteket…</string>
-    <string name="sync_pending_reading">Leser hva som venter…</string>
     <string name="settings_sync_unreadable">Kunne ikke lese synkroniseringsstatus</string>
     <string name="settings_reconnect">Koble til på nytt</string>
     <string name="settings_pause_between_sides">Pause mellom sider og plater</string>

@@ -2,7 +2,6 @@ package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,7 +50,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -217,11 +215,8 @@ fun MembersScreen(
             )
         }
         when (val read = model.people) {
-            PeopleRead.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    WaitingIndicator(text = stringResource(R.string.members_reading))
-                }
-            }
+            // Who is in the library is a local read; nothing shows until it lands.
+            PeopleRead.Loading -> {}
 
             is PeopleRead.Failed -> {
                 Column(

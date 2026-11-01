@@ -21,7 +21,6 @@
     <string name="sort_descending">تنازلي</string>
     <string name="library_empty_albums">لا توجد ألبومات بعد</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
-    <string name="library_reading">جارٍ قراءة مكتبتك…</string>
     <string name="library_load_more_albums_failed">تعذّر تحميل المزيد من الألبومات.</string>
     <string name="library_load_more_artists_failed">تعذّر تحميل المزيد من الفنانين.</string>
     <string name="library_load_more_composers_failed">تعذّر تحميل المزيد من المؤلفين.</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">محلي فقط</string>
     <string name="settings_sync_unconnected">غير متصل</string>
     <string name="settings_sync_checking">جارٍ التحقق من المزامنة…</string>
-    <string name="members_reading">جارٍ قراءة أعضاء هذه المكتبة…</string>
-    <string name="sync_pending_reading">جارٍ قراءة ما ينتظر…</string>
     <string name="settings_sync_unreadable">تعذّرت قراءة حالة المزامنة</string>
     <string name="settings_reconnect">إعادة الاتصال</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>

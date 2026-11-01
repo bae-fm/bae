@@ -21,7 +21,6 @@
     <string name="sort_descending">Φθίνουσα</string>
     <string name="library_empty_albums">Κανένα άλμπουμ ακόμη</string>
     <string name="library_load_failed">Δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης σας.</string>
-    <string name="library_reading">Ανάγνωση της βιβλιοθήκης σας…</string>
     <string name="library_load_more_albums_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
     <string name="library_load_more_artists_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καλλιτεχνών.</string>
     <string name="library_load_more_composers_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων συνθετών.</string>
@@ -94,8 +93,6 @@
     <string name="settings_local_only">Μόνο τοπικά</string>
     <string name="settings_sync_unconnected">Αποσυνδεδεμένο</string>
     <string name="settings_sync_checking">Έλεγχος συγχρονισμού…</string>
-    <string name="members_reading">Ανάγνωση των μελών αυτής της βιβλιοθήκης…</string>
-    <string name="sync_pending_reading">Ανάγνωση του τι περιμένει…</string>
     <string name="settings_sync_unreadable">Δεν ήταν δυνατή η ανάγνωση της κατάστασης συγχρονισμού</string>
     <string name="settings_reconnect">Επανασύνδεση</string>
     <string name="settings_pause_between_sides">Παύση ανάμεσα σε πλευρές και δίσκους</string>

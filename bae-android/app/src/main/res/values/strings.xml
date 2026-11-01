@@ -36,7 +36,6 @@
     <string name="sort_descending">Descending</string>
     <string name="library_empty_albums">No albums yet</string>
     <string name="library_load_failed">Couldn\'t load your library.</string>
-    <string name="library_reading">Reading your library…</string>
     <string name="library_load_more_albums_failed">Couldn\'t load more albums.</string>
     <string name="library_load_more_artists_failed">Couldn\'t load more artists.</string>
     <string name="library_load_more_composers_failed">Couldn\'t load more composers.</string>
@@ -125,8 +124,6 @@
     <string name="settings_local_only">Local only</string>
     <string name="settings_sync_unconnected">Disconnected</string>
     <string name="settings_sync_checking">Checking sync…</string>
-    <string name="members_reading">Reading who\'s in this library…</string>
-    <string name="sync_pending_reading">Reading what\'s waiting…</string>
     <string name="settings_sync_unreadable">Couldn\'t read sync status</string>
     <string name="settings_reconnect">Reconnect</string>
     <string name="settings_pause_between_sides">Pause between sides and discs</string>

@@ -233,8 +233,6 @@ public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 public final class ArtistSearchResults {
     /// What the text typed last finds; nil until a text's list has answered.
     public private(set) var list: ArtistSearchList?
-    /// A text's list has been asked for and has not answered yet.
-    public private(set) var isSearching = false
     /// The read failed; the list shown, if any, is what it read before.
     public private(set) var error: DisplayError?
 
@@ -268,7 +266,6 @@ public final class ArtistSearchResults {
     }
 
     private func read(_ text: String, generation current: Int) async {
-        isSearching = true
         source.setText(text)
         let next = ArtistSearchList(
             pageSource: source,
@@ -284,7 +281,6 @@ public final class ArtistSearchResults {
         list?.cancel()
         list = next
         error = next.initialLoadError
-        isSearching = false
     }
 
     /// End the search: the picker is closing.

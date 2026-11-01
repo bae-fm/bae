@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,9 +86,8 @@ fun SearchResultsScreen(
                 )
             }
 
-            !state.delivered && current == null -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
+            // Library search is a local read; nothing shows until it lands.
+            !state.delivered && current == null -> {}
 
             current != null &&
                 current.hasNoResults() -> {

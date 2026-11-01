@@ -21,7 +21,6 @@
     <string name="sort_descending">Csökkenő</string>
     <string name="library_empty_albums">Még nincs album</string>
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
-    <string name="library_reading">A könyvtárad beolvasása…</string>
     <string name="library_load_more_albums_failed">Nem sikerült több albumot betölteni.</string>
     <string name="library_load_more_artists_failed">Nem sikerült több előadót betölteni.</string>
     <string name="library_load_more_composers_failed">Nem sikerült több zeneszerzőt betölteni.</string>
@@ -94,8 +93,6 @@
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unconnected">Leválasztva</string>
     <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
-    <string name="members_reading">A könyvtár tagjainak beolvasása…</string>
-    <string name="sync_pending_reading">A várakozó tételek beolvasása…</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_reconnect">Újrakapcsolódás</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>

@@ -24,10 +24,6 @@
                     onOpenSettings: onOpenSettings
                 )
             }
-            else if store.error == nil {
-                ProgressView("Reading what sync is doing…")
-                    .controlSize(.small)
-            }
             Section {
                 if let error = store.error {
                     ErrorDetailDisclosure(error: error)

@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,7 +50,6 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
@@ -193,17 +191,8 @@ internal fun SyncPendingScreen(
             runner.signInSteps?.let { StorageSetupLine(it) }
             runner.error?.let { ErrorDetailDisclosure(it) }
         }
-        when (val records = pending) {
-            null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    WaitingIndicator(text = stringResource(R.string.sync_pending_reading))
-                }
-            }
-
-            else -> {
-                PendingList(records = records, onAction = runner::run)
-            }
-        }
+        // What is waiting is a local read; nothing shows until it lands.
+        pending?.let { records -> PendingList(records = records, onAction = runner::run) }
     }
 }
 

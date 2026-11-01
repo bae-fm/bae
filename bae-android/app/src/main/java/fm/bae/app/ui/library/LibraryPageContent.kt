@@ -30,14 +30,13 @@ import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.syncLineText
 import kotlinx.coroutines.launch
 
 /**
- * A library browse tab's body: pull-to-refresh over load failure, the first
- * read, empty message or rows, each inside a scrollable so the pull reaches
+ * A library browse tab's body: pull-to-refresh over load failure, nothing
+ * while the first read runs, empty message or rows, each inside a scrollable so the pull reaches
  * [PullToRefreshBox]. The pull retries sync, and its spinner stays, over the
  * sync status line that says what sync is doing, until the pass the retry ran
  * ends.
@@ -91,8 +90,9 @@ internal fun LibraryPageContent(
                 }
             }
 
+            // The first window is a local read; nothing shows until it lands.
             page.loading && page.rows.isEmpty() -> {
-                ListPlaceholder { WaitingIndicator(text = stringResource(R.string.library_reading)) }
+                ListPlaceholder {}
             }
 
             page.totalCount == 0 -> {

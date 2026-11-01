@@ -20,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -223,9 +222,8 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
             )
         }
 
-        AlbumDetailPlaceholder.Loading -> {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        }
+        // The album is a local read; nothing shows until it lands.
+        AlbumDetailPlaceholder.Loading -> {}
     }
 }
 

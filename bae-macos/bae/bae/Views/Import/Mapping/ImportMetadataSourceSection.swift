@@ -74,7 +74,9 @@ struct ImportMetadataSourceSection: View {
             )
         }
         else {
-            ProgressView()
+            // The candidate's draft is a local read; nothing shows until it
+            // lands.
+            Color.clear
                 .frame(maxWidth: .infinity, minHeight: 180)
         }
     }

@@ -21,7 +21,6 @@
     <string name="sort_descending">Aflopend</string>
     <string name="library_empty_albums">Nog geen albums</string>
     <string name="library_load_failed">Kan je bibliotheek niet laden.</string>
-    <string name="library_reading">Je bibliotheek wordt gelezen…</string>
     <string name="library_load_more_albums_failed">Kan geen extra albums laden.</string>
     <string name="library_load_more_artists_failed">Kan geen extra artiesten laden.</string>
     <string name="library_load_more_composers_failed">Kan geen extra componisten laden.</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_sync_unconnected">Verbinding verbroken</string>
     <string name="settings_sync_checking">Synchronisatie controleren…</string>
-    <string name="members_reading">Wie in deze bibliotheek zit wordt gelezen…</string>
-    <string name="sync_pending_reading">Wat wacht wordt gelezen…</string>
     <string name="settings_sync_unreadable">Synchronisatiestatus kan niet worden gelezen</string>
     <string name="settings_reconnect">Opnieuw verbinden</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>

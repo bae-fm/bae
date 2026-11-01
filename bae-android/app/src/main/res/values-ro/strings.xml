@@ -21,7 +21,6 @@
     <string name="sort_descending">Descrescător</string>
     <string name="library_empty_albums">Încă niciun album</string>
     <string name="library_load_failed">Biblioteca ta nu a putut fi încărcată.</string>
-    <string name="library_reading">Se citește biblioteca ta…</string>
     <string name="library_load_more_albums_failed">Nu s-au putut încărca mai multe albume.</string>
     <string name="library_load_more_artists_failed">Nu s-au putut încărca mai mulți artiști.</string>
     <string name="library_load_more_composers_failed">Nu s-au putut încărca mai mulți compozitori.</string>
@@ -95,8 +94,6 @@
     <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_unconnected">Deconectat</string>
     <string name="settings_sync_checking">Se verifică sincronizarea…</string>
-    <string name="members_reading">Se citește cine face parte din această bibliotecă…</string>
-    <string name="sync_pending_reading">Se citește ce așteaptă…</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
     <string name="settings_reconnect">Reconectează</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>

@@ -21,7 +21,6 @@
     <string name="sort_descending">Silazno</string>
     <string name="library_empty_albums">Još nema albuma</string>
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
-    <string name="library_reading">Čitanje vaše biblioteke…</string>
     <string name="library_load_more_albums_failed">Nije moguće učitati više albuma.</string>
     <string name="library_load_more_artists_failed">Nije moguće učitati više izvođača.</string>
     <string name="library_load_more_composers_failed">Nije moguće učitati više skladatelja.</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">Samo lokalno</string>
     <string name="settings_sync_unconnected">Veza prekinuta</string>
     <string name="settings_sync_checking">Provjera sinkronizacije…</string>
-    <string name="members_reading">Čitanje tko je u ovoj biblioteci…</string>
-    <string name="sync_pending_reading">Čitanje onoga što čeka…</string>
     <string name="settings_sync_unreadable">Nije moguće pročitati stanje sinkronizacije</string>
     <string name="settings_reconnect">Ponovno poveži</string>
     <string name="settings_pause_between_sides">Pauza između strana i diskova</string>

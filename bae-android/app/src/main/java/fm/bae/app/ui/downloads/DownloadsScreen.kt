@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -93,7 +92,10 @@ internal fun DownloadsScreen(
     }
 }
 
-/** The queue's rows, or why there are none: the counts failing, the first window failing or loading, an empty queue. */
+/**
+ * The queue's rows, or why there are none: the counts failing, the first
+ * window failing, an empty queue; nothing while the first window loads.
+ */
 @Composable
 private fun DownloadsBody(
     session: OpenLibrary,
@@ -122,9 +124,8 @@ private fun DownloadsBody(
                 }
             }
 
-            page.loading && page.rows.isEmpty() -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
+            // The first window is a local read; nothing shows until it lands.
+            page.loading && page.rows.isEmpty() -> {}
 
             page.totalCount == 0 -> {
                 Text(

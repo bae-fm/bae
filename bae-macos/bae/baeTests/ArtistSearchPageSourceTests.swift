@@ -155,7 +155,6 @@ struct ArtistSearchResultsTests {
 
         #expect(search.list?.totalCount == 2)
         #expect(search.list?.row(at: 1)?.id == "artist-2")
-        #expect(!search.isSearching)
         search.close()
     }
 }

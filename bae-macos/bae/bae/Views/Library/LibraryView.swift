@@ -255,7 +255,8 @@ extension LibraryView {
                 }
             }
             else {
-                ProgressView()
+                // The first page is a local read; nothing shows until it lands.
+                Color.clear
             }
         }
     }
@@ -290,7 +291,8 @@ extension LibraryView {
                 }
             }
             else {
-                ProgressView()
+                // The first page is a local read; nothing shows until it lands.
+                Color.clear
             }
         }
     }
@@ -325,7 +327,8 @@ extension LibraryView {
                 }
             }
             else {
-                ProgressView()
+                // The first page is a local read; nothing shows until it lands.
+                Color.clear
             }
         }
     }

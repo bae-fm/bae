@@ -21,7 +21,6 @@
     <string name="sort_descending">Zostupne</string>
     <string name="library_empty_albums">Zatiaľ žiadne albumy</string>
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
-    <string name="library_reading">Načítava sa vaša knižnica…</string>
     <string name="library_load_more_albums_failed">Ďalšie albumy sa nepodarilo načítať.</string>
     <string name="library_load_more_artists_failed">Ďalších interpretov sa nepodarilo načítať.</string>
     <string name="library_load_more_composers_failed">Ďalších skladateľov sa nepodarilo načítať.</string>
@@ -96,8 +95,6 @@
     <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_unconnected">Odpojené</string>
     <string name="settings_sync_checking">Kontrola synchronizácie…</string>
-    <string name="members_reading">Načítava sa, kto je v tejto knižnici…</string>
-    <string name="sync_pending_reading">Načítava sa, čo čaká…</string>
     <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
     <string name="settings_reconnect">Znova pripojiť</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>

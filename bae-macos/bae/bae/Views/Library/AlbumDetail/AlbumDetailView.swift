@@ -213,8 +213,9 @@ struct AlbumDetailView: View {
         reader.show(albumId)
     }
 
-    /// The placeholder shown before the album detail subscription delivers its
-    /// first value. A failed subscription can be replaced from Retry.
+    /// What shows before the album detail subscription delivers its first
+    /// value: nothing, since a local read lands at once, or why it failed,
+    /// with Retry.
     @ViewBuilder
     private var detailPlaceholder: some View {
         if let error = albumRead.error {
@@ -223,8 +224,7 @@ struct AlbumDetailView: View {
             }
         }
         else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Color.clear
         }
     }
 

@@ -39,6 +39,6 @@ internal fun WaitingIndicator(
 @Composable
 private fun WaitingIndicatorPreview() {
     BaeTheme {
-        WaitingIndicator(text = "Reading who's in this library…")
+        WaitingIndicator(text = "Making your recovery code…")
     }
 }

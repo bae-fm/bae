@@ -2593,11 +2593,13 @@ offers nothing.
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
 has been read the line says it is checking rather than claim the library is
-synced. The other reads a screen waits on say the same in their own words
-until their first value arrives, never a bare spinner: what is waiting, what
-sync is doing, who is in the library, and on Android a library page. While
-Android removes a release's download, its control says so in core's words for
-that transfer.
+synced. A screen's first read of the library's own database lands at once,
+so nothing stands in for it, neither a spinner nor a line, until its rows
+arrive, and a failed read shows why in its place: the library's lists and
+detail pages, search, downloads, the Storage Manager and its inspector, an
+import folder's draft and imported release, what is waiting, what sync is
+doing, and who is in the library. While Android removes a release's download,
+its control says so in core's words for that transfer.
 
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or

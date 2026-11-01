@@ -21,7 +21,6 @@
     <string name="sort_descending">Azalan</string>
     <string name="library_empty_albums">Henüz albüm yok</string>
     <string name="library_load_failed">Kitaplığınız yüklenemedi.</string>
-    <string name="library_reading">Kitaplığınız okunuyor…</string>
     <string name="library_load_more_albums_failed">Daha fazla albüm yüklenemedi.</string>
     <string name="library_load_more_artists_failed">Daha fazla sanatçı yüklenemedi.</string>
     <string name="library_load_more_composers_failed">Daha fazla besteci yüklenemedi.</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_unconnected">Bağlantı kesildi</string>
     <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
-    <string name="members_reading">Bu kitaplıktaki kişiler okunuyor…</string>
-    <string name="sync_pending_reading">Bekleyenler okunuyor…</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>

@@ -21,7 +21,6 @@
     <string name="sort_descending">Laskeva</string>
     <string name="library_empty_albums">Ei vielä albumeita</string>
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
-    <string name="library_reading">Luetaan kirjastoasi…</string>
     <string name="library_load_more_albums_failed">Lisää albumeita ei voitu ladata.</string>
     <string name="library_load_more_artists_failed">Lisää esittäjiä ei voitu ladata.</string>
     <string name="library_load_more_composers_failed">Lisää säveltäjiä ei voitu ladata.</string>
@@ -94,8 +93,6 @@
     <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_unconnected">Yhteys katkaistu</string>
     <string name="settings_sync_checking">Tarkistetaan synkronointia…</string>
-    <string name="members_reading">Luetaan, keitä tässä kirjastossa on…</string>
-    <string name="sync_pending_reading">Luetaan, mitä odottaa…</string>
     <string name="settings_sync_unreadable">Synkronoinnin tilaa ei voitu lukea</string>
     <string name="settings_reconnect">Yhdistä uudelleen</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>

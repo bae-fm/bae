@@ -83,10 +83,6 @@ struct MembersSection: View {
                     )
                 }
             }
-            else if store.error == nil {
-                ProgressView("Reading who's in this library…")
-                    .frame(maxWidth: .infinity)
-            }
             if let error = store.error {
                 ErrorDetailDisclosure(error: error)
             }

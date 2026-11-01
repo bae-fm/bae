@@ -21,7 +21,6 @@
     <string name="sort_descending">降序</string>
     <string name="library_empty_albums">暂无专辑</string>
     <string name="library_load_failed">无法加载你的库。</string>
-    <string name="library_reading">正在读取你的资料库…</string>
     <string name="library_load_more_albums_failed">无法加载更多专辑。</string>
     <string name="library_load_more_artists_failed">无法加载更多艺人。</string>
     <string name="library_load_more_composers_failed">无法加载更多作曲家。</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">仅本地</string>
     <string name="settings_sync_unconnected">已断开连接</string>
     <string name="settings_sync_checking">正在检查同步…</string>
-    <string name="members_reading">正在读取此资料库的成员…</string>
-    <string name="sync_pending_reading">正在读取待处理的内容…</string>
     <string name="settings_sync_unreadable">无法读取同步状态</string>
     <string name="settings_reconnect">重新连接</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>

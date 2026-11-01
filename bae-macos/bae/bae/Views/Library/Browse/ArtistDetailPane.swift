@@ -40,9 +40,8 @@ struct ArtistDetailPane: View {
                         Text("Artists")
                     }
                 }
-                else {
-                    ProgressView()
-                }
+                // A selected artist's read is local: nothing shows until it
+                // lands.
             }
             .padding(ThemeSpace.section)
             .frame(maxWidth: .infinity, alignment: .leading)

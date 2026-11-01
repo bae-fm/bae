@@ -21,7 +21,6 @@
     <string name="sort_descending">降順</string>
     <string name="library_empty_albums">アルバムがまだありません</string>
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
-    <string name="library_reading">ライブラリを読み込んでいます…</string>
     <string name="library_load_more_albums_failed">これ以上アルバムを読み込めませんでした。</string>
     <string name="library_load_more_artists_failed">これ以上アーティストを読み込めませんでした。</string>
     <string name="library_load_more_composers_failed">これ以上作曲者を読み込めませんでした。</string>
@@ -90,8 +89,6 @@
     <string name="settings_local_only">ローカルのみ</string>
     <string name="settings_sync_unconnected">切断されました</string>
     <string name="settings_sync_checking">同期を確認中…</string>
-    <string name="members_reading">このライブラリのメンバーを読み込んでいます…</string>
-    <string name="sync_pending_reading">保留中の項目を読み込んでいます…</string>
     <string name="settings_sync_unreadable">同期の状態を読み取れませんでした</string>
     <string name="settings_reconnect">再接続</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>

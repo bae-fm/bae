@@ -37,12 +37,9 @@ struct SyncStatusLine: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
+            // What is waiting is a local read; nothing shows until it lands.
             if let pending = status.pending {
                 PendingRecordsView(records: pending, perform: perform)
-            }
-            else {
-                ProgressView("Reading what's waiting…")
-                    .controlSize(.small)
             }
         } label: {
             HStack {

@@ -60,7 +60,7 @@ extension ImportView {
                 // a folder that is selected, and it was flashing on every
                 // click. Never the previous candidate either — the pane reads
                 // the selected key, which holds nothing until this one lands.
-                PendingReadPane(selection: selection)
+                Color.clear
                     .frame(
                         minWidth: 620,
                         maxWidth: .infinity,

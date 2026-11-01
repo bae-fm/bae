@@ -62,7 +62,9 @@ struct ImportedReleasePane: View {
                 )
             }
             else {
-                ProgressView("Loading")
+                // Opening the release's edit session reads the library;
+                // nothing shows until it lands.
+                Color.clear
                     .frame(
                         maxWidth: .infinity,
                         minHeight: Self.placeholderHeight

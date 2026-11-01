@@ -53,7 +53,8 @@ struct StorageContentsInspector: View {
                 }
             }
             else {
-                PendingReadPane(selection: releaseId)
+                // The release's read is local; nothing shows until it lands.
+                Color.clear
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
