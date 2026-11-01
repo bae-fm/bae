@@ -105,7 +105,19 @@ sealed interface AppScreen {
     /** A call in flight, whose screen shows how far it has come. */
     sealed interface InProgress : AppScreen
 
-    data object Loading : InProgress
+    /** What the screen waits on, which it names: [work]. */
+    data class Loading(
+        val work: LoadingWork,
+    ) : InProgress
+
+    /** What a loading screen waits on before any step of it runs. */
+    enum class LoadingWork {
+        /** Reading which libraries this device holds. */
+        FINDING_LIBRARIES,
+
+        /** A library opening. */
+        OPENING,
+    }
 
     /** A library opening by id, whose [steps] the screen draws once the open runs one. */
     data class Opening(
@@ -324,7 +336,7 @@ object AppSessionHolder {
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ) {
-        onScreen(AppScreen.Loading)
+        onScreen(AppScreen.Loading(AppScreen.LoadingWork.FINDING_LIBRARIES))
         val host = (context.applicationContext as BaeApp).host
         var notice: DisplayError? = null
         val remaining =
@@ -452,7 +464,7 @@ object AppSessionHolder {
                 BridgeBootstrapResult.SavedCodeRemoved,
                 -> error("a bootstrap that opened no library has nothing to open: $result")
             }
-        onScreen(AppScreen.Loading)
+        onScreen(AppScreen.Loading(AppScreen.LoadingWork.OPENING))
         val app = context.applicationContext as BaeApp
         val session =
             try {

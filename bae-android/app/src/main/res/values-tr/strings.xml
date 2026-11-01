@@ -225,6 +225,9 @@
     <string name="onboarding_adding_device">Bu cihaz ekleniyor</string>
     <string name="onboarding_joining_library">%1$s kitaplığına katılınıyor</string>
     <string name="onboarding_status_connecting">Bağlanıyor…</string>
+    <string name="loading_finding_libraries">Kitaplıklarınız aranıyor…</string>
+    <string name="loading_opening_library">Kitaplık açılıyor…</string>
+    <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
     <string name="onboarding_invite_declined">Davet reddedildi, iptal edildi veya süresi doldu.</string>
     <string name="onboarding_checking">Denetleniyor…</string>
     <string name="onboarding_next_check">Sonraki denetim %1$s sonra</string>

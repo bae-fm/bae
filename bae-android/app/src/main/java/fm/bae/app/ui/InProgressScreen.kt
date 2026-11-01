@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +19,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
+import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -43,20 +46,45 @@ import uniffi.bae_bridge.bridgeSetupStepKey
 @Composable
 internal fun InProgressScreen(screen: AppScreen.InProgress) {
     when (screen) {
-        AppScreen.Loading -> LoadingScreen(steps = null)
-        is AppScreen.Opening -> LoadingScreen(steps = screen.steps)
+        is AppScreen.Loading -> LoadingScreen(steps = null, title = screen.work.title())
+        is AppScreen.Opening -> LoadingScreen(steps = screen.steps, title = R.string.loading_opening_library)
         is AppScreen.Closing -> ClosingScreen(steps = screen.steps)
         is AppScreen.FinishingRemovals -> SetupStepScreen(steps = screen.steps)
         is AppScreen.Resetting -> ResettingScreen(status = screen.status)
     }
 }
 
-/** A library opening, or a call before any step of one: [steps]'s step over its bar once the open runs one. */
+/** The words that name what a loading screen waits on. */
+@StringRes
+private fun AppScreen.LoadingWork.title(): Int =
+    when (this) {
+        AppScreen.LoadingWork.FINDING_LIBRARIES -> R.string.loading_finding_libraries
+        AppScreen.LoadingWork.OPENING -> R.string.loading_opening_library
+    }
+
+/**
+ * What a loading screen waits on, named by [title] under a spinner, until a
+ * library's open runs a step: then [steps]'s step over its bar, in its place.
+ */
 @Composable
-private fun LoadingScreen(steps: LatestSource<BridgeOpenProgress>?) {
+private fun LoadingScreen(
+    steps: LatestSource<BridgeOpenProgress>?,
+    @StringRes title: Int,
+) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         OpenProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
-            CircularProgressIndicator()
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+            ) {
+                CircularProgressIndicator()
+                Text(
+                    text = stringResource(title),
+                    style = ThemeText.body.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -129,7 +157,7 @@ private fun SetupStepScreen(steps: LatestSource<BridgeSetupProgress>) {
 @Composable
 private fun LoadingScreenPreview() {
     BaeTheme {
-        LoadingScreen(steps = null)
+        LoadingScreen(steps = null, title = R.string.loading_finding_libraries)
     }
 }
 
@@ -139,6 +167,7 @@ private fun OpeningScreenPreview() {
     BaeTheme {
         LoadingScreen(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 2uL, 5uL)).only,
+            title = R.string.loading_opening_library,
         )
     }
 }

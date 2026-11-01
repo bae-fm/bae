@@ -3184,7 +3184,12 @@ state, and wherever such an open runs they show the step's name over a bar of
 how much of it is done in place of the spinner: the screen a library opens
 or switches on, the restore over this device's copy, and, on the Mac, the
 row of a library that isn't open while removing it counts what it would
-lose.
+lose. Between steps, and through an open that runs none, the screen names
+what it waits on in the app's own words under its spinner, never a bare
+spinner: finding this device's libraries at launch, opening the library, and
+on the Mac setting one up, closing it, removing it, or resetting this device;
+a reset before it first reports where it stands says it is resetting this
+device.
 
 **How far a setup call has come.** Each call that sets a library up before
 one is open reports through a stream of its own, of the same kind as an

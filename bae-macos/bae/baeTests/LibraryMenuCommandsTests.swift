@@ -82,7 +82,7 @@ struct LibraryMenuCommandsTests {
         #expect(modes.map(\.state) == [.off, .on, .off])
 
         // The title bar's search field shows only with the library.
-        delegate.screen = .loading
+        delegate.screen = .loading(.opening)
         #expect(try !valid("focusSearch:"))
         delegate.screen = .library
         #expect(try valid("focusSearch:"))

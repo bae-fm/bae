@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return applicationServices
     }
     var uiStore = UiStore()
-    var screen: AppScreen = .loading
+    var screen: AppScreen = .loading(.findingLibraries)
     /// The library open in flight by id, whose steps the loading screen
     /// shows; nil while nothing opens one.
     var openProgress: LibraryOpenProgress?
@@ -276,7 +276,7 @@ extension AppDelegate {
 
     func openLocalLibrary(id libraryId: String) {
         loadError = nil
-        screen = .loading
+        screen = .loading(.opening)
         let progress = LibraryOpenProgress(
             host: requiredApplicationServices.host
         )
@@ -297,7 +297,7 @@ extension AppDelegate {
     /// library is up.
     func openOpenedLibrary(_ library: OpenedLibrary, warning: BridgeError?) {
         loadError = nil
-        screen = .loading
+        screen = .loading(.opening)
         // The store is already open, so no open runs a step.
         openProgress = nil
         let libraryId = library.libraryId()
@@ -370,17 +370,20 @@ extension AppDelegate {
     /// restore it over this device's copy after another of their devices
     /// replaced their keys. Going back opens the library again as it was.
     func presentDeviceRestore(libraryId: String) {
-        let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
-        if open != nil {
-            prepareForLibraryShutdown()
-        }
         loadError = nil
-        screen = .loading
+        guard
+            let open = appService.flatMap({
+                $0.libraryId == libraryId ? $0 : nil
+            })
+        else {
+            screen = .restoreRequired(libraryId: libraryId)
+            return
+        }
+        prepareForLibraryShutdown()
+        screen = .loading(.closing)
         resetSlot.replace {
             do {
-                if let open {
-                    try await self.close(open)
-                }
+                try await self.close(open)
                 self.screen = .restoreRequired(libraryId: libraryId)
             }
             catch {
@@ -421,12 +424,12 @@ extension AppDelegate {
             prepareForLibraryShutdown()
         }
         loadError = nil
-        screen = .loading
+        screen = .loading(open == nil ? .resetting : .closing)
         resetSlot.replace {
             do {
                 if let open {
                     try await self.close(open)
-                    self.screen = .loading
+                    self.screen = .loading(.resetting)
                 }
                 let steps = DeviceResetSteps(host: host)
                 self.resetSteps = steps
@@ -488,7 +491,7 @@ extension AppDelegate {
     func closeLibrary() {
         guard let service = appService else { return }
         prepareForLibraryShutdown()
-        screen = .loading
+        screen = .loading(.closing)
         let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
         closingSteps = steps
         beginLibraryShutdown(service, showing: steps)
@@ -650,7 +653,7 @@ extension AppDelegate {
             return
         }
         prepareForLibraryShutdown()
-        screen = .loading
+        screen = .loading(.removing)
         let removals = requiredApplicationServices.libraryRemovals
         let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
         closingSteps = steps

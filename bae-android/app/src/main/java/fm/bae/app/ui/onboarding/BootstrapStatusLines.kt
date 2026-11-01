@@ -40,7 +40,8 @@ internal fun BridgeBootstrapStatus?.hasStepBar(): Boolean =
 /**
  * What a running restore, join or reset waits on now, a line each, or the
  * step it is on over a bar of how much of it is done; none while it waits for
- * approval.
+ * approval, or before it says where it stands, where the caller names the
+ * call itself.
  */
 @Composable
 internal fun StatusLines(
@@ -51,7 +52,11 @@ internal fun StatusLines(
     val context = LocalContext.current
     val lines =
         when (status) {
-            null, BridgeBootstrapStatus.Connecting -> {
+            null -> {
+                emptyList()
+            }
+
+            BridgeBootstrapStatus.Connecting -> {
                 listOf(stringResource(R.string.onboarding_status_connecting))
             }
 
@@ -116,7 +121,11 @@ private fun StepProgressLine(
     }
 }
 
-/** A device reset loading its library: the step it is on over its bar, or a spinner before its first step. */
+/**
+ * A device reset loading its library: the step it is on over its bar, or a
+ * spinner over what it waits on, which before its first report is the reset
+ * itself.
+ */
 @Composable
 internal fun ResettingScreen(status: BridgeBootstrapStatus?) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
@@ -125,7 +134,16 @@ internal fun ResettingScreen(status: BridgeBootstrapStatus?) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(ThemeSpace.related))
             }
-            StatusLines(status)
+            if (status == null) {
+                Text(
+                    text = stringResource(R.string.loading_resetting_device),
+                    style = ThemeText.body.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                StatusLines(status)
+            }
         }
     }
 }

@@ -17,7 +17,7 @@
             let services = requiredApplicationServices
             let steps = LibrarySetupSteps(host: services.host)
             setupSteps = steps
-            screen = .loading
+            screen = .loading(.settingUp)
             Task {
                 defer { setupSteps = nil }
                 do {

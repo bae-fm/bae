@@ -68,7 +68,7 @@ fun ContentView(
     val context = LocalContext.current
     var screen by remember(startupFailure) {
         mutableStateOf<AppScreen>(
-            startupFailure?.let(AppScreen::Failed) ?: AppScreen.Loading,
+            startupFailure?.let(AppScreen::Failed) ?: AppScreen.Loading(AppScreen.LoadingWork.FINDING_LIBRARIES),
         )
     }
 

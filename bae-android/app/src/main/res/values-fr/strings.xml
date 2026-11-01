@@ -226,6 +226,9 @@
     <string name="onboarding_adding_device">Ajout de cet appareil</string>
     <string name="onboarding_joining_library">Vous rejoignez %1$s</string>
     <string name="onboarding_status_connecting">Connexion…</string>
+    <string name="loading_finding_libraries">Recherche de vos bibliothèques…</string>
+    <string name="loading_opening_library">Ouverture de la bibliothèque…</string>
+    <string name="loading_resetting_device">Réinitialisation de cet appareil…</string>
     <string name="onboarding_invite_declined">L’invitation a été refusée, annulée ou a expiré.</string>
     <string name="onboarding_checking">Vérification…</string>
     <string name="onboarding_next_check">Prochaine vérification dans %1$s</string>
