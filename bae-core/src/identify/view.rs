@@ -8,8 +8,7 @@
 //! the run last read it, and stored with its verdict.
 
 use super::agreements::{judged_results, Agreements, CandidateText};
-use super::combine::LookupAnswers;
-use super::combine::{combine_results, Findings};
+use super::combine::{Findings, LookupAnswers};
 use super::row_facts::FolderFacts;
 use super::state::{
     BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress,
@@ -295,122 +294,12 @@ pub enum IdentifyStateView {
 
 impl From<IdentifyState> for IdentifyStateView {
     fn from(state: IdentifyState) -> Self {
-        match state {
-            IdentifyState::Idle => IdentifyStateView::Idle,
-
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            } => {
-                let findings = live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
-                let run = run_view(&discid, &barcode, &catalog, &isrc, &search, &context);
-                let folded = fold(
-                    findings,
-                    Some(&run),
-                    &context.text,
-                    context.audio.track_count,
-                );
-                IdentifyStateView::Triangulating {
-                    run,
-                    groups: folded.groups,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
-                }
-            }
-
-            IdentifyState::Found {
-                findings,
-                track_count,
-                ledger,
-                context,
-            } => {
-                let summary = super::VerdictSummary::of_found(&findings, track_count);
-                let folded = fold(findings, ledger.as_ref(), &context.text, track_count);
-                IdentifyStateView::Found {
-                    run: ledger,
-                    groups: folded.groups,
-                    track_count,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
-                    folder_check: summary.folder_check(),
-                    picks_unattended: summary.picks_unattended(),
-                    offers_shared_album: folded.offers_shared_album,
-                }
-            }
-
-            IdentifyState::NotFoundAnywhere { ledger, context: _ } => {
-                IdentifyStateView::NotFoundAnywhere { run: ledger }
-            }
-
-            IdentifyState::ManualOnly {
-                track_count,
-                ledger,
-                context: _,
-            } => IdentifyStateView::ManualOnly {
-                track_count,
-                run: ledger,
-            },
-
-            IdentifyState::Error {
-                failure,
-                context: _,
-            } => IdentifyStateView::Error { failure },
-
-            IdentifyState::Failed {
-                failures,
-                findings,
-                track_count,
-                ledger,
-                context,
-            } => {
-                let folded = fold(findings, ledger.as_ref(), &context.text, track_count);
-                let failure_lines = failures
-                    .into_iter()
-                    .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
-                    .collect();
-                IdentifyStateView::Failed {
-                    run: ledger,
-                    failure_lines,
-                    groups: folded.groups,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
-                    offers_shared_album: folded.offers_shared_album,
-                }
-            }
+        let text = state.candidate_text();
+        match RunOutcome::of(&state) {
+            Some(outcome) => IdentifyStateView::of_outcome(outcome, &text),
+            None => IdentifyStateView::Idle,
         }
     }
-}
-
-/// What the answered lookups combine to so far, the same way the settle
-/// combines them.
-fn live_findings(
-    discid: &DiscidProgress,
-    barcode: &BarcodeProgress,
-    catalog: &CatalogProgress,
-    isrc: &IsrcProgress,
-    search: &SearchProgress,
-    context: &SignalsContext,
-) -> Findings {
-    combine_results(
-        LookupAnswers {
-            disc_id: discid.answers(),
-            barcode: barcode.results(),
-            catalog: catalog.results(),
-            isrc: isrc.results(),
-            search: search.results(),
-            pressing: context
-                .pressings
-                .iter()
-                .flat_map(super::state::PressingLookup::results)
-                .collect(),
-        },
-        &context.text,
-        context.folder_audio(),
-    )
 }
 
 /// What the folder's text agrees with about one row: its badges.
@@ -562,9 +451,11 @@ fn fold(
 }
 
 mod ledger;
+mod outcome;
 use ledger::{
     barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
 };
+pub use outcome::{PublishedRun, RunOutcome};
 
 /// The run as it stands, laid out as its ledger.
 pub(super) fn run_view(

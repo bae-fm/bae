@@ -1,10 +1,10 @@
 //! Each key's [`CandidateRuntimeSnapshot`]: where the standings table says it
-//! stands — the step its import is at among it — with what the runtime holds
-//! beside it — the state the run the table names last published, its search —
-//! and a library release's re-identify run, which only the runtime holds.
+//! stands — the step its import is at among it — with the state the run the
+//! table names last published, a library release's re-identify run, and the
+//! search the runtime holds beside them.
 
 use super::change_log::ChangeLog;
-use super::{CandidateRuntime, CandidateRuntimeState, IdentificationStage, StoredStanding};
+use super::{CandidateRuntime, CandidateRuntimeState, IdentificationStage, StoredRuntime};
 use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
 };
@@ -12,19 +12,19 @@ use crate::import::CandidateKey;
 use crate::library::LibraryError;
 use std::collections::HashMap;
 
-/// `key`'s snapshot from its stored standing and what the runtime holds for
+/// `key`'s snapshot from its stored runtime and what the runtime holds for
 /// it; `None` when neither has anything.
 fn compose(
     key: &CandidateKey,
-    stored: Option<&StoredStanding>,
+    stored: Option<&StoredRuntime>,
     held: Option<&CandidateRuntimeState>,
 ) -> Option<CandidateRuntimeSnapshot> {
-    let identification = match stored.and_then(|stored| stored.identification.as_ref()) {
-        Some(identification) => stored_identification(key, &identification.stage, held),
-        None => release_run(held),
+    let identification = match stored.and_then(|stored| stored.standing.identification.as_ref()) {
+        Some(identification) => stored_identification(key, &identification.stage, stored),
+        None => stored.and_then(release_run),
     };
     let import = stored
-        .and_then(|stored| stored.import.as_ref())
+        .and_then(|stored| stored.standing.import.as_ref())
         .map(|import| ImportInFlight { step: import.step });
     let search = held
         .and_then(|held| held.search.as_ref())
@@ -44,15 +44,13 @@ fn compose(
 fn stored_identification(
     key: &CandidateKey,
     stage: &IdentificationStage,
-    held: Option<&CandidateRuntimeState>,
+    stored: Option<&StoredRuntime>,
 ) -> Option<IdentificationRuntime> {
     let published = |run| {
-        let state = held
-            .and_then(|held| held.runs.get(&run))
-            .map(|published| published.state.clone());
+        let state = stored.and_then(|stored| stored.runs.get(&run)).cloned();
         if state.is_none() {
-            // A run records what it published before the table names it,
-            // and forgets it only once the table no longer does.
+            // A run's first state is stored in the write that starts it, and
+            // goes in the write that moves the standing off it.
             tracing::error!(
                 "candidate runtime: {key}'s run {run:?} is stored with nothing it published"
             );
@@ -83,23 +81,20 @@ fn stored_identification(
 }
 
 /// A library release's re-identify run: its latest run in flight, else its
-/// latest answer. A folder candidate's runs are drawn only through the table.
-fn release_run(held: Option<&CandidateRuntimeState>) -> Option<IdentificationRuntime> {
-    let latest_first: Vec<_> = held?
-        .runs
-        .values()
-        .rev()
-        .filter(|published| !published.of_candidate)
-        .collect();
+/// latest answer. A key with no identification standing has rows only of a
+/// release's runs: a folder candidate's run has its row only while the
+/// standing names it.
+fn release_run(stored: &StoredRuntime) -> Option<IdentificationRuntime> {
+    let latest_first: Vec<_> = stored.runs.values().rev().collect();
     if let Some(running) = latest_first
         .iter()
-        .find(|published| !published.state.is_terminal())
+        .find(|published| !published.outcome.is_answered())
     {
-        return Some(IdentificationRuntime::Running(running.state.clone()));
+        return Some(IdentificationRuntime::Running((*running).clone()));
     }
     latest_first.first().map(|answered| {
         IdentificationRuntime::Saving(SavingAnswer {
-            state: answered.state.clone(),
+            state: (*answered).clone(),
             import_asked: false,
         })
     })
@@ -109,7 +104,7 @@ impl CandidateRuntime {
     /// Every key's snapshot from `stored`, with what the runtime holds now.
     fn compose_all(
         &self,
-        stored: &HashMap<CandidateKey, StoredStanding>,
+        stored: &HashMap<CandidateKey, StoredRuntime>,
     ) -> HashMap<CandidateKey, CandidateRuntimeSnapshot> {
         let inner = self.held();
         let keys: std::collections::HashSet<&CandidateKey> =
@@ -128,7 +123,7 @@ impl CandidateRuntime {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<CandidateRuntimeSnapshot>, LibraryError> {
-        let stored = self.database.load_candidate_standing(key).await?;
+        let stored = self.database.load_candidate_runtime(key).await?;
         let inner = self.held();
         Ok(compose(key, Some(&stored), inner.runtime.get(key)))
     }
@@ -138,20 +133,13 @@ impl CandidateRuntime {
     pub(crate) async fn snapshots(
         &self,
     ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, LibraryError> {
-        let stored = self.database.load_candidate_standings().await?;
+        let stored = self.database.load_candidate_runtimes().await?;
         Ok(self.compose_all(&stored))
     }
 
     /// Each running import's percent, by key, as its import last reported.
     pub(crate) fn percents(&self) -> HashMap<CandidateKey, u32> {
         self.percents.borrow().clone()
-    }
-
-    /// What is in flight for `key` as the live read last read the table, with
-    /// what the runtime holds now, for a test.
-    #[cfg(test)]
-    pub(crate) fn latest_snapshot(&self, key: &CandidateKey) -> Option<CandidateRuntimeSnapshot> {
-        self.view.borrow().snapshots.get(key).cloned()
     }
 
     /// Every key's snapshot as the live read reads it, now and as it
@@ -184,7 +172,7 @@ impl CandidateRuntime {
     /// ([`Self::recompose`]). Runs for the library's lifetime, until the
     /// query ends with its store.
     pub(crate) async fn keep_view_current(self) {
-        let mut query = self.database.subscribe_candidate_standings();
+        let mut query = self.database.subscribe_candidate_runtimes();
         while let Some(read) = query.next().await {
             match read {
                 Ok(read) => {
@@ -212,8 +200,8 @@ pub(crate) struct RuntimeView {
     pub(crate) snapshots: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
     /// Which keys' snapshots changed, so a reader reads only those.
     pub(crate) changes: ChangeLog,
-    /// Each key's standing as the table was last read.
-    stored: HashMap<CandidateKey, StoredStanding>,
+    /// Each key's standing and runs as the tables were last read.
+    stored: HashMap<CandidateKey, StoredRuntime>,
 }
 
 impl RuntimeView {
@@ -221,8 +209,8 @@ impl RuntimeView {
     /// again by `compose`. Whether anything a reader draws changed.
     fn take_read(
         &mut self,
-        standings: HashMap<CandidateKey, StoredStanding>,
-        compose: impl Fn(&CandidateKey, Option<&StoredStanding>) -> Option<CandidateRuntimeSnapshot>,
+        standings: HashMap<CandidateKey, StoredRuntime>,
+        compose: impl Fn(&CandidateKey, Option<&StoredRuntime>) -> Option<CandidateRuntimeSnapshot>,
     ) -> bool {
         let mut changed = false;
         let moved: Vec<CandidateKey> = self
@@ -266,22 +254,25 @@ impl RuntimeView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::candidate_runtime::StoredImport;
+    use crate::import::candidate_runtime::{StoredImport, StoredStanding};
     use std::cell::RefCell;
 
-    fn importing(import_id: &str) -> StoredStanding {
-        StoredStanding {
-            identification: None,
-            import: Some(StoredImport {
-                import_id: import_id.to_string(),
-                step: crate::import::ImportStep::Preparing(
-                    crate::import::PrepareStep::ValidatingSourceFiles,
-                ),
-            }),
+    fn importing(import_id: &str) -> StoredRuntime {
+        StoredRuntime {
+            standing: StoredStanding {
+                identification: None,
+                import: Some(StoredImport {
+                    import_id: import_id.to_string(),
+                    step: crate::import::ImportStep::Preparing(
+                        crate::import::PrepareStep::ValidatingSourceFiles,
+                    ),
+                }),
+            },
+            runs: Default::default(),
         }
     }
 
-    fn read(standings: Vec<(&str, StoredStanding)>) -> HashMap<CandidateKey, StoredStanding> {
+    fn read(standings: Vec<(&str, StoredRuntime)>) -> HashMap<CandidateKey, StoredRuntime> {
         standings
             .into_iter()
             .map(|(key, standing)| (crate::import::CandidateKey::test(key), standing))
@@ -293,7 +284,7 @@ mod tests {
     #[test]
     fn a_read_composes_only_the_keys_it_moved() {
         let composed = RefCell::new(Vec::new());
-        let compose_one = |key: &CandidateKey, stored: Option<&StoredStanding>| {
+        let compose_one = |key: &CandidateKey, stored: Option<&StoredRuntime>| {
             composed.borrow_mut().push(key.clone());
             compose(key, stored, None)
         };

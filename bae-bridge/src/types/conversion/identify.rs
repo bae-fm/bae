@@ -421,9 +421,18 @@ impl BridgeAgreements {
 /// copy per variant with the rate of the state's audio on its run.
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
-        use bae_core::identify::IdentifyStateView;
         let rate = s.audio().and_then(|audio| audio.rate_ruling_out_cd);
-        match IdentifyStateView::from(s) {
+        Self::from_view(bae_core::identify::IdentifyStateView::from(s), rate)
+    }
+
+    /// What a run published, as its rows hold it.
+    pub(crate) fn from_published(published: bae_core::identify::PublishedRun) -> Self {
+        Self::from_view(published.view(), published.rate_ruling_out_cd)
+    }
+
+    fn from_view(view: bae_core::identify::IdentifyStateView, rate: Option<u32>) -> Self {
+        use bae_core::identify::IdentifyStateView;
+        match view {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
             IdentifyStateView::Error { failure } => BridgeIdentifyState::Error {
                 failure: crate::types::BridgeInternalFailure::from_core(failure),

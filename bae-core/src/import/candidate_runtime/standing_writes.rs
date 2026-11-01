@@ -121,23 +121,23 @@ impl CandidateRuntime {
         Ok(())
     }
 
-    /// `run` started from the wait for `files`; `false` when the key is not
+    /// `run` started from the wait for `files`, having published `state`
+    /// first, which is stored in the same write; `false` when the key is not
     /// waiting for it any more, and the run's reports are no standing's.
     pub(crate) async fn run_started(
         &self,
         key: &CandidateKey,
         files: &CandidateFiles,
         run: IdentifyRunId,
+        state: &crate::identify::IdentifyState,
     ) -> Result<bool, DbError> {
+        let outcome = super::published_outcome(key, run, state)?;
         let moved = self
-            .change_identification(
-                key,
-                IdentificationChange::RunStarted {
-                    files: files.clone(),
-                    run,
-                },
-            )
+            .database
+            .start_candidate_run(key, files, run, &outcome)
             .await?;
+        #[cfg(any(test, feature = "test-utils"))]
+        self.tell_every_change(std::iter::once(key)).await;
         Ok(moved
             .after
             .is_some_and(|after| after.stage == IdentificationStage::Running { run }))
@@ -157,8 +157,8 @@ impl CandidateRuntime {
         Ok(moved.after != moved.before)
     }
 
-    /// `run` ended without an answer. What it published goes once the table
-    /// no longer names it.
+    /// `run` ended without an answer; what it published goes in the same
+    /// write.
     pub(crate) async fn run_ended(
         &self,
         key: &CandidateKey,
@@ -166,18 +166,18 @@ impl CandidateRuntime {
     ) -> Result<(), DbError> {
         self.change_identification(key, IdentificationChange::RunEnded { run })
             .await?;
-        self.forget_run(key, run);
         Ok(())
     }
 
     /// Identification of this key is over and nothing will write what it
     /// found: whatever run or answer its standing holds ends, and what every
-    /// run of it published goes. A library release's re-identify run, which
-    /// holds no standing, ends the same way when its sheet closes.
+    /// run of it published goes, in one write. A library release's
+    /// re-identify run, which holds no standing, ends the same way when its
+    /// sheet closes.
     pub(crate) async fn cancel_identification(&self, key: &CandidateKey) -> Result<(), DbError> {
-        self.change_identification(key, IdentificationChange::Cancelled)
-            .await?;
-        self.forget_runs(key);
+        self.database.cancel_candidate_identification(key).await?;
+        #[cfg(any(test, feature = "test-utils"))]
+        self.tell_every_change(std::iter::once(key)).await;
         Ok(())
     }
 
@@ -192,32 +192,7 @@ impl CandidateRuntime {
         let moved = self
             .change_identification(key, IdentificationChange::AnswerEnded { run })
             .await?;
-        self.forget_run(key, run);
         Ok(moved.ended_with_import_asked())
-    }
-
-    /// A verdict's save ended `run`'s answer inside it, which `moved` says:
-    /// what the run published goes. Returns whether a person had asked for
-    /// the candidate to be imported once the answer stored its pick.
-    pub(crate) async fn answer_ended_by_verdict(
-        &self,
-        key: &CandidateKey,
-        run: IdentifyRunId,
-        moved: IdentificationMove,
-    ) -> bool {
-        #[cfg(any(test, feature = "test-utils"))]
-        self.tell_every_change(std::iter::once(key)).await;
-        self.forget_run(key, run);
-        moved.ended_with_import_asked()
-    }
-
-    /// A person's decision about `key`, or an import taking it, ended its
-    /// identification inside the decision's own write: its work stops being
-    /// drawn.
-    pub(crate) async fn identification_ended(&self, key: &CandidateKey) {
-        #[cfg(any(test, feature = "test-utils"))]
-        self.tell_every_change(std::iter::once(key)).await;
-        self.forget_runs(key);
     }
 
     /// How far the batch of identifications in flight has got: ended of
@@ -249,7 +224,6 @@ impl CandidateRuntime {
             },
         )
         .await?;
-        self.forget_run(key, run);
         Ok(())
     }
 
@@ -291,12 +265,8 @@ impl CandidateRuntime {
         match claim {
             ImportClaim::Refused => Err(crate::import::ImportError::CandidateImportInProgress),
             ImportClaim::Claimed { .. } => {
-                if ending_identification {
-                    self.identification_ended(key).await;
-                } else {
-                    #[cfg(any(test, feature = "test-utils"))]
-                    self.tell_every_change(std::iter::once(key)).await;
-                }
+                #[cfg(any(test, feature = "test-utils"))]
+                self.tell_every_change(std::iter::once(key)).await;
                 Ok(())
             }
         }

@@ -3,7 +3,7 @@
 //! read back.
 
 use super::super::album_link_rows::AlbumLinkRow;
-use super::verdict_rows::unreadable;
+use super::verdict_rows::{unreadable, Owner};
 use super::*;
 use crate::import::album_links::AlbumLinks;
 use crate::import::search::{MetadataResult, SourceTracks};
@@ -35,7 +35,7 @@ pub(super) enum Written<'a> {
 /// it. The rows under the match that stood there are already gone.
 pub(super) fn store_match(
     sql: &SqlContext<'_, '_>,
-    content_hash: &str,
+    owner: Owner<'_>,
     position: usize,
     result: &MetadataResult,
     listing: Written<'_>,
@@ -79,16 +79,19 @@ pub(super) fn store_match(
     let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
+    let (content_hash, run, column) = (owner.content_hash(), owner.run(), owner.column());
     sql.execute(
+        &format!(
         "INSERT INTO import_candidate_match \
-             (content_hash, position, pressing, source, release_id, title, artist, year, \
+             (content_hash, identify_run, position, pressing, source, release_id, title, artist, year, \
               country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT (content_hash, position) DO UPDATE SET \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
+                 ?) \
+         ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
              artist = excluded.artist, year = excluded.year, \
@@ -103,9 +106,11 @@ pub(super) fn store_match(
              listing = excluded.listing, \
              document_failure = excluded.document_failure, \
              document_failure_status = excluded.document_failure_status, \
-             named_note = excluded.named_note",
+             named_note = excluded.named_note"
+        ),
         params![
             content_hash,
+            run,
             position,
             pressing,
             result.source.as_str(),
@@ -137,10 +142,11 @@ pub(super) fn store_match(
         for copy in &cover.image.downscaled {
             sql.execute(
                 "INSERT INTO import_candidate_match_cover_copy \
-                     (content_hash, position, cover_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?, ?)",
+                     (content_hash, identify_run, position, cover_url, max_edge, url) \
+                 VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     content_hash,
+                    run,
                     position,
                     cover.image.url,
                     copy.max_edge,
@@ -152,11 +158,12 @@ pub(super) fn store_match(
     for (ordinal, label) in result.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_label \
-                 (content_hash, position, ordinal, name, catalog_number, \
+                 (content_hash, identify_run, position, ordinal, name, catalog_number, \
                   musicbrainz_label_id, discogs_label_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
+                run,
                 position,
                 ordinal_column(ordinal)?,
                 label.name(),
@@ -168,18 +175,26 @@ pub(super) fn store_match(
     }
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_match_barcode (content_hash, position, ordinal, barcode) \
-             VALUES (?, ?, ?, ?)",
-            params![content_hash, position, ordinal_column(ordinal)?, barcode],
+            "INSERT INTO import_candidate_match_barcode \
+                 (content_hash, identify_run, position, ordinal, barcode) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                run,
+                position,
+                ordinal_column(ordinal)?,
+                barcode
+            ],
         )?;
     }
     for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_medium \
-                 (content_hash, position, media_kind, ordinal, medium, quantity) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, position, media_kind, ordinal, medium, quantity) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
+                run,
                 position,
                 media_kind,
                 ordinal_column(ordinal)?,
@@ -190,10 +205,12 @@ pub(super) fn store_match(
     }
     for (ordinal, link) in result.links.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_match_link (content_hash, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO import_candidate_match_link \
+                 (content_hash, identify_run, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
+                run,
                 position,
                 ordinal_column(ordinal)?,
                 link.catalog.as_str(),
@@ -204,10 +221,11 @@ pub(super) fn store_match(
     for (ordinal, album) in result.album_links.read().iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
+                run,
                 position,
                 ordinal_column(ordinal)?,
                 album.catalog.as_str(),

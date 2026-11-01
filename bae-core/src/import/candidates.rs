@@ -15,7 +15,7 @@
 
 use super::folder_scanner::{FolderCandidate, InvalidCandidate};
 use super::types::ImportStep;
-use crate::identify::IdentifyState;
+use crate::identify::PublishedRun;
 
 /// Where a stored candidate stands in the queue, read once from the three
 /// places that each hold one fact about it: the skip table, the releases this
@@ -123,9 +123,9 @@ impl SaveFailure {
 /// value.
 ///
 /// Where a folder candidate's identification and import stand is read from
-/// the standings table, the only place it is held; the state a run published
-/// and how far an import has got come from the candidate runtime beside it,
-/// and so does the whole of a library release's re-identify run.
+/// the standings table, the only place it is held; the state a run published,
+/// a library release's re-identify run included, from the runs table beside
+/// it; the search from the candidate runtime.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
     pub identification: Option<IdentificationRuntime>,
@@ -170,7 +170,7 @@ pub enum IdentificationRuntime {
     /// The latest state the run in flight published — its answer, once it
     /// reaches one, until the standings table says the answer is being
     /// written.
-    Running(IdentifyState),
+    Running(PublishedRun),
     /// The answer a run reached, while it is being written.
     Saving(SavingAnswer),
     /// Why the last write of an answer did not land. Cleared by the next run
@@ -181,8 +181,8 @@ pub enum IdentificationRuntime {
 /// A run's answer while it is being written, and what was asked of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SavingAnswer {
-    /// Always terminal.
-    pub state: IdentifyState,
+    /// Always answered.
+    pub state: PublishedRun,
     /// A person asked, while the release this answer picks unattended was
     /// being read, for the candidate to be imported once the answer stores
     /// it. Only an answer that picks unattended carries the ask, and it goes
@@ -196,8 +196,8 @@ pub enum IdentificationInFlight {
     /// On the identification queue, its run not started.
     Queued,
     /// The latest state a run published: in flight, or the answer being
-    /// written. Never `Idle`.
-    Run(IdentifyState),
+    /// written.
+    Run(PublishedRun),
 }
 
 /// The files an identification is of: a candidate's content hash and its

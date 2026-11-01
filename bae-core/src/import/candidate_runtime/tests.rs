@@ -140,6 +140,14 @@ pub(crate) fn manual_only() -> crate::identify::IdentifyState {
     }
 }
 
+/// `state` as its run's rows read it back, with no signals stored beside it.
+pub(crate) fn published(state: crate::identify::IdentifyState) -> crate::identify::PublishedRun {
+    crate::identify::PublishedRun::of(
+        crate::identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
+        None,
+    )
+}
+
 /// Store `key` as a candidate the scan holds under `/watch` with `revision`
 /// of its file decisions, as the scan would, and return the files it is
 /// identified as.
@@ -241,8 +249,8 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
     .unwrap();
 }
 
-/// Report `state` as `run` of `key` does: what it published recorded, then
-/// where it leaves the run written — the way the identify driver reports.
+/// Report `state` as `run` of `key` does: the run started with it stored,
+/// then its answer written — the way the identify driver reports.
 async fn report(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
@@ -250,15 +258,12 @@ async fn report(
     run: crate::identify::IdentifyRunId,
     state: crate::identify::IdentifyState,
 ) {
-    runtime.record_run_state(key, run, true, &state);
+    assert!(runtime.run_started(key, files, run, &state).await.unwrap());
     if state.is_terminal() {
-        runtime.run_started(key, files, run).await.unwrap();
         assert!(runtime
             .run_answered(key, run, state.picks_unattended())
             .await
             .unwrap());
-    } else {
-        assert!(runtime.run_started(key, files, run).await.unwrap());
     }
 }
 
@@ -392,7 +397,12 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
     assert!(matches!(
         recorded.identification,
         Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: crate::identify::IdentifyState::ManualOnly { .. },
+            state: crate::identify::PublishedRun {
+                outcome: crate::identify::RunOutcome::Answered(
+                    crate::identify::TerminalVerdict::ManualOnly { .. }
+                ),
+                ..
+            },
             ..
         }))
     ));
@@ -583,11 +593,17 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
             .unwrap()
             .and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Running(
-            crate::identify::IdentifyState::Triangulating { .. }
+            crate::identify::PublishedRun {
+                outcome: crate::identify::RunOutcome::Running { .. },
+                ..
+            }
         ))
     ));
 
-    runtime.record_run_state(key, run(1), true, &manual_only());
+    assert!(runtime
+        .publish_candidate_run(key, run(1), &manual_only(), None)
+        .await
+        .unwrap());
     assert!(runtime.run_answered(key, run(1), false).await.unwrap());
     assert_eq!(
         identification(&runtime, key).await,
@@ -600,7 +616,12 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
             .unwrap()
             .and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: crate::identify::IdentifyState::ManualOnly { .. },
+            state: crate::identify::PublishedRun {
+                outcome: crate::identify::RunOutcome::Answered(
+                    crate::identify::TerminalVerdict::ManualOnly { .. }
+                ),
+                ..
+            },
             import_asked: false,
         }))
     ));
@@ -620,7 +641,10 @@ async fn a_run_s_end_ends_only_that_run() {
     report(&runtime, key, &files, run(2), triangulating()).await;
 
     assert!(
-        !runtime.run_started(key, &files, run(1)).await.unwrap(),
+        !runtime
+            .run_started(key, &files, run(1), &triangulating())
+            .await
+            .unwrap(),
         "a run that lost its wait holds no standing"
     );
     runtime.run_ended(key, run(1)).await.unwrap();
@@ -767,6 +791,7 @@ include!("tests/counting.rs");
 include!("tests/departures.rs");
 include!("tests/failing_writes.rs");
 include!("tests/in_flight.rs");
+include!("tests/published_runs.rs");
 include!("tests/reading_the_pick.rs");
 include!("tests/searches.rs");
 include!("tests/watches.rs");

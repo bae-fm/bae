@@ -120,16 +120,15 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
         Some(IdentificationRuntime::Queued(Admission::Requested))
     );
 
-    // What the run publishes, held before the table names the run, draws
-    // nothing on its own.
-    runtime.record_run_state(key, run(1), true, &triangulating());
-    assert_eq!(
-        runtime
-            .latest_snapshot(key)
-            .and_then(|snapshot| snapshot.identification_in_flight()),
-        Some(crate::import::IdentificationInFlight::Queued)
-    );
-    assert!(runtime.run_started(key, &files, run(1)).await.unwrap());
+    // What the run publishes before the table names it is stored nowhere.
+    assert!(!runtime
+        .publish_candidate_run(key, run(1), &triangulating(), None)
+        .await
+        .unwrap());
+    assert!(runtime
+        .run_started(key, &files, run(1), &triangulating())
+        .await
+        .unwrap());
     let running = loop {
         let changes = watch.next().await.expect("the runtime is there");
         if let Some(runtime) = changes.into_iter().find_map(|change| match change {
@@ -146,7 +145,7 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
     };
     assert_eq!(
         running.identification,
-        Some(IdentificationRuntime::Running(triangulating()))
+        Some(IdentificationRuntime::Running(published(triangulating())))
     );
     live.abort();
 }

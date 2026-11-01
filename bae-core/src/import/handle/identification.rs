@@ -91,13 +91,16 @@ impl ImportServiceHandle {
         Ok(self.runtime.cancel_identification(candidate_key).await?)
     }
 
-    /// A decision about this candidate ended its identification inside the
-    /// decision's own write: the run and the extraction feeding it stop, and
-    /// what they published goes.
+    /// A decision about this candidate ended its identification, and what
+    /// its run published, inside the decision's own write: the run and the
+    /// extraction feeding it stop.
     pub(crate) async fn identification_ended(&self, candidate_key: &crate::import::CandidateKey) {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
-        self.runtime.identification_ended(candidate_key).await;
+        #[cfg(any(test, feature = "test-utils"))]
+        self.runtime
+            .tell_every_change(std::iter::once(candidate_key))
+            .await;
     }
 
     /// Stop only the extraction behind `key`, for a run that reached its

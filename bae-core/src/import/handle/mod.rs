@@ -649,8 +649,11 @@ impl ImportServiceHandle {
             )
             .await
             .unwrap();
-        self.runtime.record_run_state(key, run, true, answer);
-        assert!(self.runtime.run_started(key, &files, run).await.unwrap());
+        assert!(self
+            .runtime
+            .run_started(key, &files, run, answer)
+            .await
+            .unwrap());
         assert!(self
             .runtime
             .run_answered(key, run, answer.picks_unattended())

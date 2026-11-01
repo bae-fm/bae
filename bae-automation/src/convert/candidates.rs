@@ -22,20 +22,21 @@ pub(crate) async fn automation_candidate_from_folder(
 ) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
     let live = runtime.get(&candidate.key());
-    let identify = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
-        Some(bae_core::import::IdentificationInFlight::Run(state)) => state,
-        Some(bae_core::import::IdentificationInFlight::Queued) | None => {
-            folder.resumed_identify_state.clone()
+    let (toolbar, view) = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
+        Some(bae_core::import::IdentificationInFlight::Run(published)) => {
+            (published.toolbar(), published.view())
         }
+        Some(bae_core::import::IdentificationInFlight::Queued) | None => (
+            folder.resumed_identify_state.toolbar(),
+            bae_core::identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
+        ),
     };
-    let toolbar = identify
-        .toolbar()
+    let toolbar = toolbar
         .into_iter()
         .map(AutomationToolbarSignal::from_core)
         .collect();
     // Whether each release the state names is in the library is read now,
     // live: the state itself carries no snapshot of it.
-    let view = bae_core::identify::IdentifyStateView::from(identify);
     let library_statuses = services
         .check_releases_in_library(&library_checks(&view))
         .await

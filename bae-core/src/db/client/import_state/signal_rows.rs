@@ -1,16 +1,17 @@
 //! A candidate's settled signals, as one header row plus its list values and
-//! text lines. How bae broke reading a signal is one column, its error chain.
-//! A still-scanning signal reaching here is a defect, and the write refuses
-//! it.
+//! text lines; or the signals a run in flight last read, under the run. How
+//! bae broke reading a signal is one column, its error chain. A still-scanning
+//! signal reaching a candidate's rows is a defect, and the write refuses it.
 
-use super::verdict_rows::unreadable;
+use super::verdict_rows::{unreadable, Owner};
 use super::*;
 use crate::signals::{
     AudioOrigin, AudioSource, BarcodeSignal, CdProof, ComputedDiscId, DiscIdSignal, DownloadProof,
     InternalFailure, Signals, SourcedValue, StoreMarker, TextLine, TextSignal,
 };
 
-const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, download_proof, \
+const SIGNALS_COLUMNS: &str =
+    "content_hash, identify_run, audio_source, cd_rip_proof, download_proof, \
      audio_source_file, not_cd_rate, \
      disc_id_state, \
      disc_id_failure, barcode_state, barcode_failure, text_state, text_failure";
@@ -19,9 +20,9 @@ const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, downloa
 /// stored as its own key.
 const DELIVERY_SET: &str = "delivery_set";
 
-const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_path";
+const SIGNAL_VALUE_COLUMNS: &str = "content_hash, identify_run, list, position, value, origin_path";
 
-const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin";
+const TEXT_LINE_COLUMNS: &str = "content_hash, identify_run, position, text, origin";
 
 /// One list's values under the header joined as `signals`, as a JSON array
 /// in their order, each value as `value` gives it.
@@ -29,7 +30,8 @@ fn signal_list_sql(list: &str, value: &str) -> String {
     format!(
         "(SELECT json_group_array({value} ORDER BY listed.position) \
           FROM import_candidate_signal_value AS listed \
-          WHERE listed.content_hash = signals.content_hash AND listed.list = '{list}')"
+          WHERE listed.content_hash IS signals.content_hash \
+            AND listed.identify_run IS signals.identify_run AND listed.list = '{list}')"
     )
 }
 
@@ -40,7 +42,8 @@ fn signal_list_sql(list: &str, value: &str) -> String {
 pub(super) fn signals_read_columns() -> String {
     let sourced = "json_object('value', listed.value, 'origin_path', listed.origin_path)";
     format!(
-        "signals.content_hash AS signals_row, signals.audio_source AS signals_audio_source, \
+        "COALESCE(signals.content_hash, 'run ' || signals.identify_run) AS signals_row, \
+         signals.audio_source AS signals_audio_source, \
          signals.cd_rip_proof AS signals_cd_rip_proof, \
          signals.download_proof AS signals_download_proof, \
          signals.audio_source_file AS signals_audio_source_file, \
@@ -57,7 +60,8 @@ pub(super) fn signals_read_columns() -> String {
          (SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
                                   ORDER BY line.position) \
           FROM import_candidate_text_line AS line \
-          WHERE line.content_hash = signals.content_hash) AS signals_text_pool",
+          WHERE line.content_hash IS signals.content_hash \
+            AND line.identify_run IS signals.identify_run) AS signals_text_pool",
         discs = signal_list_sql("disc_id", sourced),
         barcodes = signal_list_sql("barcode", sourced),
         catalogs = signal_list_sql("catalog", "listed.value"),
@@ -76,13 +80,20 @@ pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// The settled signals as one header row and its list values, over whatever
-/// signals stood under this hash: the header in place, its values anew.
+/// The signals as one header row and its list values, over whatever signals
+/// `owner` held: the header in place, its values anew. Only a run in flight
+/// stores a pass still scanning.
 pub(super) fn store_signals(
     sql: &SqlContext<'_, '_>,
-    content_hash: &str,
+    owner: Owner<'_>,
     signals: &Signals,
 ) -> Result<(), DbError> {
+    let scanning_refused = || {
+        DbError::Message(format!(
+            "signals of {owner} still scanning at verdict write"
+        ))
+    };
+    let running = matches!(owner, Owner::Run(_));
     let (disc_id_state, discs, disc_id_failure) = match &signals.disc_id {
         DiscIdSignal::Computed { discs } => ("computed", discs.as_slice(), None),
         DiscIdSignal::Absent => ("absent", [].as_slice(), None),
@@ -109,28 +120,22 @@ pub(super) fn store_signals(
         BarcodeSignal::Settled { .. } => ("settled", None),
         BarcodeSignal::Absent => ("absent", None),
         BarcodeSignal::Failed { failure, .. } => ("failed", Some(failure)),
-        BarcodeSignal::Scanning { .. } => {
-            return Err(DbError::Message(
-                "signals still scanning at verdict write".to_string(),
-            ))
-        }
+        BarcodeSignal::Scanning { .. } if running => ("scanning", None),
+        BarcodeSignal::Scanning { .. } => return Err(scanning_refused()),
     };
     let (text_state, text_failure) = match &signals.text {
         TextSignal::Settled { .. } => ("settled", None),
         TextSignal::Failed { failure, .. } => ("failed", Some(failure)),
-        TextSignal::Scanning { .. } => {
-            return Err(DbError::Message(
-                "signals still scanning at verdict write".to_string(),
-            ))
-        }
+        TextSignal::Scanning { .. } if running => ("scanning", None),
+        TextSignal::Scanning { .. } => return Err(scanning_refused()),
     };
     let detail = |failure: Option<&InternalFailure>| failure.map(|failure| failure.detail.clone());
 
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (content_hash) DO UPDATE SET \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             ON CONFLICT ({column}) DO UPDATE SET \
                  audio_source = excluded.audio_source, cd_rip_proof = excluded.cd_rip_proof, \
                  download_proof = excluded.download_proof, \
                  audio_source_file = excluded.audio_source_file, \
@@ -138,10 +143,12 @@ pub(super) fn store_signals(
                  disc_id_failure = excluded.disc_id_failure, \
                  barcode_state = excluded.barcode_state, \
                  barcode_failure = excluded.barcode_failure, text_state = excluded.text_state, \
-                 text_failure = excluded.text_failure"
+                 text_failure = excluded.text_failure",
+            column = owner.column(),
         ),
         params![
-            content_hash,
+            owner.content_hash(),
+            owner.run(),
             audio_source,
             cd_rip_proof,
             download_proof,
@@ -161,8 +168,8 @@ pub(super) fn store_signals(
         "import_candidate_text_line",
     ] {
         sql.execute(
-            &format!("DELETE FROM {table} WHERE content_hash = ?"),
-            [content_hash],
+            &format!("DELETE FROM {table} WHERE {} = ?", owner.column()),
+            params![owner],
         )?;
     }
     let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
@@ -195,9 +202,16 @@ pub(super) fn store_signals(
             sql.execute(
                 &format!(
                     "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                     VALUES (?, ?, ?, ?, ?)"
+                     VALUES (?, ?, ?, ?, ?, ?)"
                 ),
-                params![content_hash, list, position as i64, value, origin_path],
+                params![
+                    owner.content_hash(),
+                    owner.run(),
+                    list,
+                    position as i64,
+                    value,
+                    origin_path
+                ],
             )?;
         }
     }
@@ -207,10 +221,11 @@ pub(super) fn store_signals(
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?)"
             ),
             params![
-                content_hash,
+                owner.content_hash(),
+                owner.run(),
                 position as i64,
                 line.text,
                 line.origin.as_str()
@@ -379,6 +394,7 @@ impl StoredSignals {
             })
             .collect();
         let barcode = match barcode_state.as_str() {
+            "scanning" => BarcodeSignal::Scanning { codes },
             "settled" => BarcodeSignal::Settled { codes },
             "absent" => BarcodeSignal::Absent,
             "failed" => BarcodeSignal::Failed {
@@ -390,6 +406,10 @@ impl StoredSignals {
         let catalogs = list_of(&catalogs, "catalog numbers")?;
         let free_text = list_of(&free_text, "free text")?;
         let text = match text_state.as_str() {
+            "scanning" => TextSignal::Scanning {
+                catalogs,
+                free_text,
+            },
             "settled" => TextSignal::Settled {
                 catalogs,
                 free_text,

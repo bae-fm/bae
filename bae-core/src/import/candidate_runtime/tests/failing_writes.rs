@@ -29,7 +29,10 @@ async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
     let before = runtime.stored_standing_for_test(key).await;
     fail_writes_of(&runtime, "running").await;
 
-    let error = runtime.run_started(key, &files, run(1)).await.unwrap_err();
+    let error = runtime
+        .run_started(key, &files, run(1), &triangulating())
+        .await
+        .unwrap_err();
     assert!(error.to_string().contains("the disk is full"), "{error}");
 
     assert_eq!(

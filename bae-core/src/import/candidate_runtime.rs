@@ -10,15 +10,17 @@
 //! claim refuses while another import stands. A write that fails fails the
 //! operation that asked for it.
 //!
-//! This runtime holds what is not a standing: the state each run last
-//! published, which a pane draws while the table names that run; how far
-//! through its step an import is, for the import percents' stream alone; a
-//! person's typed search; extraction's
-//! [`Signals`](crate::signals::Signals); and the whole of a library release's
-//! re-identify run, which is no list row's and has no standing. The count of
-//! identifications in flight is the table's too, moved by each change in its
-//! own write. [`CandidateRuntimeSnapshot`] is the table's standing with these
-//! beside it.
+//! What each run last published is stored beside the standings
+//! (`import_identify_run`, see [`StoredRuntime`]): a folder candidate's run
+//! while the table names it, deleted in the write that moves the standing off
+//! it, and a library release's re-identify run, which has no standing, until
+//! it ends. The count of identifications in flight is the table's too, moved
+//! by each change in its own write.
+//!
+//! This runtime holds what is not stored: how far through its step an import
+//! is, for the import percents' stream alone; a person's typed search; and
+//! extraction's [`Signals`](crate::signals::Signals).
+//! [`CandidateRuntimeSnapshot`] is the stored runtime with these beside it.
 //!
 //! A key has an entry only while something is held for it. Readers of the
 //! snapshots wake on [`RuntimeView`], which a read of the table
@@ -33,11 +35,11 @@ use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
 use super::types::ImportProgress;
-use crate::db::Database;
-use crate::identify::{IdentifyRunId, IdentifyState};
+use crate::db::{Database, DbError};
+use crate::identify::{IdentifyRunId, IdentifyState, RunOutcome};
 use crate::signals::{Failure, Signals};
 use bae_catalogs::catalog::Catalog;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
@@ -55,7 +57,7 @@ pub use snapshots_watch::RuntimeSnapshotsWatch;
 pub(crate) use standing_writes::RunSubject;
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
-    StoredIdentification, StoredImport, StoredStanding,
+    StoredIdentification, StoredImport, StoredRuntime, StoredStanding,
 };
 pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
@@ -115,14 +117,6 @@ struct RunningSearch {
     search: CandidateSearch,
 }
 
-/// The state a run last published, and whether it is a folder candidate's,
-/// whose standing the table holds, or a library release's.
-#[derive(Clone, PartialEq)]
-struct PublishedState {
-    state: IdentifyState,
-    of_candidate: bool,
-}
-
 /// How far through its step the import that last reported for a key is. The
 /// import id tells it from an import that already ended.
 #[derive(Clone, PartialEq)]
@@ -135,16 +129,13 @@ struct ImportReport {
 /// What this runtime holds for one key.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    /// The state each of the key's runs last published, by run, until the run
-    /// ends.
-    runs: BTreeMap<IdentifyRunId, PublishedState>,
     search: Option<RunningSearch>,
 }
 
 impl CandidateRuntimeState {
     /// Nothing is held for the key, so its entry is removed.
     fn is_idle(&self) -> bool {
-        self.runs.is_empty() && self.search.is_none()
+        self.search.is_none()
     }
 }
 
@@ -480,36 +471,40 @@ impl CandidateRuntime {
         })
     }
 
-    /// The state `run` of `key` published; a folder candidate's is drawn
-    /// while the standings table names the run.
-    pub(crate) fn record_run_state(
+    /// The state `run` of the folder candidate `key` published, and the
+    /// signals it last read where it read new ones, stored if the key's
+    /// standing still names the run; whether they were.
+    pub(crate) async fn publish_candidate_run(
         &self,
         key: &CandidateKey,
         run: IdentifyRunId,
-        of_candidate: bool,
         state: &IdentifyState,
-    ) {
-        self.set(key, |_, runtime| {
-            runtime.runs.insert(
-                run,
-                PublishedState {
-                    state: state.clone(),
-                    of_candidate,
-                },
-            );
-        });
+        signals: Option<&Signals>,
+    ) -> Result<bool, DbError> {
+        let outcome = published_outcome(key, run, state)?;
+        self.database
+            .publish_candidate_run(key, run, &outcome, signals)
+            .await
     }
 
-    /// `run` of `key` is over: what it published is not drawn any more.
-    pub(crate) fn forget_run(&self, key: &CandidateKey, run: IdentifyRunId) {
-        self.set(key, |_, runtime| {
-            runtime.runs.remove(&run);
-        });
-    }
-
-    /// Every run of `key` is over.
-    fn forget_runs(&self, key: &CandidateKey) {
-        self.set(key, |_, runtime| runtime.runs.clear());
+    /// The state `run` of the library release whose re-identify key is `key`
+    /// published, with the signals it last read where it read new ones, or
+    /// its end with `Idle`.
+    pub(crate) async fn publish_release_run(
+        &self,
+        key: &CandidateKey,
+        run: IdentifyRunId,
+        state: &IdentifyState,
+        signals: Option<&Signals>,
+    ) -> Result<(), DbError> {
+        match RunOutcome::of(state) {
+            None => self.database.end_release_run(key, run).await,
+            Some(outcome) => {
+                self.database
+                    .publish_release_run(key, run, &outcome, signals)
+                    .await
+            }
+        }
     }
 
     /// The scan dropped or reshaped the key: its work in flight ends, and its
@@ -676,4 +671,15 @@ impl CandidateRuntime {
             ) => {}
         }
     }
+}
+
+/// How `state`, which `run` of `key` published, stands; a run publishes no
+/// `Idle` while it runs.
+pub(crate) fn published_outcome(
+    key: &CandidateKey,
+    run: IdentifyRunId,
+    state: &IdentifyState,
+) -> Result<RunOutcome, DbError> {
+    RunOutcome::of(state)
+        .ok_or_else(|| DbError::Message(format!("{key}'s run {run:?} published no state to store")))
 }

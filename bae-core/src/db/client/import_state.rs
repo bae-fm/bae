@@ -14,6 +14,7 @@ mod pane_rows;
 mod preparation_rows;
 mod prepared_asset_rows;
 mod rows;
+mod run_rows;
 mod session_rows;
 mod signal_rows;
 mod standing_rows;

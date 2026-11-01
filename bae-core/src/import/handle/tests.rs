@@ -198,15 +198,14 @@ async fn start_run(
         .await
         .unwrap()
         .expect("the candidate is stored");
-    handle.runtime.record_run_state(
-        key,
-        run,
-        true,
-        &crate::import::candidate_runtime::tests::triangulating(),
-    );
     assert!(handle
         .runtime
-        .run_started(key, &crate::import::CandidateFiles::of(&candidate), run)
+        .run_started(
+            key,
+            &crate::import::CandidateFiles::of(&candidate),
+            run,
+            &crate::import::candidate_runtime::tests::triangulating(),
+        )
         .await
         .unwrap());
 }

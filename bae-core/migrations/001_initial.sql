@@ -3107,6 +3107,39 @@ CREATE TABLE IF NOT EXISTS import_identification_batch (
     ended         INTEGER NOT NULL CHECK (ended IN (0, 1))
 ) STRICT;
 
+-- An identify run in flight: the key it identifies. How it stands is its
+-- import_candidate_verdict row, its matches and its ledger rows, and what
+-- extraction read for it is its import_candidate_signals row, each owned by
+-- `identify_run`, so a run in flight is stored in the shape of the verdict it
+-- may end on. A folder candidate's run has its row only while the
+-- candidate's standing names the run: its first state is written in the
+-- write that starts it, a later one only while the standing still names it,
+-- and the triggers below delete it in the write that moves the standing off
+-- it. A library release's re-identify run, which has no standing, keeps its
+-- row until it ends or its sheet closes. No run outlives the process, so the
+-- table is emptied as the library opens, with the standings.
+CREATE TABLE IF NOT EXISTS import_identify_run (
+    identify_run  INTEGER PRIMARY KEY CHECK (identify_run >= 0),
+    candidate_key BLOB NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_import_identify_run_key ON import_identify_run (candidate_key);
+
+CREATE TRIGGER IF NOT EXISTS import_identify_run_on_standing_moved
+AFTER UPDATE OF candidate_key, identify_run ON import_candidate_standing
+WHEN (OLD.candidate_key, OLD.identify_run) IS NOT (NEW.candidate_key, NEW.identify_run)
+BEGIN
+    DELETE FROM import_identify_run
+    WHERE candidate_key = OLD.candidate_key
+      AND (candidate_key, identify_run) IS NOT (NEW.candidate_key, NEW.identify_run);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_identify_run_on_standing_removed
+AFTER DELETE ON import_candidate_standing
+BEGIN
+    DELETE FROM import_identify_run WHERE candidate_key = OLD.candidate_key;
+END;
+
 -- Why a candidate's import failed.
 CREATE TABLE IF NOT EXISTS import_candidate_failure (
     content_hash      TEXT PRIMARY KEY,
@@ -3175,9 +3208,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_label_identity_choice (
 
 -- What extraction read off a candidate: what its files say about the medium
 -- it was ripped from, its disc ID, and whether the barcode and text passes
--- settled or failed.
+-- settled or failed. Owned by the candidate's files (`content_hash`), as its
+-- verdict was reached on, or by an identify run in flight (`identify_run`),
+-- as the run last read it, its passes possibly still scanning.
 CREATE TABLE IF NOT EXISTS import_candidate_signals (
-    content_hash           TEXT PRIMARY KEY,
+    content_hash           TEXT UNIQUE,
+    identify_run           INTEGER UNIQUE,
     -- Where a file proves the audio came from: a CD rip or a download, or NULL
     -- when nothing proves either.
     audio_source           TEXT CHECK (audio_source IS NULL OR audio_source IN ('cd_rip', 'download')),
@@ -3195,11 +3231,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     -- How bae broke reading each signal off the folder's files, as the error
     -- chain the person is shown.
     disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure <> ''),
-    barcode_state          TEXT NOT NULL CHECK (barcode_state IN ('settled', 'failed', 'absent')),
+    barcode_state          TEXT NOT NULL CHECK (barcode_state IN ('scanning', 'settled', 'failed', 'absent')),
     barcode_failure        TEXT CHECK (barcode_failure IS NULL OR barcode_failure <> ''),
-    text_state             TEXT NOT NULL CHECK (text_state IN ('settled', 'failed')),
+    text_state             TEXT NOT NULL CHECK (text_state IN ('scanning', 'settled', 'failed')),
     text_failure           TEXT CHECK (text_failure IS NULL OR text_failure <> ''),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_identify_run (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL)),
+    -- Only a run in flight reads a pass still scanning.
+    CHECK (identify_run IS NOT NULL OR (barcode_state <> 'scanning' AND text_state <> 'scanning')),
     CHECK ((audio_source IS 'cd_rip') = (cd_rip_proof IS NOT NULL)),
     CHECK ((audio_source IS 'download') = (download_proof IS NOT NULL)),
     CHECK (download_proof IS NOT 'delivery_set' OR audio_source_file IS NULL),
@@ -3217,7 +3257,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
 -- The disc IDs, barcodes, catalog numbers and free-text candidates read off a
 -- candidate, in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     list         TEXT NOT NULL CHECK (list IN ('disc_id', 'barcode', 'catalog', 'free_text', 'isrc', 'track_title')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
@@ -3225,21 +3266,28 @@ CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     -- LOG or CUE a disc ID was hashed from, so a surface can mark that file's
     -- row; NULL for a library release's stored files.
     origin_path  TEXT CHECK (origin_path IS NULL OR list IN ('disc_id', 'barcode')),
-    PRIMARY KEY (content_hash, list, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
+    UNIQUE (content_hash, list, position),
+    UNIQUE (identify_run, list, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_signals (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Every line of text read off a candidate, from which ranking reads the
 -- folder's own claims.
 CREATE TABLE IF NOT EXISTS import_candidate_text_line (
-    content_hash  TEXT NOT NULL,
+    content_hash  TEXT,
+    identify_run  INTEGER,
     position      INTEGER NOT NULL CHECK (position >= 0),
     text          TEXT NOT NULL,
     origin        TEXT NOT NULL
         CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file',
                           'file_tag')),
-    PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_signals (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Which values read off a candidate the user let the lookups use, and the
@@ -3279,11 +3327,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_excluded_barcode (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_lookup_choices (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- What an identify run concluded.
+-- What an identify run concluded, owned by the candidate's files
+-- (`content_hash`); or how a run in flight stands, owned by the run
+-- (`identify_run`): 'running' while its lookups are out, with the ledger as
+-- it stands and the releases its answers so far combine to, then the answer
+-- it reached while that is written. A run's rows go with its
+-- import_identify_run row.
 CREATE TABLE IF NOT EXISTS import_candidate_verdict (
-    content_hash  TEXT PRIMARY KEY,
+    content_hash  TEXT UNIQUE,
+    identify_run  INTEGER UNIQUE,
     kind          TEXT NOT NULL
-        CHECK (kind IN ('found', 'not_found', 'manual_only', 'failed', 'error')),
+        CHECK (kind IN ('running', 'found', 'not_found', 'manual_only', 'failed', 'error')),
     -- How many tracks the folder played when the verdict was reached.
     track_count   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
     -- The lookup failures of a failed verdict, stored as JSON since no query
@@ -3294,21 +3348,26 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
             AND json_type(failures_json) = 'array'
             AND json_array_length(failures_json) > 0)
     ),
-    -- How each clue stood in the ledger the run recorded as it ended, all
-    -- NULL when it recorded none. The ledger's rows and lookups are
-    -- import_candidate_lookup_value and the tables beside it. 'absent': no
-    -- LOG or CUE, no barcode source, no ISRC. 'not_cd_audio': the CUE lays out
-    -- audio at a rate no CD has. 'no_codes': a barcode source held no code.
-    -- 'none_found': no catalog number was offered or in effect.
-    -- 'not_needed': the clues answered, so no title search went out;
-    -- 'no_title': there was no title to search by.
-    disc_id_step  TEXT CHECK (disc_id_step IN ('absent', 'not_cd_audio', 'read')),
-    barcode_step  TEXT CHECK (barcode_step IN ('absent', 'no_codes', 'rows')),
-    catalog_step  TEXT CHECK (catalog_step IN ('none_found', 'numbers')),
-    isrc_step     TEXT CHECK (isrc_step IN ('absent', 'read')),
-    search_step   TEXT CHECK (search_step IN ('not_needed', 'no_title', 'searched')),
-    -- The words the title search asked, for a 'searched' step: the album, and
-    -- the album artist, blank where the draft named none.
+    -- How each clue stood in the ledger the run recorded as it ended, or as
+    -- it stands for a run in flight, all NULL when it recorded none. The
+    -- ledger's rows and lookups are import_candidate_lookup_value and the
+    -- tables beside it. 'absent': no LOG or CUE, no barcode source, no ISRC.
+    -- 'not_cd_audio': the CUE lays out audio at a rate no CD has.
+    -- 'no_codes': a barcode source held no code. 'none_found': no catalog
+    -- number was offered or in effect. 'not_needed': the clues answered, so
+    -- no title search went out; 'no_title': there was no title to search by.
+    -- Only a run in flight stands at 'reading' (extraction has not reported
+    -- the disc IDs or the ISRCs), 'scanning' (the artwork is still being read,
+    -- so more barcodes or catalog numbers may come) or 'waiting' (the title
+    -- search goes out once the clues have answered).
+    disc_id_step  TEXT CHECK (disc_id_step IN ('reading', 'absent', 'not_cd_audio', 'read')),
+    barcode_step  TEXT CHECK (barcode_step IN ('absent', 'no_codes', 'rows', 'scanning')),
+    catalog_step  TEXT CHECK (catalog_step IN ('none_found', 'numbers', 'scanning')),
+    isrc_step     TEXT CHECK (isrc_step IN ('reading', 'absent', 'read')),
+    search_step   TEXT CHECK (search_step IN ('not_needed', 'no_title', 'waiting', 'searched')),
+    -- The words the title search asked, or will ask, for a 'searched' or
+    -- 'waiting' step: the album, and the album artist, blank where the draft
+    -- named none.
     search_album  TEXT CHECK (search_album <> ''),
     search_artist TEXT,
     -- How bae broke on its own side, for an 'error' verdict: the error chain
@@ -3323,6 +3382,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- Such a verdict is never Ready.
     medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_identify_run (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL)),
+    CHECK (kind <> 'running' OR identify_run IS NOT NULL),
+    CHECK (identify_run IS NULL OR kept_own_draft = 0),
+    -- A run in flight always lays its clues out; a run that ended recorded
+    -- them settled.
+    CHECK (kind <> 'running' OR disc_id_step IS NOT NULL),
+    CHECK (kind = 'running'
+           OR (disc_id_step IS NOT 'reading' AND barcode_step IS NOT 'scanning'
+               AND catalog_step IS NOT 'scanning' AND isrc_step IS NOT 'reading'
+               AND search_step IS NOT 'waiting')),
     CHECK ((kind IN ('not_found', 'error')) = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
     CHECK ((kind = 'error') = (error_detail IS NOT NULL)),
@@ -3332,7 +3402,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
            AND (disc_id_step IS NULL) = (isrc_step IS NULL)
            AND (disc_id_step IS NULL) = (search_step IS NULL)),
     CHECK (kind <> 'error' OR disc_id_step IS NULL),
-    CHECK ((search_step IS 'searched') = (search_album IS NOT NULL)),
+    CHECK ((search_step IS 'searched' OR search_step IS 'waiting') = (search_album IS NOT NULL)),
     CHECK ((search_album IS NULL) = (search_artist IS NULL))
 ) STRICT;
 
@@ -3340,8 +3410,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
 -- record said and which lookup found it: the releases it offers, then the
 -- ones agreement set aside, then the ones a lookup of the recorded ledger
 -- found that neither lists.
+-- This table and the ledger's (import_candidate_lookup_*) hang off their
+-- verdict row by its owner: the candidate's files, or a run in flight.
 CREATE TABLE IF NOT EXISTS import_candidate_match (
-    content_hash        TEXT NOT NULL,
+    content_hash        TEXT,
+    identify_run        INTEGER,
     position            INTEGER NOT NULL CHECK (position >= 0),
     -- 'offered': a release of the rows the run offers. 'narrowed_out': one of
     -- the rows agreement set aside. 'unlisted': listed in neither, because
@@ -3401,25 +3474,31 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- ranking's notes point went to that row; NULL otherwise, and always for a
     -- release the run does not offer.
     named_note              TEXT CHECK (named_note IS NULL OR named_note <> ''),
-    PRIMARY KEY (content_hash, position),
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
     UNIQUE (content_hash, position, media_kind),
+    UNIQUE (identify_run, position, media_kind),
     -- Referenced by the cover copies; only a match with a cover has one.
     UNIQUE (content_hash, position, cover_url),
+    UNIQUE (identify_run, position, cover_url),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK (listing = 'offered' OR named_note IS NULL),
     CHECK ((listing = 'unlisted') = (pressing IS NULL)),
     CHECK (country IS NULL OR region IS NULL),
-    CHECK (document_failure_status IS NULL OR document_failure = 'provider')
+    CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Every label a matched record is on, in its order, each stating a name, a
 -- catalog number or both.
 CREATE TABLE IF NOT EXISTS import_candidate_match_label (
-    content_hash   TEXT NOT NULL,
+    content_hash   TEXT,
+    identify_run   INTEGER,
     position       INTEGER NOT NULL,
     ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
     name           TEXT CHECK (name IS NULL OR name <> ''),
@@ -3428,46 +3507,65 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_label (
     musicbrainz_label_id TEXT CHECK (musicbrainz_label_id IS NULL OR musicbrainz_label_id <> ''),
     discogs_label_id     TEXT CHECK (discogs_label_id IS NULL OR discogs_label_id <> ''),
     CHECK (name IS NOT NULL OR (musicbrainz_label_id IS NULL AND discogs_label_id IS NULL)),
-    PRIMARY KEY (content_hash, position, ordinal),
+    UNIQUE (content_hash, position, ordinal),
+    UNIQUE (identify_run, position, ordinal),
     FOREIGN KEY (content_hash, position)
         REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
-    CHECK (name IS NOT NULL OR catalog_number IS NOT NULL)
+    FOREIGN KEY (identify_run, position)
+        REFERENCES import_candidate_match (identify_run, position) ON DELETE CASCADE,
+    CHECK (name IS NOT NULL OR catalog_number IS NOT NULL),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Every barcode a matched record states.
 CREATE TABLE IF NOT EXISTS import_candidate_match_barcode (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL,
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     barcode      TEXT NOT NULL CHECK (barcode <> ''),
-    PRIMARY KEY (content_hash, position, ordinal),
+    UNIQUE (content_hash, position, ordinal),
+    UNIQUE (identify_run, position, ordinal),
     FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, position)
+        REFERENCES import_candidate_match (identify_run, position) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The downscaled copies the catalog serves of a match's cover, one per size (a
 -- copy's longer side is at most max_edge pixels).
 CREATE TABLE IF NOT EXISTS import_candidate_match_cover_copy (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL,
     cover_url    TEXT NOT NULL,
     max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
     url          TEXT NOT NULL CHECK (url <> ''),
-    PRIMARY KEY (content_hash, position, max_edge),
+    UNIQUE (content_hash, position, max_edge),
+    UNIQUE (identify_run, position, max_edge),
     FOREIGN KEY (content_hash, position, cover_url)
-        REFERENCES import_candidate_match (content_hash, position, cover_url) ON DELETE CASCADE
+        REFERENCES import_candidate_match (content_hash, position, cover_url) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, position, cover_url)
+        REFERENCES import_candidate_match (identify_run, position, cover_url) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Every other catalog entry a matched record links to.
 CREATE TABLE IF NOT EXISTS import_candidate_match_link (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL,
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     catalog      TEXT NOT NULL CHECK (catalog <> ''),
     key          TEXT NOT NULL CHECK (key <> ''),
-    PRIMARY KEY (content_hash, position, ordinal),
+    UNIQUE (content_hash, position, ordinal),
+    UNIQUE (identify_run, position, ordinal),
     FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, position)
+        REFERENCES import_candidate_match (identify_run, position) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- Every other catalog's album a statement names as a matched record's album
@@ -3475,63 +3573,87 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_link (
 -- album_links is 'read', in the order the statements were read, strongest
 -- first. Which statement named it is not kept.
 CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
-    content_hash        TEXT NOT NULL,
+    content_hash        TEXT,
+    identify_run        INTEGER,
     position            INTEGER NOT NULL,
     ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
     catalog             TEXT NOT NULL CHECK (catalog <> ''),
     key                 TEXT NOT NULL CHECK (key <> ''),
-    PRIMARY KEY (content_hash, position, ordinal),
+    UNIQUE (content_hash, position, ordinal),
+    UNIQUE (identify_run, position, ordinal),
     FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, position)
+        REFERENCES import_candidate_match (identify_run, position) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- A matched record's media, one row per medium or format entry as the match's
 -- media kind says: the carrier (a `crate::pressing::Medium` key, NULL where bae
 -- does not know it) and how many.
 CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL,
     media_kind   TEXT NOT NULL CHECK (media_kind IN ('per_medium', 'formats')),
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     medium       TEXT CHECK (medium IS NULL OR medium <> ''),
     quantity     INTEGER NOT NULL CHECK (quantity >= 1),
-    PRIMARY KEY (content_hash, position, ordinal),
+    UNIQUE (content_hash, position, ordinal),
+    UNIQUE (identify_run, position, ordinal),
     FOREIGN KEY (content_hash, position, media_kind)
         REFERENCES import_candidate_match (content_hash, position, media_kind)
         ON DELETE CASCADE,
-    CHECK (media_kind = 'formats' OR quantity = 1)
+    FOREIGN KEY (identify_run, position, media_kind)
+        REFERENCES import_candidate_match (identify_run, position, media_kind)
+        ON DELETE CASCADE,
+    CHECK (media_kind = 'formats' OR quantity = 1),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The catalogs the recorded ledger's run asked, in the order its cells are
 -- laid out.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_provider (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL CHECK (position >= 0),
     catalog      TEXT NOT NULL CHECK (catalog IN ('musicbrainz', 'discogs')),
-    PRIMARY KEY (content_hash, position),
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
     UNIQUE (content_hash, catalog),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+    UNIQUE (identify_run, catalog),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The ISRCs the recorded ledger's run looked up together, each once, in the
 -- files' order, for an isrc_step of 'read'.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_isrc (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL CHECK (position >= 0),
     isrc         TEXT NOT NULL CHECK (isrc <> ''),
-    PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The catalog numbers the folder's text offered that the recorded ledger's
 -- run neither had in effect nor had struck out, in first-seen order, for a
 -- catalog_step of 'numbers'.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_offered_catalog (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL CHECK (value <> ''),
-    PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The recorded ledger's rows, each clue's in its order: a disc ID, a barcode
@@ -3539,16 +3661,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_lookup_offered_catalog (
 -- title search, which name none. `excluded`: a barcode or catalog number the
 -- person left out.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_value (
-    content_hash TEXT NOT NULL,
+    content_hash TEXT,
+    identify_run INTEGER,
     step         TEXT NOT NULL CHECK (step IN ('disc_id', 'barcode', 'catalog', 'isrc', 'search')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT CHECK (value <> ''),
     excluded     INTEGER NOT NULL CHECK (excluded IN (0, 1)),
-    PRIMARY KEY (content_hash, step, position),
+    UNIQUE (content_hash, step, position),
+    UNIQUE (identify_run, step, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
     CHECK ((step IN ('isrc', 'search')) = (value IS NULL)),
     CHECK (step NOT IN ('isrc', 'search') OR position = 0),
-    CHECK (excluded = 0 OR step IN ('barcode', 'catalog'))
+    CHECK (excluded = 0 OR step IN ('barcode', 'catalog')),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- One lookup of a ledger row: a cell, one catalog's answer, in the row's
@@ -3556,45 +3682,63 @@ CREATE TABLE IF NOT EXISTS import_candidate_lookup_value (
 -- their row has one lookup and names no catalog. 'answered': the releases it
 -- found are import_candidate_lookup_release, none for no match.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup (
-    content_hash     TEXT NOT NULL,
+    content_hash     TEXT,
+    identify_run     INTEGER,
     step             TEXT NOT NULL,
     position         INTEGER NOT NULL,
     cell             INTEGER NOT NULL CHECK (cell >= 0),
     catalog          TEXT CHECK (catalog IN ('musicbrainz', 'discogs')),
-    answer           TEXT NOT NULL CHECK (answer IN ('not_asked', 'answered', 'failed')),
+    -- 'queued' and 'looking_up' only for a run in flight: a value not asked
+    -- yet while the artwork is read, and a lookup under way.
+    answer           TEXT NOT NULL
+        CHECK (answer IN ('queued', 'looking_up', 'not_asked', 'answered', 'failed')),
     -- Why nobody was asked: the person left the value out, or no catalog the
     -- run asks answers this lookup.
     not_asked_reason TEXT CHECK (not_asked_reason IN ('left_out', 'no_catalog')),
     failure          TEXT CHECK (failure IN ('network', 'provider', 'timeout')),
     failure_status   INTEGER,
-    PRIMARY KEY (content_hash, step, position, cell),
+    UNIQUE (content_hash, step, position, cell),
+    UNIQUE (identify_run, step, position, cell),
     -- Referenced by the releases found, which only an answered lookup has.
     UNIQUE (content_hash, step, position, cell, answer),
+    UNIQUE (identify_run, step, position, cell, answer),
     FOREIGN KEY (content_hash, step, position)
         REFERENCES import_candidate_lookup_value (content_hash, step, position) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, step, position)
+        REFERENCES import_candidate_lookup_value (identify_run, step, position) ON DELETE CASCADE,
     CHECK ((step IN ('disc_id', 'isrc')) = (catalog IS NULL)),
     CHECK (step NOT IN ('disc_id', 'isrc') OR cell = 0),
     CHECK ((answer = 'not_asked') = (not_asked_reason IS NOT NULL)),
     CHECK ((answer = 'failed') = (failure IS NOT NULL)),
-    CHECK (failure_status IS NULL OR failure = 'provider')
+    CHECK (failure_status IS NULL OR failure = 'provider'),
+    CHECK (answer NOT IN ('queued', 'looking_up') OR identify_run IS NOT NULL),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- The releases an answered lookup found, in its order, each the match row
 -- that holds it.
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_release (
-    content_hash   TEXT NOT NULL,
+    content_hash   TEXT,
+    identify_run   INTEGER,
     step           TEXT NOT NULL,
     position       INTEGER NOT NULL,
     cell           INTEGER NOT NULL,
     answer         TEXT NOT NULL DEFAULT 'answered' CHECK (answer = 'answered'),
     ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
     match_position INTEGER NOT NULL,
-    PRIMARY KEY (content_hash, step, position, cell, ordinal),
+    UNIQUE (content_hash, step, position, cell, ordinal),
+    UNIQUE (identify_run, step, position, cell, ordinal),
     FOREIGN KEY (content_hash, step, position, cell, answer)
         REFERENCES import_candidate_lookup (content_hash, step, position, cell, answer)
         ON DELETE CASCADE,
+    FOREIGN KEY (identify_run, step, position, cell, answer)
+        REFERENCES import_candidate_lookup (identify_run, step, position, cell, answer)
+        ON DELETE CASCADE,
     FOREIGN KEY (content_hash, match_position)
-        REFERENCES import_candidate_match (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position),
+    FOREIGN KEY (identify_run, match_position)
+        REFERENCES import_candidate_match (identify_run, position),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- ── The import list ───────────────────────────────────────────────────────────

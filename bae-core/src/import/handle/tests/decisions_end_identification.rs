@@ -237,11 +237,12 @@ async fn combining_ends_its_folders_identification_in_its_write() {
         .unwrap();
     // A folder waiting for or running a run is refused a combination; one
     // whose answer is being written is combined, and the answer ends.
-    for key in [&first, &second] {
+    // Each run has its own id, as the identify service hands them out.
+    for (run, key) in [(1, &first), (2, &second)] {
         handle
             .hold_answer_for_test(
                 key,
-                crate::identify::IdentifyRunId::for_test(1),
+                crate::identify::IdentifyRunId::for_test(run),
                 &crate::import::candidate_runtime::tests::manual_only(),
             )
             .await;

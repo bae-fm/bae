@@ -5,13 +5,13 @@
 //! the ledger keeps no copy of a release; its cells lay out again the
 //! releases they link, as the run laid them out.
 //!
-//! A ledger is recorded once every lookup has settled, so only a settled
-//! ledger is stored: a clue still being read, a cell still queued or looking
+//! A verdict's ledger is recorded once every lookup has settled, so it is
+//! stored settled: a clue still being read, a cell still queued or looking
 //! up, or artwork still being scanned is no state a verdict ends on, and
-//! storing one fails.
+//! storing one fails. A run in flight stores its ledger as it stands.
 
 use super::lookup_failure_columns::{failure_columns, failure_of};
-use super::verdict_rows::unreadable;
+use super::verdict_rows::{unreadable, Owner};
 use super::*;
 use crate::identify::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
@@ -36,15 +36,18 @@ pub(super) struct StepColumns<'a> {
 }
 
 /// A ledger's clue in a state no settled run records.
-fn unsettled(content_hash: &str, what: &str) -> DbError {
+fn unsettled(owner: Owner<'_>, what: &str) -> DbError {
     DbError::Message(format!(
-        "the ledger recorded for {content_hash} shows {what}, which no settled run records"
+        "the ledger recorded for {owner} shows {what}, which no settled run records"
     ))
 }
 
+/// How each clue of `ledger` stands, as step columns. `running`: the ledger
+/// is a run's in flight, whose clues may not have settled.
 pub(super) fn step_columns<'a>(
-    content_hash: &str,
+    owner: Owner<'_>,
     ledger: Option<&'a IdentifyRunView>,
+    running: bool,
 ) -> Result<StepColumns<'a>, DbError> {
     let Some(ledger) = ledger else {
         return Ok(StepColumns {
@@ -58,7 +61,8 @@ pub(super) fn step_columns<'a>(
         });
     };
     let disc_id = match &ledger.disc_id {
-        DiscIdStepView::Reading => return Err(unsettled(content_hash, "a disc ID being read")),
+        DiscIdStepView::Reading if running => "reading",
+        DiscIdStepView::Reading => return Err(unsettled(owner, "a disc ID being read")),
         DiscIdStepView::Absent => "absent",
         DiscIdStepView::NotCdAudio => "not_cd_audio",
         DiscIdStepView::Read { .. } => "read",
@@ -66,8 +70,9 @@ pub(super) fn step_columns<'a>(
     let barcode = match &ledger.barcode {
         BarcodeStepView::Absent => "absent",
         BarcodeStepView::NoCodes => "no_codes",
+        BarcodeStepView::Rows { scanning: true, .. } if running => "scanning",
         BarcodeStepView::Rows { scanning: true, .. } => {
-            return Err(unsettled(content_hash, "barcodes still being scanned"))
+            return Err(unsettled(owner, "barcodes still being scanned"))
         }
         BarcodeStepView::Rows {
             scanning: false, ..
@@ -75,26 +80,28 @@ pub(super) fn step_columns<'a>(
     };
     let catalog = match &ledger.catalog {
         CatalogStepView::NoneFound => "none_found",
+        CatalogStepView::Numbers { scanning: true, .. } if running => "scanning",
         CatalogStepView::Numbers { scanning: true, .. } => {
-            return Err(unsettled(
-                content_hash,
-                "catalog numbers still being scanned",
-            ))
+            return Err(unsettled(owner, "catalog numbers still being scanned"))
         }
         CatalogStepView::Numbers {
             scanning: false, ..
         } => "numbers",
     };
     let isrc = match &ledger.isrc {
-        IsrcStepView::Reading => return Err(unsettled(content_hash, "ISRCs being read")),
+        IsrcStepView::Reading if running => "reading",
+        IsrcStepView::Reading => return Err(unsettled(owner, "ISRCs being read")),
         IsrcStepView::Absent => "absent",
         IsrcStepView::Read { .. } => "read",
     };
     let (search, search_album, search_artist) = match &ledger.search {
         SearchStepView::NotNeeded => ("not_needed", None, None),
         SearchStepView::NoTitle => ("no_title", None, None),
+        SearchStepView::Waiting { album, artist } if running => {
+            ("waiting", Some(album.as_str()), Some(artist.as_str()))
+        }
         SearchStepView::Waiting { .. } => {
-            return Err(unsettled(content_hash, "a title search waiting to go out"))
+            return Err(unsettled(owner, "a title search waiting to go out"))
         }
         SearchStepView::Searched { album, artist, .. } => {
             ("searched", Some(album.as_str()), Some(artist.as_str()))
@@ -111,9 +118,9 @@ pub(super) fn step_columns<'a>(
     })
 }
 
-/// Clear the ledger rows under `content_hash`; the lookups and the releases
-/// they found go with their rows.
-pub(super) fn delete_ledger(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+/// Clear the ledger rows `owner` holds; the lookups and the releases they
+/// found go with their rows.
+pub(super) fn delete_ledger(sql: &SqlContext<'_, '_>, owner: Owner<'_>) -> Result<(), DbError> {
     for table in [
         "import_candidate_lookup_value",
         "import_candidate_lookup_provider",
@@ -121,8 +128,8 @@ pub(super) fn delete_ledger(sql: &SqlContext<'_, '_>, content_hash: &str) -> Res
         "import_candidate_lookup_offered_catalog",
     ] {
         sql.execute(
-            &format!("DELETE FROM {table} WHERE content_hash = ?"),
-            [content_hash],
+            &format!("DELETE FROM {table} WHERE {} = ?", owner.column()),
+            params![owner],
         )?;
     }
     Ok(())
@@ -132,29 +139,33 @@ pub(super) fn delete_ledger(sql: &SqlContext<'_, '_>, content_hash: &str) -> Res
 /// and the copy the row holds.
 pub(super) type MatchPositions<'a> = HashMap<(Catalog, &'a str), (usize, &'a MetadataResult)>;
 
-/// Write `ledger`'s rows under the verdict at `content_hash`, whose step
-/// columns are written and whose previous ledger rows are gone. Each release
-/// a cell lists is linked to the match row holding it, which must hold the
-/// cell's copy of it: the cell is laid out again from that row.
+/// Write `ledger`'s rows under `owner`'s verdict row, whose step columns are
+/// written and whose previous ledger rows are gone. Each release a cell lists
+/// is linked to the match row holding it, which must hold the cell's copy of
+/// it: the cell is laid out again from that row. `running`: the ledger is a
+/// run's in flight, whose cells may be queued or looking up.
 pub(super) fn store_ledger(
     sql: &SqlContext<'_, '_>,
-    content_hash: &str,
+    owner: Owner<'_>,
     ledger: &IdentifyRunView,
     matches: &MatchPositions<'_>,
+    running: bool,
 ) -> Result<(), DbError> {
+    let (content_hash, run) = (owner.content_hash(), owner.run());
     for (position, catalog) in ledger.providers.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_lookup_provider (content_hash, position, catalog) \
-             VALUES (?, ?, ?)",
-            params![content_hash, column(position)?, catalog.as_str()],
+            "INSERT INTO import_candidate_lookup_provider \
+                 (content_hash, identify_run, position, catalog) \
+             VALUES (?, ?, ?, ?)",
+            params![content_hash, run, column(position)?, catalog.as_str()],
         )?;
     }
     let row = |step: &str, position: usize, value: Option<&str>, excluded: bool| {
         sql.execute(
             "INSERT INTO import_candidate_lookup_value \
-                 (content_hash, step, position, value, excluded) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![content_hash, step, column(position)?, value, excluded],
+                 (content_hash, identify_run, step, position, value, excluded) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+            params![content_hash, run, step, column(position)?, value, excluded],
         )?;
         Ok::<_, DbError>(())
     };
@@ -165,7 +176,7 @@ pub(super) fn store_ledger(
                 lookup: &LookupView| {
         store_lookup(
             sql,
-            content_hash,
+            owner,
             LookupKey {
                 step,
                 position,
@@ -173,7 +184,7 @@ pub(super) fn store_ledger(
             },
             catalog,
             lookup,
-            matches,
+            (matches, running),
         )
     };
     let value_rows = |step: &str, rows: &[SignalValueRow]| {
@@ -202,18 +213,19 @@ pub(super) fn store_ledger(
         for (position, candidate) in candidates.iter().enumerate() {
             sql.execute(
                 "INSERT INTO import_candidate_lookup_offered_catalog \
-                     (content_hash, position, value) \
-                 VALUES (?, ?, ?)",
-                params![content_hash, column(position)?, candidate.value],
+                     (content_hash, identify_run, position, value) \
+                 VALUES (?, ?, ?, ?)",
+                params![content_hash, run, column(position)?, candidate.value],
             )?;
         }
     }
     if let IsrcStepView::Read { isrcs, lookup } = &ledger.isrc {
         for (position, isrc) in isrcs.iter().enumerate() {
             sql.execute(
-                "INSERT INTO import_candidate_lookup_isrc (content_hash, position, isrc) \
-                 VALUES (?, ?, ?)",
-                params![content_hash, column(position)?, isrc],
+                "INSERT INTO import_candidate_lookup_isrc \
+                     (content_hash, identify_run, position, isrc) \
+                 VALUES (?, ?, ?, ?)",
+                params![content_hash, run, column(position)?, isrc],
             )?;
         }
         row(STEP_ISRC, 0, None, false)?;
@@ -242,14 +254,15 @@ struct LookupKey<'a> {
     cell: usize,
 }
 
-/// One cell, and the releases it found linked to their match rows.
+/// One cell, and the releases it found linked to their match rows; queued
+/// or looking up only in a run's ledger in flight (`running`).
 fn store_lookup(
     sql: &SqlContext<'_, '_>,
-    content_hash: &str,
+    owner: Owner<'_>,
     key: LookupKey<'_>,
     catalog: Option<Catalog>,
     lookup: &LookupView,
-    matches: &MatchPositions<'_>,
+    (matches, running): (&MatchPositions<'_>, bool),
 ) -> Result<(), DbError> {
     let LookupKey {
         step,
@@ -257,8 +270,10 @@ fn store_lookup(
         cell,
     } = key;
     let (answer, reason, failure) = match lookup {
-        LookupView::Queued => return Err(unsettled(content_hash, "a queued lookup")),
-        LookupView::LookingUp => return Err(unsettled(content_hash, "a lookup under way")),
+        LookupView::Queued if running => ("queued", None, None),
+        LookupView::LookingUp if running => ("looking_up", None, None),
+        LookupView::Queued => return Err(unsettled(owner, "a queued lookup")),
+        LookupView::LookingUp => return Err(unsettled(owner, "a lookup under way")),
         LookupView::NotAsked { reason } => (
             "not_asked",
             Some(match reason {
@@ -273,11 +288,12 @@ fn store_lookup(
     let failure = failure_columns(failure);
     sql.execute(
         "INSERT INTO import_candidate_lookup \
-             (content_hash, step, position, cell, catalog, answer, not_asked_reason, failure, \
-              failure_status) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (content_hash, identify_run, step, position, cell, catalog, answer, \
+              not_asked_reason, failure, failure_status) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
-            content_hash,
+            owner.content_hash(),
+            owner.run(),
             step,
             column(position)?,
             column(cell)?,
@@ -293,25 +309,25 @@ fn store_lookup(
             matches.get(&(release.source, release.release_id.as_str()))
         else {
             return Err(DbError::Message(format!(
-                "a ledger cell of {content_hash} lists {} {}, which no match row holds",
+                "a ledger cell of {owner} lists {} {}, which no match row holds",
                 release.source.as_str(),
                 release.release_id
             )));
         };
         if *held != release {
             return Err(DbError::Message(format!(
-                "a ledger cell of {content_hash} lists {} {} as other than its match row \
-                 holds it",
+                "a ledger cell of {owner} lists {} {} as other than its match row holds it",
                 release.source.as_str(),
                 release.release_id
             )));
         }
         sql.execute(
             "INSERT INTO import_candidate_lookup_release \
-                 (content_hash, step, position, cell, ordinal, match_position) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, step, position, cell, ordinal, match_position) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
-                content_hash,
+                owner.content_hash(),
+                owner.run(),
                 step,
                 column(position)?,
                 column(cell)?,
@@ -343,13 +359,13 @@ pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_
      verdict.search_artist AS ledger_search_artist, \
      (SELECT json_group_array(provider.catalog ORDER BY provider.position) \
       FROM import_candidate_lookup_provider AS provider \
-      WHERE provider.content_hash = verdict.content_hash) AS ledger_providers, \
+      WHERE provider.content_hash IS verdict.content_hash AND provider.identify_run IS verdict.identify_run) AS ledger_providers, \
      (SELECT json_group_array(isrc.isrc ORDER BY isrc.position) \
       FROM import_candidate_lookup_isrc AS isrc \
-      WHERE isrc.content_hash = verdict.content_hash) AS ledger_isrcs, \
+      WHERE isrc.content_hash IS verdict.content_hash AND isrc.identify_run IS verdict.identify_run) AS ledger_isrcs, \
      (SELECT json_group_array(offered.value ORDER BY offered.position) \
       FROM import_candidate_lookup_offered_catalog AS offered \
-      WHERE offered.content_hash = verdict.content_hash) AS ledger_offered_catalogs, \
+      WHERE offered.content_hash IS verdict.content_hash AND offered.identify_run IS verdict.identify_run) AS ledger_offered_catalogs, \
      (SELECT json_group_array(json_object( \
           'step', ledger_row.step, 'value', ledger_row.value, \
           'excluded', ledger_row.excluded, \
@@ -360,18 +376,18 @@ pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_
               'releases', json((SELECT json_group_array(found.match_position \
                                                         ORDER BY found.ordinal) \
                                 FROM import_candidate_lookup_release AS found \
-                                WHERE found.content_hash = lookup.content_hash \
+                                WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
                                   AND found.step = lookup.step \
                                   AND found.position = lookup.position \
                                   AND found.cell = lookup.cell))) \
               ORDER BY lookup.cell) \
               FROM import_candidate_lookup AS lookup \
-              WHERE lookup.content_hash = ledger_row.content_hash \
+              WHERE lookup.content_hash IS ledger_row.content_hash AND lookup.identify_run IS ledger_row.identify_run \
                 AND lookup.step = ledger_row.step \
                 AND lookup.position = ledger_row.position))) \
           ORDER BY ledger_row.step, ledger_row.position) \
       FROM import_candidate_lookup_value AS ledger_row \
-      WHERE ledger_row.content_hash = verdict.content_hash) AS ledger_rows";
+      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run) AS ledger_rows";
 
 /// One verdict's [`LEDGER_COLUMNS`] as SQLite hands them over, its lists
 /// still JSON.
@@ -555,9 +571,10 @@ impl StoredLedger {
                     })
                     .collect::<Result<_, DbError>>()?,
             },
-            stood @ ("absent" | "not_cd_audio") => {
+            stood @ ("reading" | "absent" | "not_cd_audio") => {
                 stray(&disc_rows, STEP_DISC_ID, stood)?;
                 match stood {
+                    "reading" => DiscIdStepView::Reading,
                     "absent" => DiscIdStepView::Absent,
                     _ => DiscIdStepView::NotCdAudio,
                 }
@@ -566,8 +583,8 @@ impl StoredLedger {
         };
         let barcode_rows = take(STEP_BARCODE);
         let barcode = match barcode.as_str() {
-            "rows" => BarcodeStepView::Rows {
-                scanning: false,
+            stood @ ("rows" | "scanning") => BarcodeStepView::Rows {
+                scanning: stood == "scanning",
                 rows: value_rows(barcode_rows)?,
             },
             stood @ ("absent" | "no_codes") => {
@@ -581,8 +598,8 @@ impl StoredLedger {
         };
         let catalog_rows = take(STEP_CATALOG);
         let catalog = match catalog.as_str() {
-            "numbers" => CatalogStepView::Numbers {
-                scanning: false,
+            stood @ ("numbers" | "scanning") => CatalogStepView::Numbers {
+                scanning: stood == "scanning",
                 rows: value_rows(catalog_rows)?,
                 candidates: offered
                     .into_iter()
@@ -614,14 +631,17 @@ impl StoredLedger {
                     lookup: one_lookup(row, "ISRC")?,
                 }
             }
-            "absent" => {
-                stray(&isrc_rows, STEP_ISRC, "absent")?;
+            stood @ ("reading" | "absent") => {
+                stray(&isrc_rows, STEP_ISRC, stood)?;
                 if !isrcs.is_empty() {
                     return Err(DbError::Message(format!(
                         "the ledger of {content_hash} holds ISRCs but read none"
                     )));
                 }
-                IsrcStepView::Absent
+                match stood {
+                    "reading" => IsrcStepView::Reading,
+                    _ => IsrcStepView::Absent,
+                }
             }
             other => return Err(unreadable("isrc_step", other)),
         };
@@ -639,6 +659,10 @@ impl StoredLedger {
                     artist,
                     cells: provider_cells(row.cells)?,
                 }
+            }
+            ("waiting", Some(album), Some(artist)) => {
+                stray(&search_rows, STEP_SEARCH, "waiting")?;
+                SearchStepView::Waiting { album, artist }
             }
             (stood @ ("not_needed" | "no_title"), None, None) => {
                 stray(&search_rows, STEP_SEARCH, stood)?;
@@ -688,6 +712,8 @@ fn lookup_of(
         )));
     }
     match answer.as_str() {
+        "queued" => Ok(LookupView::Queued),
+        "looking_up" => Ok(LookupView::LookingUp),
         "not_asked" => Ok(LookupView::NotAsked {
             reason: match reason.as_deref() {
                 Some("left_out") => NotAskedReason::LeftOut,

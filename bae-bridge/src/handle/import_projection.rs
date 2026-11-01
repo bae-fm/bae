@@ -154,7 +154,7 @@ impl crate::types::BridgeIdentificationInFlight {
         match identification {
             bae_core::import::IdentificationInFlight::Queued => Self::Queued,
             bae_core::import::IdentificationInFlight::Run(state) => Self::Run {
-                state: crate::types::BridgeIdentifyState::from_core(state),
+                state: crate::types::BridgeIdentifyState::from_published(state),
             },
         }
     }

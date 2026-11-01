@@ -525,18 +525,22 @@ pub(crate) enum ImportClaim {
 }
 
 impl Database {
-    /// Remove every candidate's standing: what the library opens with, since
-    /// nothing a standing describes outlives the process that wrote it.
+    /// Remove every candidate's standing and every run's published state:
+    /// what the library opens with, since nothing they describe outlives the
+    /// process that wrote it.
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), DbError> {
         self.call(|sql| {
             sql.execute("DELETE FROM import_candidate_standing", [])?;
             sql.execute("DELETE FROM import_identification_batch", [])?;
+            sql.execute("DELETE FROM import_identify_run", [])?;
             Ok(())
         })
         .await
     }
 
-    /// Where every candidate something is running for stands, by key.
+    /// Where every candidate something is running for stands, by key, for a
+    /// test.
+    #[cfg(test)]
     pub(crate) async fn load_candidate_standings(
         &self,
     ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
@@ -558,15 +562,6 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn load_identification_progress(&self) -> Result<(u32, u32), DbError> {
         self.read(|sql| load_identification_progress_on(&sql)).await
-    }
-
-    /// Every candidate's standing, live.
-    pub(crate) fn subscribe_candidate_standings(
-        &self,
-    ) -> coven::LiveQuery<HashMap<CandidateKey, StoredStanding>> {
-        self.inner
-            .handle
-            .subscribe(|sql| load_standings_on(&sql).map_err(CovenError::from))
     }
 
     /// How far the identification batch has got and how many imports are in

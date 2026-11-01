@@ -310,7 +310,9 @@ fn match_entries_columns() -> String {
     let child = |table: &str, value: &str, order: &str| {
         format!(
             "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
-              WHERE entry.content_hash = found.content_hash AND entry.position = found.position)"
+              WHERE entry.content_hash IS found.content_hash \
+                AND entry.identify_run IS found.identify_run \
+                AND entry.position = found.position)"
         )
     };
     format!(
@@ -331,7 +333,8 @@ fn match_entries_columns() -> String {
         ),
         copies = super::super::downscaled_copies::copies_json_sql(
             "import_candidate_match_cover_copy",
-            "copy.content_hash = found.content_hash AND copy.position = found.position",
+            "copy.content_hash IS found.content_hash AND copy.identify_run IS found.identify_run \
+             AND copy.position = found.position",
         ),
         media = child(
             "import_candidate_match_medium",
@@ -460,6 +463,46 @@ fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)
         return Ok(None);
     }
     Ok(Some((read_match_row(row)?, read_match_entries(row)?)))
+}
+
+/// The releases of every run in flight, or of `key`'s runs alone, by run,
+/// each run's in position order.
+pub(super) fn load_run_matches_on(
+    sql: &impl super::super::query::QueryRows,
+    key: Option<&crate::import::CandidateKey>,
+) -> Result<HashMap<i64, StoredMatches>, DbError> {
+    let rows = sql.query(
+        &format!(
+            "SELECT 'run ' || found.identify_run AS content_hash, \
+                    found.identify_run AS match_run, {MATCH_COLUMNS}, {entries} \
+             FROM import_candidate_match AS found \
+             JOIN import_identify_run AS run ON run.identify_run = found.identify_run \
+             LEFT JOIN source_release AS fetched \
+                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
+             WHERE ?1 IS NULL OR run.candidate_key = ?1 \
+             ORDER BY found.identify_run, found.position",
+            entries = match_entries_columns(),
+        ),
+        params![key],
+        |row| {
+            Ok((
+                row.get::<_, i64>("match_run")?,
+                read_match_row(row).and_then(|columns| {
+                    Ok((columns, read_match_entries(row).map_err(DbError::from)?))
+                }),
+            ))
+        },
+    )?;
+    let mut matches: HashMap<i64, StoredMatches> = HashMap::new();
+    for (run, found) in rows {
+        let (columns, entries) = found?;
+        matches
+            .entry(run)
+            .or_default()
+            .rows
+            .push(match_of(columns, entries.entries()?)?);
+    }
+    Ok(matches)
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the

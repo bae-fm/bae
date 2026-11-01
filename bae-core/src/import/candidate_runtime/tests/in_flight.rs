@@ -32,14 +32,17 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert_eq!(
         in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Run(triangulating()))
+        Some(IdentificationInFlight::Run(published(triangulating())))
     );
 
-    runtime.record_run_state(key, run(1), true, &manual_only());
+    assert!(runtime
+        .publish_candidate_run(key, run(1), &manual_only(), None)
+        .await
+        .unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Run(manual_only()))
+        Some(IdentificationInFlight::Run(published(manual_only())))
     );
 
     runtime.end_identification_answer(key, run(1)).await.unwrap();
@@ -76,22 +79,28 @@ async fn a_request_over_an_answer_being_written_waits_for_the_next_run() {
     );
 }
 
-/// A library release's re-identify run is no list row's: the runtime holds it
+/// A library release's re-identify run is no list row's: its row holds it
 /// whole, its run in flight and then its answer, until its sheet closes.
 #[tokio::test]
 async fn a_re_identify_run_is_held_by_the_runtime_alone() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::reidentify("release-1");
 
-    runtime.record_run_state(key, run(1), false, &triangulating());
+    runtime
+        .publish_release_run(key, run(1), &triangulating(), None)
+        .await
+        .unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Run(triangulating()))
+        Some(IdentificationInFlight::Run(published(triangulating())))
     );
-    runtime.record_run_state(key, run(1), false, &manual_only());
+    runtime
+        .publish_release_run(key, run(1), &manual_only(), None)
+        .await
+        .unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Run(manual_only()))
+        Some(IdentificationInFlight::Run(published(manual_only())))
     );
     assert_eq!(runtime.standing_facts(key).await.unwrap(), Default::default());
 

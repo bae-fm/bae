@@ -34,7 +34,10 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
         "the run starting is the same identification, still waited on"
     );
 
-    runtime.record_run_state(key, run(1), true, &manual_only());
+    assert!(runtime
+        .publish_candidate_run(key, run(1), &manual_only(), None)
+        .await
+        .unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         counts(&runtime, &mut last).await,
@@ -202,8 +205,14 @@ async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
     let mut last = (0, 0);
     let key = &crate::import::CandidateKey::reidentify("release-1");
 
-    runtime.record_run_state(key, run(1), false, &triangulating());
-    runtime.record_run_state(key, run(1), false, &manual_only());
+    runtime
+        .publish_release_run(key, run(1), &triangulating(), None)
+        .await
+        .unwrap();
+    runtime
+        .publish_release_run(key, run(1), &manual_only(), None)
+        .await
+        .unwrap();
     assert!(
         runtime.snapshot(key).await.unwrap().is_some(),
         "the sheet reads its run off the runtime"

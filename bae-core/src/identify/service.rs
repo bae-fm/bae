@@ -428,8 +428,14 @@ impl Driver {
         event: IdentifyEvent,
         standing: &mut RunStanding,
     ) -> IdentifyState {
+        // A snapshot's signals are stored with the state the run reached
+        // from them.
+        let signals = match &event {
+            IdentifyEvent::SignalsUpdated { signals, .. } => Some(signals.clone()),
+            _ => None,
+        };
         let (state, effects) = step(state, event);
-        self.record(&state, standing).await;
+        self.record(&state, signals.as_ref(), standing).await;
 
         // Every state `step` returns is sent, including one identical to the
         // last (a stale response the reducer's `for_barcode` guard dropped).
@@ -454,71 +460,95 @@ impl Driver {
         state
     }
 
-    /// Record `state` as what the run published, and, for a folder
-    /// candidate, write where it leaves the run standing: the first state
-    /// starts it, its answer moves it to being written, and `Idle` ends it.
-    /// What a run publishes is recorded before the table names the run and
-    /// forgotten once it no longer does, so a reader of both always finds it.
-    async fn record(&self, state: &IdentifyState, standing: &mut RunStanding) {
+    /// Store `state` as what the run published, with `signals` where the
+    /// step read new ones, and, for a folder candidate, write where it leaves
+    /// the run standing: the first state starts it, in the same write, its
+    /// answer moves it to being written, and `Idle` ends it. A folder
+    /// candidate's state is stored only while the table names the run, and
+    /// goes in the write that moves the standing off it.
+    async fn record(
+        &self,
+        state: &IdentifyState,
+        signals: Option<&crate::signals::Signals>,
+        standing: &mut RunStanding,
+    ) {
         let candidates = &self.inner.candidates;
         let (key, run) = (&self.key, self.run);
         let RunSubject::Candidate(files) = &self.subject else {
-            match state {
-                IdentifyState::Idle => candidates.forget_run(key, run),
-                _ => candidates.record_run_state(key, run, false, state),
+            // No caller waits on the driver to hear it: a bug.
+            if let Err(error) = candidates
+                .publish_release_run(key, run, state, signals)
+                .await
+            {
+                self.inner
+                    .library_manager
+                    .report_bug(&format!("store what {key}'s run {run:?} published"), &error);
             }
             return;
         };
         match (*standing, state) {
             (RunStanding::Unheld, _) | (RunStanding::NotStarted, IdentifyState::Idle) => {}
             (RunStanding::Held, IdentifyState::Idle) => {
-                // The table still names the run, so what it published stays
-                // beside it. No caller waits on the driver to hear it: a bug.
+                // No caller waits on the driver to hear it: a bug.
                 if let Err(error) = candidates.run_ended(key, run).await {
                     self.inner
                         .library_manager
                         .report_bug(&format!("record that {key}'s run {run:?} ended"), &error);
                 }
             }
-            (RunStanding::NotStarted, _) => {
-                candidates.record_run_state(key, run, true, state);
-                match candidates.run_started(key, files, run).await {
-                    Ok(true) => {
-                        *standing = RunStanding::Held;
-                        if state.is_terminal() {
-                            self.record_answer(state, standing).await;
-                        }
-                    }
-                    Ok(false) => {
-                        debug!(
-                            "identify: {key} is not waiting for run {run:?}; it holds no standing"
-                        );
-                        candidates.forget_run(key, run);
-                        *standing = RunStanding::Unheld;
-                    }
-                    // The run cannot say where it stands, so it breaks: its
-                    // answer says why, and the bug is reported.
-                    Err(error) => {
-                        self.inner.library_manager.report_bug(
-                            &format!("record that {key}'s run {run:?} started"),
-                            &error,
-                        );
-                        candidates.forget_run(key, run);
-                        *standing = RunStanding::Unheld;
-                        emit_step(
-                            &self.event_tx,
-                            IdentifyEvent::Broke {
-                                failure: InternalFailure::logged(
-                                    &format!("recording that {key}'s run started"),
-                                    error,
-                                ),
-                            },
-                        );
+            (RunStanding::NotStarted, _) => match candidates
+                .run_started(key, files, run, state)
+                .await
+            {
+                Ok(true) => {
+                    *standing = RunStanding::Held;
+                    if state.is_terminal() {
+                        self.record_answer(state, standing).await;
                     }
                 }
-            }
+                Ok(false) => {
+                    debug!("identify: {key} is not waiting for run {run:?}; it holds no standing");
+                    *standing = RunStanding::Unheld;
+                }
+                // The run cannot say where it stands, so it breaks: its
+                // answer says why, and the bug is reported.
+                Err(error) => {
+                    self.inner
+                        .library_manager
+                        .report_bug(&format!("record that {key}'s run {run:?} started"), &error);
+                    *standing = RunStanding::Unheld;
+                    emit_step(
+                        &self.event_tx,
+                        IdentifyEvent::Broke {
+                            failure: InternalFailure::logged(
+                                &format!("recording that {key}'s run started"),
+                                error,
+                            ),
+                        },
+                    );
+                }
+            },
             (RunStanding::Held, _) => {
-                candidates.record_run_state(key, run, true, state);
+                match candidates
+                    .publish_candidate_run(key, run, state, signals)
+                    .await
+                {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        debug!(
+                            "identify: {key}'s run {run:?} published after it lost its standing"
+                        );
+                        *standing = RunStanding::Unheld;
+                        return;
+                    }
+                    // No caller waits on the driver to hear it: a bug. The
+                    // table still names the run, so its answer, below, still
+                    // moves it.
+                    Err(error) => self
+                        .inner
+                        .library_manager
+                        .report_bug(&format!("store what {key}'s run {run:?} published"), &error),
+                }
                 if state.is_terminal() {
                     self.record_answer(state, standing).await;
                 }
@@ -537,11 +567,10 @@ impl Driver {
             Ok(true) => {}
             Ok(false) => {
                 debug!("identify: {key}'s run {run:?} answered after it lost its standing");
-                candidates.forget_run(key, run);
                 *standing = RunStanding::Unheld;
             }
-            // The table still names the run as running; the write of its
-            // answer ends it either way, so what it published stays beside it.
+            // The table still names the run as running, so what it published
+            // stays beside it until the write of its answer ends it.
             // No caller waits on the driver to hear it: a bug.
             Err(error) => self
                 .inner

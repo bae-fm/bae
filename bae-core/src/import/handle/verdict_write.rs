@@ -107,11 +107,15 @@ impl ImportServiceHandle {
             .store_run_verdict(row, candidate_key, run)
             .await?
         {
-            Some(ended) => Ok(Some(
+            // The verdict's write ended the answer, and what its run
+            // published, inside it.
+            Some(ended) => {
+                #[cfg(any(test, feature = "test-utils"))]
                 self.runtime
-                    .answer_ended_by_verdict(candidate_key, run, ended)
-                    .await,
-            )),
+                    .tell_every_change(std::iter::once(candidate_key))
+                    .await;
+                Ok(Some(ended.ended_with_import_asked()))
+            }
             None => Ok(None),
         }
     }
