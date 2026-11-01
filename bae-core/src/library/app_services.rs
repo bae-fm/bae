@@ -693,10 +693,9 @@ impl AppServices {
         self.inner.manager.cancel_failed_release_move(id).await
     }
 
-    /// Everything sync is doing now, live, for the activity indicator.
-    pub fn subscribe_sync_activity(&self) -> crate::library::SyncActivityStream {
-        crate::library::SyncActivityStream::new(self.inner.manager.clone())
-    }
+    // Everything sync is doing, for the activity indicator: each value read
+    // in one go.
+    delegate_values!(subscribe_sync_activity => subscribe_sync_activity() -> crate::library::SyncActivity);
 
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);

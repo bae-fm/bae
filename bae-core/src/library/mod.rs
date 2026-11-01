@@ -86,9 +86,7 @@ pub use storage_browse::{
     ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView,
     StorageQueues, UploadQueueRun,
 };
-pub use sync_activity::{
-    DownloadsInFlight, SyncActivity, SyncActivityStream, UploadQueueCounts, UploadsInFlight,
-};
+pub use sync_activity::{DownloadsInFlight, SyncActivity, UploadQueueCounts, UploadsInFlight};
 pub use upload_progress::{UploadActivity, UploadBar, UploadProgress, UploadState};
 
 #[cfg(test)]

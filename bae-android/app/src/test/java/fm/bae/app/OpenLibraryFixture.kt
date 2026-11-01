@@ -20,10 +20,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.robolectric.RuntimeEnvironment
 
-/** A library opened over [handle] with fresh stores, as a Robolectric test reads it; [syncStatus] is its sync status store. */
+/**
+ * A library opened over [handle] with fresh stores, as a Robolectric test reads it; [syncStatus] and [syncActivity] are its
+ * sync stores.
+ */
 internal fun openTestLibrary(
     handle: FakeAppHandle,
     syncStatus: SyncStatusStore = SyncStatusStore(),
+    syncActivity: SyncActivityStore = SyncActivityStore({}),
 ): OpenLibrary {
     val context = RuntimeEnvironment.getApplication()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -35,7 +39,7 @@ internal fun openTestLibrary(
             OpenLibraryStores(
                 config = ConfigStore(BridgeFixtures.config()),
                 syncStatus = syncStatus,
-                syncActivity = SyncActivityStore({}),
+                syncActivity = syncActivity,
                 transfers =
                     LibraryTransferStores(
                         downloads = DownloadStore(BridgeFixtures.downloadCounts()),

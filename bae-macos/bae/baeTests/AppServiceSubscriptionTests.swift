@@ -99,6 +99,44 @@ struct SyncStatusSubscriptionTests {
     }
 }
 
+@MainActor
+@Suite("Sync activity", .serialized)
+struct SyncActivitySubscriptionTests {
+    @Test("each pulled sync activity reaches its store")
+    func pulledSyncActivityReachesTheStore() async throws {
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
+        let store = appService.syncActivityStoreForTesting
+        appService.startCommonSubscriptions()
+        #expect(store.activity == nil)
+
+        handle.deliverSyncActivity(activity(sending: 2))
+        try await Wait.until { store.activity?.moving == true }
+
+        handle.deliverSyncActivity(activity(sending: nil))
+        try await Wait.until { store.activity?.moving == false }
+    }
+
+    private func activity(sending: UInt32?) -> BridgeSyncActivity {
+        BridgeSyncActivity(
+            moving: sending != nil,
+            needsAttention: false,
+            failure: nil,
+            attention: .ready(records: []),
+            syncing: false,
+            uploads: sending.map {
+                BridgeUploadsInFlight(
+                    summaryParts: [
+                        BridgeCountLabel(key: "core.queue.uploading", count: $0)
+                    ]
+                )
+            },
+            downloads: nil,
+            retryOffered: false
+        )
+    }
+}
+
 private let playingState = BridgePlaybackValueState.playing(
     track: BridgeNowPlayingTrack(
         track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
@@ -299,6 +337,11 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let queueAdditions = FakeQueueAdditions()
     private let timeline = FakePlaybackTimeline()
     private let syncStatus = FakeSyncStatus()
+    private let syncActivity = FakeSyncActivity()
+
+    func deliverSyncActivity(_ activity: BridgeSyncActivity) {
+        syncActivity.values.deliver(activity)
+    }
 
     func deliverSyncStatus(_ status: BridgeSyncStatusSnapshot) {
         syncStatus.values.deliver(status)
@@ -334,10 +377,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
-    override func subscribeSyncActivity(
-        callback _: any SyncActivityCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeSyncActivity() -> SyncActivitySubscription {
+        syncActivity
     }
 
     override func subscribePlaybackValues() -> PlaybackValuesSubscription {
@@ -514,6 +555,27 @@ private final class FakeSyncStatus: SyncStatusSubscription, @unchecked Sendable
     }
 
     override func next() async throws -> BridgeSyncStatusSnapshot {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// The sync activity a test hands the app one value at a time.
+private final class FakeSyncActivity: SyncActivitySubscription,
+    @unchecked Sendable
+{
+    let values = PullQueue<BridgeSyncActivity>()
+
+    init() {
+        super.init(noHandle: SyncActivitySubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeSyncActivity {
         try await values.next()
     }
 

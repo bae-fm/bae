@@ -61,6 +61,9 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     pull_until(&handle, || Box::pin(paused.clone().next()), |_| true);
     let counts = handle.subscribe_download_counts();
     pull_until(&handle, || Box::pin(counts.clone().next()), |_| true);
+    let activity = handle.subscribe_sync_activity();
+    let quiet = pull_until(&handle, || Box::pin(activity.clone().next()), |_| true);
+    assert!(!quiet.moving && quiet.uploads.is_none(), "{quiet:?}");
     let profiles = handle.subscribe_profiles();
     pull_until(&handle, || Box::pin(profiles.clone().next()), |_| true);
     let playlists = handle.subscribe_playlists();

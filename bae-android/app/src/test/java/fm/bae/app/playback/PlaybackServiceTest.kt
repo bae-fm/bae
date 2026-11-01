@@ -55,7 +55,6 @@ import uniffi.bae_bridge.BridgeWorkDetailSnapshot
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
-import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
@@ -235,14 +234,6 @@ internal class FakeReleaseDetailSubscription(
     override suspend fun cancel() = read.cancel()
 
     override fun close() = read.cancel()
-}
-
-internal class FakeLiveSubscription : LiveSubscription(NoHandle) {
-    var cancelled = false
-
-    override fun cancel() {
-        cancelled = true
-    }
 }
 
 internal class FakeAlbumBrowseSubscription(

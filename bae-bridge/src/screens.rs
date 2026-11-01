@@ -194,6 +194,15 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// Everything sync is doing: what needs the person, and the transfers
+    /// moving bytes.
+    SyncActivitySubscription:
+        bae_core::library::SyncActivity => crate::types::BridgeSyncActivity,
+    converted by crate::types::BridgeSyncActivity::from_core,
+    built by sync_activity
+}
+
+pulled_values! {
     /// Whether the person paused uploads.
     UploadsPausedSubscription: bool => bool,
     converted by |paused: bool| paused,

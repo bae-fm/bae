@@ -66,6 +66,7 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
+import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeUnsentWork
@@ -97,7 +98,7 @@ import uniffi.bae_bridge.RatingsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.StreamFailureCallback
-import uniffi.bae_bridge.SyncActivityCallback
+import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
@@ -133,13 +134,10 @@ internal open class FakeAppHandle(
      *  unaltered. */
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
-    val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
     val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
-
-    private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
 
     override fun pause() {
         pauseCount++
@@ -158,7 +156,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeSyncStatus(): SyncStatusSubscription = syncStatus
 
-    override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
+    /** The sync activity the handle answers, which a test delivers to. */
+    val syncActivity = FakeSyncActivitySubscription()
+
+    override fun subscribeSyncActivity(): SyncActivitySubscription = syncActivity
 
     override fun subscribeDownloadCounts(): DownloadCountsSubscription = FakeDownloadCountsSubscription()
 
@@ -793,6 +794,25 @@ internal class FakeSyncStatusSubscription : SyncStatusSubscription(NoHandle) {
     }
 
     override suspend fun next(): BridgeSyncStatusSnapshot = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
+    }
+}
+
+/** A sync activity a test hands the app a value at a time: each pull waits for the next. */
+internal class FakeSyncActivitySubscription : SyncActivitySubscription(NoHandle) {
+    private val values = Channel<BridgeSyncActivity>(Channel.UNLIMITED)
+
+    fun deliver(activity: BridgeSyncActivity) {
+        values.trySend(activity)
+    }
+
+    override suspend fun next(): BridgeSyncActivity = values.receive()
 
     override suspend fun cancel() {
         values.close(BridgeException.Cancelled())

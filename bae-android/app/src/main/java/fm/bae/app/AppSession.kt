@@ -44,8 +44,6 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.SyncActivityCallback
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -114,11 +112,10 @@ class OpenLibrary internal constructor(
      * handle: the holder takes the screens down first, then closes.
      */
     private val shownScreens = MutableStateFlow(0)
-    private val valueSubscriptions = mutableListOf<LiveSubscription>()
     private val screenSubscriptions = mutableListOf<ScreenSubscription<*>>()
     private val playbackFailures = PlaybackFailureNotices()
 
-    /** The fast streams' feeds, which stop with [valueSubscriptions]. */
+    /** The fast streams' feeds, which stop with [screenSubscriptions]. */
     private val streamFeeds = mutableListOf<LatestFeed>()
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
@@ -168,21 +165,12 @@ class OpenLibrary internal constructor(
                 onValue = { value -> stores.syncStatus.apply(value, LocaleErrorDisplays(appContext)) },
                 onError = { error -> subscriptionFailed("sync status", error)?.let(stores.syncStatus::fail) },
             )
-        valueSubscriptions +=
-            appHandle.subscribeSyncActivity(
-                object : SyncActivityCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeSyncActivity) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            stores.syncActivity.apply(value)
-                        }
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail)
-                        }
-                    }
-                },
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeSyncActivity().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = stores.syncActivity::apply,
+                onError = { error -> subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail) },
             )
         screenSubscriptions += playbackValues(scope)
         screenSubscriptions += queueAdditions(scope)
@@ -386,8 +374,6 @@ class OpenLibrary internal constructor(
         playback.closeSession()
         widgetJob?.cancel()
         widgetJob = null
-        valueSubscriptions.forEach(LiveSubscription::cancel)
-        valueSubscriptions.clear()
         screenSubscriptions.forEach(ScreenSubscription<*>::stop)
         screenSubscriptions.clear()
         streamFeeds.forEach(LatestFeed::cancel)

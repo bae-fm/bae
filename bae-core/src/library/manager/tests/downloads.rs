@@ -309,8 +309,8 @@ async fn download_bytes_send_no_new_sync_activity() {
     let progress = |bytes_done| {
         crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
-    let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
-    assert_eq!(activity.next().await.unwrap().downloads, None);
+    let mut activity = manager.library.subscribe_sync_activity();
+    assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
 
     // The manager's own worker leaves the entry to this test.
     manager.set_downloads_paused(true).await.unwrap();
@@ -330,7 +330,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         .await
         .unwrap());
     assert_eq!(
-        activity.next().await.unwrap().downloads,
+        crate::followed::value_matching(&mut activity, |_| true).await.downloads,
         Some(crate::library::DownloadsInFlight {
             active: 1,
             queued: 0
@@ -350,7 +350,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         assert!(polled.is_pending(), "{bytes_done} bytes sent an activity");
     }
     manager.cancel_download(&release_id).await.unwrap();
-    assert_eq!(next.await.unwrap().downloads, None);
+    assert_eq!(next.await.unwrap().unwrap().downloads, None);
     pending.abort();
 }
 

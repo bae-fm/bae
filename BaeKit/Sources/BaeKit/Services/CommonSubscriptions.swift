@@ -1,26 +1,5 @@
 import Foundation
 
-private final class SyncActivityValueSink: SyncActivityCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeSyncActivity) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeSyncActivity) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
-
-    func onValue(value: BridgeSyncActivity) {
-        Task { @MainActor in apply(value) }
-    }
-}
-
 @MainActor
 final class CommonSubscriptions {
     private let appHandle: AppHandle
@@ -31,7 +10,6 @@ final class CommonSubscriptions {
     private let downloadStore: DownloadStore
     private let playbackStore: PlaybackStore
     private let castStore: CastStore
-    private var subscriptions: [LiveSubscription] = []
     private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
     private var playbackTimeline:
         ScreenSubscription<PlaybackTimelineSubscription>?
@@ -42,6 +20,7 @@ final class CommonSubscriptions {
     private var queue: ScreenSubscription<QueueSubscription>?
     private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
     private var syncStatus: ScreenSubscription<SyncStatusSubscription>?
+    private var syncActivity: ScreenSubscription<SyncActivitySubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -76,7 +55,7 @@ final class CommonSubscriptions {
             @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
-        precondition(subscriptions.isEmpty)
+        precondition(playbackValues == nil, "the subscriptions start once")
         playbackValues = ScreenSubscription(
             appHandle.subscribePlaybackValues(),
             onValue: applyPlayback,
@@ -128,28 +107,26 @@ final class CommonSubscriptions {
             downloadStore.releaseProgress.feed(from: appHandle),
             playbackStore.trackPositions.feed(from: appHandle),
         ]
+        startSync()
+    }
+
+    /// What sync is doing and what it waits on, for the status line and the
+    /// activity indicator.
+    private func startSync() {
         syncStatus = ScreenSubscription(
             appHandle.subscribeSyncStatus(),
             onValue: { [syncStatusStore] value in syncStatusStore.apply(value)
             },
             onError: { [syncStatusStore] error in syncStatusStore.fail(error) }
         )
-        subscriptions = syncSubscriptions()
+        syncActivity = ScreenSubscription(
+            appHandle.subscribeSyncActivity(),
+            onValue: { [syncActivityStore] value in
+                syncActivityStore.apply(value)
+            },
+            onError: { [syncActivityStore] error in
+                syncActivityStore.fail(error)
+            }
+        )
     }
-
-    private func syncSubscriptions() -> [LiveSubscription] {
-        [
-            appHandle.subscribeSyncActivity(
-                callback: SyncActivityValueSink(
-                    apply: { [syncActivityStore] value in
-                        syncActivityStore.apply(value)
-                    },
-                    fail: { [syncActivityStore] error in
-                        syncActivityStore.fail(error)
-                    }
-                )
-            )
-        ]
-    }
-
 }

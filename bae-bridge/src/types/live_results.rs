@@ -1,32 +1,3 @@
-use super::*;
-
-/// The callback interfaces a host implements to receive a subscription's
-/// values.
-///
-/// A subscription either can fail — a live query over the database — or cannot,
-/// and that is the whole difference between the two shapes: one carries
-/// `on_error`, the other does not. Each trait is named and its method's
-/// parameter is named, because those names are what the generated Swift, Kotlin
-/// and C# read.
-macro_rules! callbacks {
-    (
-        $(
-            $(#[$attr:meta])*
-            $name:ident: $method:ident($param:ident: $value:ty)
-            $(+ $on_error:ident)? ;
-        )*
-    ) => {
-        $(
-            $(#[$attr])*
-            #[uniffi::export(callback_interface)]
-            pub trait $name: Send + Sync {
-                fn $method(&self, $param: $value);
-                $( fn $on_error(&self, error: BridgeError); )?
-            }
-        )*
-    };
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLibraryPageWindow {
     pub offset: u64,
@@ -45,9 +16,4 @@ pub enum BridgeLiveQueryCause {
     Request,
     Write,
     RequestAndWrite,
-}
-
-callbacks! {
-
-    SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;
 }

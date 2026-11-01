@@ -359,6 +359,10 @@ open class AppService: @unchecked Sendable, Observable {
             syncStatusStore
         }
 
+        public var syncActivityStoreForTesting: SyncActivityStore {
+            syncActivityStore
+        }
+
     #endif
 }
 

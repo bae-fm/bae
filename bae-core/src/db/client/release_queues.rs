@@ -269,7 +269,7 @@ fn release_queue_on<P: QueuedPayload>(
     })
 }
 
-fn release_queue_counts_on<P: QueuedPayload>(
+pub(super) fn release_queue_counts_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueCounts, DbError> {
     let (queued, active, failed): (u32, u32, u32) = sql.query_row(

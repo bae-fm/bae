@@ -99,6 +99,21 @@ const RELEASES_SENDING_BYTES: &str = "SELECT listing.release_id, \
      WHERE listing.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
          JOIN release_files AS f ON f.file = sending.file)";
 
+/// How many files wait in this device's upload queue, how many of them this
+/// process is sending now, and whether uploads are paused. The bytes the
+/// files move are not read, so a confirmed part reruns nothing.
+pub(super) fn upload_queue_counts_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<crate::library::UploadQueueCounts, DbError> {
+    Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
+        Ok(crate::library::UploadQueueCounts {
+            queued: row.get(0)?,
+            sending: row.get(1)?,
+            paused: row.get(2)?,
+        })
+    })?)
+}
+
 impl Database {
     /// How many of the release's files still wait to upload from this device.
     pub async fn count_pending_uploads_for_release(
@@ -122,23 +137,6 @@ impl Database {
                 .map_err(DbError::from)
         })
         .await
-    }
-
-    /// How many files wait in this device's upload queue, how many of them
-    /// this process is sending now, and whether uploads are paused, live. The
-    /// bytes the files move are not read, so a confirmed part reruns nothing.
-    pub(crate) fn subscribe_upload_counts(
-        &self,
-    ) -> coven::LiveQuery<crate::library::UploadQueueCounts> {
-        self.inner.handle.subscribe(|sql| {
-            Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
-                Ok(crate::library::UploadQueueCounts {
-                    queued: row.get(0)?,
-                    sending: row.get(1)?,
-                    paused: row.get(2)?,
-                })
-            })?)
-        })
     }
 
     /// The files this process is sending now and the releases they belong

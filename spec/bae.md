@@ -2435,8 +2435,11 @@ neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
-phones, updating as it changes. What needs the person comes first, under *Needs
-Attention*: the failure's line and each pending record in plain words, with
+phones, updating as it changes. What it shows is one read of the library's
+tables, followed as they change: the sync status the status line reads
+(below), and the upload and download queues' counts. Bytes moving change none
+of them, so they send it nothing. What needs the person comes first, under
+*Needs Attention*: the failure's line and each pending record in plain words, with
 *Open Sync Settings*, where each record offers its action. A failure a pending record shows has no line of its own: a pass that
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
@@ -3483,12 +3486,12 @@ release's or track's id as UTF-8, or a candidate's key.
   closing the library, answers a waiting pull and every later one that it was
   cancelled. Each app reads them through one helper, `ScreenSubscription`,
   with the same name and shape in BaeKit and in Android's data layer. What
-  playback is doing is one (§9.4); so are the settings, the sync status, the
-  queue, the download counts, whether uploads are paused, the members, the
+  playback is doing is one (§9.4); so are the settings, the sync status and
+  activity, the queue, the download counts, whether uploads are paused, the members, the
   device that joins from Add Device's code, the profiles, ratings, playlists
   and a playlist's entries, the library's name, the watched folders' scans, and an
   import pane's library membership, which moves its checks in place.
-- **Subscriptions** — sync activity and open invites — take a
+- **Subscriptions** — open invites — take a
   callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
   as one of the library's tasks, and so does every task core starts to read

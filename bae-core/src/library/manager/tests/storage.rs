@@ -874,8 +874,8 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
-    assert_eq!(activity.next().await.unwrap().uploads, None);
+    let mut activity = manager.library.subscribe_sync_activity();
+    assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
     // Held in flight long enough that its start is read while it runs.
     home.set_faults(coven::Faults {
         delay: std::time::Duration::from_secs(2),
@@ -887,7 +887,8 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = loop {
-        if let Some(uploads) = activity.next().await.unwrap().uploads {
+        let next = crate::followed::value_matching(&mut activity, |_| true).await;
+        if let Some(uploads) = next.uploads {
             break uploads;
         }
     };
@@ -898,7 +899,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
             waiting: 0,
         }
     );
-    while activity.next().await.unwrap().uploads.is_some() {}
+    while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}
     drain.await.unwrap().unwrap();
 }
 

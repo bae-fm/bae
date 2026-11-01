@@ -12,21 +12,11 @@ impl AppHandle {
 
     /// Everything sync is doing, for the activity indicator and its list:
     /// the value now, then one after each change.
-    pub fn subscribe_sync_activity(
-        &self,
-        callback: Box<dyn crate::types::SyncActivityCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services| async move {
-            let mut activity = services.subscribe_sync_activity();
-            loop {
-                match activity.next().await {
-                    Ok(value) => {
-                        callback.on_value(crate::types::BridgeSyncActivity::from_core(value))
-                    }
-                    Err(error) => callback.on_error(BridgeError::from_core(error)),
-                }
-            }
-        })
+    pub fn subscribe_sync_activity(&self) -> std::sync::Arc<crate::SyncActivitySubscription> {
+        crate::screens::sync_activity(
+            self.services.subscribe_sync_activity(),
+            self.runtime.clone(),
+        )
     }
 
     /// Whether the person paused uploads now, then each time that changes.
