@@ -12,8 +12,10 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (Data, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (Data, BridgePressingLink) async throws ->
-            BridgePaneOutcome
+        @Sendable (Data, BridgePressingLink, BridgeCatalogApply?) async throws
+            -> BridgePaneOutcome
+    /// `nil` where no bridge is behind the importer: a preview or a test.
+    let catalogApply: @Sendable () -> CatalogApplySteps?
     let applyCandidateFileMetadata:
         @Sendable (Data) async throws -> BridgePaneOutcome
     let keepCandidateDraft: @Sendable (Data) async throws -> BridgePaneOutcome
@@ -84,7 +86,9 @@ private struct ImportOperations: Sendable {
 extension ImportOperations {
     // Flat forwarding from AppHandleProtocol into immutable operation values.
     // swiftlint:disable:next function_body_length
-    static func live(handle: any AppHandleProtocol) -> ImportOperations {
+    static func live(handle: any AppHandleProtocol, host: BridgeHost)
+        -> ImportOperations
+    {
         ImportOperations(
             candidateSourceFolders: {
                 try await handle.candidateSourceFolders(key: $0)
@@ -115,9 +119,11 @@ extension ImportOperations {
             applyCandidateExternalMetadata: {
                 try await handle.selectCandidateRelease(
                     candidateKey: $0,
-                    link: $1
+                    link: $1,
+                    apply: $2
                 )
             },
+            catalogApply: { CatalogApplySteps(host: host) },
             applyCandidateFileMetadata: {
                 try await handle.readCandidateFileTags(candidateKey: $0)
             },
@@ -315,10 +321,11 @@ final class Importer: Sendable, Observable {
             -> Void =
             { _, _, _, _ in },
         applyCandidateExternalMetadata:
-            @escaping @Sendable (Data, BridgePressingLink)
-            async throws -> BridgePaneOutcome = { _, _ in
+            @escaping @Sendable (Data, BridgePressingLink, BridgeCatalogApply?)
+            async throws -> BridgePaneOutcome = { _, _, _ in
                 throw StubError.notImplemented
             },
+        catalogApply: @escaping @Sendable () -> CatalogApplySteps? = { nil },
         applyCandidateFileMetadata:
             @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
@@ -441,6 +448,7 @@ final class Importer: Sendable, Observable {
             refreshWatchedFolder: refreshWatchedFolder,
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
+            catalogApply: catalogApply,
             applyCandidateFileMetadata: applyCandidateFileMetadata,
             keepCandidateDraft: keepCandidateDraft,
             linkCandidateSharedAlbum: linkCandidateSharedAlbum,
@@ -535,15 +543,24 @@ extension Importer {
     }
 
     /// Link the candidate to the release a pick names, claiming every source
-    /// that pick carried, and read its draft from it.
+    /// that pick carried, and read its draft from it, each network read it
+    /// waits on written to `apply`'s stream.
     func applyCandidateExternalMetadata(
         _ candidateKey: Data,
-        link: BridgePressingLink
+        link: BridgePressingLink,
+        apply: BridgeCatalogApply?
     ) async throws -> BridgePaneOutcome {
         try await operations.applyCandidateExternalMetadata(
             candidateKey,
-            link
+            link,
+            apply
         )
+    }
+
+    /// A new apply of a catalog release and its steps, for the row that
+    /// shows what it waits on; `nil` where no bridge is behind the importer.
+    func catalogApply() -> CatalogApplySteps? {
+        operations.catalogApply()
     }
 
     /// Read the candidate's files' own tags into its draft, a pane command:
@@ -830,8 +847,8 @@ extension Importer {
         try await operations.setImportPinned(enabled)
     }
 
-    convenience init(handle: any AppHandleProtocol) {
-        self.init(operations: .live(handle: handle))
+    convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
+        self.init(operations: .live(handle: handle, host: host))
     }
 
     /// What one candidate has in flight, for a screen to pull; `nil` where

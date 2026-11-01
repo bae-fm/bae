@@ -43,7 +43,7 @@ private final class Recorder {
                     )
                 }
             },
-            applyCandidateExternalMetadata: { [self] _, link in
+            applyCandidateExternalMetadata: { [self] _, link, _ in
                 try await MainActor.run {
                     externalMetadata.append(link)
                     if let pickFailure { throw pickFailure }

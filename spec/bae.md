@@ -1138,7 +1138,12 @@ checked, or a medium the folder rules out. The person then:
 
 A pick applies its release to the draft at once (§3.6), an unattended one as
 soon as its read in full ends. Nothing previews the release's tracklist first:
-the draft the pick writes is what the pane shows.
+the draft the pick writes is what the pane shows. While a person's pick waits
+on the network, the row it was made on names what it waits on: reading the
+release, and then each other catalog's release of the pressing, from its
+catalog, or fetching the cover from the catalog that offers it. A release the
+library already holds whole is read without a line, and the rest of the
+pick, which is local, shows none; the row takes no second pick meanwhile.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
@@ -1462,7 +1467,10 @@ pressing fields, the album the release files under, the track table, and the
 same *Identify* controls — *Automatic* identifies the release from its files
 and *Search* opens the typed search — whose results replace the draft in
 place until a pick applies one, or *Back* returns to it. *Save* writes the
-session; *Cancel*, shown once something changed, discards it.
+session; *Cancel*, shown once something changed, discards it. While an apply
+reads a release from its catalog, the editor names the catalog it reads from,
+as an import's pick does (§3.5); saving, cancelling and picking an album are
+local and show no spinner, their controls disabled until they end.
 
 A library release is edited in a *session* the editor opens on it: its form
 holds the release's values as the library holds them. Applying a catalog

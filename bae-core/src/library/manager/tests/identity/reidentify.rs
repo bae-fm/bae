@@ -23,7 +23,7 @@ async fn stored_for(
 async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::import::PressingLink) {
     let session = manager.open_release_edit(release_id).await.unwrap();
     let seed = manager
-        .apply_release_edit_catalog(&session, &link)
+        .apply_release_edit_catalog(&session, &link, &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     manager.save_release_edit(&session, &seed.edit).await.unwrap();
@@ -220,7 +220,7 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     let err = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id))
+        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id), &crate::import::CatalogApplySteps::unread())
         .await
         .expect_err("a release of 12 tracks cannot lay out 10");
     assert_eq!(
@@ -255,7 +255,7 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&manager, new_release_id, "discard-re-identify-mb-group-new", 2);
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id))
+        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id), &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
@@ -471,12 +471,12 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(session.opened().album, named(&own));
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"), &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     assert_eq!(applied.album, named(&grouped));
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("unnamed-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("unnamed-new"), &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     assert_eq!(applied.album, DraftAlbum::New);
@@ -496,7 +496,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         "an album the library does not hold cannot be picked"
     );
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"), &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
@@ -532,7 +532,7 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     let sheet = manager.open_release_edit(&release.id).await.unwrap();
     let pane = manager.open_release_edit(&release.id).await.unwrap();
     let applied = manager
-        .apply_release_edit_catalog(&sheet, &musicbrainz_link("two-sessions-new"))
+        .apply_release_edit_catalog(&sheet, &musicbrainz_link("two-sessions-new"), &crate::import::CatalogApplySteps::unread())
         .await
         .unwrap();
     manager

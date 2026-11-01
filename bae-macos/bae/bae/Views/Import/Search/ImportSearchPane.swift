@@ -207,7 +207,7 @@ struct ImportSearchPane: View {
                     isImporting: state.isImporting,
                     libraryStatuses: state.libraryStatuses,
                     selectedReleaseId: state.selectedReleaseId,
-                    loadingReleaseId: state.loadingReleaseId,
+                    loadingPick: state.loadingPick,
                     releaseSelectionFailure: state.releaseSelectionFailure,
                     onRetry: onRetrySearch,
                     onSelect: onSelect,

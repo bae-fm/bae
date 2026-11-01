@@ -353,14 +353,16 @@ class ImportStore {
         metadataApplicationSession(forKey: key) != nil
     }
 
-    /// The release this candidate's pick is waiting on — the row that carries
-    /// the spinner while it is read.
-    func loadingReleaseId(forKey key: Data) -> String? {
-        guard
-            case .pick(let link) =
-                metadataApplicationSession(forKey: key)?.application
+    /// The pick this candidate is waiting on, for the row it was made on to
+    /// name what the read waits on.
+    func loadingPick(forKey key: Data) -> LoadingPick? {
+        guard let session = metadataApplicationSession(forKey: key),
+            case .pick(let link) = session.application
         else { return nil }
-        return link.record.key
+        return LoadingPick(
+            releaseId: link.record.key,
+            reading: .followed(session.steps?.steps)
+        )
     }
 
     /// How this candidate's last pick failed, on the pressing it was about.
@@ -377,11 +379,13 @@ class ImportStore {
     /// read it had running.
     func beginMetadataApplication(
         key: Data,
-        application: MetadataApplication
+        application: MetadataApplication,
+        steps: CatalogApplySteps?
     ) -> CandidateMetadataApplicationSession? {
         guard let candidate = candidate(forKey: key) else { return nil }
         let session = CandidateMetadataApplicationSession(
-            application: application
+            application: application,
+            steps: steps
         )
         picks[key] = Pick(
             audioIdentity: candidate.files.fileMetadataIdentity,

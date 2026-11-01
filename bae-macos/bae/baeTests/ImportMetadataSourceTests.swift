@@ -24,7 +24,7 @@ private final class MetadataSourceRecorder {
 
     var importer: Importer {
         Importer(
-            applyCandidateExternalMetadata: { [self] key, link in
+            applyCandidateExternalMetadata: { [self] key, link, _ in
                 await MainActor.run {
                     externalApplications.append(
                         ExternalMetadataApplication(

@@ -6,7 +6,8 @@
 //! This file holds the live queries a screen follows whole; the submodules
 //! hold the reads a screen moves in place (lists, searches, details, the
 //! Storage Manager, the queue's tail, the import list) and the streams
-//! (fast values, and the steps of an open, a setup call or a close).
+//! (fast values, and the steps of an open, a setup call, a close or an apply
+//! of a catalog release).
 //! `AppHandle`'s `subscribe_*` and `feed_*` calls hand out what is built
 //! here, and nothing else builds a pull object.
 
@@ -14,6 +15,8 @@ use std::sync::Arc;
 
 use crate::types::BridgeError;
 
+#[cfg(feature = "desktop")]
+mod applying;
 mod browse;
 mod closing;
 mod detail;
@@ -27,6 +30,8 @@ mod setup;
 mod storage;
 mod streams;
 
+#[cfg(feature = "desktop")]
+pub use applying::*;
 pub use browse::*;
 pub use closing::*;
 pub use detail::*;

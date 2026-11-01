@@ -150,7 +150,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                             "mb-picked-1".to_string(),
                         ),
                         partners: vec![],
-                    },
+                    }, crate::import::CatalogApplySteps::unread(),
                 )
                 .await
         })
@@ -235,7 +235,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     };
     fixture
         .import
-        .select_candidate_release(key.clone(), pick.clone())
+        .select_candidate_release(key.clone(), pick.clone(), crate::import::CatalogApplySteps::unread())
         .await
         .expect("picking the release succeeds");
 
@@ -597,7 +597,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
                     bae_catalogs::catalog::Catalog::Discogs,
                     "70000301",
                 )],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("picking a paired pressing succeeds");

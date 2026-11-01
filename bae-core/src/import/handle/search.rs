@@ -325,15 +325,16 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// Prepare the release an explicit metadata application reads. A settled
-    /// lead must already have its release stored; missing it is a broken
-    /// invariant. Preparation follows any related documents the release was
-    /// fetched without. Ordinary pane reads and applied drafts never call this
-    /// path.
+    /// Prepare the release an explicit metadata application reads, a fetch
+    /// told to `steps`. A settled lead must already have its release stored;
+    /// missing it is a broken invariant. Preparation follows any related
+    /// documents the release was fetched without. Ordinary pane reads and
+    /// applied drafts never call this path.
     pub(super) async fn release_for_pick(
         &self,
         candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
+        steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
             self.library_manager
@@ -347,13 +348,7 @@ impl ImportServiceHandle {
                     ),
                 })?;
         }
-        crate::import::service::prepare_release(
-            &self.library_manager,
-            release,
-            crate::import::payloads::ReadDepth::Complete,
-            CallPriority::Interactive,
-        )
-        .await
+        crate::import::service::prepare_applied_release(&self.library_manager, release, steps).await
     }
 
     /// Whether `release` is the one this candidate's stored verdict settled on:
@@ -411,15 +406,18 @@ impl ImportServiceHandle {
     /// decision also ends whatever identification the candidate had going,
     /// through the handle's cancellation, inside that same write, so no run
     /// can answer a candidate a person has already answered.
+    ///
+    /// Each fetch it waits on is told to `steps`.
     pub async fn select_candidate_release(
         &self,
         candidate_key: crate::import::CandidateKey,
         link: crate::import::PressingLink,
+        steps: crate::import::CatalogApplySteps,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
             let revision = this
-                .pick_candidate_release_write(candidate_key.clone(), link)
+                .pick_candidate_release_write(candidate_key.clone(), link, &steps)
                 .await?;
             this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);

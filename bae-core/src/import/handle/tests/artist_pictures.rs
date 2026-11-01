@@ -173,7 +173,7 @@ async fn picked_discogs_release() -> DiscogsPick {
                     source_release_id,
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick asks Discogs for no artist");

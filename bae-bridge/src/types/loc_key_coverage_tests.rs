@@ -580,6 +580,11 @@ fn produced_keys() -> Vec<String> {
             .into_iter()
             .map(|message| message.key),
     );
+    keys.extend(
+        catalog_apply_step_lines()
+            .into_iter()
+            .map(|message| message.key),
+    );
 
     for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
         keys.push(bridge_pause_boundary_title_key(boundary));
@@ -679,6 +684,18 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
     .collect()
 }
 
+/// The line of every step an apply of a catalog release waits on.
+fn catalog_apply_step_lines() -> Vec<BridgeMessage> {
+    let catalog = BridgeCatalog::Discogs;
+    [
+        BridgeCatalogApplyStep::ReadingRelease { catalog },
+        BridgeCatalogApplyStep::FetchingCover { catalog },
+    ]
+    .into_iter()
+    .map(bridge_catalog_apply_step_line)
+    .collect()
+}
+
 /// Every playability's line: none for a release this device can play, or
 /// whose originals the disk hasn't answered for.
 fn playability_messages() -> Vec<BridgeMessage> {
@@ -746,7 +763,7 @@ fn no_orphan_core_keys() {
     );
 }
 
-/// A subject or playability message names its arguments as its source
+/// A subject, playability or apply step message names its arguments as its source
 /// message does and in the same order, since Apple's catalog takes them by
 /// position.
 #[test]
@@ -755,6 +772,7 @@ fn message_arguments_follow_the_source_message() {
     for message in pending_subject_messages()
         .into_iter()
         .chain(playability_messages())
+        .chain(catalog_apply_step_lines())
     {
         let source = &cat.messages[&message.key].value;
         let expected = bae_loc::mf1::referenced_args(

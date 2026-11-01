@@ -32,6 +32,9 @@ final class ReleaseEditor: Observable {
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
+    /// A new apply of a catalog release and its steps, for the editor to
+    /// name what it waits on; `nil` where no bridge is behind the editor.
+    let catalogApply: @Sendable () -> CatalogApplySteps?
 
     init(
         changeCover:
@@ -68,7 +71,8 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery = {
                 _ in throw StubError.notImplemented
-            }
+            },
+        catalogApply: @escaping @Sendable () -> CatalogApplySteps? = { nil }
     ) {
         self.changeCover = changeCover
         moveReleasesToCloudAction = moveReleasesToCloud
@@ -79,9 +83,10 @@ final class ReleaseEditor: Observable {
         self.openReleaseEdit = openReleaseEdit
         self.releaseCover = releaseCover
         self.fetchRemoteCovers = fetchRemoteCovers
+        self.catalogApply = catalogApply
     }
 
-    convenience init(handle: any AppHandleProtocol) {
+    convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
         self.init(
             changeCover: {
                 try await handle.changeCover(
@@ -108,7 +113,9 @@ final class ReleaseEditor: Observable {
                 return OpenedReleaseEdit(
                     seed: session.opened(),
                     session: ReleaseEditSessionCommands(
-                        apply: { try await session.applyCatalog(link: $0) },
+                        apply: {
+                            try await session.applyCatalog(link: $0, apply: $1)
+                        },
                         setAlbum: { try await session.setAlbum(albumId: $0) },
                         save: { try await session.save(edit: $0) }
                     )
@@ -117,7 +124,8 @@ final class ReleaseEditor: Observable {
             releaseCover: { try await handle.releaseCover(releaseId: $0) },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)
-            }
+            },
+            catalogApply: { CatalogApplySteps(host: host) }
         )
     }
 
@@ -131,7 +139,8 @@ final class ReleaseEditor: Observable {
         ReleaseEditCommands(
             open: openReleaseEdit,
             searchAlbums: searchAlbums,
-            cover: releaseCover
+            cover: releaseCover,
+            catalogApply: catalogApply
         )
     }
 

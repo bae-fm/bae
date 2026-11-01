@@ -885,7 +885,7 @@
             signals: Signals? = nil,
             libraryStatuses: [String: BridgeLibraryStatus] = [:],
             selectedReleaseId: String? = nil,
-            loadingReleaseId: String? = nil,
+            loadingPick: LoadingPick? = nil,
             isReadingPick: Bool = false,
             needsYou: BridgeNeedsYouReason? = nil,
         ) -> ImportSearchState {
@@ -894,7 +894,7 @@
                 error: nil,
                 search: search,
                 selectedReleaseId: selectedReleaseId,
-                loadingReleaseId: loadingReleaseId,
+                loadingPick: loadingPick,
                 isImporting: false,
                 isReadingPick: isReadingPick,
                 libraryStatuses: libraryStatuses,

@@ -66,7 +66,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore(writes: writes)
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, link in
+            applyCandidateExternalMetadata: { _, link, _ in
                 await recorder.record(link)
                 return .done
             }
@@ -100,7 +100,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, link in
+            applyCandidateExternalMetadata: { _, link, _ in
                 await recorder.record(link)
                 for await _ in gate { break }
                 return .done
@@ -119,13 +119,13 @@ struct ImportSearchFlowMetadataApplicationTests {
         }
 
         #expect(
-            store.loadingReleaseId(forKey: MappingFixtures.candidateKey)
+            store.loadingPick(forKey: MappingFixtures.candidateKey)?.releaseId
                 == MappingFixtures.releaseId
         )
 
         releaseGate.finish()
         try await Wait.until {
-            store.loadingReleaseId(forKey: MappingFixtures.candidateKey) == nil
+            store.loadingPick(forKey: MappingFixtures.candidateKey) == nil
         }
     }
 
@@ -137,7 +137,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, link in
+            applyCandidateExternalMetadata: { _, link, _ in
                 await recorder.record(link)
                 for await _ in gate { break }
                 return .done
@@ -173,7 +173,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let writes = SessionWriteRecorder()
         let store = unsettledStore(writes: writes)
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in
+            applyCandidateExternalMetadata: { _, _, _ in
                 throw StubError.notImplemented
             }
         )
@@ -225,7 +225,7 @@ extension ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore()
         let detail = "Downloaded image could not be decoded: unsupported format"
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in
+            applyCandidateExternalMetadata: { _, _, _ in
                 throw BridgeError.Diagnostic(category: category, detail: detail)
             }
         )
@@ -252,7 +252,7 @@ extension ImportSearchFlowMetadataApplicationTests {
     func expectedFailureHasNoDiagnostic() async throws {
         let store = unsettledStore()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in
+            applyCandidateExternalMetadata: { _, _, _ in
                 throw BridgeError.Diagnostic(
                     category: .import,
                     detail: "Provider returned 500"
@@ -286,7 +286,7 @@ extension ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore()
         for release in ["first-release", "second-release"] {
             let importer = Importer(
-                applyCandidateExternalMetadata: { _, _ in
+                applyCandidateExternalMetadata: { _, _, _ in
                     throw BridgeError.Diagnostic(
                         category: .database,
                         detail: "Failure for \(release)"
@@ -327,7 +327,8 @@ extension ImportSearchFlowMetadataApplicationTests {
     func cancelledReadHasNoFailure() async throws {
         let store = unsettledStore()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in throw CancellationError()
+            applyCandidateExternalMetadata: { _, _, _ in
+                throw CancellationError()
             }
         )
         ImportSearchFlow.applyMetadata(
@@ -488,7 +489,7 @@ private final class MetadataApplicationEditingModel {
 
     var importer: Importer {
         Importer(
-            applyCandidateExternalMetadata: { [self] _, _ in
+            applyCandidateExternalMetadata: { [self] _, _, _ in
                 await apply()
                 return .done
             },

@@ -5,6 +5,8 @@
 #[cfg(desktop)]
 pub mod album_links;
 #[cfg(desktop)]
+pub mod apply_steps;
+#[cfg(desktop)]
 pub(crate) mod assemble;
 #[cfg(desktop)]
 pub mod audio_layout;
@@ -256,6 +258,8 @@ impl ImportServices {
     }
 }
 
+#[cfg(desktop)]
+pub use apply_steps::{CatalogApplyStep, CatalogApplySteps};
 #[cfg(desktop)]
 pub use candidate_key::CandidateKey;
 #[cfg(desktop)]

@@ -559,6 +559,30 @@ extension LatestStream where Value == BridgeClosingStep {
     }
 }
 
+#if os(macOS)
+    extension LatestStream where Value == BridgeCatalogApplyStep {
+        /// The network read an apply of a catalog release waits on, while it
+        /// waits on one; a preview's holds `value` and nothing feeds it.
+        public static func catalogApplySteps(holding value: Value? = nil)
+            -> LatestStream
+        {
+            LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+                if case .catalogApplyStep(let step) = $0 {
+                    step
+                }
+                else {
+                    nil
+                }
+            }
+        }
+
+        /// Fill with the steps of the apply `apply` is handed to.
+        public func feed(from apply: BridgeCatalogApply) -> LatestFeed {
+            fed { apply.feedApplySteps() }
+        }
+    }
+#endif
+
 extension LatestStream {
     /// The value of a stream that holds one, for the native view that draws
     /// it.

@@ -14,8 +14,9 @@ struct ImportSearchResultRow: View {
     /// for typed-search results.
     var agreements: BridgeAgreements?
     let isSelected: Bool
-    /// Whether this row's pick is loading, shown by the row's own spinner.
-    var isLoading: Bool = false
+    /// The pick being read on this row, while one is: the row names the
+    /// network read it waits on.
+    var loading: LoadingPick?
     var failure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
@@ -29,12 +30,15 @@ struct ImportSearchResultRow: View {
     /// Whether the row can be picked: no import is running and its pick is not
     /// already loading.
     var isPickable: Bool {
-        !isImporting && !isLoading
+        !isImporting && loading == nil
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             resultButton
+            StepProgressLine(steps: followedSteps) { EmptyView() }
+                .padding(.horizontal, Self.horizontalPadding)
+            unattendedLine
             failureLine
         }
         .background(rowBackground)
@@ -68,6 +72,35 @@ struct ImportSearchResultRow: View {
         }
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, Self.horizontalPadding)
+    }
+
+    /// The steps of the person's pick being read on this row.
+    private var followedSteps: LatestSource<BridgeCatalogApplyStep>? {
+        guard case .followed(let steps) = loading?.reading else { return nil }
+        return steps
+    }
+
+    private var isReadingUnattended: Bool {
+        if case .unattended = loading?.reading { return true }
+        return false
+    }
+
+    /// The run's own pick being read in full on this row, kept in the
+    /// layout with no height while there is none.
+    private var unattendedLine: some View {
+        Text(
+            "Reading the release in full…",
+            comment:
+                "Find online, under the pressing identification picked on its own: bae reads the release from its catalogs before it stores the answer."
+        )
+        .themeText(.body)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, Self.horizontalPadding)
+        .padding(.bottom, ThemeSpace.related)
+        .frame(height: isReadingUnattended ? nil : 0, alignment: .top)
+        .clipped()
+        .opacity(isReadingUnattended ? 1 : 0)
+        .accessibilityHidden(!isReadingUnattended)
     }
 
     /// The row's failure and its retry: picking it again when loading the pick
@@ -262,22 +295,13 @@ struct ImportSearchResultRow: View {
         .accessibilityHidden(!isInLibrary)
     }
 
-    /// The spinner and chevron swap by opacity, so a pick starting to load
-    /// does not re-measure the other rows.
     private var chevron: some View {
-        ZStack {
-            ProgressView()
-                .controlSize(.small)
-                .scaleEffect(0.7)
-                .opacity(isLoading ? 1 : 0)
-            Image(systemName: "chevron.right")
-                .themeIcon(.small)
-                .foregroundStyle(
-                    isSelected ? Theme.accent : Theme.hairlineStrong
-                )
-                .opacity(isLoading ? 0 : 1)
-        }
-        .frame(width: ThemeIcon.small.size)
+        Image(systemName: "chevron.right")
+            .themeIcon(.small)
+            .foregroundStyle(
+                isSelected ? Theme.accent : Theme.hairlineStrong
+            )
+            .frame(width: ThemeIcon.small.size)
     }
 }
 
@@ -308,7 +332,16 @@ struct ImportSearchResultRow: View {
                 libraryStatus: nil,
                 agreements: nil,
                 isSelected: false,
-                isLoading: true,
+                loading: LoadingPick(
+                    releaseId: PreviewData.searchGroupsManual[1].pressings[0]
+                        .lead.releaseId,
+                    reading: .followed(
+                        LatestStream.catalogApplySteps(
+                            holding: .readingRelease(catalog: .discogs)
+                        )
+                        .only
+                    )
+                ),
                 onSelect: { _ in },
             )
             ImportSearchResultRow(

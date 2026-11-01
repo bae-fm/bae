@@ -74,7 +74,8 @@ struct DesktopSubscriptionsTests {
         _ = try #require(
             store.beginMetadataApplication(
                 key: key,
-                application: .pick(MappingFixtures.link)
+                application: .pick(MappingFixtures.link),
+                steps: nil
             )
         )
 

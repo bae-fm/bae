@@ -12,8 +12,8 @@ struct ReleaseGroupListView<Trailing: View>: View {
     var agreements: [String: BridgeAgreements] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
-    /// Release id whose candidate detail is being fetched, if any.
-    let loadingReleaseId: String?
+    /// The pick being read, if any.
+    let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
     @ViewBuilder
@@ -27,7 +27,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
                 selectedReleaseId: selectedReleaseId,
-                loadingReleaseId: loadingReleaseId,
+                loadingPick: loadingPick,
                 releaseSelectionFailure: releaseSelectionFailure,
                 onSelect: onSelect,
                 trailing: trailing,
@@ -46,7 +46,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
     let selectedReleaseId: String?
-    let loadingReleaseId: String?
+    let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
@@ -65,7 +65,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     libraryStatuses: libraryStatuses,
                     agreements: agreements,
                     selectedReleaseId: selectedReleaseId,
-                    loadingReleaseId: loadingReleaseId,
+                    loadingPick: loadingPick,
                     releaseSelectionFailure: releaseSelectionFailure,
                     onRetryUnread: onRetryUnread,
                     onSelect: onSelect,
@@ -131,8 +131,8 @@ struct ReleaseGroupSection: View {
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
     let selectedReleaseId: String?
-    /// The pressing whose pick is being read right now.
-    var loadingReleaseId: String?
+    /// The pick being read right now, if any.
+    var loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
@@ -187,7 +187,7 @@ struct ReleaseGroupSection: View {
                             libraryStatus: libraryStatuses[pressing.id],
                             agreements: agreements[pressing.id],
                             isSelected: isSelected(pressing),
-                            isLoading: isLoading(pressing),
+                            loading: loading(pressing),
                             failure: releaseSelectionFailure,
                             onRetryUnread: onRetryUnread,
                             onSelect: onSelect,
@@ -205,9 +205,14 @@ struct ReleaseGroupSection: View {
         pressing.releases.contains { $0.releaseId == selectedReleaseId }
     }
 
-    /// Whether this pressing is the one whose pick is being read right now.
-    func isLoading(_ pressing: Pressing) -> Bool {
-        pressing.releases.contains { $0.releaseId == loadingReleaseId }
+    /// The pick being read right now on this pressing, while one is.
+    func loading(_ pressing: Pressing) -> LoadingPick? {
+        guard let loadingPick,
+            pressing.releases.contains(where: {
+                $0.releaseId == loadingPick.releaseId
+            })
+        else { return nil }
+        return loadingPick
     }
 }
 
@@ -221,7 +226,7 @@ struct ReleaseGroupSection: View {
             libraryStatuses: [:],
             agreements: PreviewData.searchAgreementsExact,
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onSelect: { _ in },
             trailing: { EmptyView() },
         )
@@ -235,7 +240,7 @@ struct ReleaseGroupSection: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onSelect: { _ in },
             trailing: { EmptyView() },
         )
@@ -250,7 +255,7 @@ struct ReleaseGroupSection: View {
             libraryStatuses: [:],
             agreements: PreviewData.searchAgreementsExact,
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onSelect: { _ in },
             trailing: {
                 MissingSourceNote(

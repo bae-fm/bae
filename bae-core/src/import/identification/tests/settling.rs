@@ -151,7 +151,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
                     "mb-offline-1".to_string(),
                 ),
                 partners: vec![],
-            })
+            }, crate::import::CatalogApplySteps::unread())
         .await
         .expect("a settled candidate opens once its release is fetched again");
 
@@ -232,7 +232,7 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
                     "mb-missing-1".to_string(),
                 ),
                 partners: vec![],
-            })
+            }, crate::import::CatalogApplySteps::unread())
         .await
         .expect_err("a settled lead with nothing archived must not silently re-fetch");
 
@@ -272,7 +272,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     };
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick())
+        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick(), crate::import::CatalogApplySteps::unread())
         .await
         .expect("a manual pick fetches");
 
@@ -285,7 +285,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick())
+        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick(), crate::import::CatalogApplySteps::unread())
         .await
         .expect("re-picking reads what the first pick archived");
     assert_eq!(
@@ -685,7 +685,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
                     "mb-two-2".to_string(),
                 ),
                 partners: vec![],
-            })
+            }, crate::import::CatalogApplySteps::unread())
         .await
         .expect("an offered row is picked from what the run stored");
     assert_eq!(

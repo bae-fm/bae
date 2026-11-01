@@ -19,7 +19,7 @@ struct FindOnlineSearchingTests {
                 isImporting: false,
                 libraryStatuses: [:],
                 selectedReleaseId: nil,
-                loadingReleaseId: nil,
+                loadingPick: nil,
                 onRetry: {},
                 onSelect: { _ in }
             )

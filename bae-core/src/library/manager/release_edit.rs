@@ -178,27 +178,25 @@ impl LibraryManager {
     /// until the save. The form comes back
     /// filled with the reading's values; the cover is the release's own, which
     /// an apply never changes. A release whose tracks the reading cannot lay
-    /// out is refused with both counts.
+    /// out is refused with both counts. Each fetch it waits on is told to
+    /// `steps`.
     pub async fn apply_release_edit_catalog(
         &self,
         session: &ReleaseEditSession,
         link: &crate::import::PressingLink,
+        steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         let release_id = session.release_id();
         // Nothing names these releases, so they are read and never stored.
-        let release = crate::import::service::prepare_release(
-            self,
-            &link.record,
-            crate::import::payloads::ReadDepth::Complete,
-            bae_catalogs::rate_limiter::CallPriority::Interactive,
-        )
-        .await?
-        .release;
+        let release = crate::import::service::prepare_applied_release(self, &link.record, steps)
+            .await?
+            .release;
         let partners: Vec<_> = crate::import::service::prepare_partners(
             self,
             &link.record,
             &link.partners,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
+            steps,
         )
         .await?
         .into_iter()

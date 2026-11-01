@@ -23,7 +23,7 @@ async fn linked_cover_gallery_can_be_empty() {
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -75,7 +75,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
                     discogs_release_id.to_string(),
                 ),
                 partners: vec![partner.clone()],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -150,7 +150,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
                     bae_catalogs::catalog::Catalog::Discogs,
                     "70000002",
                 )],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect_err("a partner that will not prepare fails the apply");
@@ -197,7 +197,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "repeat-mb-rel-2",
                 )],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect_err("two MusicBrainz releases for one pressing is refused");
@@ -265,7 +265,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
             crate::import::PressingLink {
                 record: release.clone(),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -451,7 +451,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
                     release_id,
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -528,7 +528,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     partner,
                 )],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -610,7 +610,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: picked.clone(),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -625,4 +625,142 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     assert!(records.contains(&crate::import::ReleaseRecord::album(
         &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, group)
     )));
+}
+
+/// Steps that keep what a pick told them, `None` where each step ended.
+fn recorded() -> (
+    crate::import::CatalogApplySteps,
+    std::sync::Arc<std::sync::Mutex<Vec<Option<crate::import::CatalogApplyStep>>>>,
+) {
+    let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let keep = told.clone();
+    (
+        crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step)),
+        told,
+    )
+}
+
+/// A pick of a paired pressing tells each release it reads from its catalog,
+/// the partner after the primary, and the cover it fetches, each ending
+/// before the next starts.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_tells_each_catalog_read_it_waits_on() {
+    let archive = bae_util::http::serve_not_found().await;
+    let (handle, _tmp, key, _hash) = pane_fixture_with(
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .await
+        .unwrap();
+    let discogs_release_id = "70000021";
+    seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
+    let mb_release_id = "steps-mb-rel-1";
+    seed_mb_release(
+        handle.library_manager.providers(),
+        mb_release_id,
+        "steps-mb-group-1",
+    );
+    let (steps, told) = recorded();
+
+    handle
+        .select_candidate_release(
+            key,
+            crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::Discogs,
+                    discogs_release_id.to_string(),
+                ),
+                partners: vec![crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    mb_release_id.to_string(),
+                )],
+            },
+            steps,
+        )
+        .await
+        .unwrap();
+    shut_down(handle).await;
+
+    assert_eq!(
+        *told.lock().unwrap(),
+        vec![
+            Some(crate::import::CatalogApplyStep::ReadingRelease(
+                bae_catalogs::catalog::Catalog::Discogs
+            )),
+            None,
+            Some(crate::import::CatalogApplyStep::ReadingRelease(
+                bae_catalogs::catalog::Catalog::MusicBrainz
+            )),
+            None,
+            Some(crate::import::CatalogApplyStep::FetchingCover(
+                bae_catalogs::catalog::Catalog::MusicBrainz
+            )),
+            None,
+        ]
+    );
+}
+
+/// A release the library already holds whole is read without a step: the
+/// second pick of one release tells only the cover it fetches.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_of_a_held_release_tells_no_read() {
+    let archive = bae_util::http::serve_not_found().await;
+    let (handle, _tmp, key, _hash) = pane_fixture_with(
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
+    let mb_release_id = "steps-held-mb-rel-1";
+    seed_mb_release(
+        handle.library_manager.providers(),
+        mb_release_id,
+        "steps-held-mb-group-1",
+    );
+    let link = crate::import::PressingLink {
+        record: crate::import::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            mb_release_id.to_string(),
+        ),
+        partners: vec![],
+    };
+    let (first, first_told) = recorded();
+    handle
+        .select_candidate_release(key.clone(), link.clone(), first)
+        .await
+        .unwrap();
+    let (again, again_told) = recorded();
+
+    handle
+        .select_candidate_release(key, link, again)
+        .await
+        .unwrap();
+    shut_down(handle).await;
+
+    assert_eq!(
+        *first_told.lock().unwrap(),
+        vec![
+            Some(crate::import::CatalogApplyStep::ReadingRelease(
+                bae_catalogs::catalog::Catalog::MusicBrainz
+            )),
+            None,
+            Some(crate::import::CatalogApplyStep::FetchingCover(
+                bae_catalogs::catalog::Catalog::MusicBrainz
+            )),
+            None,
+        ]
+    );
+    assert_eq!(
+        *again_told.lock().unwrap(),
+        vec![
+            Some(crate::import::CatalogApplyStep::FetchingCover(
+                bae_catalogs::catalog::Catalog::MusicBrainz
+            )),
+            None,
+        ]
+    );
 }

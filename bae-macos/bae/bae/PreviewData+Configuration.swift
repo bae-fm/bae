@@ -359,13 +359,14 @@
                     )
                 },
                 searchAlbums: { _ in [] },
-                cover: { _ in nil }
+                cover: { _ in nil },
+                catalogApply: { nil }
             )
         }
 
         private nonisolated func session() -> ReleaseEditSessionCommands {
             ReleaseEditSessionCommands(
-                apply: { _ in await self.open() },
+                apply: { _, _ in await self.open() },
                 setAlbum: { _ in .new },
                 save: { edit in await self.save(edit) }
             )

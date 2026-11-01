@@ -93,6 +93,23 @@ enum MetadataApplication: Equatable, Sendable {
     case fileTags
 }
 
+/// A pick being read: the release whose row it was made on, and how that row
+/// names what the read waits on.
+struct LoadingPick {
+    let releaseId: String
+    let reading: PickReading
+}
+
+/// Whose read a pick is, which says what its row can name.
+enum PickReading {
+    /// A person's pick, telling each network read it waits on as it waits;
+    /// `nil` where no bridge is behind the pick.
+    case followed(LatestSource<BridgeCatalogApplyStep>?)
+    /// The run's own pick, which core reads in full before it stores the
+    /// answer.
+    case unattended
+}
+
 /// One metadata application, from its click until the read it dispatched
 /// ends. The store owns it under the candidate's key; dropping that entry
 /// cancels the read.
@@ -100,11 +117,16 @@ final class CandidateMetadataApplicationSession: Equatable,
     @unchecked Sendable
 {
     let application: MetadataApplication
+    /// The steps a pick's read reports, followed while the session lives;
+    /// `nil` for a read of the files' own tags, and where no bridge is
+    /// behind the pick.
+    let steps: CatalogApplySteps?
 
     private var task: Task<Void, Never>?
 
-    init(application: MetadataApplication) {
+    init(application: MetadataApplication, steps: CatalogApplySteps?) {
         self.application = application
+        self.steps = steps
     }
 
     func install(_ task: Task<Void, Never>) {

@@ -800,9 +800,8 @@ struct IdentifierBandTests {
     }
 }
 
-/// A pick being read is not yet a pick. Its row says so — a spinner, and no
-/// second click to make — and the selected highlight waits until the draft
-/// carries the pick.
+/// A pick being read is not yet a pick. Its row says so — no second click to
+/// make — and the selected highlight waits until the draft carries the pick.
 @MainActor
 @Suite("The row a pick is being read on")
 struct PickedRowTests {
@@ -812,13 +811,18 @@ struct PickedRowTests {
             PreviewData.searchGroupExact.pressings.first
         )
 
-        let reading = section(loadingReleaseId: pressing.lead.releaseId)
-        #expect(reading.isLoading(pressing))
+        let reading = section(
+            loadingPick: LoadingPick(
+                releaseId: pressing.lead.releaseId,
+                reading: .followed(nil)
+            )
+        )
+        #expect(reading.loading(pressing) != nil)
         #expect(!reading.isSelected(pressing))
 
         let picked = section(selectedReleaseId: pressing.lead.releaseId)
         #expect(picked.isSelected(pressing))
-        #expect(!picked.isLoading(pressing))
+        #expect(picked.loading(pressing) == nil)
     }
 
     @Test("the row being read cannot be picked again")
@@ -827,34 +831,38 @@ struct PickedRowTests {
             PreviewData.searchGroupExact.pressings.first
         )
 
-        #expect(!row(pressing, isLoading: true).isPickable)
-        #expect(row(pressing, isLoading: false).isPickable)
+        let loading = LoadingPick(
+            releaseId: pressing.lead.releaseId,
+            reading: .followed(nil)
+        )
+        #expect(!row(pressing, loading: loading).isPickable)
+        #expect(row(pressing, loading: nil).isPickable)
     }
 
     private func section(
         selectedReleaseId: String? = nil,
-        loadingReleaseId: String? = nil
+        loadingPick: LoadingPick? = nil
     ) -> ReleaseGroupSection {
         ReleaseGroupSection(
             group: PreviewData.searchGroupExact,
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: selectedReleaseId,
-            loadingReleaseId: loadingReleaseId,
+            loadingPick: loadingPick,
             onSelect: { _ in }
         )
     }
 
     private func row(
         _ pressing: Pressing,
-        isLoading: Bool
+        loading: LoadingPick?
     ) -> ImportSearchResultRow {
         ImportSearchResultRow(
             pressing: pressing,
             isImporting: false,
             libraryStatus: nil,
             isSelected: false,
-            isLoading: isLoading,
+            loading: loading,
             onSelect: { _ in }
         )
     }

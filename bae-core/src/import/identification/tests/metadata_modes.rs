@@ -111,7 +111,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
                     "mb-chosen".to_string(),
                 ),
                 partners: Vec::new(),
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick lands");

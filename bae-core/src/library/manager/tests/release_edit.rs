@@ -121,7 +121,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
             &crate::import::PressingLink {
                 record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
                 partners: vec![],
-            },
+            }, &crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -133,6 +133,56 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
             .map(|track| track.id)
             .collect::<Vec<_>>(),
         persisted_ids
+    );
+}
+
+/// Applying a catalog release the library doesn't hold tells the read it
+/// waits on, and that the read ended.
+#[tokio::test]
+async fn an_applied_catalog_tells_its_catalog_read() {
+    use crate::import::MetadataRef;
+    use bae_catalogs::catalog::Catalog;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+    insert_editable_tracks(&manager, &release.id, 2).await;
+    let source_release_id = "steps-editor-release";
+    let source_group_id = "steps-editor-group";
+    let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
+    manager
+        .providers()
+        .musicbrainz()
+        .seed_release_cache(source_release_id, serde_json::to_string(&response).unwrap());
+    manager
+        .providers()
+        .musicbrainz()
+        .seed_release_group_json_cache(
+            source_group_id,
+            r#"{"id":"steps-editor-group"}"#.to_string(),
+        );
+    let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let keep = told.clone();
+    let steps = crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step));
+    let session = manager.open_release_edit(&release.id).await.unwrap();
+
+    manager
+        .apply_release_edit_catalog(
+            &session,
+            &crate::import::PressingLink {
+                record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
+                partners: vec![],
+            },
+            &steps,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        *told.lock().unwrap(),
+        vec![
+            Some(crate::import::CatalogApplyStep::ReadingRelease(
+                Catalog::MusicBrainz
+            )),
+            None,
+        ]
     );
 }
 

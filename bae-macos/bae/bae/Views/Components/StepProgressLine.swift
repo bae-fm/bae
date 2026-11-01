@@ -22,6 +22,12 @@ extension BridgeClosingStep: ProgressStep {
     var fraction: Double? { nil }
 }
 
+extension BridgeCatalogApplyStep: ProgressStep {
+    var title: String { bridgeCatalogApplyStepLine(step: self).localizedLine }
+    /// A read of a catalog counts nothing.
+    var fraction: Double? { nil }
+}
+
 extension BridgeStorageSetupProgress: ProgressStep {
     var title: String {
         localizedCoreString(bridgeStorageSetupStepKey(step: step))
@@ -39,7 +45,8 @@ extension BridgeSetupProgress: ProgressStep {
     }
 }
 
-/// The step a library's open, a setup call or a close runs, over a bar of
+/// The step a library's open, a setup call, a close or an apply of a catalog
+/// release runs, over a bar of
 /// how much of it is done, set straight from the call's stream once per display
 /// frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
 /// swaps what it shows only as a step starts or ends, never as one moves.

@@ -21,7 +21,7 @@ struct ImportStorePickTests {
 
         #expect(store.metadataApplicationSession(forKey: Self.key) === session)
         #expect(
-            store.loadingReleaseId(forKey: Self.key)
+            store.loadingPick(forKey: Self.key)?.releaseId
                 == MappingFixtures.releaseId
         )
     }
@@ -48,7 +48,7 @@ struct ImportStorePickTests {
 
         #expect(writes.paneMoves(forKey: Self.key).isEmpty)
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
-        #expect(store.loadingReleaseId(forKey: Self.key) == nil)
+        #expect(store.loadingPick(forKey: Self.key) == nil)
     }
 
     @Test("a pick that fails with nothing selected keeps its pressing's line")
@@ -109,7 +109,8 @@ struct ImportStorePickTests {
     ) -> CandidateMetadataApplicationSession? {
         store.beginMetadataApplication(
             key: Self.key,
-            application: .pick(MappingFixtures.link)
+            application: .pick(MappingFixtures.link),
+            steps: nil
         )
     }
 

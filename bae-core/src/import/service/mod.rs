@@ -686,6 +686,26 @@ pub(crate) async fn prepare_release(
         release_ref,
         depth,
         library_manager.fetch_release_payloads(release_ref, depth, priority),
+        &crate::import::CatalogApplySteps::unread(),
+    )
+    .await
+}
+
+/// The release an apply of `release_ref` reads, read whole as
+/// [`prepare_release`] reads it for a person waiting on it, with a fetch told
+/// to `steps`.
+pub(crate) async fn prepare_applied_release(
+    library_manager: &LibraryManager,
+    release_ref: &MetadataRef,
+    steps: &crate::import::CatalogApplySteps,
+) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+    let depth = crate::import::payloads::ReadDepth::Complete;
+    prepare(
+        library_manager,
+        release_ref,
+        depth,
+        library_manager.fetch_release_payloads(release_ref, depth, CallPriority::Interactive),
+        steps,
     )
     .await
 }
@@ -704,12 +724,14 @@ pub(crate) async fn prepare_disc_id_release(
         answered.release(),
         crate::import::payloads::ReadDepth::Identification,
         library_manager.read_disc_id_release_payloads(answered, priority),
+        &crate::import::CatalogApplySteps::unread(),
     )
     .await
 }
 
 /// `release_ref` from storage, unless reading it again at `depth` could add
-/// what its stored read missed; otherwise what `read` extracts.
+/// what its stored read missed; otherwise what `read` extracts, told to
+/// `steps` while it reads.
 async fn prepare(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
@@ -717,6 +739,7 @@ async fn prepare(
     read: impl std::future::Future<
         Output = Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError>,
     >,
+    steps: &crate::import::CatalogApplySteps,
 ) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_prepared_release(release_ref).await? {
         let discogs_configured = library_manager
@@ -726,20 +749,26 @@ async fn prepare(
             return Ok(stored);
         }
     }
-    let payloads = read.await?;
+    let payloads = steps
+        .during(
+            crate::import::CatalogApplyStep::ReadingRelease(release_ref.catalog),
+            read,
+        )
+        .await?;
     Ok(library_manager
         .prepared_release(payloads.extract()?)
         .await?)
 }
 
 /// Prepare every partner release of this pick: other catalogs' releases of the
-/// primary's pressing. Two releases from one catalog are refused rather than
-/// one chosen.
+/// primary's pressing, each fetch told to `steps`. Two releases from one
+/// catalog are refused rather than one chosen.
 pub(crate) async fn prepare_partners(
     library_manager: &LibraryManager,
     primary: &MetadataRef,
     partners: &[MetadataRef],
     priority: CallPriority,
+    steps: &crate::import::CatalogApplySteps,
 ) -> Result<Vec<crate::import::source_release::PreparedRelease>, crate::import::ImportError> {
     let mut claimed = vec![primary.catalog];
     let mut prepared = Vec::with_capacity(partners.len());
@@ -753,12 +782,14 @@ pub(crate) async fn prepare_partners(
             });
         }
         claimed.push(partner.catalog);
+        let depth = crate::import::payloads::ReadDepth::Complete;
         prepared.push(
-            prepare_release(
+            prepare(
                 library_manager,
                 partner,
-                crate::import::payloads::ReadDepth::Complete,
-                priority,
+                depth,
+                library_manager.fetch_release_payloads(partner, depth, priority),
+                steps,
             )
             .await?,
         );

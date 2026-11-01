@@ -18,10 +18,16 @@ extension ImportSearchFlow {
         key: Data,
         application: MetadataApplication
     ) {
+        let steps: CatalogApplySteps? =
+            switch application {
+            case .pick: importer.catalogApply()
+            case .fileTags: nil
+            }
         guard
             let session = importStore.beginMetadataApplication(
                 key: key,
-                application: application
+                application: application,
+                steps: steps
             )
         else {
             logger.debug(
@@ -30,12 +36,18 @@ extension ImportSearchFlow {
             return
         }
 
+        let apply = steps?.apply
         let task = Task { @MainActor [weak session] in
             await endEditing()
             let result: Result<BridgePaneOutcome, Error>
             do {
                 result = .success(
-                    try await pick(application, key: key, importer: importer)
+                    try await pick(
+                        application,
+                        key: key,
+                        apply: apply,
+                        importer: importer
+                    )
                 )
             }
             catch { result = .failure(error) }
@@ -51,16 +63,22 @@ extension ImportSearchFlow {
         session.install(task)
     }
 
-    /// Run the pick core-side.
+    /// Run the pick core-side, each network read it waits on written to
+    /// `apply`'s stream.
     @MainActor
     private static func pick(
         _ application: MetadataApplication,
         key: Data,
+        apply: BridgeCatalogApply?,
         importer: Importer
     ) async throws -> BridgePaneOutcome {
         switch application {
         case .pick(let link):
-            try await importer.applyCandidateExternalMetadata(key, link: link)
+            try await importer.applyCandidateExternalMetadata(
+                key,
+                link: link,
+                apply: apply
+            )
         case .fileTags:
             try await importer.applyCandidateFileMetadata(key)
         }

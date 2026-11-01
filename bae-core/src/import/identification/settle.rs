@@ -278,7 +278,15 @@ async fn lead_metadata(
                 error: error.to_string(),
             }
         })?;
-    let cover = match context.import.fetch_release_cover(release, &partners).await {
+    let cover = match context
+        .import
+        .fetch_release_cover(
+            release,
+            &partners,
+            &crate::import::CatalogApplySteps::unread(),
+        )
+        .await
+    {
         Ok(cover) => cover,
         Err(failure) => {
             let Some(lookup) = crate::import::search::remote_image_failure(&failure.error) else {
@@ -412,6 +420,7 @@ async fn settle_lead(
             &primary,
             &partners,
             priority,
+            &crate::import::CatalogApplySteps::unread(),
         )
         .await?;
         Ok::<_, crate::import::ImportError>((release, prepared_partners))

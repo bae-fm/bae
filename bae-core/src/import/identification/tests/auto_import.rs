@@ -361,7 +361,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
                 "mb-typed".to_string(),
             ),
             partners: vec![],
-        })
+        }, crate::import::CatalogApplySteps::unread())
         .await
         .expect("the person's pick applies");
     tokio::time::timeout(

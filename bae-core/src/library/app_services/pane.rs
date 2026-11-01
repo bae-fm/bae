@@ -59,18 +59,20 @@ impl AppServices {
     }
 
     /// Link the candidate to the release `link` names and read its draft from
-    /// it. A catalog release that fails to load, or that lists another number
-    /// of tracks than the folder holds, is told on that release's own row, so
-    /// its failure comes back as the error.
+    /// it, each fetch it waits on told to `steps`. A catalog release that
+    /// fails to load, or that lists another number of tracks than the folder
+    /// holds, is told on that release's own row, so its failure comes back as
+    /// the error.
     pub async fn pane_select_release(
         &self,
         candidate_key: crate::import::CandidateKey,
         link: PressingLink,
+        steps: crate::import::CatalogApplySteps,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import.clear_pane_failure(&candidate_key).await?;
         import
-            .select_candidate_release(candidate_key.clone(), link)
+            .select_candidate_release(candidate_key.clone(), link, steps)
             .await?;
         // A pick that landed leaves the draft it read to see.
         import

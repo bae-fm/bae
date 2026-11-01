@@ -6,10 +6,12 @@ import Observation
 /// keeps the session for as long as these commands are held, and drops it,
 /// writing nothing, once they are not.
 struct ReleaseEditSessionCommands: Sendable {
-    /// Apply a catalog release to the session; the seed comes back filled
-    /// with its every value, held until the save.
+    /// Apply a catalog release to the session, each network read it waits
+    /// on written to the apply's stream; the seed comes back filled with its
+    /// every value, held until the save.
     let apply:
-        @Sendable (BridgePressingLink) async throws -> BridgeReleaseEditSeed
+        @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws ->
+            BridgeReleaseEditSeed
     /// Pick the album a save files the release under (`nil`: the one its
     /// records name); returns the album the session files it under now.
     let setAlbum: @Sendable (String?) async throws -> BridgeDraftAlbum
@@ -35,6 +37,9 @@ struct ReleaseEditCommands {
     let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
     /// The release's cover as it stands now; the session stays as it is.
     let cover: @Sendable (String) async throws -> BridgeImageRef?
+    /// A new apply of a catalog release and its steps; `nil` where no bridge
+    /// is behind the editor.
+    let catalogApply: @Sendable () -> CatalogApplySteps?
 }
 
 /// One release editor's working state, behind the one release editor in the
@@ -48,7 +53,9 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
-        case applying
+        /// Applying a catalog release, whose steps are followed while it
+        /// runs; `nil` where no bridge is behind the editor.
+        case applying(CatalogApplySteps?)
     }
 
     let releaseId: String
@@ -206,7 +213,9 @@ final class ReleaseMetadataEditSession {
     /// Apply the catalog release `link` picks: every value the form, the
     /// tracks and the album show becomes what it gives, unsaved until Save.
     func apply(_ link: BridgePressingLink) {
-        let serial = begin(.applying)
+        let steps = commands.catalogApply()
+        let apply = steps?.apply
+        let serial = begin(.applying(steps))
         failure = nil
         operationTask = Task { @MainActor in
             await editingCommands.commitActiveEdits()
@@ -215,7 +224,7 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                let seed = try await core.apply(link)
+                let seed = try await core.apply(link, apply)
                 try Task.checkCancellation()
                 show(seed)
                 hasChanges = true
@@ -380,6 +389,13 @@ extension ReleaseMetadataEditSession {
 
     var isBusy: Bool {
         operation != nil
+    }
+
+    /// The network read a catalog apply waits on, for the line that names
+    /// it; `nil` while no apply runs.
+    var applySteps: LatestSource<BridgeCatalogApplyStep>? {
+        guard case .applying(let steps) = operation else { return nil }
+        return steps?.steps
     }
 }
 

@@ -232,7 +232,11 @@ impl Automation {
     ) -> Result<EmptyResponse, AutomationError> {
         let key = self.known_key(candidate_key).await?;
         self.services
-            .import_select_candidate_release(key, link.into_core())
+            .import_select_candidate_release(
+                key,
+                link.into_core(),
+                bae_core::import::CatalogApplySteps::unread(),
+            )
             .await?;
         Ok(EmptyResponse {})
     }
@@ -496,7 +500,11 @@ impl Automation {
         let session = self.services.open_release_edit(&release_id).await?;
         let seed = self
             .services
-            .apply_release_edit_catalog(&session, &link)
+            .apply_release_edit_catalog(
+                &session,
+                &link,
+                &bae_core::import::CatalogApplySteps::unread(),
+            )
             .await?;
         if album_id.is_some() {
             self.services

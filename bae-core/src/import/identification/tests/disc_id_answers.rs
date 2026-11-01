@@ -129,7 +129,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
             crate::import::PressingLink {
                 record: release.clone(),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick applies the release");

@@ -71,7 +71,7 @@ async fn pick_mb(handle: &ImportServiceHandle, key: &crate::import::CandidateKey
                     release_id,
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();

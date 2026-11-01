@@ -157,7 +157,7 @@ async fn a_pick_ends_identification_in_its_write() {
                             release_id.to_string(),
                         ),
                         partners: vec![],
-                    },
+                    }, crate::import::CatalogApplySteps::unread(),
                 )
                 .await
                 .unwrap();

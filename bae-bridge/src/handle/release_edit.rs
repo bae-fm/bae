@@ -40,17 +40,20 @@ impl ReleaseEditSession {
 impl ReleaseEditSession {
     /// Apply the catalog release `link` picks to this session: every value it
     /// gives, held until the session saves. Returns the editor's form filled
-    /// with them.
+    /// with them. Each network read it waits on is written to `apply`'s
+    /// stream, when the app shows the apply.
     pub async fn apply_catalog(
         self: std::sync::Arc<Self>,
         link: crate::types::BridgePressingLink,
+        apply: Option<std::sync::Arc<crate::BridgeCatalogApply>>,
     ) -> Result<crate::types::BridgeReleaseEditSeed, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ReleaseEditSession.apply_catalog", move || async move {
+                let steps = crate::screens::catalog_apply_steps(apply.as_deref());
                 let seed = self
                     .services
-                    .apply_release_edit_catalog(&self.inner, &link.into_core())
+                    .apply_release_edit_catalog(&self.inner, &link.into_core(), &steps)
                     .await?;
                 Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
             })

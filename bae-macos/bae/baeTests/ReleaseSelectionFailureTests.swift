@@ -21,7 +21,8 @@ struct ReleaseSelectionFailureTests {
         let session = try #require(
             store.beginMetadataApplication(
                 key: key,
-                application: .pick(MappingFixtures.link)
+                application: .pick(MappingFixtures.link),
+                steps: nil
             )
         )
         store.metadataApplicationFailed(
@@ -30,7 +31,7 @@ struct ReleaseSelectionFailureTests {
             error: DisplayError(line: "Release details unavailable")
         )
         #expect(store.candidate(forKey: key)?.error == nil)
-        #expect(store.loadingReleaseId(forKey: key) == nil)
+        #expect(store.loadingPick(forKey: key) == nil)
         #expect(
             store.releaseSelectionFailure(forKey: key)?.error.line
                 == "Release details unavailable"
@@ -65,7 +66,8 @@ struct ReleaseSelectionFailureTests {
         let first = try #require(
             store.beginMetadataApplication(
                 key: key,
-                application: .pick(MappingFixtures.link)
+                application: .pick(MappingFixtures.link),
+                steps: nil
             )
         )
         store.metadataApplicationFailed(
@@ -84,7 +86,8 @@ struct ReleaseSelectionFailureTests {
         let retry = try #require(
             store.beginMetadataApplication(
                 key: key,
-                application: .pick(MappingFixtures.link)
+                application: .pick(MappingFixtures.link),
+                steps: nil
             )
         )
         #expect(store.releaseSelectionFailure(forKey: key) == nil)
@@ -122,7 +125,7 @@ struct ReleaseSelectionFailureTests {
                 isImporting: false,
                 libraryStatuses: [:],
                 selectedReleaseId: nil,
-                loadingReleaseId: nil,
+                loadingPick: nil,
                 releaseSelectionFailure: state.releaseSelectionFailure,
                 onSelect: { selected = $0 },
                 trailing: { EmptyView() }
@@ -178,7 +181,7 @@ struct ReleaseSelectionFailureTests {
                 isImporting: false,
                 libraryStatuses: [:],
                 selectedReleaseId: nil,
-                loadingReleaseId: nil,
+                loadingPick: nil,
                 releaseSelectionFailure: failure,
                 onSelect: { _ in },
                 trailing: { EmptyView() }
@@ -233,7 +236,7 @@ struct ReleaseSelectionFailureTests {
                 isImporting: false,
                 libraryStatuses: [:],
                 selectedReleaseId: nil,
-                loadingReleaseId: nil,
+                loadingPick: nil,
                 releaseSelectionFailure: failure,
                 onSelect: { _ in },
                 trailing: { EmptyView() }
@@ -259,7 +262,7 @@ extension ReleaseSelectionFailureTests {
         async throws -> ReleaseSelectionFailure
     {
         let store = MappingFixtures.store(mapping: nil)
-        let importer = Importer(applyCandidateExternalMetadata: { _, _ in
+        let importer = Importer(applyCandidateExternalMetadata: { _, _, _ in
             throw error
         })
         ImportSearchFlow.applyMetadata(

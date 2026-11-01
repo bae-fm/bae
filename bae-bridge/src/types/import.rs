@@ -1,3 +1,4 @@
+mod apply_steps;
 mod candidate;
 mod grouping;
 mod identify;
@@ -5,6 +6,7 @@ mod list;
 mod search;
 mod triage;
 
+pub use apply_steps::*;
 pub use candidate::*;
 pub use grouping::*;
 pub use identify::*;

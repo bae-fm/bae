@@ -117,7 +117,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -168,7 +168,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();

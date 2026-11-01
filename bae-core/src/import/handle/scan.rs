@@ -286,8 +286,8 @@ impl ImportServiceHandle {
     }
 
     /// Build the metadata a release's reading writes and fetch the cover it
-    /// is read with, before anything is written. A fetch that fails fails the
-    /// whole with its error.
+    /// is read with, told to `steps`, before anything is written. A fetch
+    /// that fails fails the whole with its error.
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -295,10 +295,11 @@ impl ImportServiceHandle {
         partners: Vec<crate::import::source_release::SourceRelease>,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
+        steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let draft = Self::external_candidate_draft(values, current, pressing_year)?;
         let cover = self
-            .fetch_release_cover(release, &partners)
+            .fetch_release_cover(release, &partners, steps)
             .await
             .map_err(|failure| failure.error)?;
         Ok(external_metadata_with_cover(draft, release, cover))
@@ -306,7 +307,7 @@ impl ImportServiceHandle {
 
     /// The cover a draft read from an external release is written with: the
     /// first one the release or the partners picked with it offer, with its
-    /// bytes, fetched from the catalog that offers it.
+    /// bytes, fetched from the catalog that offers it, told to `steps`.
     ///
     /// A catalog with nothing at that address leaves the cover `None`, and
     /// the write keeps the candidate's current cover; a fetch that fails
@@ -315,6 +316,7 @@ impl ImportServiceHandle {
         &self,
         release: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
+        steps: &crate::import::CatalogApplySteps,
     ) -> Result<Option<FetchedCover>, CoverFetchFailure> {
         let Some(remote) = crate::import::source_release::pick_covers(release, partners)
             .into_iter()
@@ -322,9 +324,11 @@ impl ImportServiceHandle {
         else {
             return Ok(None);
         };
-        let image = self
-            .library_manager
-            .fetch_remote_image(&remote.image.url)
+        let image = steps
+            .during(
+                crate::import::CatalogApplyStep::FetchingCover(remote.source),
+                self.library_manager.fetch_remote_image(&remote.image.url),
+            )
             .await
             .map_err(|error| CoverFetchFailure {
                 source: remote.source,
@@ -421,15 +425,18 @@ impl ImportServiceHandle {
     }
 
     /// Link the candidate to the release `link` names and read its draft
-    /// from that release.
+    /// from that release, each fetch told to `steps`.
     pub(super) async fn pick_candidate_release_write(
         &self,
         candidate_key: crate::import::CandidateKey,
         link: crate::import::PressingLink,
+        steps: &crate::import::CatalogApplySteps,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let prepared = self.release_for_pick(&candidate_key, &link.record).await?;
+        let prepared = self
+            .release_for_pick(&candidate_key, &link.record, steps)
+            .await?;
         let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
@@ -453,6 +460,7 @@ impl ImportServiceHandle {
             &link.record,
             &link.partners,
             CallPriority::Interactive,
+            steps,
         )
         .await?;
         for partner in &prepared_partners {
@@ -507,6 +515,7 @@ impl ImportServiceHandle {
                 prepared_partners,
                 &current.draft,
                 crate::identify::row_facts::folder_pressing_year(&text, &records),
+                steps,
             )
             .await?;
         let settled_by_choice = crate::identify::TerminalVerdict::of_pick(picked, folder_tracks);

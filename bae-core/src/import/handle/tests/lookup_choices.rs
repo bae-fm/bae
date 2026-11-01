@@ -274,7 +274,7 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &crate::import::Cand
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            },
+            }, crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();

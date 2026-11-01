@@ -248,14 +248,20 @@ forward! {
         /// is the path for the choices only a person can make. A catalog
         /// release that fails to load, or that lists another number of tracks
         /// than the folder holds, comes back as the error, for its own row to
-        /// say.
+        /// say. Each network read it waits on is written to `apply`'s
+        /// stream, when the app shows the pick.
         fn select_candidate_release(
             candidate_key: Vec<u8>,
             link: crate::types::BridgePressingLink,
+            apply: Option<std::sync::Arc<crate::BridgeCatalogApply>>,
         ) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
                 this.services
-                    .pane_select_release(candidate_key.into(), link.into_core())
+                    .pane_select_release(
+                        candidate_key.into(),
+                        link.into_core(),
+                        crate::screens::catalog_apply_steps(apply.as_deref()),
+                    )
                     .await?,
             ))
         }

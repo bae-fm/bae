@@ -13,9 +13,8 @@ struct ImportSearchState {
     /// Release id of the pressing whose confirm pane is open, so its row renders
     /// selected.
     let selectedReleaseId: String?
-    /// Release id whose fetched candidate detail has not landed yet. The
-    /// matching result row swaps its chevron for the existing spinner.
-    let loadingReleaseId: String?
+    /// The pick being read, whose row names the network read it waits on.
+    let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let isImporting: Bool
     /// Whether core is reading in full the release the verdict the pane shows
@@ -85,11 +84,20 @@ struct ImportSearchState {
         return failureLines
     }
 
-    /// The pressing core picked on its own, whose row holds the spinner while
-    /// it is read in full and the answer saves: the one pressing the verdict
-    /// offers. `nil` while no pick is being read.
+    /// The pressing core picked on its own, whose row says it is being read
+    /// while it is read in full and the answer saves: the one pressing the
+    /// verdict offers. `nil` while no pick is being read.
     var pickBeingRead: Pressing? {
         guard isReadingPick else { return nil }
         return identifiedGroups.flatMap(\.pressings).first
+    }
+
+    /// The pick being read on the run's list: the person's, else the run's
+    /// own.
+    var identifiedLoadingPick: LoadingPick? {
+        loadingPick
+            ?? pickBeingRead.map {
+                LoadingPick(releaseId: $0.lead.releaseId, reading: .unattended)
+            }
     }
 }

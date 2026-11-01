@@ -9,7 +9,7 @@ struct FindOnlineSearchResults: View {
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     let selectedReleaseId: String?
-    let loadingReleaseId: String?
+    let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onRetry: () -> Void
     let onSelect: (Pressing) -> Void
@@ -41,7 +41,7 @@ struct FindOnlineSearchResults: View {
             isImporting: isImporting,
             libraryStatuses: libraryStatuses,
             selectedReleaseId: selectedReleaseId,
-            loadingReleaseId: loadingReleaseId,
+            loadingPick: loadingPick,
             releaseSelectionFailure: releaseSelectionFailure,
             onSelect: onSelect,
             trailing: {
@@ -121,7 +121,7 @@ struct FindOnlineSearchResults: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onRetry: {},
             onSelect: { _ in },
         )
@@ -135,7 +135,7 @@ struct FindOnlineSearchResults: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onRetry: {},
             onSelect: { _ in },
         )
@@ -149,7 +149,7 @@ struct FindOnlineSearchResults: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onRetry: {},
             onSelect: { _ in },
         )
@@ -163,7 +163,7 @@ struct FindOnlineSearchResults: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onRetry: {},
             onSelect: { _ in },
         )
@@ -177,7 +177,7 @@ struct FindOnlineSearchResults: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
-            loadingReleaseId: nil,
+            loadingPick: nil,
             onRetry: {},
             onSelect: { _ in },
         )

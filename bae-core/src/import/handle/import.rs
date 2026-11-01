@@ -592,8 +592,12 @@ impl ImportServiceHandle {
         command.candidate_key = candidate_key;
         let content_hash = categorized.content_hash();
         if let Some(link) = command.pick.clone() {
-            self.pick_candidate_release_write(command.candidate_key.clone(), link)
-                .await?;
+            self.pick_candidate_release_write(
+                command.candidate_key.clone(),
+                link,
+                &crate::import::CatalogApplySteps::unread(),
+            )
+            .await?;
         }
         if command.read_file_tags {
             self.read_candidate_file_tags_write(command.candidate_key.clone())

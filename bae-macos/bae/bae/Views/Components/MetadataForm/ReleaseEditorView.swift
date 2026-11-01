@@ -43,6 +43,9 @@ struct ReleaseEditorView: View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
         {
             actionRow
+            if let applySteps = session.applySteps {
+                StepProgressLine(steps: applySteps) { EmptyView() }
+            }
             if let shown = session.validationMessage.map({
                 DisplayError(line: $0)
             })
@@ -82,9 +85,6 @@ struct ReleaseEditorView: View {
             }
             .disabled(session.isBusy)
             Spacer(minLength: ThemeSpace.group)
-            ProgressView()
-                .controlSize(.small)
-                .opacity(session.isBusy ? 1 : 0)
             Button("Cancel") {
                 searchSection = nil
                 session.cancelChanges()

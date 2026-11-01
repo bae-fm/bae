@@ -162,7 +162,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
-            },
+            }, bae_core::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -264,7 +264,7 @@ async fn pick_release_for_folder(
         .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
-            },
+            }, bae_core::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -307,7 +307,7 @@ async fn pick_release(
     mb_id: &str,
 ) -> Result<u64, bae_core::import::ImportError> {
     f.handle
-        .select_candidate_release(candidate_key.clone(), pressing_link(mb_id))
+        .select_candidate_release(candidate_key.clone(), pressing_link(mb_id), bae_core::import::CatalogApplySteps::unread())
         .await
 }
 

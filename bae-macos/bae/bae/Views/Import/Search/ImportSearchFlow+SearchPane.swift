@@ -280,7 +280,7 @@ extension ImportSearchFlow {
             error: candidate.error,
             search: input.runtime?.search,
             selectedReleaseId: input.selectedReleaseId,
-            loadingReleaseId: importStore.loadingReleaseId(forKey: input.key),
+            loadingPick: importStore.loadingPick(forKey: input.key),
             releaseSelectionFailure: importStore.releaseSelectionFailure(
                 forKey: input.key
             ),
