@@ -57,7 +57,7 @@ struct WelcomeListingsTests {
             makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
-            removeUnopenable: { _ in throw WelcomeTestError.notUsed },
+            removeUnopenable: { _, _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
         )

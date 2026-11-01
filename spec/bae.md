@@ -2752,7 +2752,9 @@ deleted at once.
   library's background work, leaving the library, then deleting this device's
   files. The apps show the step's name in place of a spinner: for the open
   library on the screen the app waits on, and on the Mac, for a library that
-  isn't open, on its row once its open's steps are done.
+  isn't open, on its row once its open's steps are done, or from the start
+  for one that can't open, whose removal reports leaving it and deleting its
+  files. The row's *Remove* shows no spinner of its own.
 - **A library that can't open.** A library whose settings can't be read, or
   whose reset or restore stopped partway, can't be opened to count what it
   hasn't sent, nor to leave. Its confirmation says it can't be opened, so any

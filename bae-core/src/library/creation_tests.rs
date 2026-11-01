@@ -526,6 +526,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
         &crate::diagnostics::Diagnostics::noop(),
         &Keychain::InMemory(installation.clone()),
         store,
+        &|_| (),
     )
     .await
     .unwrap();

@@ -189,15 +189,18 @@ impl BridgeDiagnostics {
         bae_core::library::UnfinishedRemoval::find(app_dir, &self.inner).await
     }
 
-    /// Remove the library `store`, which can't open, without opening it. A
-    /// panic in its file work is reported through this sink.
+    /// Remove the library `store`, which can't open, without opening it,
+    /// telling `steps` as leaving and deleting start. A panic in its file
+    /// work is reported through this sink.
     pub(crate) async fn remove_unopenable_library(
         &self,
         app_dir: &bae_core::config::AppDir,
         keychain: &bae_core::library::Keychain,
         store: coven::StoreId,
+        steps: &(dyn Fn(bae_core::library::ClosingStep) + Send + Sync),
     ) -> Result<(), bae_core::library::LibraryRemovalError> {
-        bae_core::library::remove_unopenable_library(app_dir, &self.inner, keychain, store).await
+        bae_core::library::remove_unopenable_library(app_dir, &self.inner, keychain, store, steps)
+            .await
     }
 
     /// Complete every recorded removal, telling `finished` how many are done

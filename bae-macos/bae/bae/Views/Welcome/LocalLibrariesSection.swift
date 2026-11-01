@@ -7,7 +7,8 @@ struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
     let canDeleteActiveLibrary: Bool
-    let removingLibraryId: String?
+    /// The removal running from here, with its steps.
+    let removing: RunningRemoval?
     /// The library that isn't open which counting or removing it is
     /// opening now.
     let opening: ClosedLibraryOpening?
@@ -24,11 +25,10 @@ struct LocalLibrariesSection: View {
                     disabled: disabled,
                     deleteDisabled: library.isActive
                         && !canDeleteActiveLibrary,
-                    isRemoving: removingLibraryId == library.id,
                     openSteps: opening?.libraryId == library.id
                         ? opening?.progress.steps : nil,
-                    removalSteps: opening?.libraryId == library.id
-                        ? opening?.removal?.steps : nil,
+                    removalSteps: removing?.libraryId == library.id
+                        ? removing?.steps.steps : nil,
                     onOpen: onOpen,
                     onFinish: onFinish,
                     onRemove: onRemove,
@@ -44,12 +44,12 @@ struct LocalLibrariesSection: View {
 /// and doesn't open. One whose reset or restore stopped partway says which,
 /// and offers to finish it in place of Open. While counting or removing it
 /// opens the library, a step the open runs shows in place of the detail line,
-/// and then a step the removal runs.
+/// and then a step the removal runs; a library that can't open shows the
+/// removal's steps alone.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
     let deleteDisabled: Bool
-    let isRemoving: Bool
     let openSteps: LatestSource<BridgeOpenProgress>?
     let removalSteps: LatestSource<BridgeClosingStep>?
     let onOpen: (BridgeLibrary) -> Void
@@ -78,18 +78,11 @@ private struct LibraryRow: View {
             Button(primaryTitle, action: primaryAction)
                 .buttonStyle(.bordered)
                 .disabled(!canAct)
-            ZStack {
-                Button("Remove", systemImage: "trash", role: .destructive) {
-                    onRemove(library)
-                }
-                .buttonStyle(.bordered)
-                .disabled(deleteDisabled)
-                .opacity(isRemoving ? 0 : 1)
-                .allowsHitTesting(!isRemoving)
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(isRemoving ? 1 : 0)
+            Button("Remove", systemImage: "trash", role: .destructive) {
+                onRemove(library)
             }
+            .buttonStyle(.bordered)
+            .disabled(deleteDisabled)
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
@@ -128,7 +121,7 @@ private struct LibraryRow: View {
             libraries: PreviewData.welcomeLibraries,
             disabled: false,
             canDeleteActiveLibrary: true,
-            removingLibraryId: nil,
+            removing: nil,
             opening: nil,
             onOpen: { _ in },
             onFinish: { _, _ in },

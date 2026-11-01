@@ -23,6 +23,12 @@ private actor ClosedLibraryBridge {
     }
 }
 
+/// The removals a bridge call reads while it runs, set once they exist.
+@MainActor
+private final class WatchedRemovals {
+    var removals: LibraryRemovals?
+}
+
 private func library(_ state: BridgeLibraryState) -> BridgeLibrary {
     BridgeLibrary(
         id: "library-1",
@@ -56,7 +62,9 @@ struct LibraryRemovalsClosedLibraryTests {
             makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { libraryId, _ in await bridge.unsent(libraryId) },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
-            removeUnopenable: { await bridge.removeUnopenable($0) },
+            removeUnopenable: { libraryId, _ in
+                await bridge.removeUnopenable(libraryId)
+            },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
         )
@@ -114,7 +122,7 @@ struct LibraryRemovalsClosedLibraryTests {
 
         #expect(await bridge.calls == ["remove library-1"])
         #expect(removals.error == nil)
-        #expect(removals.removingLibraryId == nil)
+        #expect(removals.removing == nil)
     }
 
     @Test("a confirmed uncounted loss removes without opening, once")
@@ -124,7 +132,7 @@ struct LibraryRemovalsClosedLibraryTests {
 
         #expect(await bridge.calls == ["remove unopenable library-1"])
         #expect(removals.error == nil)
-        #expect(removals.removingLibraryId == nil)
+        #expect(removals.removing == nil)
     }
 
     @Test("a refused removal of a library that can't open shows why")
@@ -141,7 +149,7 @@ struct LibraryRemovalsClosedLibraryTests {
                 Issue.record("the library isn't opened")
                 return .removed
             },
-            removeUnopenable: { _ in
+            removeUnopenable: { _, _ in
                 throw BridgeError.Diagnostic(category: .config, detail: "x")
             },
             findUnfinished: { nil },
@@ -152,7 +160,41 @@ struct LibraryRemovalsClosedLibraryTests {
 
         #expect(removals.error != nil)
         #expect(removals.unfinished == nil)
-        #expect(removals.removingLibraryId == nil)
+        #expect(removals.removing == nil)
+    }
+
+    /// A library that can't open is removed with steps all the same, which
+    /// its row draws in place of its detail line.
+    @Test("a removal without opening writes its steps where the row reads them")
+    func uncountedRemovalWritesItsSteps() async {
+        let watched = WatchedRemovals()
+        let removals = LibraryRemovals(
+            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
+            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
+            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            unsentOfClosed: { _, _ in
+                Issue.record("nothing is counted")
+                return BridgeUnsentWork(writes: 0, files: 0)
+            },
+            removeClosed: { _, _, _ in
+                Issue.record("the library isn't opened")
+                return .removed
+            },
+            removeUnopenable: { libraryId, closing in
+                let shown = await MainActor.run { watched.removals?.removing }
+                #expect(shown?.libraryId == libraryId)
+                #expect(shown?.steps.closing === closing)
+                return .removed
+            },
+            findUnfinished: { nil },
+            finishUnfinished: { _ in }
+        )
+        watched.removals = removals
+
+        await remove(with: removals, losing: .uncounted)
+
+        #expect(removals.error == nil)
+        #expect(removals.removing == nil)
     }
 
     @Test("a count that can't be read shows why and asks nothing")
@@ -168,7 +210,7 @@ struct LibraryRemovalsClosedLibraryTests {
                 Issue.record("nothing is removed")
                 return .removed
             },
-            removeUnopenable: { _ in
+            removeUnopenable: { _, _ in
                 Issue.record("nothing is removed")
                 return .removed
             },
@@ -285,7 +327,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
-            removeUnopenable: { _ in .removed },
+            removeUnopenable: { _, _ in .removed },
             findUnfinished: { await bridge.find() },
             finishUnfinished: { try await bridge.finish($0) }
         )
@@ -321,7 +363,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
-            removeUnopenable: { _ in .removed },
+            removeUnopenable: { _, _ in .removed },
             findUnfinished: {
                 BridgeUnfinishedRemoval(
                     error: .Diagnostic(category: .config, detail: "still here"),
@@ -346,7 +388,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
-            removeUnopenable: { _ in .removed },
+            removeUnopenable: { _, _ in .removed },
             findUnfinished: { nil },
             finishUnfinished: { _ in
                 Issue.record("nothing to finish")

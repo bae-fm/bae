@@ -55,7 +55,7 @@ impl BridgeHost {
             tracing::info!(library = %library.id, "dev reset: removing a library");
             let store = coven::StoreId(library.id.parse().map_err(BridgeError::config)?);
             self.closed(store).await?;
-            self.remove_unopenable_library_now(store)
+            self.remove_unopenable_library_now(store, &crate::screens::ClosingSteps::unread())
                 .await
                 .map_err(|error| {
                     BridgeError::diagnostic(

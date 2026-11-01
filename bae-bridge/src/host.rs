@@ -100,9 +100,12 @@ impl BridgeHost {
     async fn remove_unopenable_library_now(
         &self,
         store: coven::StoreId,
+        steps: &crate::screens::ClosingSteps,
     ) -> Result<(), bae_core::library::LibraryRemovalError> {
         self.diagnostics
-            .remove_unopenable_library(&self.app_dir, &self.keychain, store)
+            .remove_unopenable_library(&self.app_dir, &self.keychain, store, &|step| {
+                steps.step(crate::types::BridgeClosingStep::from_core(step))
+            })
             .await
     }
 
@@ -285,12 +288,17 @@ impl BridgeHost {
     }
 
     /// Remove the library `library_id`, which can't open, without opening it,
-    /// losing whatever this device hadn't sent.
+    /// losing whatever this device hadn't sent. Each step the removal runs is
+    /// written to `closing`'s stream, when the app shows the removal.
     pub async fn remove_unopenable_library(
         self: Arc<Self>,
         library_id: String,
+        closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
+            closing.writer()
+        });
         self.operations
             .clone()
             .run_to_completion(
@@ -299,7 +307,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     crate::BridgeLibraryRemoval::from_core(
-                        self.remove_unopenable_library_now(store).await,
+                        self.remove_unopenable_library_now(store, &steps).await,
                     )
                 },
             )

@@ -170,19 +170,21 @@ pub async fn remove_local_library(
 /// lost uncounted, since counting needs the library open, and this device
 /// stays among the library's members, since leaving needs it open too.
 /// For a reset or restore that stopped after its swap, coven deletes both
-/// copies, the one it loaded and the one it replaced.
+/// copies, the one it loaded and the one it replaced. Leaving and deleting
+/// are told to `steps` as each starts.
 pub async fn remove_unopenable_library(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
     keychain: &super::Keychain,
     store_id: coven::StoreId,
+    steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
 ) -> Result<(), LibraryRemovalError> {
     remove_recorded(
         app_dir,
         diagnostics,
         store_id,
         keychain.discard_store(&app_dir.store_layout().store_dir(&store_id)),
-        &|_| (),
+        steps,
     )
     .await
 }

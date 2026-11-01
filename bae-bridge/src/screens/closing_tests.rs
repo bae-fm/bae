@@ -84,3 +84,41 @@ fn a_removal_writes_each_step_it_runs() {
     assert_eq!(stream.latest(Vec::new()), None);
     app.close_library(None).unwrap();
 }
+
+/// Removing a library without opening it writes leaving it and deleting its
+/// files as each starts, and the stream holds nothing once the removal ends.
+#[test]
+fn an_unopened_removal_writes_each_step_it_runs() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::BridgeHost::with_test_keyring(
+        crate::BridgeDiagnostics::noop(),
+        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
+    )
+    .unwrap();
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = caller
+        .block_on(host.clone().create_library(
+            Some("Unopened Library".into()),
+            crate::BridgeLibrarySetup::new(host.clone()),
+        ))
+        .unwrap();
+    let id = opened.library_id();
+    drop(opened);
+    let closing = BridgeLibraryClosing::new(host.clone());
+    let stream = closing.feed_closing_steps();
+
+    let removal = caller
+        .block_on(host.remove_unopenable_library(id, Some(closing.clone())))
+        .unwrap();
+
+    assert!(matches!(removal, crate::BridgeLibraryRemoval::Removed));
+    assert_eq!(
+        closing.written(),
+        [
+            Some(BridgeClosingStep::LeavingLibrary),
+            Some(BridgeClosingStep::DeletingFiles),
+            None,
+        ]
+    );
+    assert_eq!(stream.latest(Vec::new()), None);
+}

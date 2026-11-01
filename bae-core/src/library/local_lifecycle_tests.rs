@@ -576,14 +576,23 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     .await
     .expect_err("counting opens the library, and its settings can't be read");
 
+    let steps = std::sync::Mutex::new(Vec::new());
     remove_unopenable_library(
         &home.app_dir,
         &Diagnostics::noop(),
         &super::Keychain::InMemory(home.installation.clone()),
         id,
+        &|step| steps.lock().unwrap().push(step),
     )
     .await
     .unwrap();
+    assert_eq!(
+        *steps.lock().unwrap(),
+        [
+            super::ClosingStep::LeavingLibrary,
+            super::ClosingStep::DeletingFiles
+        ]
+    );
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), None);
@@ -606,6 +615,7 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
         &Diagnostics::noop(),
         &super::Keychain::InMemory(home.installation.clone()),
         id,
+        &|_| (),
     )
     .await
     .expect_err("an open library holds its lock");

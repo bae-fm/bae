@@ -12,8 +12,8 @@ private let logger = Logger.bae("LibraryRemovals")
 @MainActor
 @Observable
 public final class LibraryRemovals {
-    /// The library whose removal is running from where libraries are listed.
-    public private(set) var removingLibraryId: String?
+    /// The removal running from where libraries are listed, with its steps.
+    public private(set) var removing: RunningRemoval?
     /// The library that isn't open which counting or removing it is opening
     /// now, with the open's steps.
     public private(set) var opening: ClosedLibraryOpening?
@@ -48,7 +48,8 @@ public final class LibraryRemovals {
             async throws -> BridgeLibraryRemoval
     @ObservationIgnored
     private let removeUnopenable:
-        @Sendable (String) async throws -> BridgeLibraryRemoval
+        @Sendable (String, BridgeLibraryClosing) async throws ->
+            BridgeLibraryRemoval
     @ObservationIgnored
     private let findUnfinished:
         @Sendable () async throws -> BridgeUnfinishedRemoval?
@@ -59,9 +60,9 @@ public final class LibraryRemovals {
     private var task: Task<Void, Never>?
 
     /// `unsentOfClosed` and `removeClosed` open the library, writing the
-    /// open's steps into the opening's stream; `removeClosed` writes the
-    /// removal's steps into the closing's, and `finishUnfinished` how many
-    /// removals it finished into the setup's.
+    /// open's steps into the opening's stream; `removeClosed` and
+    /// `removeUnopenable` write the removal's steps into the closing's, and
+    /// `finishUnfinished` how many removals it finished into the setup's.
     public init(
         makeOpenProgress: @escaping @Sendable () -> LibraryOpenProgress,
         makeRemovalSteps: @escaping @Sendable () -> LibraryClosingSteps,
@@ -74,7 +75,8 @@ public final class LibraryRemovals {
                 String, BridgeLibraryOpening, BridgeLibraryClosing
             ) async throws -> BridgeLibraryRemoval,
         removeUnopenable:
-            @escaping @Sendable (String) async throws -> BridgeLibraryRemoval,
+            @escaping @Sendable (String, BridgeLibraryClosing) async throws ->
+            BridgeLibraryRemoval,
         findUnfinished:
             @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
         finishUnfinished:
@@ -90,6 +92,134 @@ public final class LibraryRemovals {
         self.finishUnfinished = finishUnfinished
     }
 
+    /// What removing `library`, which isn't open, would lose, for the
+    /// person to confirm first; nil after a failure, shown as `error`. A
+    /// library that can't open isn't opened to count.
+    public func loss(closedLibrary library: BridgeLibrary) async
+        -> RemovalLoss?
+    {
+        error = nil
+        guard library.isOpenable else {
+            logger.info(
+                "\(library.id) can't open; removing it loses what it hasn't sent, uncounted"
+            )
+            return .uncounted
+        }
+        let progress = makeOpenProgress()
+        opening = ClosedLibraryOpening(
+            libraryId: library.id,
+            progress: progress
+        )
+        defer { opening = nil }
+        do {
+            return .unsent(
+                try await unsentOfClosed(library.id, progress.opening)
+            )
+        }
+        catch {
+            logger.error(
+                "Couldn't read what removing \(library.id) loses: \(String(reflecting: error))"
+            )
+            self.error = DisplayError(error)
+            return nil
+        }
+    }
+
+    /// Remove a library that isn't open, once the person confirmed `loss`,
+    /// then report the list changed. A library that opens is opened to leave
+    /// its store; one that can't is removed without opening.
+    public func remove(
+        closedLibrary libraryId: String,
+        losing loss: RemovalLoss,
+        onFinished: @escaping () -> Void
+    ) {
+        precondition(task == nil, "one library removal at a time")
+        let steps = makeRemovalSteps()
+        removing = RunningRemoval(libraryId: libraryId, steps: steps)
+        error = nil
+        task = Task {
+            defer {
+                removing = nil
+                task = nil
+            }
+            do {
+                switch loss {
+                case .unsent:
+                    let progress = makeOpenProgress()
+                    opening = ClosedLibraryOpening(
+                        libraryId: libraryId,
+                        progress: progress
+                    )
+                    defer { opening = nil }
+                    record(
+                        try await removeClosed(
+                            libraryId,
+                            progress.opening,
+                            steps.closing
+                        )
+                    )
+                case .uncounted:
+                    record(try await removeUnopenable(libraryId, steps.closing))
+                }
+            }
+            catch {
+                logger.error(
+                    "Couldn't remove \(libraryId): \(String(reflecting: error))"
+                )
+                self.error = DisplayError(error)
+            }
+            onFinished()
+        }
+    }
+
+    /// Note how a removal ended: this device's files for it may remain to be
+    /// deleted.
+    public func record(_ removal: BridgeLibraryRemoval) {
+        switch removal {
+        case .removed:
+            unfinished = nil
+            error = nil
+        case .unfinished(let leftover):
+            show(leftover)
+        }
+    }
+
+    private func show(_ removal: BridgeUnfinishedRemoval) {
+        logger.error("A library removal didn't finish: \(removal.error)")
+        unfinished = removal.filesRemain ? removal : nil
+        error = DisplayError(removal.error)
+    }
+
+    /// Delete the files unfinished removals left.
+    public func retryUnfinished() {
+        precondition(
+            unfinished != nil,
+            "Retry shows only for an unfinished removal"
+        )
+        precondition(task == nil, "one library removal at a time")
+        error = nil
+        let steps = makeFinishingSteps()
+        finishing = steps
+        task = Task {
+            defer {
+                finishing = nil
+                task = nil
+            }
+            do {
+                try await finishUnfinished(steps.setup)
+                unfinished = nil
+            }
+            catch {
+                logger.error(
+                    "Couldn't finish removing a library: \(String(reflecting: error))"
+                )
+                self.error = DisplayError(error)
+            }
+        }
+    }
+}
+
+extension LibraryRemovals {
     /// The production wiring over the process's host.
     public static func live(host: BridgeHost) -> LibraryRemovals {
         LibraryRemovals(
@@ -110,8 +240,11 @@ public final class LibraryRemovals {
                     host: host
                 )
             },
-            removeUnopenable: { libraryId in
-                try await host.removeUnopenableLibrary(libraryId: libraryId)
+            removeUnopenable: { libraryId, closing in
+                try await host.removeUnopenableLibrary(
+                    libraryId: libraryId,
+                    closing: closing
+                )
             },
             findUnfinished: { try await host.unfinishedRemoval() },
             finishUnfinished: { setup in
@@ -175,140 +308,18 @@ public final class LibraryRemovals {
             )
         }
     }
-
-    /// What removing `library`, which isn't open, would lose, for the
-    /// person to confirm first; nil after a failure, shown as `error`. A
-    /// library that can't open isn't opened to count.
-    public func loss(closedLibrary library: BridgeLibrary) async
-        -> RemovalLoss?
-    {
-        error = nil
-        guard library.isOpenable else {
-            logger.info(
-                "\(library.id) can't open; removing it loses what it hasn't sent, uncounted"
-            )
-            return .uncounted
-        }
-        let progress = makeOpenProgress()
-        opening = ClosedLibraryOpening(
-            libraryId: library.id,
-            progress: progress,
-            removal: nil
-        )
-        defer { opening = nil }
-        do {
-            return .unsent(
-                try await unsentOfClosed(library.id, progress.opening)
-            )
-        }
-        catch {
-            logger.error(
-                "Couldn't read what removing \(library.id) loses: \(String(reflecting: error))"
-            )
-            self.error = DisplayError(error)
-            return nil
-        }
-    }
-
-    /// Remove a library that isn't open, once the person confirmed `loss`,
-    /// then report the list changed. A library that opens is opened to leave
-    /// its store; one that can't is removed without opening.
-    public func remove(
-        closedLibrary libraryId: String,
-        losing loss: RemovalLoss,
-        onFinished: @escaping () -> Void
-    ) {
-        precondition(task == nil, "one library removal at a time")
-        removingLibraryId = libraryId
-        error = nil
-        task = Task {
-            defer {
-                removingLibraryId = nil
-                task = nil
-            }
-            do {
-                switch loss {
-                case .unsent:
-                    let progress = makeOpenProgress()
-                    let removal = makeRemovalSteps()
-                    opening = ClosedLibraryOpening(
-                        libraryId: libraryId,
-                        progress: progress,
-                        removal: removal
-                    )
-                    defer { opening = nil }
-                    record(
-                        try await removeClosed(
-                            libraryId,
-                            progress.opening,
-                            removal.closing
-                        )
-                    )
-                case .uncounted:
-                    record(try await removeUnopenable(libraryId))
-                }
-            }
-            catch {
-                logger.error(
-                    "Couldn't remove \(libraryId): \(String(reflecting: error))"
-                )
-                self.error = DisplayError(error)
-            }
-            onFinished()
-        }
-    }
-
-    /// Note how a removal ended: this device's files for it may remain to be
-    /// deleted.
-    public func record(_ removal: BridgeLibraryRemoval) {
-        switch removal {
-        case .removed:
-            unfinished = nil
-            error = nil
-        case .unfinished(let leftover):
-            show(leftover)
-        }
-    }
-
-    private func show(_ removal: BridgeUnfinishedRemoval) {
-        logger.error("A library removal didn't finish: \(removal.error)")
-        unfinished = removal.filesRemain ? removal : nil
-        error = DisplayError(removal.error)
-    }
-
-    /// Delete the files unfinished removals left.
-    public func retryUnfinished() {
-        precondition(
-            unfinished != nil,
-            "Retry shows only for an unfinished removal"
-        )
-        precondition(task == nil, "one library removal at a time")
-        error = nil
-        let steps = makeFinishingSteps()
-        finishing = steps
-        task = Task {
-            defer {
-                finishing = nil
-                task = nil
-            }
-            do {
-                try await finishUnfinished(steps.setup)
-                unfinished = nil
-            }
-            catch {
-                logger.error(
-                    "Couldn't finish removing a library: \(String(reflecting: error))"
-                )
-                self.error = DisplayError(error)
-            }
-        }
-    }
 }
 
 /// A library that isn't open which counting or removing it is opening, with
-/// the open's steps, and when removing it, the removal's.
+/// the open's steps.
 public struct ClosedLibraryOpening: Sendable {
     public let libraryId: String
     public let progress: LibraryOpenProgress
-    public let removal: LibraryClosingSteps?
+}
+
+/// A removal of a library that isn't open, with the steps it runs once the
+/// library is open, or at once for one that can't open.
+public struct RunningRemoval: Sendable {
+    public let libraryId: String
+    public let steps: LibraryClosingSteps
 }

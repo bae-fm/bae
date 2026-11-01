@@ -82,7 +82,7 @@
                 },
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
                 removeClosed: { _, _, _ in throw StubError.notImplemented },
-                removeUnopenable: { _ in throw StubError.notImplemented },
+                removeUnopenable: { _, _ in throw StubError.notImplemented },
                 findUnfinished: { nil },
                 finishUnfinished: { _ in }
             )

@@ -60,7 +60,7 @@ struct WelcomeChooseView: View {
     }
 
     private var isBusy: Bool {
-        isCreating || removals.removingLibraryId != nil || removals.isRetrying
+        isCreating || removals.removing != nil || removals.isRetrying
     }
 
     var body: some View {
@@ -148,7 +148,7 @@ struct WelcomeChooseView: View {
                     libraries: discoveredLibraries,
                     disabled: isBusy,
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
-                    removingLibraryId: removals.removingLibraryId,
+                    removing: removals.removing,
                     opening: removals.opening,
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },
