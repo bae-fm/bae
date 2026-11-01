@@ -78,12 +78,11 @@ import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.DownloadCountsSubscription
-import uniffi.bae_bridge.InvitesCallback
+import uniffi.bae_bridge.InvitesSubscription
 import uniffi.bae_bridge.KeyActivityCallback
 import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
-import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineSubscription
@@ -626,7 +625,10 @@ internal open class FakeAppHandle(
         unfaked("setMemberRole")
     }
 
-    override fun subscribeInvites(callback: InvitesCallback): LiveSubscription = unfaked("subscribeInvites")
+    /** This device's open invites the handle answers, which a test delivers to. */
+    val invites = FakeInvitesSubscription()
+
+    override fun subscribeInvites(): InvitesSubscription = invites
 
     override fun subscribeMembers(): MembersSubscription = unfaked("subscribeMembers")
 
@@ -813,6 +815,25 @@ internal class FakeSyncActivitySubscription : SyncActivitySubscription(NoHandle)
     }
 
     override suspend fun next(): BridgeSyncActivity = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
+    }
+}
+
+/** Open invites a test hands the app a list at a time: each pull waits for the next. */
+internal class FakeInvitesSubscription : InvitesSubscription(NoHandle) {
+    private val values = Channel<List<BridgeInvite>>(Channel.UNLIMITED)
+
+    fun deliver(invites: List<BridgeInvite>) {
+        values.trySend(invites)
+    }
+
+    override suspend fun next(): List<BridgeInvite> = values.receive()
 
     override suspend fun cancel() {
         values.close(BridgeException.Cancelled())

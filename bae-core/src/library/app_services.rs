@@ -524,7 +524,7 @@ impl AppServices {
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::Invite, crate::library::LibraryError>);
-    delegate_sync!(manager, subscribe_invites => subscribe_invites() -> coven::LiveQuery<Vec<coven::Invite>>);
+    delegate_values!(subscribe_invites => subscribe_invites() -> Vec<coven::Invite>);
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);

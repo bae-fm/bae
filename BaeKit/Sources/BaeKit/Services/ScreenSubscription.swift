@@ -83,6 +83,7 @@ extension UploadsPausedSubscription: PulledSubscription {}
 extension SyncStatusSubscription: PulledSubscription {}
 extension SyncActivitySubscription: PulledSubscription {}
 extension MembersSubscription: PulledSubscription {}
+extension InvitesSubscription: PulledSubscription {}
 extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
 extension RatingsSubscription: PulledSubscription {}

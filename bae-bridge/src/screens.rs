@@ -218,6 +218,16 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// This device's open invites, each with its request once one has
+    /// arrived.
+    InvitesSubscription: Vec<coven::Invite> => Vec<crate::types::BridgeInvite>,
+    converted by |invites: Vec<coven::Invite>| {
+        invites.into_iter().map(crate::types::BridgeInvite::from_core).collect::<Vec<_>>()
+    },
+    built by invites
+}
+
+pulled_values! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:

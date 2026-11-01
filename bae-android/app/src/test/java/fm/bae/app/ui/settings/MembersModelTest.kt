@@ -8,6 +8,7 @@ import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,9 +17,18 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteDeliveryKind
+import uniffi.bae_bridge.BridgeMemberAccess
+import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
+import uniffi.bae_bridge.MembersSubscription
+import uniffi.bae_bridge.NoHandle
+import uniffi.bae_bridge.ProfilesSubscription
+import java.time.Instant
 
 /**
  * A failed read of the library's people ends the spinner with the failure, and
@@ -72,6 +82,36 @@ class MembersModelTest {
         assertEquals(3, handle.reads)
     }
 
+    /** Each list of open invites the model pulls replaces the one it shows. */
+    @Test
+    fun eachPulledListOfOpenInvitesReplacesTheShownOne() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+        assertEquals(emptyList<BridgeInvite>(), model.invites)
+
+        val invite =
+            BridgeInvite(
+                id = "11",
+                member = "member-1",
+                invitee = "Dan",
+                delivery = BridgeInviteDeliveryKind.SENT,
+                access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
+                code = "invite-code",
+                expiresAt = Instant.ofEpochSecond(2_000_000_000),
+                requestToDecide = null,
+            )
+        handle.invites.deliver(listOf(invite))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf("11"), model.invites.map { it.id })
+
+        handle.invites.deliver(emptyList())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(emptyList<BridgeInvite>(), model.invites)
+        stop()
+    }
+
     /** Core's answer for what each failure shows: a cancellation shows nothing. */
     private data object TestErrorDisplays : ErrorDisplays {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
@@ -83,6 +123,35 @@ class MembersModelTest {
     }
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
+
+    /** A handle whose members and profiles never change: a pull waits until cancelled. */
+    private class SilentMembersHandle : FakeAppHandle() {
+        override fun subscribeMembers(): MembersSubscription =
+            object : MembersSubscription(NoHandle) {
+                private val values = Channel<BridgeMembership>()
+
+                override suspend fun next(): BridgeMembership = values.receive()
+
+                override suspend fun cancel() {
+                    values.close(BridgeException.Cancelled())
+                }
+
+                override fun close() = Unit
+            }
+
+        override fun subscribeProfiles(): ProfilesSubscription =
+            object : ProfilesSubscription(NoHandle) {
+                private val values = Channel<List<BridgePersonProfile>>()
+
+                override suspend fun next(): List<BridgePersonProfile> = values.receive()
+
+                override suspend fun cancel() {
+                    values.close(BridgeException.Cancelled())
+                }
+
+                override fun close() = Unit
+            }
+    }
 
     private class PeopleHandle(
         private val answers: List<Result<List<BridgePerson>>>,

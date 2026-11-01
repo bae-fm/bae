@@ -137,6 +137,34 @@ struct SyncActivitySubscriptionTests {
     }
 }
 
+@MainActor
+@Suite("Open invites", .serialized)
+struct InvitesSubscriptionTests {
+    @Test("each pulled list of open invites reaches the membership store")
+    func pulledInvitesReachTheStore() async throws {
+        let handle = FakeAppHandle()
+        let store = MembershipStore(handle: handle)
+        store.start()
+        #expect(store.invites.isEmpty)
+
+        let invite = BridgeInvite(
+            id: "11",
+            member: "member-1",
+            invitee: "Dan",
+            delivery: .sent,
+            access: .providerAccount(email: "dan@example.com"),
+            code: "invite-code",
+            expiresAt: Date(timeIntervalSince1970: 2_000_000_000),
+            requestToDecide: nil
+        )
+        handle.deliverInvites([invite])
+        try await Wait.until { store.invites.map(\.id) == ["11"] }
+
+        handle.deliverInvites([])
+        try await Wait.until { store.invites.isEmpty }
+    }
+}
+
 private let playingState = BridgePlaybackValueState.playing(
     track: BridgeNowPlayingTrack(
         track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
@@ -338,6 +366,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let timeline = FakePlaybackTimeline()
     private let syncStatus = FakeSyncStatus()
     private let syncActivity = FakeSyncActivity()
+    private let invites = FakeInvites()
 
     func deliverSyncActivity(_ activity: BridgeSyncActivity) {
         syncActivity.values.deliver(activity)
@@ -433,10 +462,12 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentProfiles()
     }
 
-    override func subscribeInvites(
-        callback _: any InvitesCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeInvites() -> InvitesSubscription {
+        invites
+    }
+
+    func deliverInvites(_ value: [BridgeInvite]) {
+        invites.values.deliver(value)
     }
 
     override func subscribeQueue() -> QueueSubscription {
@@ -459,20 +490,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         self.timeline.deliver(timeline)
     }
 
-}
-
-private final class NoopLiveSubscription: LiveSubscription,
-    @unchecked Sendable
-{
-    init() {
-        super.init(noHandle: LiveSubscription.NoHandle())
-    }
-
-    required init(unsafeFromHandle handle: UInt64) {
-        super.init(unsafeFromHandle: handle)
-    }
-
-    override func cancel() {}
 }
 
 /// A cast device list that lists nothing: its one pull answers that it was
@@ -576,6 +593,25 @@ private final class FakeSyncActivity: SyncActivitySubscription,
     }
 
     override func next() async throws -> BridgeSyncActivity {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// This device's open invites, a list a test hands the app at a time.
+private final class FakeInvites: InvitesSubscription, @unchecked Sendable {
+    let values = PullQueue<[BridgeInvite]>()
+
+    init() {
+        super.init(noHandle: InvitesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> [BridgeInvite] {
         try await values.next()
     }
 

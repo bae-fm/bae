@@ -57,7 +57,6 @@ import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
@@ -69,7 +68,6 @@ import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.InvitesCallback
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -165,24 +163,19 @@ internal class MembersModel(
                 },
             )
         val open =
-            appHandle.subscribeInvites(
-                object : InvitesCallback {
-                    override fun onValue(value: List<BridgeInvite>) {
-                        scope.launch(Dispatchers.Main.immediate) { invites = value }
-                    }
-
-                    override fun onError(error: BridgeException) {
-                        logger.error("reading the library's invites failed", error)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = errors.display(error)
-                        }
-                    }
+            ScreenSubscription(
+                appHandle.subscribeInvites().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> invites = value },
+                onError = { error ->
+                    logger.error("reading the library's invites failed", error)
+                    this@MembersModel.error = errors.display(error)
                 },
             )
         return {
             members.stop()
             profiles.stop()
-            open.cancel()
+            open.stop()
         }
     }
 

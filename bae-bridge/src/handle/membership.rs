@@ -61,13 +61,6 @@ impl BridgeAddDevice {
         }
     }
 }
-/// The person's device that joined after Add Device made its code, or none
-/// yet.
-#[uniffi::export(callback_interface)]
-pub trait InvitesCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgeInvite>);
-    fn on_error(&self, error: BridgeError);
-}
 #[uniffi::export]
 impl AppHandle {
     /// The store's members and devices, now and after each change.
@@ -88,20 +81,8 @@ impl AppHandle {
     }
     /// This device's open invites, each with its request once one has
     /// arrived; other devices' invites are never listed.
-    pub fn subscribe_invites(
-        &self,
-        callback: Box<dyn InvitesCallback>,
-    ) -> Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services| async move {
-            let mut invites = services.subscribe_invites();
-            while let Some(result) = invites.next().await {
-                match result {
-                    Ok(invites) => callback
-                        .on_value(invites.into_iter().map(BridgeInvite::from_core).collect()),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        })
+    pub fn subscribe_invites(&self) -> Arc<crate::InvitesSubscription> {
+        crate::screens::invites(self.services.subscribe_invites(), self.runtime.clone())
     }
 }
 forward! {async this => {

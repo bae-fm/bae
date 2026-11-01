@@ -43,8 +43,6 @@ public protocol PageSubscription: AnyObject, Sendable {
     func cancel()
 }
 
-extension LiveSubscription: PageSubscription {}
-
 // MARK: - Row load identity
 
 // periphery:ignore

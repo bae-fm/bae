@@ -60,13 +60,12 @@ public final class MembershipStore {
                         onValue: { [weak store] _ in store?.readPeople() },
                         onError: { [weak store] error in store?.fail(error) }
                     ),
-                    handle.subscribeInvites(
-                        callback: InvitesSink(
-                            apply: { [weak store] invites in
-                                store?.invites = invites
-                            },
-                            fail: { [weak store] error in store?.fail(error) }
-                        )
+                    ScreenSubscription(
+                        handle.subscribeInvites(),
+                        onValue: { [weak store] invites in
+                            store?.invites = invites
+                        },
+                        onError: { [weak store] error in store?.fail(error) }
                     ),
                 ]
             },
@@ -178,22 +177,4 @@ public final class MembershipStore {
 private struct PeopleRead: Sendable {
     let people: [BridgePerson]
     let own: BridgePerson?
-}
-
-private final class InvitesSink: InvitesCallback, Sendable {
-    private let apply: @MainActor @Sendable ([BridgeInvite]) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable ([BridgeInvite]) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: [BridgeInvite]) {
-        Task { @MainActor in apply(value) }
-    }
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }

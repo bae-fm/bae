@@ -3488,21 +3488,11 @@ release's or track's id as UTF-8, or a candidate's key.
   cancelled. Each app reads them through one helper, `ScreenSubscription`,
   with the same name and shape in BaeKit and in Android's data layer. What
   playback is doing is one (§9.4); so are the settings, the sync status and
-  activity, the queue, the download counts, whether uploads are paused, the members, the
-  device that joins from Add Device's code, the profiles, ratings, playlists
-  and a playlist's entries, the library's name, the watched folders' scans, and an
-  import pane's library membership, which moves its checks in place.
-- **Subscriptions** — open invites — take a
-  callback object the app implements, and return a
-  `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
-  as one of the library's tasks, and so does every task core starts to read
-  and merge its values, so closing or removing the library stops them all
-  before the store closes, and none hears from a closed store. One opened on
-  a closed library delivers nothing and is reported as a bug. A task of one
-  that breaks on a bug is reported as one, and its subscription ends with the
-  failure as its last value, never as if it were cancelled. A delivery that
-  panics, or whose callback throws, ends that one subscription and is
-  reported as a bug; the library's others go on.
+  activity, the queue, the download counts, whether uploads are paused, the
+  members, this device's open invites, the device that joins from Add
+  Device's code, the profiles, ratings, playlists and a playlist's entries,
+  the library's name, the watched folders' scans, and an import pane's
+  library membership, which moves its checks in place.
 - **Fast values** — transfer bytes and rates, file shares, export
   percents, playback and preview positions, import percents, and how far a
   bulk action has got, which core sends many times a second, and the steps
@@ -3512,7 +3502,11 @@ release's or track's id as UTF-8, or a candidate's key.
   record field or a subscription value. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing, whatever still runs that
-  wrote it — a bulk action's stream included. A read that fails empties
+  wrote it — a bulk action's stream included. The writing runs as one of the
+  library's tasks, so closing or removing the library stops it before the
+  store closes; one started on a closed library writes nothing and is
+  reported as a bug, and one that panics ends with the panic reported while
+  the library's other streams go on. A read that fails empties
   it until the next read fills it whole. Its one callback names the keys that
   started or stopped holding a value, never a value that moved; a throw from
   it is reported as a bug, and while a panic unwinds it is not called. The native

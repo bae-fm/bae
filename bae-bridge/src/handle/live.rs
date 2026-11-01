@@ -1,30 +1,15 @@
-//! The closure loop behind `AppHandle`'s remaining callback `subscribe_*`
-//! calls, wrapped in the `LiveSubscription` the host cancels.
+//! How `AppHandle` runs the work behind a fast-value stream: as one of the
+//! library's tasks, so closing the library ends it before the store closes.
 
 use super::*;
 
 impl AppHandle {
-    /// Run a subscription's delivery loop as the library's own work and hand
-    /// back the object the host cancels it with. Closing the library ends the
-    /// loop before its store closes, as it ends the library's other tasks.
-    /// `body` receives the services, and is built on the runtime rather than
-    /// on the caller.
-    pub(super) fn live_subscription<Fut>(
-        &self,
-        body: impl FnOnce(AppServices) -> Fut + Send + 'static,
-    ) -> std::sync::Arc<crate::LiveSubscription>
-    where
-        Fut: std::future::Future<Output = ()> + Send + 'static,
-    {
-        let stop = bae_core::library::CancellationToken::new();
-        self.deliver_until(stop.clone(), body);
-        std::sync::Arc::new(crate::LiveSubscription::new(stop))
-    }
-
-    /// Run `body` as the library's own work until `stop` is cancelled or the
-    /// library closes. A panic in it — the host's callback throwing, which
-    /// uniffi raises as a panic, or the bridge's own bug — ends that one
-    /// delivery and is reported; the library's other work goes on.
+    /// Run `body`, a feed writing a stream, as the library's own work until
+    /// `stop` is cancelled or the library closes. `body` receives the
+    /// services, and is built on the runtime rather than on the caller. A
+    /// panic in it — the host's activity callback throwing, which uniffi
+    /// raises as a panic, or the bridge's own bug — ends that one feed and is
+    /// reported; the library's other work goes on.
     pub(super) fn deliver_until<Fut>(
         &self,
         stop: bae_core::library::CancellationToken,
@@ -36,17 +21,17 @@ impl AppHandle {
         let diagnostics = self.diagnostics.clone();
         let delivery = async move {
             if let Err(failed) =
-                bae_util::task_failure::caught("deliver a live subscription", body(services)).await
+                bae_util::task_failure::caught("feed a stream", body(services)).await
             {
                 diagnostics.bug(failed);
             }
         };
-        // A host subscribes only while the library is open.
+        // A host feeds a stream only while the library is open.
         if let Err(error) = self
             .services
-            .spawn_library_task("live subscription", stop, delivery)
+            .spawn_library_task("stream feed", stop, delivery)
         {
-            self.services.report_bug("open a live subscription", &error);
+            self.services.report_bug("start a stream feed", &error);
         }
     }
 }
