@@ -35,16 +35,10 @@ impl AppHandle {
     }
 
     /// Whether the person paused uploads now, then each time that changes.
-    pub fn subscribe_uploads_paused(
-        &self,
-        callback: Box<dyn crate::types::UploadsPausedCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_uploads_paused(),
-            move |result| match result {
-                Ok(paused) => callback.on_value(paused),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
+    pub fn subscribe_uploads_paused(&self) -> std::sync::Arc<crate::UploadsPausedSubscription> {
+        crate::screens::uploads_paused(
+            self.services.subscribe_uploads_paused(),
+            self.runtime.clone(),
         )
     }
 }

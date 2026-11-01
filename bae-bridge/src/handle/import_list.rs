@@ -89,17 +89,8 @@ impl AppHandle {
 #[uniffi::export]
 impl AppHandle {
     /// Where each watched folder's scan stands, now and as it changes.
-    pub fn subscribe_folder_scans(
-        &self,
-        callback: Box<dyn crate::types::FolderScansCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            |services| services.subscribe_folder_scans(),
-            move |value| match value {
-                Ok(value) => callback.on_value(crate::types::BridgeFolderScans::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+    pub fn subscribe_folder_scans(&self) -> std::sync::Arc<crate::FolderScansSubscription> {
+        crate::screens::folder_scans(self.services.subscribe_folder_scans(), self.runtime.clone())
     }
 
     /// How far the identifications and imports in flight have got, now and

@@ -44,12 +44,9 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
-import uniffi.bae_bridge.UploadsPausedCallback
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -160,7 +157,7 @@ class OpenLibrary internal constructor(
     private fun subscribeToValues(scope: CoroutineScope) {
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeConfig().pulled(),
+                appHandle.subscribeConfig().let { pulled(it::next, it::cancel) },
                 scope,
                 onValue = stores.config::setConfig,
                 onError = { error -> messages.show(subscriptionFailed("settings", error)) },
@@ -195,77 +192,64 @@ class OpenLibrary internal constructor(
         screenSubscriptions += queueAdditions(scope)
         screenSubscriptions += playbackTimeline(scope)
         streamFeeds += playback.trackPositions.feed(appHandle)
-        valueSubscriptions +=
-            appHandle.subscribeDownloadCounts(
-                object : DownloadCountsCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeDownloadCounts) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.downloads.setCounts(value) }
-                    }
+        subscribeToTransfers(scope)
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeCastDevices().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = stores.cast::setDevices,
+                // The picker keeps the list it has; the next read that succeeds replaces it.
+                onError = { error -> subscriptionFailed("cast devices", error) },
+            )
+        screenSubscriptions += queue(scope)
+    }
 
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("downloads", error)?.let(stores.transfers.downloads::fail)
-                        }
-                    }
-                },
+    /** The downloads and uploads: their counts, whether uploads are paused, and their fast transfers. */
+    private fun subscribeToTransfers(scope: CoroutineScope) {
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeDownloadCounts().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = stores.transfers.downloads::setCounts,
+                onError = { error -> subscriptionFailed("downloads", error)?.let(stores.transfers.downloads::fail) },
             )
         streamFeeds +=
             stores.transfers.downloads.releaseProgress
                 .feed(appHandle)
-        valueSubscriptions +=
-            appHandle.subscribeUploadsPaused(
-                object : UploadsPausedCallback {
-                    override fun onValue(paused: Boolean) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setUploadsPaused(paused) }
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("outbox", error)?.let(stores.transfers.outbox::fail)
-                        }
-                    }
-                },
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeUploadsPaused().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = stores.transfers.outbox::setUploadsPaused,
+                onError = { error -> subscriptionFailed("outbox", error)?.let(stores.transfers.outbox::fail) },
             )
         // Nothing on Android draws one file's or release's upload, so only the total crosses.
         streamFeeds +=
             stores.transfers.outbox.filesBeingSent.feed(appHandle) { error ->
                 subscriptionFailed("upload transfer", error)
             }
-        screenSubscriptions +=
-            ScreenSubscription(
-                appHandle.subscribeCastDevices().pulled(),
-                scope,
-                onValue = stores.cast::setDevices,
-                // The picker keeps the list it has; the next read that succeeds replaces it.
-                onError = { error -> subscriptionFailed("cast devices", error) },
-            )
-        valueSubscriptions +=
-            appHandle.subscribeQueue(
-                object : QueueCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeQueueSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            playback.onQueueValue(
-                                manual = value.manual,
-                                context = value.context,
-                                hasNext = value.hasNext,
-                                hasPrevious = value.hasPrevious,
-                            )
-                        }
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue)
-                        }
-                    }
-                },
-            )
     }
+
+    /** The queue as the player and its screens show it. */
+    private fun queue(scope: CoroutineScope) =
+        ScreenSubscription(
+            appHandle.subscribeQueue().let { pulled(it::next, it::cancel) },
+            scope,
+            onValue = { value ->
+                playback.onQueueValue(
+                    manual = value.manual,
+                    context = value.context,
+                    hasNext = value.hasNext,
+                    hasPrevious = value.hasPrevious,
+                )
+            },
+            onError = { error -> subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue) },
+        )
 
     /** What playback is doing, which also says when playback failed. */
     private fun playbackValues(scope: CoroutineScope) =
         ScreenSubscription(
-            appHandle.subscribePlaybackValues().pulled(),
+            appHandle.subscribePlaybackValues().let { pulled(it::next, it::cancel) },
             scope,
             onValue = { value ->
                 playback.applyValues(value)
@@ -283,7 +267,7 @@ class OpenLibrary internal constructor(
     /** Where playback is, for Media3, which moves the position on itself. */
     private fun playbackTimeline(scope: CoroutineScope) =
         ScreenSubscription(
-            appHandle.subscribePlaybackTimeline().pulled(),
+            appHandle.subscribePlaybackTimeline().let { pulled(it::next, it::cancel) },
             scope,
             onValue = playback::applyTimeline,
             onError = { error -> subscriptionFailed("playback timeline", error)?.let(messages::show) },
@@ -292,7 +276,7 @@ class OpenLibrary internal constructor(
     /** Each time tracks go into Up Next, which the snackbar confirms. */
     private fun queueAdditions(scope: CoroutineScope) =
         ScreenSubscription(
-            appHandle.subscribeQueueAdditions().pulled(),
+            appHandle.subscribeQueueAdditions().let { pulled(it::next, it::cancel) },
             scope,
             onValue = playback::onQueueAddition,
             onError = { error -> subscriptionFailed("queue additions", error)?.let(messages::show) },

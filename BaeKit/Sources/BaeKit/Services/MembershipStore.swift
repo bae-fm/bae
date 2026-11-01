@@ -25,16 +25,21 @@ public final class MembershipStore {
     /// joins.
     public private(set) var addedDevice: BridgeActiveDevice?
 
-    /// Starts the membership, profile and invite subscriptions.
-    private let subscribe: @MainActor (MembershipStore) -> [LiveSubscription]
-    /// Starts the subscription to this person's device that a watch finds,
-    /// returning what cancels it.
+    /// Starts the membership, profile and invite subscriptions, returning
+    /// what keeps each running.
+    private let subscribe: @MainActor (MembershipStore) -> [AnyObject]
+    /// Starts the pull of this person's device that a watch finds, handing
+    /// each value to the closure; the subscription runs while what it
+    /// returns is held.
     private let subscribeAddedDevice:
-        @MainActor (BridgeAddedDeviceWatch, any AddedDeviceCallback) ->
-            @Sendable () -> Void
+        @MainActor (
+            BridgeAddedDeviceWatch,
+            @escaping @MainActor (BridgeActiveDevice?) -> Void,
+            @escaping @MainActor (any Error) -> Void
+        ) -> AnyObject
     private let readPeopleOperation: @Sendable () async throws -> PeopleRead
     @ObservationIgnored
-    private var subscriptions: [LiveSubscription] = []
+    private var subscriptions: [AnyObject] = []
     @ObservationIgnored
     private let peopleRead = CancellableTaskSlot()
 
@@ -42,20 +47,18 @@ public final class MembershipStore {
         self.init(
             subscribe: { store in
                 [
-                    handle.subscribeMembers(
-                        callback: MembershipSink(
-                            apply: { [weak store] membership in
-                                store?.selfIsAdmin = membership.selfIsAdmin
-                                store?.readPeople()
-                            },
-                            fail: { [weak store] error in store?.fail(error) }
-                        )
+                    ScreenSubscription(
+                        handle.subscribeMembers(),
+                        onValue: { [weak store] membership in
+                            store?.selfIsAdmin = membership.selfIsAdmin
+                            store?.readPeople()
+                        },
+                        onError: { [weak store] error in store?.fail(error) }
                     ),
-                    handle.subscribeProfiles(
-                        callback: ProfilesSink(
-                            apply: { [weak store] in store?.readPeople() },
-                            fail: { [weak store] error in store?.fail(error) }
-                        )
+                    ScreenSubscription(
+                        handle.subscribeProfiles(),
+                        onValue: { [weak store] _ in store?.readPeople() },
+                        onError: { [weak store] error in store?.fail(error) }
                     ),
                     handle.subscribeInvites(
                         callback: InvitesSink { [weak store] invites in
@@ -69,24 +72,25 @@ public final class MembershipStore {
                 async let own = handle.ownPerson()
                 return PeopleRead(people: try await people, own: try await own)
             },
-            subscribeAddedDevice: { watch, callback in
-                let subscription = handle.subscribeAddedDevice(
-                    watch: watch,
-                    callback: callback
+            subscribeAddedDevice: { watch, apply, fail in
+                ScreenSubscription(
+                    handle.subscribeAddedDevice(watch: watch),
+                    onValue: apply,
+                    onError: fail
                 )
-                return { subscription.cancel() }
             }
         )
     }
 
     private init(
-        subscribe: @escaping @MainActor (MembershipStore) -> [LiveSubscription],
+        subscribe: @escaping @MainActor (MembershipStore) -> [AnyObject],
         readPeople: @escaping @Sendable () async throws -> PeopleRead,
         subscribeAddedDevice:
             @escaping @MainActor (
-                BridgeAddedDeviceWatch, any AddedDeviceCallback
-            )
-            -> @Sendable () -> Void
+                BridgeAddedDeviceWatch,
+                @escaping @MainActor (BridgeActiveDevice?) -> Void,
+                @escaping @MainActor (any Error) -> Void
+            ) -> AnyObject
     ) {
         self.subscribe = subscribe
         readPeopleOperation = readPeople
@@ -112,9 +116,9 @@ public final class MembershipStore {
                         own: people.first { $0.membership.isSelf }
                     )
                 },
-                subscribeAddedDevice: { _, callback in
-                    callback.onValue(device: addedDevice)
-                    return {}
+                subscribeAddedDevice: { _, apply, _ in
+                    apply(addedDevice)
+                    return NSObject()
                 }
             )
             store.selfIsAdmin = selfIsAdmin
@@ -134,20 +138,16 @@ public final class MembershipStore {
     /// `watch` came with.
     public func watchForAddedDevice(_ watch: BridgeAddedDeviceWatch) async {
         addedDevice = nil
-        let (devices, deliver) = AsyncStream.makeStream(
-            of: BridgeActiveDevice?.self
-        )
-        let cancel = subscribeAddedDevice(
+        let pulls = subscribeAddedDevice(
             watch,
-            AddedDeviceSink(
-                apply: { deliver.yield($0) },
-                fail: { [weak self] error in self?.fail(error) }
-            )
+            { [weak self] device in self?.addedDevice = device },
+            { [weak self] error in self?.fail(error) }
         )
-        defer { cancel() }
-        for await device in devices {
-            addedDevice = device
-        }
+        // Held until the task is cancelled, which ends the stream's wait.
+        let (cancelled, holding) = AsyncStream.makeStream(of: Never.self)
+        for await _ in cancelled {}
+        holding.finish()
+        withExtendedLifetime(pulls) {}
     }
 
     private func readPeople() {
@@ -175,58 +175,6 @@ public final class MembershipStore {
 private struct PeopleRead: Sendable {
     let people: [BridgePerson]
     let own: BridgePerson?
-}
-
-private final class MembershipSink: MembershipCallback, Sendable {
-    private let apply: @MainActor @Sendable (BridgeMembership) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeMembership) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeMembership) {
-        Task { @MainActor in apply(value) }
-    }
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
-}
-
-private final class ProfilesSink: ProfilesCallback, Sendable {
-    private let apply: @MainActor @Sendable () -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable () -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value _: [BridgePersonProfile]) {
-        Task { @MainActor in apply() }
-    }
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
-}
-
-private final class AddedDeviceSink: AddedDeviceCallback, Sendable {
-    private let apply: @Sendable (BridgeActiveDevice?) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @Sendable (BridgeActiveDevice?) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(device: BridgeActiveDevice?) { apply(device) }
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }
 
 private final class InvitesSink: InvitesCallback, Sendable {

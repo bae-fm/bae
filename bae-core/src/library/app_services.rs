@@ -79,6 +79,18 @@ macro_rules! delegate_sync {
     };
 }
 
+/// A live query of the manager's, as a surface pulls its values: the first
+/// at once, then one after each write that changes it, until the surface
+/// cancels or the library closes.
+macro_rules! delegate_values {
+    ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $value:ty) => {
+        pub fn $name(&self, $($arg: $ty),*) -> crate::library::LiveValues<$value> {
+            let manager = &self.inner.manager;
+            manager.values_until_closed(manager.$target($($arg),*))
+        }
+    };
+}
+
 macro_rules! delegate_async {
     ($field:ident, $name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ret:ty) => {
         pub async fn $name(&self, $($arg: $ty),*) -> $ret {
@@ -507,9 +519,9 @@ impl AppServices {
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<crate::sync::restore_code::RestoreCodeShare, crate::library::LibraryError>);
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
-    delegate_sync!(manager, subscribe_members => subscribe_members() -> coven::LiveQuery<crate::sync::membership::Membership>);
+    delegate_values!(subscribe_members => subscribe_members() -> crate::sync::membership::Membership);
     delegate_async!(manager, add_device => add_device() -> Result<crate::sync::membership::AddingDevice, crate::library::LibraryError>);
-    delegate_sync!(manager, subscribe_added_device => subscribe_added_device(watch: crate::sync::membership::AddedDeviceWatch) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>>);
+    delegate_values!(subscribe_added_device => subscribe_added_device(watch: crate::sync::membership::AddedDeviceWatch) -> Option<crate::sync::membership::ActiveDevice>);
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::Invite, crate::library::LibraryError>);
@@ -696,8 +708,8 @@ impl AppServices {
 
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);
-    delegate_sync!(manager, subscribe_library_name => subscribe_library_name() -> coven::LiveQuery<String>);
-    delegate_sync!(manager, subscribe_uploads_paused => subscribe_uploads_paused() -> coven::LiveQuery<bool>);
+    delegate_values!(subscribe_library_name => subscribe_library_name() -> String);
+    delegate_values!(subscribe_uploads_paused => subscribe_uploads_paused() -> bool);
     delegate_async!(manager, is_sync_paused => is_sync_paused() -> Result<bool, crate::library::LibraryError>);
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> crate::library::OutboxTransfersWatch);

@@ -6,17 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeCastDevice
-import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePlaybackTimeline
-import uniffi.bae_bridge.BridgePlaybackValues
-import uniffi.bae_bridge.BridgeQueueAddition
-import uniffi.bae_bridge.CastDevicesSubscription
-import uniffi.bae_bridge.ConfigSubscription
-import uniffi.bae_bridge.PlaybackTimelineSubscription
-import uniffi.bae_bridge.PlaybackValuesSubscription
-import uniffi.bae_bridge.QueueAdditionsSubscription
 
 /**
  * A bridge object a screen pulls its values from: each [next] answers with
@@ -61,39 +51,17 @@ class ScreenSubscription<Value>(
     }
 }
 
-// Every bridge object a screen pulls from, read only through ScreenSubscription.
+/**
+ * A bridge object's pulls, for a [ScreenSubscription]: every object a screen
+ * pulls from has a `next` and a `cancel`, which uniffi gives no interface in
+ * common, so each hands its own, as `subscription.let { pulled(it::next, it::cancel) }`.
+ */
+fun <Value> pulled(
+    pullNext: suspend () -> Value,
+    cancelPulls: suspend () -> Unit,
+): PulledSubscription<Value> =
+    object : PulledSubscription<Value> {
+        override suspend fun next(): Value = pullNext()
 
-fun PlaybackValuesSubscription.pulled(): PulledSubscription<BridgePlaybackValues> =
-    object : PulledSubscription<BridgePlaybackValues> {
-        override suspend fun next(): BridgePlaybackValues = this@pulled.next()
-
-        override suspend fun cancel() = this@pulled.cancel()
-    }
-
-fun PlaybackTimelineSubscription.pulled(): PulledSubscription<BridgePlaybackTimeline> =
-    object : PulledSubscription<BridgePlaybackTimeline> {
-        override suspend fun next(): BridgePlaybackTimeline = this@pulled.next()
-
-        override suspend fun cancel() = this@pulled.cancel()
-    }
-
-fun QueueAdditionsSubscription.pulled(): PulledSubscription<BridgeQueueAddition> =
-    object : PulledSubscription<BridgeQueueAddition> {
-        override suspend fun next(): BridgeQueueAddition = this@pulled.next()
-
-        override suspend fun cancel() = this@pulled.cancel()
-    }
-
-fun CastDevicesSubscription.pulled(): PulledSubscription<List<BridgeCastDevice>> =
-    object : PulledSubscription<List<BridgeCastDevice>> {
-        override suspend fun next(): List<BridgeCastDevice> = this@pulled.next()
-
-        override suspend fun cancel() = this@pulled.cancel()
-    }
-
-fun ConfigSubscription.pulled(): PulledSubscription<BridgeConfig> =
-    object : PulledSubscription<BridgeConfig> {
-        override suspend fun next(): BridgeConfig = this@pulled.next()
-
-        override suspend fun cancel() = this@pulled.cancel()
+        override suspend fun cancel() = cancelPulls()
     }

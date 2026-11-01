@@ -4,7 +4,7 @@ import android.os.Looper
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.FakeAppHandle
-import fm.bae.app.playback.FakeLiveSubscription
+import fm.bae.app.playback.FakeLibraryNameSubscription
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +22,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
-import uniffi.bae_bridge.LibraryNameCallback
-import uniffi.bae_bridge.LiveSubscription
+import uniffi.bae_bridge.LibraryNameSubscription
 
 /**
  * A failed read of this device's person or of the library's name stays a
@@ -65,15 +64,21 @@ class SettingsLibraryModelTest {
         val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
 
         model.watchName()
-        handle.nameCallbacks.last().onError(offline())
+        handle.names
+            .last()
+            .pulls
+            .fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(LibraryNameRead.Failed(DisplayError("couldn't reach storage")), model.name)
 
         model.watchName()
-        handle.nameCallbacks.last().onValue("Household")
+        handle.names
+            .last()
+            .pulls
+            .deliver("Household")
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(LibraryNameRead.Named("Household"), model.name)
-        assertEquals(2, handle.nameCallbacks.size)
+        assertEquals(2, handle.names.size)
     }
 
     @Test
@@ -81,10 +86,10 @@ class SettingsLibraryModelTest {
         val handle = SettingsHandle()
         val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
         model.watchName()
-        val replaced = handle.nameCallbacks.last()
+        val replaced = handle.names.last().pulls
         model.watchName()
 
-        replaced.onError(offline())
+        replaced.fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(LibraryNameRead.Loading, model.name)
@@ -108,10 +113,16 @@ class SettingsLibraryModelTest {
         val handle = SettingsHandle()
         val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
         model.watchName()
-        handle.nameCallbacks.last().onValue("Household")
+        handle.names
+            .last()
+            .pulls
+            .deliver("Household")
         shadowOf(Looper.getMainLooper()).idle()
 
-        handle.nameCallbacks.last().onError(BridgeException.Cancelled())
+        handle.names
+            .last()
+            .pulls
+            .fail(BridgeException.Cancelled())
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(LibraryNameRead.Named("Household"), model.name)
@@ -133,13 +144,10 @@ class SettingsLibraryModelTest {
         private val ownPerson: List<Result<BridgePerson?>> = emptyList(),
     ) : FakeAppHandle() {
         private var reads = 0
-        val nameCallbacks = mutableListOf<LibraryNameCallback>()
+        val names = mutableListOf<FakeLibraryNameSubscription>()
 
         override suspend fun ownPerson(): BridgePerson? = ownPerson[reads++].getOrThrow()
 
-        override fun subscribeLibraryName(callback: LibraryNameCallback): LiveSubscription {
-            nameCallbacks += callback
-            return FakeLiveSubscription()
-        }
+        override fun subscribeLibraryName(): LibraryNameSubscription = FakeLibraryNameSubscription().also(names::add)
     }
 }

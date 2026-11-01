@@ -261,7 +261,7 @@ private var emptySeed: LibrarySessionSeed {
 /// constructor and its subscriptions make, so a test can build the real
 /// service without a live core.
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
-    private var queueCallback: (any QueueCallback)?
+    private let queue = FakeQueue()
     private let playbackValues = FakePlaybackValues()
     private let queueAdditions = FakeQueueAdditions()
     private let timeline = FakePlaybackTimeline()
@@ -322,10 +322,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
-    override func subscribeUploadsPaused(
-        callback _: any UploadsPausedCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeUploadsPaused() -> UploadsPausedSubscription {
+        SilentUploadsPaused()
     }
 
     override func feedReleaseUploadTransfers(
@@ -346,22 +344,16 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoCastDevices()
     }
 
-    override func subscribeLibraryName(
-        callback _: any LibraryNameCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeLibraryName() -> LibraryNameSubscription {
+        SilentLibraryName()
     }
 
-    override func subscribeMembers(
-        callback _: any MembershipCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeMembers() -> MembersSubscription {
+        SilentMembers()
     }
 
-    override func subscribeProfiles(
-        callback _: any ProfilesCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeProfiles() -> ProfilesSubscription {
+        SilentProfiles()
     }
 
     override func subscribeInvites(
@@ -370,15 +362,12 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribeQueue(
-        callback: any QueueCallback
-    ) -> LiveSubscription {
-        queueCallback = callback
-        return NoopLiveSubscription()
+    override func subscribeQueue() -> QueueSubscription {
+        queue
     }
 
     func deliverQueue(_ value: BridgeQueueSnapshot) {
-        queueCallback?.onValue(value: value)
+        queue.deliver(value)
     }
 
     func deliverPlayback(_ value: BridgePlaybackValues) {
@@ -534,6 +523,105 @@ private final class FakePlaybackTimeline: PlaybackTimelineSubscription,
     }
 
     override func cancel() async throws { timelines.cancel() }
+}
+
+/// Queue values a test hands the app one at a time.
+private final class FakeQueue: QueueSubscription, @unchecked Sendable {
+    private let values = PullQueue<BridgeQueueSnapshot>()
+
+    init() {
+        super.init(noHandle: QueueSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    func deliver(_ value: BridgeQueueSnapshot) { values.deliver(value) }
+
+    override func next() async throws -> BridgeQueueSnapshot {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// Whether uploads are paused, which never changes: a pull waits until it
+/// is cancelled.
+private final class SilentUploadsPaused: UploadsPausedSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<Bool>()
+
+    init() {
+        super.init(noHandle: UploadsPausedSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> Bool { try await values.next() }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// The library's name, which never changes: a pull waits until it is
+/// cancelled.
+private final class SilentLibraryName: LibraryNameSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<String>()
+
+    init() {
+        super.init(noHandle: LibraryNameSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> String { try await values.next() }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// The members, who never change: a pull waits until it is cancelled.
+private final class SilentMembers: MembersSubscription, @unchecked Sendable {
+    private let values = PullQueue<BridgeMembership>()
+
+    init() {
+        super.init(noHandle: MembersSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeMembership {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// The profiles, which never change: a pull waits until it is cancelled.
+private final class SilentProfiles: ProfilesSubscription, @unchecked Sendable {
+    private let values = PullQueue<[BridgePersonProfile]>()
+
+    init() {
+        super.init(noHandle: ProfilesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> [BridgePersonProfile] {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
 }
 
 /// Queue additions a test hands the app one at a time.

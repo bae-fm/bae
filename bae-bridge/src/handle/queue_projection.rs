@@ -71,7 +71,7 @@ impl crate::types::BridgeDownloadOp {
 }
 
 impl crate::types::BridgeDownloadCounts {
-    pub(super) fn from_core(counts: bae_core::library::ReleaseQueueCounts) -> Self {
+    pub(crate) fn from_core(counts: bae_core::library::ReleaseQueueCounts) -> Self {
         let summary_parts = counts
             .total
             .summary_parts("core.queue.downloading")
@@ -171,7 +171,7 @@ impl crate::types::BridgePlaybackContext {
 
 mirror_struct! {
     crate::types::BridgeQueueSnapshot = bae_core::queue::ResolvedQueueSnapshot,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         manual: (each crate::types::BridgeQueueEntry),
         context: (opt crate::types::BridgePlaybackContext),

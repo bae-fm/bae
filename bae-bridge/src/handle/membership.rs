@@ -61,51 +61,28 @@ impl BridgeAddDevice {
         }
     }
 }
-#[uniffi::export(callback_interface)]
-pub trait MembershipCallback: Send + Sync {
-    fn on_value(&self, value: BridgeMembership);
-    fn on_error(&self, error: BridgeError);
-}
 /// The person's device that joined after Add Device made its code, or none
 /// yet.
-#[uniffi::export(callback_interface)]
-pub trait AddedDeviceCallback: Send + Sync {
-    fn on_value(&self, device: Option<BridgeActiveDevice>);
-    fn on_error(&self, error: BridgeError);
-}
 #[uniffi::export(callback_interface)]
 pub trait InvitesCallback: Send + Sync {
     fn on_value(&self, value: Vec<BridgeInvite>);
 }
 #[uniffi::export]
 impl AppHandle {
-    pub fn subscribe_members(
-        &self,
-        callback: Box<dyn MembershipCallback>,
-    ) -> Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            |services| services.subscribe_members(),
-            move |result| match result {
-                Ok(value) => callback.on_value(BridgeMembership::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+    /// The store's members and devices, now and after each change.
+    pub fn subscribe_members(&self) -> Arc<crate::MembersSubscription> {
+        crate::screens::members(self.services.subscribe_members(), self.runtime.clone())
     }
     /// This person's device that `watch` finds: none until one joins after
-    /// Add Device made its code. Add Device's sheet subscribes while it shows
+    /// Add Device made its code. Add Device's sheet pulls it while it shows
     /// the code.
     pub fn subscribe_added_device(
         &self,
         watch: Arc<BridgeAddedDeviceWatch>,
-        callback: Box<dyn AddedDeviceCallback>,
-    ) -> Arc<crate::LiveSubscription> {
-        let watch = watch.watch.clone();
-        self.subscribe_query(
-            move |services| services.subscribe_added_device(watch),
-            move |result| match result {
-                Ok(device) => callback.on_value(device.map(BridgeActiveDevice::from_core)),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
+    ) -> Arc<crate::AddedDeviceSubscription> {
+        crate::screens::added_device(
+            self.services.subscribe_added_device(watch.watch.clone()),
+            self.runtime.clone(),
         )
     }
     /// This device's open invites, each with its request once one has

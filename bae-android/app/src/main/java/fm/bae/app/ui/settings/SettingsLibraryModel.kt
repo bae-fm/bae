@@ -6,15 +6,13 @@ import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.data.ScreenSubscription
+import fm.bae.app.data.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
-import uniffi.bae_bridge.LibraryNameCallback
-import uniffi.bae_bridge.LiveSubscription
 
 private val logger = BaeLogger("bae.SettingsLibraryModel")
 
@@ -68,7 +66,7 @@ internal class SettingsLibraryModel(
     var name by mutableStateOf<LibraryNameRead>(LibraryNameRead.Loading)
         private set
 
-    private var nameSubscription: LiveSubscription? = null
+    private var nameSubscription: ScreenSubscription<String>? = null
 
     /** Which subscription a name callback belongs to; one from a replaced subscription is dropped. */
     private var nameGeneration = 0
@@ -102,28 +100,21 @@ internal class SettingsLibraryModel(
         name = LibraryNameRead.Loading
         val generation = nameGeneration
         nameSubscription =
-            appHandle.subscribeLibraryName(
-                object : LibraryNameCallback {
-                    override fun onValue(value: String) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            if (generation == nameGeneration) name = LibraryNameRead.Named(value)
-                        }
-                    }
-
-                    override fun onError(error: BridgeException) {
-                        logger.error("reading the library's name failed", error)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            val shown = errors.display(error)
-                            if (generation == nameGeneration && shown != null) name = LibraryNameRead.Failed(shown)
-                        }
-                    }
+            ScreenSubscription(
+                appHandle.subscribeLibraryName().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> if (generation == nameGeneration) name = LibraryNameRead.Named(value) },
+                onError = { error ->
+                    logger.error("reading the library's name failed", error)
+                    val shown = errors.display(error)
+                    if (generation == nameGeneration && shown != null) name = LibraryNameRead.Failed(shown)
                 },
             )
     }
 
     fun stopWatchingName() {
         nameGeneration++
-        nameSubscription?.cancel()
+        nameSubscription?.stop()
         nameSubscription = null
     }
 }

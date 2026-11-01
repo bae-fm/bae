@@ -1,27 +1,6 @@
 import BaeKit
 import Foundation
 
-private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeFolderScans) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeFolderScans) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 /// The read behind the one selected import candidate, whose key moves in place
 /// as the selection moves. Several selected candidates, or none, read nothing
 /// here: the pane several open reads core's selection summary instead.
@@ -201,9 +180,9 @@ final class DesktopSubscriptions {
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
-    private var subscriptions: [LiveSubscription] = []
     /// The import counts' pulls, which stop when this is dropped.
     private var importCounts: ScreenSubscription<ImportCountsSubscription>?
+    private var folderScans: ScreenSubscription<FolderScansSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -317,7 +296,7 @@ final class DesktopSubscriptions {
     }
 
     func start() {
-        precondition(subscriptions.isEmpty)
+        precondition(folderScans == nil)
         feeds = [
             outputStore.percents.feed(from: appHandle),
             outboxStore.fileShares.feedUploads(from: appHandle),
@@ -325,16 +304,13 @@ final class DesktopSubscriptions {
             importStore.previewPosition.feed(from: appHandle),
             importStore.importPercents.feed(from: appHandle),
         ]
-        subscriptions = [
-            appHandle.subscribeFolderScans(
-                callback: FolderScansSink(
-                    apply: { [importStore] scans in
-                        importStore.applyFolderScans(scans)
-                    },
-                    fail: { [uiStore] error in uiStore.showError(error) }
-                )
-            )
-        ]
+        folderScans = ScreenSubscription(
+            appHandle.subscribeFolderScans(),
+            onValue: { [importStore] scans in
+                importStore.applyFolderScans(scans)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
         importCounts = ScreenSubscription(
             appHandle.subscribeImportCounts(),
             onValue: { [importStore] counts in

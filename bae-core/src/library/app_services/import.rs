@@ -299,8 +299,11 @@ impl AppServices {
     /// Where each watched folder's scan stands: the first value at once, then
     /// a value only when the scans changed, which the live query tests on the
     /// processed progress.
-    pub fn subscribe_folder_scans(&self) -> coven::LiveQuery<crate::import::FolderScanProgress> {
-        self.inner.manager.subscribe_folder_scan_progress()
+    pub fn subscribe_folder_scans(
+        &self,
+    ) -> crate::library::LiveValues<crate::import::FolderScanProgress> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_folder_scan_progress())
     }
 
     /// How far the identifications and imports in flight have got: the

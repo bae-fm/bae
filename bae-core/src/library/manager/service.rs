@@ -260,27 +260,10 @@ impl LibraryManager {
 
     /// Start the task behind a subscription to the library as one of the
     /// manager's tasks, which closing the library ends before the store
-    /// closes; otherwise it runs until it ends. A panic in it is reported,
-    /// and `reader` is told it failed. One asked for while the library
-    /// closes starts nothing: the task and the sender it holds are dropped, so
-    /// the subscription ends at once.
-    pub(crate) fn spawn_subscription_task<F>(
-        &self,
-        task_name: &'static str,
-        reader: impl crate::library::SubscriptionReader,
-        task: F,
-    ) where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        if let Err(error) = self.spawn_supervised_task(task_name, task, move |failed| {
-            reader.fail(failed.into());
-        }) {
-            subscription_unstarted(&error);
-        }
-    }
-
-    /// [`Self::spawn_subscription_task`] for a task its subscription stops
-    /// too, by cancelling `stop`.
+    /// closes; otherwise it runs until it ends or `stop` is cancelled. A
+    /// panic in it is reported, and `reader` is told it failed. One asked for
+    /// while the library closes starts nothing: the task and the sender it
+    /// holds are dropped, so the subscription ends at once.
     pub(crate) fn spawn_stoppable_subscription_task<F>(
         &self,
         task_name: &'static str,

@@ -48,14 +48,7 @@ pub enum BridgeLiveQueryCause {
 }
 
 callbacks! {
-    QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
-    UploadsPausedCallback: on_value(paused: bool) + on_error;
 
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
     SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;
-    DownloadCountsCallback: on_value(value: super::BridgeDownloadCounts) + on_error;
-
-    /// Where each watched folder's scan stands, now and as it changes.
-    #[cfg(feature = "desktop")]
-    FolderScansCallback: on_value(value: BridgeFolderScans) + on_error;
 }

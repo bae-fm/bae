@@ -1,25 +1,6 @@
 import BaeKit
 import Foundation
 
-/// Whether the releases an import pane offers are already in the library,
-/// read through one live query: which releases it checks is changed in place,
-/// and each value answers every check at once.
-struct LibraryStatusQuery: Sendable {
-    /// Check these releases from now on; returns the revision the answer
-    /// will carry.
-    let setChecks: @Sendable ([BridgeLibraryCheck]) throws -> UInt64
-    let next: @Sendable () async throws -> BridgeLibraryStatusSnapshot
-    let cancel: @Sendable () async -> Void
-
-    /// A query that checks nothing, for previews and tests that never read
-    /// library membership.
-    static let inert = LibraryStatusQuery(
-        setChecks: { _ in 0 },
-        next: { throw CancellationError() },
-        cancel: {}
-    )
-}
-
 private struct ImportOperations: Sendable {
     let candidateSourceFolders: @Sendable (Data) async throws -> [Data]
     let combineFolder:
@@ -53,7 +34,9 @@ private struct ImportOperations: Sendable {
     /// `nil` where no bridge is behind the importer: a preview or a test.
     let subscribeCandidateRuntime:
         @Sendable (Data) -> CandidateRuntimeSubscription?
-    let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
+    /// `nil` where no bridge is behind the importer: a preview or a test
+    /// that reads no library membership.
+    let subscribeLibraryStatuses: @Sendable () -> LibraryStatusSubscription?
     let editCandidateLookupChoices:
         @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome
@@ -181,14 +164,7 @@ extension ImportOperations {
             subscribeCandidateRuntime: {
                 handle.subscribeCandidateRuntime(candidateKey: $0)
             },
-            subscribeLibraryStatuses: {
-                let subscription = handle.subscribeLibraryStatuses()
-                return LibraryStatusQuery(
-                    setChecks: { try subscription.setChecks(checks: $0) },
-                    next: { try await subscription.next() },
-                    cancel: { try? await subscription.cancel() }
-                )
-            },
+            subscribeLibraryStatuses: { handle.subscribeLibraryStatuses() },
             editCandidateLookupChoices: {
                 try await handle.editCandidateLookupChoices(
                     candidateKey: $0,
@@ -383,7 +359,7 @@ final class Importer: Sendable, Observable {
                 _ in nil
             },
         subscribeLibraryStatuses:
-            @escaping @Sendable () -> LibraryStatusQuery = { .inert },
+            @escaping @Sendable () -> LibraryStatusSubscription? = { nil },
         editCandidateLookupChoices:
             @escaping @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome = { _, _ in .done },
@@ -652,8 +628,9 @@ extension Importer {
         try await operations.retryCandidateSearch(candidateKey)
     }
 
-    /// Open one live read of library membership for an import pane's offers.
-    func subscribeLibraryStatuses() -> LibraryStatusQuery {
+    /// Open one live read of library membership for an import pane's
+    /// offers; `nil` where no bridge is behind the importer.
+    func subscribeLibraryStatuses() -> LibraryStatusSubscription? {
         operations.subscribeLibraryStatuses()
     }
 

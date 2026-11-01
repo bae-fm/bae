@@ -19,82 +19,14 @@ pub struct BridgeLibraryStatusSnapshot {
     pub request_revision: u64,
 }
 
-/// Whether the releases an import pane offers are already in the library:
-/// one live query for as long as the pane is open, whose checks move in place
-/// as its offers change. It starts with no checks.
-#[derive(uniffi::Object)]
-pub struct LibraryStatusSubscription {
-    inner: bae_core::library::LibraryStatusSubscription,
-    runtime: crate::operation_runtime::OperationRuntime,
-}
-
 #[uniffi::export]
 impl AppHandle {
-    pub fn subscribe_library_statuses(&self) -> std::sync::Arc<LibraryStatusSubscription> {
-        std::sync::Arc::new(LibraryStatusSubscription {
-            inner: self.services.subscribe_library_statuses(),
-            runtime: self.runtime.clone(),
-        })
-    }
-}
-
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl LibraryStatusSubscription {
-    /// Check `checks` from now on. Returns the revision the answer will
-    /// carry.
-    pub fn set_checks(&self, checks: Vec<BridgeLibraryCheck>) -> Result<u64, BridgeError> {
-        self.inner
-            .set_checks(checks.into_iter().map(|check| bae_core::db::LibraryCheck {
-                release_id: check.release_id,
-                source: check.source.into_core(),
-                source_group_id: check.source_group_id,
-            }))
-            .map_err(status_error)
-    }
-
-    pub async fn next(
-        self: std::sync::Arc<Self>,
-    ) -> Result<BridgeLibraryStatusSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeLibraryStatusSnapshot {
-                        statuses: snapshot
-                            .statuses
-                            .into_iter()
-                            .map(|status| {
-                                (
-                                    status.release_id.clone(),
-                                    crate::types::BridgeLibraryStatus::from_core(status),
-                                )
-                            })
-                            .collect(),
-                        request_revision: snapshot.request_revision,
-                    })
-                    .map_err(status_error)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
-    }
-}
-
-fn status_error(error: bae_core::library::LibraryStatusSubscriptionError) -> BridgeError {
-    match error {
-        bae_core::library::LibraryStatusSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LibraryStatusSubscriptionError::Query(error) => {
-            BridgeError::database_query(error)
-        }
+    /// Whether the releases an import pane offers are already in the
+    /// library, for as long as the pane is open; it starts with no checks.
+    pub fn subscribe_library_statuses(&self) -> std::sync::Arc<crate::LibraryStatusSubscription> {
+        crate::screens::library_statuses(
+            self.services.subscribe_library_statuses(),
+            self.runtime.clone(),
+        )
     }
 }

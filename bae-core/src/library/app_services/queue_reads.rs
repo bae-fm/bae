@@ -5,27 +5,13 @@
 use super::*;
 
 impl AppServices {
-    /// The queue as its screens show it, now and after every change to it.
+    /// The queue as its screens show it: the first value at once, then one
+    /// after each write that changes it.
     pub fn subscribe_queue_values(
         &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut query = self.inner.manager.subscribe_queue_value();
-        self.inner
-            .manager
-            .spawn_subscription_task("queue values", tx.clone(), async move {
-                while let Some(value) = query.next().await {
-                    if tx
-                        .send(value.map_err(crate::library::LibraryError::from))
-                        .is_err()
-                    {
-                        return;
-                    }
-                }
-            });
-        rx
+    ) -> crate::library::LiveValues<crate::queue::ResolvedQueueSnapshot> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_queue_value())
     }
 
     /// The last time tracks went into Up Next, as the screens confirming

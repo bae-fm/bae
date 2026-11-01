@@ -41,25 +41,14 @@ impl AppServices {
         self.inner.manager.download_counts().await
     }
 
-    /// How many downloads are in each phase, and whether the queue is paused,
-    /// and each change to them: what the Downloads pane's controls show.
+    /// How many downloads are in each phase, and whether the queue is paused:
+    /// what the Downloads pane's controls show, the first value at once, then
+    /// one after each write that changes them.
     pub fn subscribe_download_counts(
         &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::library::ReleaseQueueCounts, LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut query = self.inner.manager.subscribe_download_counts();
-        self.inner
-            .manager
-            .spawn_subscription_task("download counts", tx.clone(), async move {
-                while let Some(value) = query.next().await {
-                    if tx.send(value.map_err(LibraryError::from)).is_err() {
-                        return;
-                    }
-                }
-            });
-        rx
+    ) -> crate::library::LiveValues<crate::library::ReleaseQueueCounts> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_download_counts())
     }
 
     /// The bytes each downloading release has moved, sent as they move.

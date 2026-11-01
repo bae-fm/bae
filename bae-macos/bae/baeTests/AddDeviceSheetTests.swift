@@ -64,19 +64,19 @@ struct AddDeviceSheetTests {
             AddDeviceHarness(holder: holder).environment(store),
             size: size
         ) { _, host in
-            try await Wait.until { handle.callback != nil }
+            try await Wait.until { handle.devices != nil }
             // The sheet runs the watch that came with its code.
             #expect(handle.watch === Self.adding.watch)
-            let callback = try #require(handle.callback)
+            let devices = try #require(handle.devices)
             // The live read's first value: no device has joined yet.
-            callback.onValue(device: nil)
+            devices.deliver(nil)
             let code = try await SnapshotTestSupport.capturePNG(
                 host,
                 size: size
             )
 
-            callback.onValue(
-                device: BridgeActiveDevice(
+            devices.deliver(
+                BridgeActiveDevice(
                     id: 7,
                     name: "New Phone",
                     isSelf: false,
@@ -112,13 +112,13 @@ private struct AddDeviceHarness: View {
     }
 }
 
-/// A handle-less `AppHandle` that keeps the added-device watch and its
-/// callback, so a test delivers what the live read would, and says when the
-/// watch ends.
+/// A handle-less `AppHandle` that keeps the added-device watch and the
+/// subscription it handed out, so a test delivers what the live read would,
+/// and says when the watch ends.
 private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
     private(set) var watch: BridgeAddedDeviceWatch?
-    private(set) var callback: (any AddedDeviceCallback)?
-    private(set) var cancelled = false
+    private(set) var devices: AddedDevices?
+    var cancelled: Bool { devices?.cancelled ?? false }
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -129,31 +129,65 @@ private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
     }
 
     override func subscribeAddedDevice(
-        watch: BridgeAddedDeviceWatch,
-        callback: any AddedDeviceCallback
-    ) -> LiveSubscription {
+        watch: BridgeAddedDeviceWatch
+    ) -> AddedDeviceSubscription {
         self.watch = watch
-        self.callback = callback
-        return CancelRecordingSubscription { [weak self] in
-            self?.cancelled = true
-        }
+        let devices = AddedDevices()
+        self.devices = devices
+        return devices
     }
 }
 
-/// A handle-less subscription that reports its cancel.
-private final class CancelRecordingSubscription: LiveSubscription,
-    @unchecked Sendable
-{
-    private let onCancel: () -> Void
+/// The added device a test hands the sheet, one value per pull, which says
+/// whether it was cancelled.
+private final class AddedDevices: AddedDeviceSubscription, @unchecked Sendable {
+    private let lock = NSLock()
+    private var waiting: [BridgeActiveDevice?] = []
+    private var puller: CheckedContinuation<BridgeActiveDevice?, any Error>?
+    private var wasCancelled = false
 
-    init(onCancel: @escaping () -> Void) {
-        self.onCancel = onCancel
-        super.init(noHandle: LiveSubscription.NoHandle())
+    var cancelled: Bool { lock.withLock { wasCancelled } }
+
+    init() {
+        super.init(noHandle: AddedDeviceSubscription.NoHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
-        preconditionFailure("a recording subscription has no core object")
+        preconditionFailure("a fake subscription has no core object")
     }
 
-    override func cancel() { onCancel() }
+    func deliver(_ device: BridgeActiveDevice?) {
+        let puller = lock.withLock {
+            let puller = self.puller
+            self.puller = nil
+            if puller == nil { waiting.append(device) }
+            return puller
+        }
+        puller?.resume(returning: device)
+    }
+
+    override func next() async throws -> BridgeActiveDevice? {
+        try await withCheckedThrowingContinuation { continuation in
+            let ready: BridgeActiveDevice?? = lock.withLock {
+                if waiting.isEmpty {
+                    puller = continuation
+                    return .none
+                }
+                return .some(waiting.removeFirst())
+            }
+            if case .some(let device) = ready {
+                continuation.resume(returning: device)
+            }
+        }
+    }
+
+    override func cancel() async throws {
+        let puller = lock.withLock {
+            wasCancelled = true
+            let puller = self.puller
+            self.puller = nil
+            return puller
+        }
+        puller?.resume(throwing: BridgeError.Cancelled)
+    }
 }

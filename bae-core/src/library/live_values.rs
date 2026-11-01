@@ -47,6 +47,18 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
         }
     }
 
+    /// A handle that counts the query's runs, for a test that asks how often
+    /// a write reran it. Asked before any pull waits.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn runs(&self) -> coven::LiveQueryRuns {
+        self.query
+            .try_lock()
+            .expect("no pull waits while a test counts the runs")
+            .as_ref()
+            .expect("the values are not cancelled")
+            .runs()
+    }
+
     /// Settle a waiting pull and refuse later ones, then drop the query once
     /// no pull holds it.
     pub async fn cancel(&self) {

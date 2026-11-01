@@ -32,30 +32,6 @@ async fn a_live_read_whose_task_panics_ends_with_its_failure() {
     assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
 }
 
-/// A subscription read as a channel of results whose task panics sends the
-/// failure as its last result, then ends.
-#[tokio::test]
-async fn a_channel_subscription_whose_task_panics_sends_its_failure_last() {
-    let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
-    let (values, mut read) = tokio::sync::mpsc::unbounded_channel::<Result<(), LibraryError>>();
-    manager.spawn_subscription_task("test subscription", values.clone(), async move {
-        let _values = values;
-        panic!("the subscription broke");
-    });
-
-    let failure = read.recv().await;
-
-    assert!(
-        matches!(failure, Some(Err(LibraryError::Internal(_)))),
-        "{failure:?}"
-    );
-    assert!(
-        read.recv().await.is_none(),
-        "the failure is the last result"
-    );
-    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
-}
-
 /// A file operation that panics fails as something that went wrong, is
 /// reported once, and leaves the library able to close.
 #[tokio::test]

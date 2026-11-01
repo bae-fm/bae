@@ -24,65 +24,48 @@ enum SearchTab: Hashable {
 }
 
 /// One candidate's live read of library membership for the releases its pane
-/// offers: the query, the task applying its values, and the revision of the
-/// newest checks, so a value answering checks since replaced is not shown.
-final class LibraryStatusObservation: Equatable, @unchecked Sendable {
-    private let query: LibraryStatusQuery
-    private var deliveries: Task<Void, Never>?
+/// offers: the subscription, pulled through `ScreenSubscription`, and the
+/// revision of the newest checks, so a value answering checks since replaced
+/// is not shown. With no subscription, a preview's or a test's, it reads
+/// nothing.
+@MainActor
+final class LibraryStatusObservation: Equatable {
+    private let subscription: LibraryStatusSubscription?
+    private var pulls: ScreenSubscription<LibraryStatusSubscription>?
     private var requested: UInt64 = 0
 
-    init(query: LibraryStatusQuery) {
-        self.query = query
+    init(subscription: LibraryStatusSubscription?) {
+        self.subscription = subscription
     }
 
-    /// Apply each value answering the newest checks, until the query ends.
-    @MainActor
+    /// Apply each value answering the newest checks, until the subscription
+    /// ends.
     func start(
         onValue: @escaping @MainActor ([String: BridgeLibraryStatus]) -> Void,
         onError: @escaping @MainActor (any Error) -> Void
     ) {
-        let query = self.query
-        deliveries = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                do {
-                    let snapshot = try await query.next()
-                    guard let self else { return }
-                    if snapshot.requestRevision >= self.requested {
-                        onValue(snapshot.statuses)
-                    }
-                }
-                catch BridgeError.Cancelled {
-                    return
-                }
-                catch is CancellationError {
-                    return
-                }
-                catch {
-                    if !Task.isCancelled {
-                        onError(error)
-                    }
-                    return
-                }
-            }
-        }
+        guard let subscription else { return }
+        pulls = ScreenSubscription(
+            subscription,
+            onValue: { [weak self] snapshot in
+                guard let self, snapshot.requestRevision >= self.requested
+                else { return }
+                onValue(snapshot.statuses)
+            },
+            onError: onError
+        )
     }
 
-    @MainActor
     func setChecks(_ checks: Set<BridgeLibraryCheck>) throws {
-        requested = try query.setChecks(
-            checks.sorted {
+        guard let subscription else { return }
+        requested = try subscription.setChecks(
+            checks: checks.sorted {
                 ($0.releaseId, "\($0.source)") < ($1.releaseId, "\($1.source)")
             }
         )
     }
 
-    deinit {
-        deliveries?.cancel()
-        let query = self.query
-        Task { await query.cancel() }
-    }
-
-    static func == (
+    nonisolated static func == (
         lhs: LibraryStatusObservation,
         rhs: LibraryStatusObservation
     ) -> Bool {

@@ -156,16 +156,19 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    let mut progress = services.subscribe_folder_scans();
+    let progress = services.subscribe_folder_scans();
     let progress_runs = progress.runs();
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(0_u64);
     let progress_reader = tokio::spawn(async move {
-        while let Some(read) = progress.next().await {
-            let found = read
-                .expect("the progress reads")
-                .activity
-                .expect("the scan is running")
-                .found_count;
+        loop {
+            let found = match progress.next().await {
+                Ok(read) => read,
+                Err(bae_core::library::LiveValuesError::Cancelled) => break,
+                Err(error) => panic!("the progress reads: {error}"),
+            }
+            .activity
+            .expect("the scan is running")
+            .found_count;
             progress_tx.send_replace(found);
         }
     });

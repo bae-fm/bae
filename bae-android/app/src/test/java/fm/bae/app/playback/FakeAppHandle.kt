@@ -2,7 +2,7 @@ package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
 import kotlinx.coroutines.channels.Channel
-import uniffi.bae_bridge.AddedDeviceCallback
+import uniffi.bae_bridge.AddedDeviceSubscription
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
@@ -76,30 +76,30 @@ import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DownloadBrowseSubscription
-import uniffi.bae_bridge.DownloadCountsCallback
+import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.InvitesCallback
 import uniffi.bae_bridge.KeyActivityCallback
 import uniffi.bae_bridge.KeyedValueStream
-import uniffi.bae_bridge.LibraryNameCallback
+import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.MembershipCallback
+import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
-import uniffi.bae_bridge.PlaylistEntriesCallback
-import uniffi.bae_bridge.PlaylistsCallback
-import uniffi.bae_bridge.ProfilesCallback
+import uniffi.bae_bridge.PlaylistEntriesSubscription
+import uniffi.bae_bridge.PlaylistsSubscription
+import uniffi.bae_bridge.ProfilesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
-import uniffi.bae_bridge.QueueCallback
+import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.QueueUpcomingSubscription
-import uniffi.bae_bridge.RatingsCallback
+import uniffi.bae_bridge.RatingsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.StreamFailureCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
-import uniffi.bae_bridge.UploadsPausedCallback
+import uniffi.bae_bridge.UploadsPausedSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
 
 /** A bridge call a test fake doesn't fake: fail naming it. */
@@ -157,13 +157,13 @@ internal open class FakeAppHandle(
 
     override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribeDownloadCounts(callback: DownloadCountsCallback): LiveSubscription = liveSubscription()
+    override fun subscribeDownloadCounts(): DownloadCountsSubscription = FakeDownloadCountsSubscription()
 
     override fun subscribeDownloadBrowse(): DownloadBrowseSubscription = unfaked("subscribeDownloadBrowse")
 
     override fun feedDownloadTransfers(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribeUploadsPaused(callback: UploadsPausedCallback): LiveSubscription = liveSubscription()
+    override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
 
     override fun feedReleaseUploadTransfers(
         activity: KeyActivityCallback,
@@ -181,7 +181,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeCastDevices(): CastDevicesSubscription = FakeCastDevicesSubscription()
 
-    override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
+    override fun subscribeQueue(): QueueSubscription = FakeQueueSubscription()
 
     override fun subscribePlaybackValues(): PlaybackValuesSubscription = FakePlaybackValuesSubscription()
 
@@ -624,12 +624,9 @@ internal open class FakeAppHandle(
 
     override fun subscribeInvites(callback: InvitesCallback): LiveSubscription = unfaked("subscribeInvites")
 
-    override fun subscribeMembers(callback: MembershipCallback): LiveSubscription = unfaked("subscribeMembers")
+    override fun subscribeMembers(): MembersSubscription = unfaked("subscribeMembers")
 
-    override fun subscribeAddedDevice(
-        watch: BridgeAddedDeviceWatch,
-        callback: AddedDeviceCallback,
-    ): LiveSubscription = unfaked("subscribeAddedDevice")
+    override fun subscribeAddedDevice(watch: BridgeAddedDeviceWatch): AddedDeviceSubscription = unfaked("subscribeAddedDevice")
 
     override suspend fun appendPlaylistEntry(
         playlist: String,
@@ -704,18 +701,15 @@ internal open class FakeAppHandle(
         unfaked("setRating")
     }
 
-    override fun subscribeLibraryName(callback: LibraryNameCallback): LiveSubscription = unfaked("subscribeLibraryName")
+    override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
 
-    override fun subscribePlaylistEntries(
-        id: String,
-        callback: PlaylistEntriesCallback,
-    ): LiveSubscription = unfaked("subscribePlaylistEntries")
+    override fun subscribePlaylistEntries(id: String): PlaylistEntriesSubscription = unfaked("subscribePlaylistEntries")
 
-    override fun subscribePlaylists(callback: PlaylistsCallback): LiveSubscription = unfaked("subscribePlaylists")
+    override fun subscribePlaylists(): PlaylistsSubscription = unfaked("subscribePlaylists")
 
-    override fun subscribeProfiles(callback: ProfilesCallback): LiveSubscription = unfaked("subscribeProfiles")
+    override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
 
-    override fun subscribeRatings(callback: RatingsCallback): LiveSubscription = unfaked("subscribeRatings")
+    override fun subscribeRatings(): RatingsSubscription = unfaked("subscribeRatings")
 
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 

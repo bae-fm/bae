@@ -554,7 +554,7 @@ extension ImportStore {
         }
         else {
             observation = LibraryStatusObservation(
-                query: importer.subscribeLibraryStatuses()
+                subscription: importer.subscribeLibraryStatuses()
             )
             mutateCandidate(forKey: key) {
                 $0.libraryStatusObservation = observation

@@ -33,6 +33,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.data.ScreenSubscription
+import fm.bae.app.data.pulled
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -42,10 +44,7 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AddedDeviceCallback
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
@@ -94,23 +93,19 @@ internal fun AddDeviceDialog(
         share = adding.share
         // The watch came with the code: it finds the device that joins from it.
         val watch =
-            appHandle.subscribeAddedDevice(
-                adding.watch,
-                object : AddedDeviceCallback {
-                    override fun onValue(device: BridgeActiveDevice?) {
-                        scope.launch(Dispatchers.Main.immediate) { added = device }
-                    }
-
-                    override fun onError(error: BridgeException) {
-                        logger.error("Watching for the added device failed", error)
-                        scope.launch(Dispatchers.Main.immediate) { show(error) }
-                    }
+            ScreenSubscription(
+                appHandle.subscribeAddedDevice(adding.watch).let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { device -> added = device },
+                onError = { error ->
+                    logger.error("Watching for the added device failed", error)
+                    show(error)
                 },
             )
         try {
             awaitCancellation()
         } finally {
-            watch.cancel()
+            watch.stop()
         }
     }
 

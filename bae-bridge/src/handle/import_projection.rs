@@ -567,7 +567,7 @@ mirror_struct! {
 
 mirror_struct! {
     crate::types::BridgeFolderScans = bae_core::import::FolderScanProgress,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         statuses: (each crate::types::BridgeWatchedFolderScanStatus),
         activity: (opt crate::types::BridgeFolderScanActivity),

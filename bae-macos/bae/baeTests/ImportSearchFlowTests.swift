@@ -722,32 +722,42 @@ private final class LibraryStatusFeed: @unchecked Sendable {
     /// delivered value means that value has been handled, applied or not.
     var asks: Int { lock.withLock { askedCount } }
 
-    func query() -> LibraryStatusQuery {
+    func query() -> LibraryStatusSubscription {
         lock.withLock { openedCount += 1 }
-        return LibraryStatusQuery(
-            setChecks: { [self] checks in
-                lock.withLock {
-                    requests.append(checks)
-                    return UInt64(requests.count)
+        return FeedSubscription(feed: self)
+    }
+
+    fileprivate func setChecks(_ checks: [BridgeLibraryCheck]) -> UInt64 {
+        lock.withLock {
+            requests.append(checks)
+            return UInt64(requests.count)
+        }
+    }
+
+    fileprivate func next() async throws -> BridgeLibraryStatusSnapshot {
+        try await withCheckedThrowingContinuation { continuation in
+            let ready: BridgeLibraryStatusSnapshot? = lock.withLock {
+                askedCount += 1
+                if pending.isEmpty {
+                    waiter = continuation
+                    return nil
                 }
-            },
-            next: { [self] in
-                try await withCheckedThrowingContinuation { continuation in
-                    let ready: BridgeLibraryStatusSnapshot? = lock.withLock {
-                        askedCount += 1
-                        if pending.isEmpty {
-                            waiter = continuation
-                            return nil
-                        }
-                        return pending.removeFirst()
-                    }
-                    if let ready { continuation.resume(returning: ready) }
-                }
-            },
-            cancel: { [self] in
-                lock.withLock { wasCancelled = true }
+                return pending.removeFirst()
             }
-        )
+            if let ready { continuation.resume(returning: ready) }
+        }
+    }
+
+    fileprivate func cancel() {
+        let waiting:
+            CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>? =
+                lock.withLock {
+                    wasCancelled = true
+                    let waiting = waiter
+                    waiter = nil
+                    return waiting
+                }
+        waiting?.resume(throwing: BridgeError.Cancelled)
     }
 
     func deliver(revision: UInt64, _ status: BridgeLibraryStatus) {
@@ -767,4 +777,31 @@ private final class LibraryStatusFeed: @unchecked Sendable {
                 }
         waiter?.resume(returning: snapshot)
     }
+}
+
+/// The library-status subscription a `LibraryStatusFeed` stands behind, in
+/// place of the bridge's.
+private final class FeedSubscription: LibraryStatusSubscription,
+    @unchecked Sendable
+{
+    private let feed: LibraryStatusFeed
+
+    init(feed: LibraryStatusFeed) {
+        self.feed = feed
+        super.init(noHandle: LibraryStatusSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        preconditionFailure("a feed's subscription has no core object")
+    }
+
+    override func setChecks(checks: [BridgeLibraryCheck]) throws -> UInt64 {
+        feed.setChecks(checks)
+    }
+
+    override func next() async throws -> BridgeLibraryStatusSnapshot {
+        try await feed.next()
+    }
+
+    override func cancel() async throws { feed.cancel() }
 }

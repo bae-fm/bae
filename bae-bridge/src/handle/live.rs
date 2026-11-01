@@ -1,5 +1,5 @@
-//! The stream shapes behind `AppHandle`'s callback `subscribe_*` calls — a
-//! channel of values core resolves, a watch — each wrapped in the
+//! The stream shapes behind `AppHandle`'s remaining callback `subscribe_*`
+//! calls — a watch, a closure loop — each wrapped in the
 //! `LiveSubscription` the host cancels.
 
 use super::*;
@@ -51,24 +51,6 @@ impl AppHandle {
         }
     }
 
-    /// Hand `deliver` every value core sends on a subscription channel. The loop
-    /// ends when core drops the sender.
-    pub(super) fn subscribe_channel<T>(
-        &self,
-        open: impl FnOnce(&AppServices) -> tokio::sync::mpsc::UnboundedReceiver<T> + Send + 'static,
-        deliver: impl Fn(T) + Send + 'static,
-    ) -> std::sync::Arc<crate::LiveSubscription>
-    where
-        T: Send + 'static,
-    {
-        self.live_subscription(move |services| async move {
-            let mut values = open(&services);
-            while let Some(value) = values.recv().await {
-                deliver(value);
-            }
-        })
-    }
-
     /// Hand `deliver` a watch's current value and then each later one. The loop
     /// ends when the sender is dropped.
     pub(super) fn subscribe_watch<T>(
@@ -84,24 +66,6 @@ impl AppHandle {
             deliver(&values.borrow_and_update());
             while values.changed().await.is_ok() {
                 deliver(&values.borrow_and_update());
-            }
-        })
-    }
-}
-
-impl AppHandle {
-    pub(super) fn subscribe_query<T>(
-        &self,
-        open: impl FnOnce(&AppServices) -> coven::LiveQuery<T> + Send + 'static,
-        deliver: impl Fn(coven::CovenResult<T>) + Send + 'static,
-    ) -> std::sync::Arc<crate::LiveSubscription>
-    where
-        T: Send + Clone + PartialEq + 'static,
-    {
-        self.live_subscription(move |services| async move {
-            let mut values = open(&services);
-            while let Some(result) = values.next().await {
-                deliver(result);
             }
         })
     }

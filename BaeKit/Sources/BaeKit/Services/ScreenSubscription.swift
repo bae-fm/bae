@@ -77,7 +77,19 @@ extension PlaybackTimelineSubscription: PulledSubscription {}
 extension QueueAdditionsSubscription: PulledSubscription {}
 extension CastDevicesSubscription: PulledSubscription {}
 extension ConfigSubscription: PulledSubscription {}
+extension QueueSubscription: PulledSubscription {}
+extension DownloadCountsSubscription: PulledSubscription {}
+extension UploadsPausedSubscription: PulledSubscription {}
+extension MembersSubscription: PulledSubscription {}
+extension AddedDeviceSubscription: PulledSubscription {}
+extension ProfilesSubscription: PulledSubscription {}
+extension RatingsSubscription: PulledSubscription {}
+extension PlaylistsSubscription: PulledSubscription {}
+extension PlaylistEntriesSubscription: PulledSubscription {}
+extension LibraryNameSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}
+    extension FolderScansSubscription: PulledSubscription {}
+    extension LibraryStatusSubscription: PulledSubscription {}
 #endif

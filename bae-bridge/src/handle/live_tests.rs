@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
@@ -105,42 +104,33 @@ fn a_subscription_opened_on_a_closed_library_never_runs() {
     );
 }
 
-/// Records a members subscription's deliveries: the first value, and how many
-/// errors arrived.
-struct MembersDeliveries {
-    first_value: Mutex<Option<mpsc::Sender<()>>>,
-    errors: Arc<AtomicUsize>,
-}
-
-impl crate::handle::MembershipCallback for MembersDeliveries {
-    fn on_value(&self, _value: crate::types::BridgeMembership) {
-        if let Some(first) = self.first_value.lock().unwrap().take() {
-            first.send(()).expect("the test waits for the first value");
-        }
-    }
-
-    fn on_error(&self, _error: BridgeError) {
-        self.errors.fetch_add(1, Ordering::SeqCst);
-    }
-}
-
-/// A library closed while the host still holds one of its live subscriptions
-/// closes: the subscription ends with the library's other work, before the
+/// A library closed while the host still pulls one of its subscriptions
+/// closes: the pull waiting on it answers that it was cancelled, before the
 /// store closes, so it never answers from a closed store.
 #[test]
-fn closing_a_library_ends_its_live_subscriptions_before_its_store_closes() {
+fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     let root = tempfile::tempdir().unwrap();
     let app = open_library(&root);
-    let (first_value, delivered) = mpsc::channel();
-    let errors = Arc::new(AtomicUsize::new(0));
-    let members = app.subscribe_members(Box::new(MembersDeliveries {
-        first_value: Mutex::new(Some(first_value)),
-        errors: errors.clone(),
-    }));
-    delivered
-        .recv_timeout(Duration::from_secs(20))
-        .expect("the subscription delivers the library's members");
+    let members = app.subscribe_members();
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    caller
+        .block_on(tokio::time::timeout(
+            Duration::from_secs(20),
+            members.clone().next(),
+        ))
+        .expect("the first pull answers")
+        .expect("the subscription reads the library's members");
 
+    let (answered_tx, answered) = mpsc::channel();
+    let waiting = members.clone();
+    std::thread::spawn(move || {
+        let answer = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(waiting.next());
+        answered_tx
+            .send(answer.map(|_| ()))
+            .expect("the test waits for the answer");
+    });
     let (closed_tx, closed) = mpsc::channel();
     std::thread::spawn(move || {
         closed_tx
@@ -151,12 +141,13 @@ fn closing_a_library_ends_its_live_subscriptions_before_its_store_closes() {
         .recv_timeout(Duration::from_secs(30))
         .expect("closing the library finishes")
         .expect("the library closes");
-    assert_eq!(
-        errors.load(Ordering::SeqCst),
-        0,
-        "the subscription heard nothing from the closed store"
+    let answer = answered
+        .recv_timeout(Duration::from_secs(30))
+        .expect("the waiting pull answers");
+    assert!(
+        matches!(answer, Err(BridgeError::Cancelled)),
+        "the waiting pull answers that it was cancelled: {answer:?}"
     );
-    drop(members);
 }
 
 /// Sends the operation of each bug reported, for a test to wait on.

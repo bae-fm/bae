@@ -169,3 +169,185 @@ pub(crate) fn setup_steps(values: Arc<StreamValues>) -> Arc<KeyedValueStream> {
         bae_core::library::CancellationToken::new(),
     ))
 }
+
+pulled_values! {
+    /// The queue as its screens show it.
+    QueueSubscription: bae_core::queue::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
+    converted by crate::types::BridgeQueueSnapshot::from_core,
+    built by queue
+}
+
+pulled_values! {
+    /// How many downloads are in each phase, and whether the queue is paused.
+    DownloadCountsSubscription:
+        bae_core::library::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
+    converted by crate::types::BridgeDownloadCounts::from_core,
+    built by download_counts
+}
+
+pulled_values! {
+    /// Whether the person paused uploads.
+    UploadsPausedSubscription: bool => bool,
+    converted by |paused: bool| paused,
+    built by uploads_paused
+}
+
+pulled_values! {
+    /// The store's members and their devices.
+    MembersSubscription:
+        bae_core::sync::membership::Membership => crate::types::BridgeMembership,
+    converted by crate::types::BridgeMembership::from_core,
+    built by members
+}
+
+pulled_values! {
+    /// This person's device that joined after Add Device made its code; none
+    /// until one does.
+    AddedDeviceSubscription:
+        Option<bae_core::sync::membership::ActiveDevice>
+            => Option<crate::types::BridgeActiveDevice>,
+    converted by |device: Option<bae_core::sync::membership::ActiveDevice>| {
+        device.map(crate::types::BridgeActiveDevice::from_core)
+    },
+    built by added_device
+}
+
+pulled_values! {
+    /// Every person's profile.
+    ProfilesSubscription:
+        Vec<bae_core::people::PersonProfile> => Vec<crate::types::BridgePersonProfile>,
+    converted by |profiles: Vec<bae_core::people::PersonProfile>| {
+        profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
+    },
+    built by profiles
+}
+
+pulled_values! {
+    /// This person's ratings.
+    RatingsSubscription:
+        Vec<bae_core::collections::Rating> => Vec<crate::types::BridgeRating>,
+    converted by |ratings: Vec<bae_core::collections::Rating>| {
+        ratings.into_iter().map(crate::types::BridgeRating::from_core).collect::<Vec<_>>()
+    },
+    built by ratings
+}
+
+pulled_values! {
+    /// The playlists this person sees.
+    PlaylistsSubscription:
+        Vec<bae_core::collections::Playlist> => Vec<crate::types::BridgePlaylist>,
+    converted by |playlists: Vec<bae_core::collections::Playlist>| {
+        playlists.into_iter().map(crate::types::BridgePlaylist::from_core).collect::<Vec<_>>()
+    },
+    built by playlists
+}
+
+pulled_values! {
+    /// One playlist's entries, in order.
+    PlaylistEntriesSubscription:
+        Vec<bae_core::collections::PlaylistEntry> => Vec<crate::types::BridgePlaylistEntry>,
+    converted by |entries: Vec<bae_core::collections::PlaylistEntry>| {
+        entries.into_iter().map(crate::types::BridgePlaylistEntry::from_core).collect::<Vec<_>>()
+    },
+    built by playlist_entries
+}
+
+pulled_values! {
+    /// The library's name.
+    LibraryNameSubscription: String => String,
+    converted by |name: String| name,
+    built by library_name
+}
+
+#[cfg(feature = "desktop")]
+pulled_values! {
+    /// Where each watched folder's scan stands.
+    FolderScansSubscription:
+        bae_core::import::FolderScanProgress => crate::types::BridgeFolderScans,
+    converted by crate::types::BridgeFolderScans::from_core,
+    built by folder_scans
+}
+
+/// Whether the releases an import pane offers are already in the library:
+/// one live query for as long as the pane is open, whose checks move in place
+/// as its offers change. It starts with no checks.
+#[cfg(feature = "desktop")]
+#[derive(uniffi::Object)]
+pub struct LibraryStatusSubscription {
+    inner: bae_core::library::LibraryStatusSubscription,
+    runtime: crate::operation_runtime::OperationRuntime,
+}
+
+#[cfg(feature = "desktop")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl LibraryStatusSubscription {
+    /// Check `checks` from now on. Returns the revision the answer will
+    /// carry.
+    pub fn set_checks(
+        &self,
+        checks: Vec<crate::handle::BridgeLibraryCheck>,
+    ) -> Result<u64, BridgeError> {
+        self.inner
+            .set_checks(checks.into_iter().map(|check| bae_core::db::LibraryCheck {
+                release_id: check.release_id,
+                source: check.source.into_core(),
+                source_group_id: check.source_group_id,
+            }))
+            .map_err(status_error)
+    }
+
+    pub async fn next(
+        self: Arc<Self>,
+    ) -> Result<crate::handle::BridgeLibraryStatusSnapshot, BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("LibraryStatusSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| crate::handle::BridgeLibraryStatusSnapshot {
+                        statuses: snapshot
+                            .statuses
+                            .into_iter()
+                            .map(|status| {
+                                (
+                                    status.release_id.clone(),
+                                    crate::types::BridgeLibraryStatus::from_core(status),
+                                )
+                            })
+                            .collect(),
+                        request_revision: snapshot.request_revision,
+                    })
+                    .map_err(status_error)
+            })
+            .await
+    }
+
+    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("LibraryStatusSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn status_error(error: bae_core::library::LibraryStatusSubscriptionError) -> BridgeError {
+    match error {
+        bae_core::library::LibraryStatusSubscriptionError::Cancelled => BridgeError::Cancelled,
+        bae_core::library::LibraryStatusSubscriptionError::Query(error) => {
+            BridgeError::database_query(error)
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+pub(crate) fn library_statuses(
+    inner: bae_core::library::LibraryStatusSubscription,
+    runtime: crate::operation_runtime::OperationRuntime,
+) -> Arc<LibraryStatusSubscription> {
+    Arc::new(LibraryStatusSubscription { inner, runtime })
+}

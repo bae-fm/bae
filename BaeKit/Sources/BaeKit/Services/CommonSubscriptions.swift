@@ -38,50 +38,6 @@ private final class SyncActivityValueSink: SyncActivityCallback,
     }
 }
 
-private final class QueueValueSink: QueueCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeQueueSnapshot) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeQueueSnapshot) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
-private final class UploadsPausedSink: UploadsPausedCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (Bool) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (Bool) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(paused: Bool) {
-        Task { @MainActor in apply(paused) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 @MainActor
 final class CommonSubscriptions {
     private let appHandle: AppHandle
@@ -99,6 +55,9 @@ final class CommonSubscriptions {
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     private var castDevices: ScreenSubscription<CastDevicesSubscription>?
     private var config: ScreenSubscription<ConfigSubscription>?
+    private var libraryName: ScreenSubscription<LibraryNameSubscription>?
+    private var queue: ScreenSubscription<QueueSubscription>?
+    private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -161,42 +120,35 @@ final class CommonSubscriptions {
             },
             onError: onError
         )
+        libraryName = ScreenSubscription(
+            appHandle.subscribeLibraryName(),
+            onValue: { [configStore] name in configStore.applyLibraryName(name)
+            },
+            onError: onError
+        )
+        queue = ScreenSubscription(
+            appHandle.subscribeQueue(),
+            onValue: applyQueue,
+            onError: onError
+        )
+        uploadsPaused = ScreenSubscription(
+            appHandle.subscribeUploadsPaused(),
+            onValue: { [outboxStore] paused in
+                outboxStore.applyUploadsPaused(paused)
+            },
+            onError: onError
+        )
         feeds = [
             outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
             downloadStore.releaseProgress.feed(from: appHandle),
             playbackStore.trackPositions.feed(from: appHandle),
         ]
-        subscriptions =
-            libraryStatusSubscriptions(onError: onError) + [
-                appHandle.subscribeQueue(
-                    callback: QueueValueSink(
-                        apply: applyQueue,
-                        fail: onError
-                    )
-                ),
-                appHandle.subscribeUploadsPaused(
-                    callback: UploadsPausedSink(
-                        apply: { [outboxStore] paused in
-                            outboxStore.applyUploadsPaused(paused)
-                        },
-                        fail: onError
-                    )
-                ),
-            ]
+        subscriptions = syncSubscriptions()
     }
-    private func libraryStatusSubscriptions(
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> [LiveSubscription] {
+
+    private func syncSubscriptions() -> [LiveSubscription] {
         [
-            appHandle.subscribeLibraryName(
-                callback: LibraryNameSink(
-                    apply: { [configStore] name in
-                        configStore.applyLibraryName(name)
-                    },
-                    fail: onError
-                )
-            ),
             appHandle.subscribeSyncStatus(
                 callback: SyncStatusValueSink { [syncStatusStore] value in
                     syncStatusStore.apply(value)
@@ -215,18 +167,4 @@ final class CommonSubscriptions {
         ]
     }
 
-}
-
-private final class LibraryNameSink: LibraryNameCallback, Sendable {
-    private let apply: @MainActor @Sendable (String) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-    init(
-        apply: @escaping @MainActor @Sendable (String) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-    func onValue(value: String) { Task { @MainActor in apply(value) } }
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }

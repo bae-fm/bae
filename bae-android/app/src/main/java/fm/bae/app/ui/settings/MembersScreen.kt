@@ -44,6 +44,8 @@ import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.ScreenSubscription
+import fm.bae.app.data.pulled
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -65,13 +67,9 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
-import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.InvitesCallback
-import uniffi.bae_bridge.MembershipCallback
-import uniffi.bae_bridge.ProfilesCallback
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -144,36 +142,26 @@ internal class MembersModel(
 
     fun subscribe(): () -> Unit {
         val members =
-            appHandle.subscribeMembers(
-                object : MembershipCallback {
-                    override fun onValue(value: BridgeMembership) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            selfIsAdmin = value.selfIsAdmin
-                            reload()
-                        }
-                    }
-
-                    override fun onError(error: BridgeException) {
-                        logger.error("reading the library's members failed", error)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = errors.display(error)
-                        }
-                    }
+            ScreenSubscription(
+                appHandle.subscribeMembers().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value ->
+                    selfIsAdmin = value.selfIsAdmin
+                    reload()
+                },
+                onError = { error ->
+                    logger.error("reading the library's members failed", error)
+                    this@MembersModel.error = errors.display(error)
                 },
             )
         val profiles =
-            appHandle.subscribeProfiles(
-                object : ProfilesCallback {
-                    override fun onValue(value: List<BridgePersonProfile>) {
-                        scope.launch(Dispatchers.Main.immediate) { reload() }
-                    }
-
-                    override fun onError(error: BridgeException) {
-                        logger.error("reading the library's profiles failed", error)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = errors.display(error)
-                        }
-                    }
+            ScreenSubscription(
+                appHandle.subscribeProfiles().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { reload() },
+                onError = { error ->
+                    logger.error("reading the library's profiles failed", error)
+                    this@MembersModel.error = errors.display(error)
                 },
             )
         val open =
@@ -185,8 +173,8 @@ internal class MembersModel(
                 },
             )
         return {
-            members.cancel()
-            profiles.cancel()
+            members.stop()
+            profiles.stop()
             open.cancel()
         }
     }

@@ -21,120 +21,38 @@ forward! { async this => {
     fn library_name() -> String { Ok(this.services.library_name().await?) }
 } }
 
-#[uniffi::export(callback_interface)]
-pub trait ProfilesCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgePersonProfile>);
-    fn on_error(&self, error: BridgeError);
-}
 #[uniffi::export]
 impl AppHandle {
-    pub fn subscribe_profiles(
-        &self,
-        callback: Box<dyn ProfilesCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_profiles(),
-            move |result| match result {
-                Ok(value) => callback.on_value(
-                    value
-                        .into_iter()
-                        .map(BridgePersonProfile::from_core)
-                        .collect(),
-                ),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+    /// Every person's profile, now and after each change.
+    pub fn subscribe_profiles(&self) -> std::sync::Arc<crate::ProfilesSubscription> {
+        crate::screens::profiles(self.services.subscribe_profiles(), self.runtime.clone())
     }
-}
-#[uniffi::export(callback_interface)]
-pub trait RatingsCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgeRating>);
-    fn on_error(&self, error: BridgeError);
-}
-#[uniffi::export]
-impl AppHandle {
-    pub fn subscribe_ratings(
-        &self,
-        callback: Box<dyn RatingsCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_ratings(),
-            move |result| match result {
-                Ok(value) => {
-                    callback.on_value(value.into_iter().map(BridgeRating::from_core).collect())
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+
+    /// This person's ratings, now and after each change.
+    pub fn subscribe_ratings(&self) -> std::sync::Arc<crate::RatingsSubscription> {
+        crate::screens::ratings(self.services.subscribe_ratings(), self.runtime.clone())
     }
-}
-#[uniffi::export(callback_interface)]
-pub trait PlaylistsCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgePlaylist>);
-    fn on_error(&self, error: BridgeError);
-}
-#[uniffi::export]
-impl AppHandle {
-    pub fn subscribe_playlists(
-        &self,
-        callback: Box<dyn PlaylistsCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_playlists(),
-            move |result| match result {
-                Ok(value) => {
-                    callback.on_value(value.into_iter().map(BridgePlaylist::from_core).collect())
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+
+    /// The playlists this person sees, now and after each change.
+    pub fn subscribe_playlists(&self) -> std::sync::Arc<crate::PlaylistsSubscription> {
+        crate::screens::playlists(self.services.subscribe_playlists(), self.runtime.clone())
     }
-}
-#[uniffi::export(callback_interface)]
-pub trait PlaylistEntriesCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgePlaylistEntry>);
-    fn on_error(&self, error: BridgeError);
-}
-#[uniffi::export]
-impl AppHandle {
+
+    /// The playlist `id`'s entries in order, now and after each change.
     pub fn subscribe_playlist_entries(
         &self,
         id: String,
-        callback: Box<dyn PlaylistEntriesCallback>,
-    ) -> Result<std::sync::Arc<crate::LiveSubscription>, BridgeError> {
+    ) -> Result<std::sync::Arc<crate::PlaylistEntriesSubscription>, BridgeError> {
         let id = id.parse().map_err(BridgeError::config)?;
-        Ok(self.subscribe_query(
-            move |services| services.subscribe_playlist_entries(id),
-            move |result| match result {
-                Ok(value) => callback.on_value(
-                    value
-                        .into_iter()
-                        .map(BridgePlaylistEntry::from_core)
-                        .collect(),
-                ),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
+        Ok(crate::screens::playlist_entries(
+            self.services.subscribe_playlist_entries(id),
+            self.runtime.clone(),
         ))
     }
-}
-#[uniffi::export(callback_interface)]
-pub trait LibraryNameCallback: Send + Sync {
-    fn on_value(&self, value: String);
-    fn on_error(&self, error: BridgeError);
-}
-#[uniffi::export]
-impl AppHandle {
-    pub fn subscribe_library_name(
-        &self,
-        callback: Box<dyn LibraryNameCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_library_name(),
-            move |result| match result {
-                Ok(value) => callback.on_value(value),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
+
+    /// The library's name, now and after each rename.
+    pub fn subscribe_library_name(&self) -> std::sync::Arc<crate::LibraryNameSubscription> {
+        crate::screens::library_name(self.services.subscribe_library_name(), self.runtime.clone())
     }
 }
 

@@ -14,17 +14,9 @@ impl AppHandle {
     // Queue
     // =========================================================================
 
-    pub fn subscribe_queue(
-        &self,
-        callback: Box<dyn crate::types::QueueCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            |services| services.subscribe_queue_values(),
-            move |value| match value {
-                Ok(value) => callback.on_value(BridgeQueueSnapshot::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::internal(error)),
-            },
-        )
+    /// The queue as its screens show it, now and after each change.
+    pub fn subscribe_queue(&self) -> std::sync::Arc<crate::QueueSubscription> {
+        crate::screens::queue(self.services.subscribe_queue_values(), self.runtime.clone())
     }
 
     /// Each time tracks go into Up Next, with how many, for the screens that
@@ -58,18 +50,10 @@ impl AppHandle {
 
     /// How many downloads are in each phase, and whether the queue is
     /// paused, now and after each change.
-    pub fn subscribe_download_counts(
-        &self,
-        callback: Box<dyn crate::types::DownloadCountsCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            |services| services.subscribe_download_counts(),
-            move |value| match value {
-                Ok(value) => {
-                    callback.on_value(crate::types::BridgeDownloadCounts::from_core(value))
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
+    pub fn subscribe_download_counts(&self) -> std::sync::Arc<crate::DownloadCountsSubscription> {
+        crate::screens::download_counts(
+            self.services.subscribe_download_counts(),
+            self.runtime.clone(),
         )
     }
 }
@@ -436,3 +420,7 @@ mod queue_additions_tests;
 #[cfg(test)]
 #[path = "playback_timeline_tests.rs"]
 mod playback_timeline_tests;
+
+#[cfg(test)]
+#[path = "screen_pulls_tests.rs"]
+mod screen_pulls_tests;

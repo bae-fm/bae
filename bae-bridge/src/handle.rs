@@ -10,13 +10,12 @@ use crate::types::{
     BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog,
     BridgeComposerDetail, BridgeComposerSortCriterion, BridgeComposerSummary,
     BridgeComposerWorkGroup, BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem,
-    BridgeGallerySource, BridgePreviewTarget, BridgeQueueSnapshot, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow,
-    BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState, BridgeSyncStatusSnapshot,
-    BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult,
-    BridgeUploadReleasesOutcome, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeGallerySource, BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary,
+    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus,
+    BridgeStorageSort, BridgeStoreKeyState, BridgeSyncStatusSnapshot, BridgeTrack,
+    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome,
+    BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
@@ -139,6 +138,8 @@ mod import_projection;
 mod library_projection;
 #[cfg(feature = "desktop")]
 mod library_status;
+#[cfg(feature = "desktop")]
+pub use library_status::{BridgeLibraryCheck, BridgeLibraryStatusSnapshot};
 mod live;
 mod memory;
 mod playback_persistence;

@@ -98,12 +98,11 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
 }
 
 async fn queue_value_with_context(services: &AppServices) -> crate::queue::ResolvedQueueSnapshot {
-    let mut values = services.subscribe_queue_values();
+    let values = services.subscribe_queue_values();
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await
             .expect("queue subscription delivers")
-            .expect("queue subscription stays open")
             .expect("queue projection resolves");
         if value.context.is_some() {
             return value;
@@ -456,26 +455,21 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_closes() {
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
-    let mut values = services.subscribe_download_counts();
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+    let values = services.subscribe_download_counts();
+    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
         .await
         .expect("the download counts subscription delivers")
-        .expect("the download counts subscription stays open")
         .expect("the download counts resolve");
 
     services.close().await.unwrap();
 
-    // Values sent before the close may still be waiting to be read.
-    loop {
-        match tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
-            .await
-            .expect("the subscription ends")
-        {
-            Some(Ok(_)) => {}
-            Some(Err(error)) => panic!("the subscription heard from the closed store: {error}"),
-            None => break,
-        }
-    }
+    let ended = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        .await
+        .expect("the subscription ends");
+    assert!(
+        matches!(ended, Err(crate::library::LiveValuesError::Cancelled)),
+        "the subscription heard from the closed store: {ended:?}"
+    );
 }
 
 /// A live read its holder still keeps ends with the library the same way,
