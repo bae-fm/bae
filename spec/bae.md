@@ -3536,13 +3536,18 @@ release's or track's id as UTF-8, or a candidate's key.
   library closes is cancelled from the start. One whose task breaks on a bug
   answers with that failure, "Something went wrong", and ends; the bug is
   reported.
-- **Callbacks the app provides**: the artwork reader, and on phones the audio
+- **Callbacks the app provides**: the crash reporter core hands each bug it
+  finds to, from startup on; the artwork reader; and on phones the audio
   focus and the sign-in presenter, which shows the provider's page and returns
-  where it redirected. Desktops sign in through coven's own browser flow;
-  iCloud runs in coven. A callback that throws what it doesn't declare is
-  reported as the app's bug and answered as that call fails: a request for
-  audio focus is refused, a sign-in fails. A throw from the crash reporter
-  itself is logged.
+  where it redirected. These are the only callbacks the bridge declares: each
+  is a platform service core calls, and none carries a value a screen shows,
+  which the app always pulls. A check in the commit hook and CI refuses any
+  other callback, a pulled object built outside the `screens` module, and a
+  pull an app makes outside its one helper. Desktops sign in through coven's
+  own browser flow; iCloud runs in coven. A callback that throws what it
+  doesn't declare is reported as the app's bug and answered as that call
+  fails: a request for audio focus is refused, a sign-in fails. A throw from
+  the crash reporter itself is logged.
 
 ### 10.3 Generated bindings
 
