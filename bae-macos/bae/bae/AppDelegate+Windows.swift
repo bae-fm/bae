@@ -11,7 +11,7 @@ extension AppDelegate {
             ?? MainWindowController(
                 appDelegate: self,
                 library: { [unowned self] in
-                    self.hasShell ? self.appService?.mainAppMenuTarget : nil
+                    self.appService?.mainAppMenuTarget
                 },
                 onClose: { [weak self] in self?.mainWindow = nil }
             )

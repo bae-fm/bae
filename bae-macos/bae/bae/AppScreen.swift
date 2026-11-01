@@ -1,11 +1,15 @@
 import BaeKit
 import Foundation
 
-/// What the main window shows: what it waits on, the welcome, a library's
-/// recovery after it couldn't open or sync, or the open library.
+/// What the main window shows: what it waits on, a library's recovery after
+/// it couldn't open or sync, or the window's home.
 enum AppScreen {
     case loading(LoadingWork)
-    case welcome
+    /// Nothing else is up: the open library when one is open, else the
+    /// welcome. Whether a library is open decides which, so the window can't
+    /// show the welcome over an open library or ask for the library without
+    /// one.
+    case home
     /// Opening found a damaged database or another copy of this device; the
     /// person can reset the device for this library.
     case resetRequired(libraryId: String)
@@ -19,7 +23,6 @@ enum AppScreen {
     /// the person's current restore code finishes it.
     case restoreUnfinished(libraryId: String)
     case keychainLocked(libraryId: String)
-    case library
 
     /// The screen that finishes a reset or restore of `libraryId` that
     /// stopped partway: the one call `by` names.
@@ -107,14 +110,9 @@ enum AppScreen {
 
     /// The screen a failed open of `libraryId` lands on: the call that
     /// recovers it, when the failure is one the person recovers from here;
-    /// else the library still open, when `hasShell`, with the failure shown
-    /// over it; else the welcome.
-    static func afterFailedOpen(
-        libraryId: String,
-        from error: Error,
-        hasShell: Bool
-    ) -> Self {
-        recovering(libraryId: libraryId, from: error)
-            ?? (hasShell ? .library : .welcome)
+    /// else home, which shows the library still open with the failure over
+    /// it, or the welcome when none is.
+    static func afterFailedOpen(libraryId: String, from error: Error) -> Self {
+        recovering(libraryId: libraryId, from: error) ?? .home
     }
 }

@@ -15,7 +15,7 @@ struct MainWindowRoot: View {
 
     var body: some View {
         Group {
-            if appDelegate.hasShell, let appService = appDelegate.appService {
+            if let appService = appDelegate.appService {
                 appService.installEnvironment(
                     libraryModals(
                         MainWindowChrome(
@@ -77,7 +77,7 @@ struct MainWindowRoot: View {
         .environment(applicationServices.libraryRemovals)
     }
 
-    /// Main-window content once the first library has opened.
+    /// Main-window content while a library is open.
     @ViewBuilder
     private var detailContent: some View {
         switch appDelegate.screen {
@@ -93,8 +93,8 @@ struct MainWindowRoot: View {
                 }
             }
             .frame(maxWidth: StepProgressLayout.width)
-        case .welcome:
-            ProgressView()
+        case .home:
+            MainAppView()
         case .resetRequired(let libraryId):
             deviceResetView(libraryId: libraryId, prompt: .offered)
         case .restoreRequired(let libraryId):
@@ -105,8 +105,6 @@ struct MainWindowRoot: View {
             finishRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
-        case .library:
-            MainAppView()
         }
     }
 
@@ -182,7 +180,7 @@ struct MainWindowRoot: View {
             }
     }
 
-    /// Content shown before any library has opened.
+    /// Main-window content while no library is open.
     @ViewBuilder
     private var bootstrapContent: some View {
         switch appDelegate.screen {
@@ -200,7 +198,7 @@ struct MainWindowRoot: View {
             }
             .frame(maxWidth: StepProgressLayout.width)
             Spacer()
-        case .welcome:
+        case .home:
             welcomeView(
                 loadError: appDelegate.loadError,
                 launchProblems: appDelegate.launchProblems
@@ -215,11 +213,6 @@ struct MainWindowRoot: View {
             finishRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
-        case .library:
-            // Bootstrap content stays independent of the service environment.
-            Spacer()
-            ProgressView()
-            Spacer()
         }
     }
 

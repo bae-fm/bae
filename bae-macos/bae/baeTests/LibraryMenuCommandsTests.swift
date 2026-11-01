@@ -84,7 +84,7 @@ struct LibraryMenuCommandsTests {
         // The title bar's search field shows only with the library.
         delegate.screen = .loading(.opening)
         #expect(try !valid("focusSearch:"))
-        delegate.screen = .library
+        delegate.screen = .home
         #expect(try valid("focusSearch:"))
     }
 

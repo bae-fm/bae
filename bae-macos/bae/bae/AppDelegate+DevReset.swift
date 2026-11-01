@@ -11,7 +11,7 @@
                 baeAppLogger.error(
                     "Dev reset needs the keyring, which didn't start"
                 )
-                screen = .welcome
+                screen = .home
                 return
             }
             let services = requiredApplicationServices
@@ -34,7 +34,7 @@
                         "Dev reset failed: \(String(reflecting: error))"
                     )
                     loadError = LoadError(.devReset, error)
-                    screen = .welcome
+                    screen = .home
                 }
             }
         }

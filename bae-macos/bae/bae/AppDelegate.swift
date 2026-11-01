@@ -83,9 +83,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var launchProblems = LaunchProblems.none
     /// The welcome mode a menu item asked for; nil is the chooser.
     var welcomeInitialMode: WelcomeView.Mode?
-    /// True once the first library has opened and replaced the bootstrap
-    /// screens.
-    var hasShell: Bool = false
+    /// Whether a library is open, so the window shows its shell in place of
+    /// the bootstrap screens.
+    var hasShell: Bool { appService != nil }
     /// Presents the welcome sheet over an open library.
     var showAddLibrarySheet: Bool = false
     /// Every library on this device, for the File → Open Library submenu.
@@ -199,7 +199,7 @@ extension AppDelegate {
             showAddLibrarySheet = true
         }
         else {
-            screen = .welcome
+            screen = .home
         }
     }
 
@@ -255,7 +255,7 @@ extension AppDelegate {
                     "Failed to list libraries: \(String(reflecting: error))"
                 )
                 loadError = LoadError(.libraryList, error)
-                screen = .welcome
+                screen = .home
                 return
             }
             // Core lists the active library first; one whose settings can't
@@ -263,7 +263,7 @@ extension AppDelegate {
             guard canOpenLibraries, removals.error == nil,
                 let library = libraries.first, library.isOpenable
             else {
-                screen = .welcome
+                screen = .home
                 return
             }
             openLibrary(library)
@@ -343,14 +343,13 @@ extension AppDelegate {
         case .failed(let error):
             let next = AppScreen.afterFailedOpen(
                 libraryId: libraryId,
-                from: error,
-                hasShell: hasShell
+                from: error
             )
             screen = next
             switch next {
             case .resetRequired:
                 loadError = LoadError(.resetOffered, error)
-            case .library, .welcome:
+            case .home:
                 loadError = LoadError(.libraryOpen, error)
             default:
                 // A screen that finishes a reset or restore says so itself.
@@ -391,7 +390,7 @@ extension AppDelegate {
                     "Closing the library to restore it failed: \(String(reflecting: error))"
                 )
                 self.loadError = LoadError(.restoreClose, error)
-                self.screen = .welcome
+                self.screen = .home
             }
         }
     }
@@ -407,7 +406,7 @@ extension AppDelegate {
     /// Leave a reset or a finishing screen without running it.
     func leaveRecovery() {
         loadError = nil
-        screen = hasShell ? .library : .welcome
+        screen = .home
     }
 
     /// Reset this device for a library, or finish a reset that stopped
@@ -459,10 +458,9 @@ extension AppDelegate {
             closeReplaced(replaced)
         }
         appService = service
-        screen = .library
+        screen = .home
         service.reportScreen(.library)
         reloadLibraries()
-        hasShell = true
         showAddLibrarySheet = false
     }
 
@@ -584,8 +582,7 @@ extension AppDelegate {
         welcomeInitialMode = nil
         renameLibrarySheet = nil
         loadError = nil
-        screen = .welcome
-        hasShell = false
+        screen = .home
     }
 
     /// Reload the library list, keeping the last good one on failure.

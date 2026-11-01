@@ -156,33 +156,22 @@ struct AppDelegateTests {
         )
     }
 
-    /// Switching from an open library to one that fails to open leaves the
-    /// open one on screen, with the failure over it; with none open, the
-    /// welcome shows it.
-    @Test("a failed open returns to the open library, or else the welcome")
-    func failedOpenReturnsToTheOpenLibrary() {
+    /// A failed open the person can't recover from here lands home: the
+    /// library still open, with the failure over it, or the welcome when
+    /// none is.
+    @Test("a failed open with nothing to recover lands home")
+    func failedOpenLandsHome() {
         let offline = BridgeError.Diagnostic(
             category: .network,
             detail: "offline"
         )
         guard
-            case .library = AppScreen.afterFailedOpen(
+            case .home = AppScreen.afterFailedOpen(
                 libraryId: "lib-02",
-                from: offline,
-                hasShell: true
+                from: offline
             )
         else {
-            Issue.record("a failed switch leaves the open library's screen")
-            return
-        }
-        guard
-            case .welcome = AppScreen.afterFailedOpen(
-                libraryId: "lib-02",
-                from: offline,
-                hasShell: false
-            )
-        else {
-            Issue.record("a failed first open lands on the welcome")
+            Issue.record("a failed open lands home")
             return
         }
     }
@@ -202,7 +191,7 @@ struct AppDelegateTests {
         }
         delegate.leaveRecovery()
 
-        guard case .welcome = delegate.screen else {
+        guard case .home = delegate.screen, !delegate.hasShell else {
             Issue.record("leaving shows \(delegate.screen)")
             return
         }

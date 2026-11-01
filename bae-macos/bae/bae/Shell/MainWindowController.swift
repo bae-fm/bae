@@ -69,7 +69,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
 
     /// Whether the window shows the open library, title bar and all.
     private var showsLibrary: Bool {
-        guard target != nil, case .library = appDelegate.screen else {
+        guard target != nil, case .home = appDelegate.screen else {
             return false
         }
         return true
