@@ -1388,7 +1388,9 @@ the candidate is linked to, the picker offers that pressing's covers: every
 claimed release's own images, then their albums', read from the stored
 releases as they stand, so a later fetch that stored more shows it. The
 first is the draft's cover when the release is applied, until the person
-picks another. A draft read from the tags, typed in or cleared, or a
+picks another. Saving the cover picked, in the import's picker or a library
+release's, can download it from its catalog or read it from the release's
+storage, so the picker says it is saving the cover while it does. A draft read from the tags, typed in or cleared, or a
 candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many

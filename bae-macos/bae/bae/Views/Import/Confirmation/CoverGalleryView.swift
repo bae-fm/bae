@@ -94,7 +94,19 @@ struct CoverGalleryView: View {
                     ErrorDetailDisclosure(error: failure)
                 }
                 Spacer(minLength: ThemeSpace.group)
-                ProgressView().controlSize(.small).opacity(isSaving ? 1 : 0)
+                // Saving can download a remote cover, or read a release's
+                // image from its storage.
+                HStack(spacing: ThemeSpace.compact) {
+                    ProgressView().controlSize(.small)
+                    Text(
+                        "Saving the cover…",
+                        comment:
+                            "Cover picker, while bae saves the cover picked, which can mean downloading it from a catalog or reading it from the release's storage."
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                .opacity(isSaving ? 1 : 0)
+                .accessibilityHidden(!isSaving)
                 Button("Use This Cover") {
                     if let cursor = browser.cursor { onSelect(cursor.current) }
                 }
