@@ -94,6 +94,8 @@
     <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_unconnected">Deconectat</string>
     <string name="settings_sync_checking">Se verifică sincronizarea…</string>
+    <string name="members_reading">Se citește cine face parte din această bibliotecă…</string>
+    <string name="sync_pending_reading">Se citește ce așteaptă…</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
     <string name="settings_reconnect">Reconectează</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>

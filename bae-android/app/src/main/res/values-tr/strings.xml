@@ -89,6 +89,8 @@
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_unconnected">Bağlantı kesildi</string>
     <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
+    <string name="members_reading">Bu kitaplıktaki kişiler okunuyor…</string>
+    <string name="sync_pending_reading">Bekleyenler okunuyor…</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>

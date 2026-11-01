@@ -25,7 +25,7 @@
                 )
             }
             else if store.error == nil {
-                ProgressView()
+                ProgressView("Reading what sync is doing…")
                     .controlSize(.small)
             }
             Section {

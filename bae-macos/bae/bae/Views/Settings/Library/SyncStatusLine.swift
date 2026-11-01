@@ -38,7 +38,7 @@ struct SyncStatusLine: View {
                 PendingRecordsView(records: pending, perform: perform)
             }
             else {
-                ProgressView()
+                ProgressView("Reading what's waiting…")
                     .controlSize(.small)
             }
         } label: {

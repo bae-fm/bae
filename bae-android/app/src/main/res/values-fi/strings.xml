@@ -93,6 +93,8 @@
     <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_unconnected">Yhteys katkaistu</string>
     <string name="settings_sync_checking">Tarkistetaan synkronointia…</string>
+    <string name="members_reading">Luetaan, keitä tässä kirjastossa on…</string>
+    <string name="sync_pending_reading">Luetaan, mitä odottaa…</string>
     <string name="settings_sync_unreadable">Synkronoinnin tilaa ei voitu lukea</string>
     <string name="settings_reconnect">Yhdistä uudelleen</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>

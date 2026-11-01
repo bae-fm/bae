@@ -2576,7 +2576,9 @@ offers nothing.
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
 has been read the line says it is checking rather than claim the library is
-synced.
+synced. The other reads a sync or members screen waits on say the same in
+their own words until their first value arrives, never a bare spinner: what
+is waiting, what sync is doing, and who is in the library.
 
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or

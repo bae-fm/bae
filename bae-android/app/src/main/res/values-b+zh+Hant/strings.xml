@@ -89,6 +89,8 @@
     <string name="settings_local_only">僅本機</string>
     <string name="settings_sync_unconnected">已中斷連接</string>
     <string name="settings_sync_checking">正在檢查同步…</string>
+    <string name="members_reading">正在讀取此資料庫的成員…</string>
+    <string name="sync_pending_reading">正在讀取待處理的內容…</string>
     <string name="settings_sync_unreadable">無法讀取同步狀態</string>
     <string name="settings_reconnect">重新連接</string>
     <string name="settings_pause_between_sides">面或碟片之間暫停</string>

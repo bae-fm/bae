@@ -29,6 +29,7 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.OpenProgressLine
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
@@ -73,18 +74,7 @@ private fun LoadingScreen(
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         OpenProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                CircularProgressIndicator()
-                Text(
-                    text = stringResource(title),
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            WaitingIndicator(text = stringResource(title))
         }
     }
 }

@@ -84,7 +84,7 @@ struct MembersSection: View {
                 }
             }
             else if store.error == nil {
-                ProgressView()
+                ProgressView("Reading who's in this library…")
                     .frame(maxWidth: .infinity)
             }
             if let error = store.error {

@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +49,7 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -177,7 +177,7 @@ internal fun SyncPendingScreen(
         when (val records = pending) {
             null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    WaitingIndicator(text = stringResource(R.string.sync_pending_reading))
                 }
             }
 

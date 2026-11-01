@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +51,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -219,7 +219,7 @@ fun MembersScreen(
         when (val read = model.people) {
             PeopleRead.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    WaitingIndicator(text = stringResource(R.string.members_reading))
                 }
             }
 

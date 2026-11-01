@@ -93,6 +93,8 @@
     <string name="settings_local_only">Kun lokalt</string>
     <string name="settings_sync_unconnected">Forbindelsen er afbrudt</string>
     <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
+    <string name="members_reading">Læser, hvem der er i dette bibliotek…</string>
+    <string name="sync_pending_reading">Læser, hvad der venter…</string>
     <string name="settings_sync_unreadable">Synkroniseringsstatus kunne ikke læses</string>
     <string name="settings_reconnect">Forbind igen</string>
     <string name="settings_pause_between_sides">Pause mellem sider og diske</string>

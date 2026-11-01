@@ -93,6 +93,8 @@
     <string name="settings_local_only">Apenas local</string>
     <string name="settings_sync_unconnected">Desligado</string>
     <string name="settings_sync_checking">A verificar a sincronização…</string>
+    <string name="members_reading">A ler quem está nesta biblioteca…</string>
+    <string name="sync_pending_reading">A ler o que está pendente…</string>
     <string name="settings_sync_unreadable">Não foi possível ler o estado da sincronização</string>
     <string name="settings_reconnect">Voltar a ligar</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>

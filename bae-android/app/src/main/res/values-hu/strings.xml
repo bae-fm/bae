@@ -93,6 +93,8 @@
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unconnected">Leválasztva</string>
     <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
+    <string name="members_reading">A könyvtár tagjainak beolvasása…</string>
+    <string name="sync_pending_reading">A várakozó tételek beolvasása…</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_reconnect">Újrakapcsolódás</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>

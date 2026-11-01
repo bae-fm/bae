@@ -89,6 +89,8 @@
     <string name="settings_local_only">Samo lokalno</string>
     <string name="settings_sync_unconnected">Veza prekinuta</string>
     <string name="settings_sync_checking">Provjera sinkronizacije…</string>
+    <string name="members_reading">Čitanje tko je u ovoj biblioteci…</string>
+    <string name="sync_pending_reading">Čitanje onoga što čeka…</string>
     <string name="settings_sync_unreadable">Nije moguće pročitati stanje sinkronizacije</string>
     <string name="settings_reconnect">Ponovno poveži</string>
     <string name="settings_pause_between_sides">Pauza između strana i diskova</string>

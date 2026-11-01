@@ -89,6 +89,8 @@
     <string name="settings_local_only">מקומי בלבד</string>
     <string name="settings_sync_unconnected">מנותק</string>
     <string name="settings_sync_checking">בודק סנכרון…</string>
+    <string name="members_reading">קורא מי נמצא בספרייה הזו…</string>
+    <string name="sync_pending_reading">קורא מה ממתין…</string>
     <string name="settings_sync_unreadable">לא ניתן לקרוא את מצב הסנכרון</string>
     <string name="settings_reconnect">התחבר מחדש</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>

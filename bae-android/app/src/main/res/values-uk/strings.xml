@@ -89,6 +89,8 @@
     <string name="settings_local_only">Лише локально</string>
     <string name="settings_sync_unconnected">Відключено</string>
     <string name="settings_sync_checking">Перевірка синхронізації…</string>
+    <string name="members_reading">Читання учасників цієї бібліотеки…</string>
+    <string name="sync_pending_reading">Читання того, що очікує…</string>
     <string name="settings_sync_unreadable">Не вдалося прочитати стан синхронізації</string>
     <string name="settings_reconnect">Підключити знову</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
