@@ -76,8 +76,12 @@ struct FindOnlineSearchResults: View {
                                 width: ThemeIcon.small.size,
                                 height: ThemeIcon.small.size
                             )
-                        Text(name)
-                            .foregroundStyle(.tertiary)
+                        Text(
+                            "Searching \(name)…",
+                            comment:
+                                "Find online, under a typed search's results: a catalog still searching; the argument is the catalog's name."
+                        )
+                        .foregroundStyle(.tertiary)
                     }
                 case .failed(let failure):
                     failedLine(name, reason: failure.badgeLine)

@@ -1125,7 +1125,8 @@ checked, or a medium the folder rules out. The person then:
 
 - **picks** one of the offered pressings;
 - **searches** by artist and album, catalog number or barcode, with each
-  catalog's results landing as they come; *Retry* asks again only the
+  catalog's results landing as they come, and a line naming each catalog
+  still being searched; *Retry* asks again only the
   catalogs that failed, keeping what the others returned. Nothing more is
   read about a result until it is picked, so a statement joins two catalogs'
   albums on the search's cards only once a pick has read a MusicBrainz
