@@ -269,6 +269,7 @@
     <string name="recovery_code_title">رمز الاسترداد الخاص بك</string>
     <string name="recovery_code_explanation">إذا فقدت جميع أجهزتك، فأدخل هذا الرمز على جهاز جديد لاستعادة مكتبتك. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة، لذا احتفظ به في مكان خاص.</string>
     <string name="recovery_code_s3_key">ستحتاج أيضًا إلى مفتاح الوصول والمفتاح السري لـ S3.</string>
+    <string name="recovery_code_making">جارٍ إنشاء رمز الاسترداد…</string>
     <string name="recovery_code_show">عرض الرمز</string>
     <string name="settings_people">الأشخاص</string>
     <string name="members_you">أنت</string>
@@ -302,6 +303,7 @@
     <string name="members_add_device">إضافة جهاز</string>
     <string name="add_device_title">إضافة جهاز</string>
     <string name="add_device_added">تمت إضافة %1$s</string>
+    <string name="add_device_making_code">جارٍ إنشاء رمز لجهازك الجديد…</string>
     <string name="add_device_instructions">على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:</string>
     <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>

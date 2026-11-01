@@ -260,6 +260,7 @@
     <string name="recovery_code_title">Din återställningskod</string>
     <string name="recovery_code_explanation">Om du förlorar alla dina enheter anger du den här koden på en ny enhet för att få tillbaka ditt bibliotek. Den som har koden och åtkomst till din lagring kan öppna biblioteket, så förvara den på ett privat ställe.</string>
     <string name="recovery_code_s3_key">Du behöver också din S3-åtkomstnyckel och den hemliga nyckeln.</string>
+    <string name="recovery_code_making">Skapar din återställningskod…</string>
     <string name="recovery_code_show">Visa kod</string>
     <string name="settings_people">Personer</string>
     <string name="members_you">Du</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Lägg till enhet</string>
     <string name="add_device_title">Lägg till en enhet</string>
     <string name="add_device_added">%1$s har lagts till</string>
+    <string name="add_device_making_code">Skapar en kod för din nya enhet…</string>
     <string name="add_device_instructions">Välj ”Lägg till enhet” på den nya enheten och skanna sedan det här eller skriv:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Skapa inbjudan</string>

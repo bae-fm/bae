@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +39,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -146,7 +146,7 @@ internal fun AddDeviceDialogContent(
                     }
 
                     error == null -> {
-                        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.large))
+                        WaitingIndicator(text = stringResource(R.string.add_device_making_code))
                     }
                 }
                 error?.let {

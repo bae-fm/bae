@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,11 +26,11 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -154,7 +152,7 @@ private fun RecoveryCodeSectionContent(
             }
 
             RecoveryCodeState.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.large))
+                WaitingIndicator(text = stringResource(R.string.recovery_code_making))
             }
 
             is RecoveryCodeState.Shown -> {

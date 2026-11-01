@@ -261,6 +261,7 @@
     <string name="recovery_code_title">Вашият код за възстановяване</string>
     <string name="recovery_code_explanation">Ако загубите всичките си устройства, въведете този код на ново устройство, за да си върнете библиотеката. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката, затова го пазете на поверително място.</string>
     <string name="recovery_code_s3_key">Ще ви трябват и ключът за достъп, и тайният ключ за S3.</string>
+    <string name="recovery_code_making">Създава се кодът ви за възстановяване…</string>
     <string name="recovery_code_show">Показване на кода</string>
     <string name="settings_people">Хора</string>
     <string name="members_you">Вие</string>
@@ -290,6 +291,7 @@
     <string name="members_add_device">Добавяне на устройство</string>
     <string name="add_device_title">Добавяне на устройство</string>
     <string name="add_device_added">Добавено устройство: %1$s</string>
+    <string name="add_device_making_code">Създава се код за новото ви устройство…</string>
     <string name="add_device_instructions">На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:</string>
     <string name="invite_email">Имейл</string>
     <string name="invite_create">Създаване на покана</string>

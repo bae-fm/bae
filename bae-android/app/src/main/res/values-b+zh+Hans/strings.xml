@@ -259,6 +259,7 @@
     <string name="recovery_code_title">你的恢复码</string>
     <string name="recovery_code_explanation">如果你丢失了所有设备，可在新设备上输入此代码找回你的资料库。任何拥有此代码并能访问你的存储的人都能打开该资料库，因此请将它保存在私密的地方。</string>
     <string name="recovery_code_s3_key">你还需要 S3 访问密钥和私密密钥。</string>
+    <string name="recovery_code_making">正在生成你的恢复码…</string>
     <string name="recovery_code_show">显示代码</string>
     <string name="settings_people">成员</string>
     <string name="members_you">你</string>
@@ -287,6 +288,7 @@
     <string name="members_add_device">添加设备</string>
     <string name="add_device_title">添加设备</string>
     <string name="add_device_added">已添加%1$s</string>
+    <string name="add_device_making_code">正在为你的新设备生成代码…</string>
     <string name="add_device_instructions">在新设备上选择“添加设备”，然后扫描此代码或输入：</string>
     <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>

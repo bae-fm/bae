@@ -262,6 +262,7 @@
     <string name="recovery_code_title">Votre code de récupération</string>
     <string name="recovery_code_explanation">Si vous perdez tous vos appareils, saisissez ce code sur un nouvel appareil pour récupérer votre bibliothèque. Toute personne qui le possède et a accès à votre stockage peut ouvrir la bibliothèque : conservez-le donc dans un endroit privé.</string>
     <string name="recovery_code_s3_key">Vous aurez aussi besoin de votre clé d’accès et de votre clé secrète S3.</string>
+    <string name="recovery_code_making">Création de votre code de récupération…</string>
     <string name="recovery_code_show">Afficher le code</string>
     <string name="settings_people">Personnes</string>
     <string name="members_you">Vous</string>
@@ -291,6 +292,7 @@
     <string name="members_add_device">Ajouter un appareil</string>
     <string name="add_device_title">Ajouter un appareil</string>
     <string name="add_device_added">Appareil ajouté : %1$s</string>
+    <string name="add_device_making_code">Création d\'un code pour votre nouvel appareil…</string>
     <string name="add_device_instructions">Sur le nouvel appareil, choisissez « Ajouter un appareil », puis scannez ceci ou saisissez :</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Créer l’invitation</string>

@@ -260,6 +260,7 @@
     <string name="recovery_code_title">Palautuskoodisi</string>
     <string name="recovery_code_explanation">Jos menetät kaikki laitteesi, syötä tämä koodi uudella laitteella, niin saat kirjastosi takaisin. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston, joten säilytä se yksityisessä paikassa.</string>
     <string name="recovery_code_s3_key">Tarvitset myös S3-käyttöavaimesi ja salaisen avaimen.</string>
+    <string name="recovery_code_making">Luodaan palautuskoodiasi…</string>
     <string name="recovery_code_show">Näytä koodi</string>
     <string name="settings_people">Ihmiset</string>
     <string name="members_you">Sinä</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Lisää laite</string>
     <string name="add_device_title">Lisää laite</string>
     <string name="add_device_added">%1$s lisätty</string>
+    <string name="add_device_making_code">Luodaan koodia uudelle laitteellesi…</string>
     <string name="add_device_instructions">Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:</string>
     <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>

@@ -260,6 +260,7 @@
     <string name="recovery_code_title">Din gendannelseskode</string>
     <string name="recovery_code_explanation">Hvis du mister alle dine enheder, kan du indtaste denne kode på en ny enhed for at få dit bibliotek tilbage. Alle, der har koden og adgang til dit lager, kan åbne biblioteket, så opbevar den et privat sted.</string>
     <string name="recovery_code_s3_key">Du skal også bruge din S3-adgangsnøgle og den hemmelige nøgle.</string>
+    <string name="recovery_code_making">Laver din gendannelseskode…</string>
     <string name="recovery_code_show">Vis kode</string>
     <string name="settings_people">Personer</string>
     <string name="members_you">Dig</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Tilføj enhed</string>
     <string name="add_device_title">Tilføj en enhed</string>
     <string name="add_device_added">%1$s er tilføjet</string>
+    <string name="add_device_making_code">Laver en kode til din nye enhed…</string>
     <string name="add_device_instructions">Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Opret invitation</string>

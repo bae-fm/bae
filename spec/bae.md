@@ -2294,7 +2294,9 @@ Settings keeps
 the code under **Your recovery code**, for the day she loses every device:
 hidden until she asks, then shown in place as coven formats it, to copy or
 hide, and hidden again when Settings closes. On S3 that section also says she will need her access
-key and secret.
+key and secret. Making either code is one local read of her keys, which the
+app names while it runs, never a bare spinner: the sheet says it is making a
+code for her new device, and the section that it is making her recovery code.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
 Had he lost every device, Ana, an admin, could remove it for him: admins can

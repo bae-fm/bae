@@ -259,6 +259,7 @@
     <string name="recovery_code_title">你的復原碼</string>
     <string name="recovery_code_explanation">如果你遺失了所有裝置，可在新裝置上輸入此代碼找回你的資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫，因此請將它保存在私密的地方。</string>
     <string name="recovery_code_s3_key">你還需要 S3 存取密鑰和私密密鑰。</string>
+    <string name="recovery_code_making">正在產生你的復原碼…</string>
     <string name="recovery_code_show">顯示代碼</string>
     <string name="settings_people">成員</string>
     <string name="members_you">你</string>
@@ -287,6 +288,7 @@
     <string name="members_add_device">新增裝置</string>
     <string name="add_device_title">新增裝置</string>
     <string name="add_device_added">已新增%1$s</string>
+    <string name="add_device_making_code">正在為你的新裝置產生代碼…</string>
     <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>

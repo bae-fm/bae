@@ -263,6 +263,7 @@
     <string name="recovery_code_title">קוד השחזור שלכם</string>
     <string name="recovery_code_explanation">אם תאבדו את כל המכשירים שלכם, הזינו את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה, לכן שמרו אותו במקום פרטי.</string>
     <string name="recovery_code_s3_key">תצטרכו גם את מפתח הגישה ואת המפתח הסודי של S3.</string>
+    <string name="recovery_code_making">יוצר את קוד השחזור שלך…</string>
     <string name="recovery_code_show">הצגת הקוד</string>
     <string name="settings_people">אנשים</string>
     <string name="members_you">את/ה</string>
@@ -293,6 +294,7 @@
     <string name="members_add_device">הוספת מכשיר</string>
     <string name="add_device_title">הוספת מכשיר</string>
     <string name="add_device_added">המכשיר %1$s נוסף</string>
+    <string name="add_device_making_code">יוצר קוד למכשיר החדש שלך…</string>
     <string name="add_device_instructions">במכשיר החדש בחרו ב“הוספת מכשיר”, ואז סרקו את זה או הקלידו:</string>
     <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>

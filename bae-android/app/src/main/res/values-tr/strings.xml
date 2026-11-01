@@ -261,6 +261,7 @@
     <string name="recovery_code_title">Kurtarma kodunuz</string>
     <string name="recovery_code_explanation">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir cihaza girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın.</string>
     <string name="recovery_code_s3_key">S3 erişim anahtarınıza ve gizli anahtarınıza da ihtiyacınız olacak.</string>
+    <string name="recovery_code_making">Kurtarma kodunuz oluşturuluyor…</string>
     <string name="recovery_code_show">Kodu göster</string>
     <string name="settings_people">Kişiler</string>
     <string name="members_you">Siz</string>
@@ -290,6 +291,7 @@
     <string name="members_add_device">Cihaz ekle</string>
     <string name="add_device_title">Cihaz ekle</string>
     <string name="add_device_added">%1$s eklendi</string>
+    <string name="add_device_making_code">Yeni cihazınız için kod oluşturuluyor…</string>
     <string name="add_device_instructions">Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:</string>
     <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>

@@ -260,6 +260,7 @@
     <string name="recovery_code_title">Ο κωδικός ανάκτησής σας</string>
     <string name="recovery_code_explanation">Αν χάσετε όλες τις συσκευές σας, εισαγάγετε αυτόν τον κωδικό σε μια νέα συσκευή για να ανακτήσετε τη βιβλιοθήκη σας. Όποιος τον έχει και έχει πρόσβαση στον χώρο αποθήκευσής σας μπορεί να ανοίξει τη βιβλιοθήκη, γι’ αυτό φυλάξτε τον κάπου ιδιωτικά.</string>
     <string name="recovery_code_s3_key">Θα χρειαστείτε επίσης το κλειδί πρόσβασης και το μυστικό κλειδί του S3.</string>
+    <string name="recovery_code_making">Δημιουργία του κωδικού ανάκτησής σας…</string>
     <string name="recovery_code_show">Εμφάνιση κωδικού</string>
     <string name="settings_people">Άτομα</string>
     <string name="members_you">Εσείς</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Προσθήκη συσκευής</string>
     <string name="add_device_title">Προσθήκη συσκευής</string>
     <string name="add_device_added">Προστέθηκε η συσκευή %1$s</string>
+    <string name="add_device_making_code">Δημιουργία κωδικού για τη νέα σας συσκευή…</string>
     <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>

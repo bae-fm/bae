@@ -264,6 +264,7 @@
     <string name="recovery_code_title">Tvoj kód na obnovenie</string>
     <string name="recovery_code_explanation">Ak prídeš o všetky svoje zariadenia, zadaj tento kód na novom zariadení a získaš knižnicu späť. Ktokoľvek, kto ho má a má prístup k tvojmu úložisku, môže knižnicu otvoriť, preto ho uchovávaj na súkromnom mieste.</string>
     <string name="recovery_code_s3_key">Budeš potrebovať aj prístupový kľúč a tajný kľúč S3.</string>
+    <string name="recovery_code_making">Vytvára sa váš kód na obnovenie…</string>
     <string name="recovery_code_show">Zobraziť kód</string>
     <string name="settings_people">Ľudia</string>
     <string name="members_you">Ty</string>
@@ -295,6 +296,7 @@
     <string name="members_add_device">Pridať zariadenie</string>
     <string name="add_device_title">Pridať zariadenie</string>
     <string name="add_device_added">Zariadenie pridané: %1$s</string>
+    <string name="add_device_making_code">Vytvára sa kód pre vaše nové zariadenie…</string>
     <string name="add_device_instructions">Na novom zariadení vyber „Pridať zariadenie“ a potom naskenuj toto alebo zadaj:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvoriť pozvánku</string>

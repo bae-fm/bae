@@ -265,6 +265,7 @@
     <string name="recovery_code_title">Ваш код відновлення</string>
     <string name="recovery_code_explanation">Якщо ви втратите всі свої пристрої, введіть цей код на новому, щоб повернути свою бібліотеку. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку, тож зберігайте його в приватному місці.</string>
     <string name="recovery_code_s3_key">Вам також знадобляться ключ доступу та секретний ключ S3.</string>
+    <string name="recovery_code_making">Створення вашого коду відновлення…</string>
     <string name="recovery_code_show">Показати код</string>
     <string name="settings_people">Люди</string>
     <string name="members_you">Ви</string>
@@ -296,6 +297,7 @@
     <string name="members_add_device">Додати пристрій</string>
     <string name="add_device_title">Додати пристрій</string>
     <string name="add_device_added">Пристрій додано: %1$s</string>
+    <string name="add_device_making_code">Створення коду для вашого нового пристрою…</string>
     <string name="add_device_instructions">На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:</string>
     <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>

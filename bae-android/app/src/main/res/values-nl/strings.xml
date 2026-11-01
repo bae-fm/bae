@@ -261,6 +261,7 @@
     <string name="recovery_code_title">Je herstelcode</string>
     <string name="recovery_code_explanation">Als je al je apparaten kwijtraakt, voer je deze code in op een nieuw apparaat om je bibliotheek terug te krijgen. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen, dus bewaar hem op een privéplek.</string>
     <string name="recovery_code_s3_key">Je hebt ook je S3-toegangssleutel en geheime sleutel nodig.</string>
+    <string name="recovery_code_making">Je herstelcode wordt gemaakt…</string>
     <string name="recovery_code_show">Code tonen</string>
     <string name="settings_people">Personen</string>
     <string name="members_you">Jij</string>
@@ -290,6 +291,7 @@
     <string name="members_add_device">Apparaat toevoegen</string>
     <string name="add_device_title">Een apparaat toevoegen</string>
     <string name="add_device_added">%1$s toegevoegd</string>
+    <string name="add_device_making_code">Code voor je nieuwe apparaat wordt gemaakt…</string>
     <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>

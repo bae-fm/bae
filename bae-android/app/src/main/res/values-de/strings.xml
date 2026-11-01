@@ -261,6 +261,7 @@
     <string name="recovery_code_title">Dein Wiederherstellungscode</string>
     <string name="recovery_code_explanation">Wenn du alle deine Geräte verlierst, gib diesen Code auf einem neuen Gerät ein, um deine Bibliothek zurückzubekommen. Wer ihn hat und Zugriff auf deinen Speicher hat, kann die Bibliothek öffnen – bewahre ihn also an einem privaten Ort auf.</string>
     <string name="recovery_code_s3_key">Du brauchst außerdem deinen S3-Zugriffsschlüssel und den geheimen Schlüssel.</string>
+    <string name="recovery_code_making">Dein Wiederherstellungscode wird erstellt…</string>
     <string name="recovery_code_show">Code zeigen</string>
     <string name="settings_people">Personen</string>
     <string name="members_you">Du</string>
@@ -290,6 +291,7 @@
     <string name="members_add_device">Gerät hinzufügen</string>
     <string name="add_device_title">Gerät hinzufügen</string>
     <string name="add_device_added">%1$s hinzugefügt</string>
+    <string name="add_device_making_code">Code für dein neues Gerät wird erstellt…</string>
     <string name="add_device_instructions">Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:</string>
     <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>

@@ -312,6 +312,7 @@
     <string name="recovery_code_title">Your recovery code</string>
     <string name="recovery_code_explanation">If you lose all your devices, enter this code on a new one to get your library back. Anyone who has it and access to your storage can open the library, so keep it somewhere private.</string>
     <string name="recovery_code_s3_key">You’ll also need your S3 access key and secret.</string>
+    <string name="recovery_code_making">Making your recovery code…</string>
     <string name="recovery_code_show">Show code</string>
     <string name="settings_people">People</string>
     <string name="members_you">You</string>
@@ -344,6 +345,7 @@
     <string name="add_device_title">Add a device</string>
     <!-- Shown in place of the QR code once the person's new device has joined; the argument is that device's name -->
     <string name="add_device_added">%1$s added</string>
+    <string name="add_device_making_code">Making a code for your new device…</string>
     <!-- The quoted label is onboarding_add_device, the choice on the new device's first screen -->
     <string name="add_device_instructions">On the new device, choose “Add device”, then scan this or type:</string>
     <string name="invite_email">Email</string>

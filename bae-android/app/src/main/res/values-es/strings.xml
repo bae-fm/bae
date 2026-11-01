@@ -262,6 +262,7 @@
     <string name="recovery_code_title">Tu código de recuperación</string>
     <string name="recovery_code_explanation">Si pierdes todos tus dispositivos, introduce este código en uno nuevo para recuperar tu biblioteca. Quien lo tenga y acceda a tu almacenamiento puede abrir la biblioteca, así que guárdalo en un lugar privado.</string>
     <string name="recovery_code_s3_key">También necesitarás tu clave de acceso y tu clave secreta de S3.</string>
+    <string name="recovery_code_making">Creando tu código de recuperación…</string>
     <string name="recovery_code_show">Mostrar código</string>
     <string name="settings_people">Personas</string>
     <string name="members_you">Tú</string>
@@ -291,6 +292,7 @@
     <string name="members_add_device">Añadir dispositivo</string>
     <string name="add_device_title">Añadir un dispositivo</string>
     <string name="add_device_added">Se ha añadido %1$s</string>
+    <string name="add_device_making_code">Creando un código para tu nuevo dispositivo…</string>
     <string name="add_device_instructions">En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:</string>
     <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>

@@ -260,6 +260,7 @@
     <string name="recovery_code_title">Gjenopprettingskoden din</string>
     <string name="recovery_code_explanation">Hvis du mister alle enhetene dine, skriver du inn denne koden på en ny enhet for å få biblioteket tilbake. Alle som har koden og tilgang til lagringen din, kan åpne biblioteket, så oppbevar den et privat sted.</string>
     <string name="recovery_code_s3_key">Du trenger også S3-tilgangsnøkkelen og den hemmelige nøkkelen.</string>
+    <string name="recovery_code_making">Lager gjenopprettingskoden din…</string>
     <string name="recovery_code_show">Vis kode</string>
     <string name="settings_people">Personer</string>
     <string name="members_you">Deg</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Legg til enhet</string>
     <string name="add_device_title">Legg til en enhet</string>
     <string name="add_device_added">%1$s er lagt til</string>
+    <string name="add_device_making_code">Lager en kode til den nye enheten din…</string>
     <string name="add_device_instructions">Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Opprett invitasjon</string>

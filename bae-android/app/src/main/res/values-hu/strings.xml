@@ -260,6 +260,7 @@
     <string name="recovery_code_title">A helyreállítási kódod</string>
     <string name="recovery_code_explanation">Ha az összes eszközödet elveszíted, írd be ezt a kódot egy új eszközön, és visszakapod a könyvtáradat. Bárki, akinél megvan, és hozzáfér a tárhelyedhez, megnyithatja a könyvtárat, ezért tartsd privát helyen.</string>
     <string name="recovery_code_s3_key">Szükséged lesz az S3-hozzáférési kulcsodra és a titkos kulcsra is.</string>
+    <string name="recovery_code_making">A helyreállítási kód készítése…</string>
     <string name="recovery_code_show">Kód megjelenítése</string>
     <string name="settings_people">Személyek</string>
     <string name="members_you">Te</string>
@@ -289,6 +290,7 @@
     <string name="members_add_device">Eszköz hozzáadása</string>
     <string name="add_device_title">Eszköz hozzáadása</string>
     <string name="add_device_added">%1$s hozzáadva</string>
+    <string name="add_device_making_code">Kód készítése az új eszközödhöz…</string>
     <string name="add_device_instructions">Az új eszközön válaszd ezt: „Eszköz hozzáadása”, majd olvasd be ezt, vagy írd be:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Meghívó létrehozása</string>
