@@ -114,7 +114,7 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     };
     assert!(offers_shared_album, "two pressings of one album are offered");
     let own_numbers: Vec<String> = before
-        .metadata_draft
+        .draft().unwrap().metadata_draft
         .pressing
         .labels
         .iter()
@@ -129,10 +129,10 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     assert_eq!(link(&handle, &hash).await, Some(ReleaseLink::Album(album())));
     let after = pane(&handle, &key).await;
     assert_eq!(after.live.standing, Some(PendingStanding::Identified));
-    assert_eq!(after.metadata_draft.album_title, "Album Title");
-    assert_eq!(after.metadata_draft.pressing.year, "1996");
+    assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
+    assert_eq!(after.draft().unwrap().metadata_draft.pressing.year, "1996");
     let label = after
-        .metadata_draft
+        .draft().unwrap().metadata_draft
         .pressing
         .labels
         .first()
@@ -144,7 +144,7 @@ async fn linking_the_album_takes_what_its_pressings_share() {
         "the pressings' numbers differ, so the draft's own stands"
     );
     assert_eq!(
-        after.metadata_provenance, before.metadata_provenance,
+        after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance,
         "the fields they differ on are still read from where they were"
     );
     assert_eq!(

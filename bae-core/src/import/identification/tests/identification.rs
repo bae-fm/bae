@@ -481,7 +481,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
             .pane(&dir)
             .await
             .expect("the identified candidate reads back")
-            .cover
+            .draft().unwrap().cover.clone()
             .expect("the pane shows the stored selection")
             .selection,
         folders_own
@@ -557,12 +557,12 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     );
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        pane.metadata_author,
+        pane.draft().unwrap().metadata_author,
         crate::import::MetadataAuthor::Identification,
         "identification wrote the draft from the lone row"
     );
     assert_eq!(
-        pane.release_link
+        pane.draft().unwrap().release_link
             .as_ref()
             .and_then(crate::import::ReleaseLink::pressing)
             .expect("the settled row is the candidate's release")

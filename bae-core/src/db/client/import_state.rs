@@ -31,8 +31,8 @@ pub(super) use import_commit::{
 };
 pub(super) use pane_rows::{cover_read_columns, insert_draft, load_pane_rows_on, read_cover};
 pub(crate) use preparation_rows::{
-    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    RunVerdictSaved, ScannedCandidateKey,
+    CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{
     load_candidate_file_edits_on, load_states_on, read_provenance, read_release_link,

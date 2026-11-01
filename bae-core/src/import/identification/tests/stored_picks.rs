@@ -22,12 +22,12 @@ async fn a_pick_reads_back_as_the_same_answer() {
 
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     let link = resumed
-        .release_link
+        .draft().unwrap().release_link
         .as_ref()
         .and_then(crate::import::ReleaseLink::pressing)
         .expect("a settled single match is a decision");
     assert_eq!(link.record.key, "mb-answer-1");
-    assert_eq!(resumed.metadata_draft.tracks.len(), 2);
+    assert_eq!(resumed.draft().unwrap().metadata_draft.tracks.len(), 2);
     assert_eq!(
         resumed.file_evidence,
         vec![crate::import::FileEvidence {
@@ -39,7 +39,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
     );
 
     assert_eq!(
-        resumed.metadata_author,
+        resumed.draft().unwrap().metadata_author,
         crate::import::MetadataAuthor::Identification,
         "the pane's own value says identification wrote the pick"
     );
@@ -69,21 +69,21 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .expect("deciding file metadata succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        resumed.release_link,
+        resumed.draft().unwrap().release_link,
         Some(picked),
         "the candidate stays linked to the release identification picked"
     );
     assert_eq!(
-        resumed.metadata_provenance,
+        resumed.draft().unwrap().metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata)
     );
     assert_eq!(
-        resumed.metadata_author,
+        resumed.draft().unwrap().metadata_author,
         crate::import::MetadataAuthor::Person,
         "and the person is now the author of the draft"
     );
     assert!(
-        !resumed.metadata_draft.is_blank(),
+        !resumed.draft().unwrap().metadata_draft.is_blank(),
         "and still draws a form, seeded from the folder's own tags"
     );
     assert_eq!(
@@ -288,7 +288,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         .await
         .expect("the identified candidate reads back");
     assert_eq!(
-        pane.metadata_draft.album_title, "Album",
+        pane.draft().unwrap().metadata_draft.album_title, "Album",
         "the automatic release choice seeds the editable metadata draft"
     );
     // The write's event reaches the recorder through the bus; poll for it.

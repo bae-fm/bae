@@ -27,9 +27,9 @@ pub use client::{
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
-    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts, ImportClaim,
-    ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
+    CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateSaved, FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts,
+    ImportClaim, ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
     ScannedCandidateKey,
 };
 pub use client::{

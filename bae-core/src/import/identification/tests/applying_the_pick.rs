@@ -145,7 +145,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
         crate::import::MetadataAuthor::Identification
     );
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
-    let cover = pane.cover.expect("the applied release brings its cover");
+    let cover = pane.draft().unwrap().cover.clone().expect("the applied release brings its cover");
     let crate::import::CoverSelection::Remote(image, source) = &cover.selection else {
         panic!("the cover is the catalog's, got {:?}", cover.selection);
     };

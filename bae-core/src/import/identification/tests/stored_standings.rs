@@ -101,7 +101,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
                 .unwrap()
                 .expect("the candidate stays stored")
                 .resolve();
-            if detail.is_added {
+            if detail.is_added() {
                 return detail.live.facts.importing();
             }
         }

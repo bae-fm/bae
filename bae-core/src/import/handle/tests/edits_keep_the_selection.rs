@@ -152,7 +152,7 @@ async fn edits_under(view: ImportListView) {
         edited.view_revision, selected.view_revision,
         "no edit moved the view"
     );
-    let draft = super::pane(&handle, &key).await.metadata_draft;
+    let draft = super::pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(draft.pressing.year, "1998");
     shut_down(handle).await;
 }

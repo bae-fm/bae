@@ -109,31 +109,64 @@ pub(crate) enum CandidateSaved {
     Superseded,
 }
 
+/// What one read of a candidate's whole stored state found: the state, or
+/// the release this device already imported from its files, once the
+/// candidate holds no draft.
+#[derive(Debug)]
+pub(crate) enum CandidatePreparationRead {
+    Stored(CandidatePreparation),
+    Imported { release_id: String },
+}
+
+#[cfg(test)]
+impl CandidatePreparationRead {
+    /// The stored state; `None` for an imported candidate.
+    pub(crate) fn stored(self) -> Option<CandidatePreparation> {
+        match self {
+            Self::Stored(prep) => Some(prep),
+            Self::Imported { .. } => None,
+        }
+    }
+}
+
 pub(super) fn load_preparation_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
-) -> Result<Option<CandidatePreparation>, DbError> {
+) -> Result<Option<CandidatePreparationRead>, DbError> {
     let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
     else {
         return Ok(None);
     };
+    if let Some(release_id) = sql
+        .query_row(
+            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
+            [content_hash],
+            |row| row.get(0),
+        )
+        .optional()?
+    {
+        return Ok(Some(CandidatePreparationRead::Imported { release_id }));
+    }
     let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
-    Ok(Some(CandidatePreparation {
-        content_hash: state.content_hash,
-        candidate_key: state.candidate_key,
-        file_edits: state.file_edits,
-        metadata_revision: state.metadata_revision,
-        author: state.metadata_author,
-        metadata: crate::import::CandidateMetadataDraft {
-            draft: pane_rows::load_draft_on(sql, content_hash)?,
-            provenance: state.metadata_provenance,
-            cover: pane_rows::load_cover_on(sql, content_hash)?,
-            assets,
+    let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, content_hash)?;
+    Ok(Some(CandidatePreparationRead::Stored(
+        CandidatePreparation {
+            content_hash: state.content_hash,
+            candidate_key: state.candidate_key,
+            file_edits: state.file_edits,
+            metadata_revision: state.metadata_revision,
+            author: state.metadata_author,
+            metadata: crate::import::CandidateMetadataDraft {
+                draft,
+                provenance: state.metadata_provenance,
+                cover,
+                assets,
+            },
+            link: state.release_link,
+            identification: state.identify,
+            signals: state.signals,
         },
-        link: state.release_link,
-        identification: state.identify,
-        signals: state.signals,
-    }))
+    )))
 }
 
 /// Write `prep` over what is stored, provided the stored revisions still
@@ -194,11 +227,19 @@ pub(super) fn save_preparation_on(
     // placement reads (the verdict and its matches, the link, the draft row,
     // its album artists, its provenance) are changed in place, so no
     // statement shows the list the candidate as something it is not.
-    let stored = load_preparation_on(sql, content_hash)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {content_hash} has no state row to save into"
-        ))
-    })?;
+    let stored = match load_preparation_on(sql, content_hash)? {
+        Some(CandidatePreparationRead::Stored(stored)) => stored,
+        Some(CandidatePreparationRead::Imported { .. }) => {
+            return Err(DbError::Message(format!(
+                "candidate {content_hash} was imported, and holds no draft to save over"
+            )))
+        }
+        None => {
+            return Err(DbError::Message(format!(
+                "candidate {content_hash} has no state row to save into"
+            )))
+        }
+    };
     if stored.link != prep.link
         || stored.metadata.provenance != prep.metadata.provenance
         || prep.metadata.draft.release_edit().is_blank()
@@ -233,20 +274,33 @@ pub(super) fn save_preparation_on(
     if stored.link != prep.link {
         super::rows::store_release_link(sql, content_hash, prep.link.as_ref())?;
     }
-    super::draft_store::store_draft(
-        sql,
-        content_hash,
-        (&stored.metadata.draft, stored.author),
-        (&prep.metadata.draft, prep.author),
-    )?;
     // `validate` has already refused an author the provenance cannot have.
-    if stored.metadata.provenance != prep.metadata.provenance {
-        super::rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
-    }
-    if stored.metadata.cover != prep.metadata.cover {
-        match &prep.metadata.cover {
-            Some(cover) => super::candidate_state_rows::save_cover(sql, content_hash, cover)?,
-            None => pane_rows::delete_cover(sql, content_hash)?,
+    if pane_rows::has_draft_row_on(sql, content_hash)? {
+        super::draft_store::store_draft(
+            sql,
+            content_hash,
+            (&stored.metadata.draft, stored.author),
+            (&prep.metadata.draft, prep.author),
+        )?;
+        if stored.metadata.provenance != prep.metadata.provenance {
+            super::rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
+        }
+        if stored.metadata.cover != prep.metadata.cover {
+            match &prep.metadata.cover {
+                Some(cover) => super::candidate_state_rows::save_cover(sql, content_hash, cover)?,
+                None => pane_rows::delete_cover(sql, content_hash)?,
+            }
+        }
+    } else {
+        // A candidate holding no draft row read as its blank draft and the
+        // folder's own cover, which no row holds: the first save stores the
+        // draft, its source and its cover whole.
+        pane_rows::insert_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
+        if let Some(provenance) = &prep.metadata.provenance {
+            super::rows::insert_provenance(sql, content_hash, provenance)?;
+        }
+        if let Some(cover) = &prep.metadata.cover {
+            super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
         }
     }
     if stored.metadata.assets != prep.metadata.assets {
@@ -345,12 +399,13 @@ pub(super) fn save_preparation_on(
 }
 
 impl Database {
-    /// One candidate's whole stored state, or `None` for a hash no scan has
-    /// stored a candidate under.
+    /// One candidate's whole stored state, or the release this device
+    /// imported from its files, or `None` for a hash no scan has stored a
+    /// candidate under.
     pub(crate) async fn load_candidate_preparation(
         &self,
         content_hash: &str,
-    ) -> Result<Option<CandidatePreparation>, DbError> {
+    ) -> Result<Option<CandidatePreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| load_preparation_on(&sql, &content_hash))
             .await

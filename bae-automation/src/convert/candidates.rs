@@ -21,6 +21,7 @@ pub(crate) async fn automation_candidate_from_folder(
     services: &bae_core::library::AppServices,
 ) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
+    let draft = folder.draft();
     let live = runtime.get(&candidate.key());
     let (toolbar, view) = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
         Some(bae_core::import::IdentificationInFlight::Run(published)) => {
@@ -52,7 +53,7 @@ pub(crate) async fn automation_candidate_from_folder(
             candidate.name.clone(),
             &candidate.watched_folder_path,
             folder.skipped,
-            folder.is_added,
+            folder.is_added(),
         ),
         track_count: candidate.files.track_count(),
         source_audio: candidate
@@ -70,9 +71,8 @@ pub(crate) async fn automation_candidate_from_folder(
                 percents.get(&candidate.key()).copied(),
             ),
         },
-        picked_pressing: folder
-            .release_link
-            .as_ref()
+        picked_pressing: draft
+            .and_then(|draft| draft.release_link.as_ref())
             .and_then(bae_core::import::ReleaseLink::pressing)
             .cloned()
             .map(AutomationPressingLink::from_core),
@@ -82,13 +82,12 @@ pub(crate) async fn automation_candidate_from_folder(
             .cloned()
             .map(AutomationFileEvidence::from_core)
             .collect(),
-        edit: Some(AutomationReleaseUserEdit::from_core(shaped_edit(
-            &folder.metadata_draft,
-            &folder.mapping,
-        ))),
-        failure: folder
-            .failure
-            .as_ref()
+        // An imported candidate holds no draft: its release is the library's.
+        edit: draft.map(|draft| {
+            AutomationReleaseUserEdit::from_core(shaped_edit(&draft.metadata_draft, &draft.mapping))
+        }),
+        failure: draft
+            .and_then(|draft| draft.failure.as_ref())
             .map(|failure| AutomationImportFailure {
                 error: failure.reason.detail.clone(),
                 failed_at: failure.failed_at.to_rfc3339(),

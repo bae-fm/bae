@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let title_before = pane(&handle, &key).await.metadata_draft.album_title;
+    let title_before = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone().album_title;
     let commit = handle.folder_state_commit.lock("hold for a test").await;
     let edit = tokio::spawn({
         let handle = handle.clone();
@@ -33,7 +33,7 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
         Err(crate::import::ImportError::CandidateImportInProgress)
     ));
     assert_eq!(
-        pane(&handle, &key).await.metadata_draft.album_title,
+        pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title,
         title_before
     );
     shut_down(handle).await;

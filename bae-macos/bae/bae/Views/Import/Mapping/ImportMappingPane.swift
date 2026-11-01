@@ -60,9 +60,9 @@ struct ImportMappingPane: View {
                 )
                 metadataSourceSection
                 banners
-                if let detail = candidate.detail {
+                if let detail = candidate.detail, let draft = candidate.draft {
                     DraftAlbumRow(
-                        album: detail.album,
+                        album: draft.album,
                         canEdit: detail.actionable,
                         actions: albumActions
                     )
@@ -87,7 +87,7 @@ struct ImportMappingPane: View {
         }
         .environment(
             \.artistResolutions,
-            candidate.detail?.artistResolutions ?? []
+            candidate.draft?.artistResolutions ?? []
         )
     }
 

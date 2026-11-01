@@ -329,21 +329,47 @@ pub struct ImportCandidateDetailProjection {
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
-    pub is_added: bool,
     /// The identify state the stored verdict stands back up as — the answer a
     /// row shows when no run is in flight.
     pub resumed_identify_state: IdentifyState,
     /// The stored verdict's columns, as the list reads them. `None` with no
     /// stored verdict for the candidate's current file shape.
     pub verdict: Option<VerdictSummary>,
+    pub metadata_revision: u64,
+    /// The signals identification settled on, or `None` before it has.
+    pub signals: Option<Signals>,
+    /// What is running for the candidate, from its standing.
+    pub standing: TriageRuntimeFacts,
+    /// Where the list places the candidate, as its row in the list's
+    /// placement says.
+    pub listed: ListedRelease,
+    /// The draft the candidate holds, or the release this device imported
+    /// from its files.
+    pub stage: ProjectedStage,
+}
+
+/// What a candidate's pane draws besides its folder, as the tables hold it:
+/// the draft an import would write, or, once this device imported the
+/// candidate's files, the library release it became, the candidate holding
+/// no draft.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProjectedStage {
+    Drafting(Box<DraftProjection>),
+    Imported {
+        release: ImportedRelease,
+        /// The folder's images and its other files, read from its scan.
+        folder: super::mapping::FolderFiles,
+    },
+}
+
+/// A candidate's draft and what goes with it, as the pane reads them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DraftProjection {
     pub metadata_provenance: Option<MetadataProvenance>,
     /// What the candidate is linked to in the catalogs.
     pub release_link: Option<ReleaseLink>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
-    pub metadata_revision: u64,
-    /// The release this device imported from this candidate's files.
-    pub imported: Option<ImportedRelease>,
     /// Every catalog the linked releases describe the release in, in the
     /// order surfaces list catalogs. Empty with no link.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -365,8 +391,6 @@ pub struct ImportCandidateDetailProjection {
     /// The covers the picker offers from the catalogs: what the applied
     /// release offered, stored with the draft when it was applied.
     pub remote_covers: Vec<RemoteCover>,
-    /// The signals identification settled on, or `None` before it has.
-    pub signals: Option<Signals>,
     /// What this candidate's identification asks about, as the person left it.
     pub lookup_choices: crate::import::LookupChoices,
     /// The last import of this candidate that failed.
@@ -374,11 +398,6 @@ pub struct ImportCandidateDetailProjection {
     /// Where the pane was when the person last left this candidate. `None`
     /// before the pane has been touched.
     pub session: Option<CandidateSession>,
-    /// What is running for the candidate, from its standing.
-    pub standing: TriageRuntimeFacts,
-    /// Where the list places the candidate, as its row in the list's
-    /// placement says.
-    pub listed: ListedRelease,
 }
 
 /// Where the list places one release, as its row in the list's placement
@@ -392,49 +411,45 @@ pub struct ListedRelease {
     pub standing: Option<crate::import::PendingStanding>,
 }
 
-impl ImportCandidateDetailProjection {
+impl DraftProjection {
     /// The pane's session: the stored one, or the one the pane opens on for
-    /// a candidate nobody has touched.
-    pub fn session_or_initial(&self) -> CandidateSession {
+    /// a candidate nobody has touched, `verdict_stored` saying whether a
+    /// lookup answered for it.
+    pub fn session_or_initial(&self, verdict_stored: bool) -> CandidateSession {
         self.session.clone().unwrap_or_else(|| {
             CandidateSession::initial(
                 self.metadata_provenance.is_some() || self.release_link.is_some(),
-                self.verdict.is_some(),
+                verdict_stored,
             )
         })
+    }
+}
+
+impl ImportCandidateDetailProjection {
+    /// The candidate's draft and what goes with it; `None` once this device
+    /// imported its files, when it holds none.
+    pub fn draft(&self) -> Option<&DraftProjection> {
+        match &self.stage {
+            ProjectedStage::Drafting(draft) => Some(draft),
+            ProjectedStage::Imported { .. } => None,
+        }
     }
 
     /// The pane's value: the candidate with the commands and state its
     /// standing gives it.
     pub fn resolve(self) -> ImportCandidateDetail {
-        let session = self.session_or_initial();
         let Self {
             candidate,
             source_error,
             actionable,
             skipped,
-            is_added,
             resumed_identify_state,
             verdict,
-            metadata_provenance,
-            release_link,
-            metadata_author,
             metadata_revision,
-            imported,
-            records,
-            picked_library_status,
-            album,
-            metadata_draft,
-            artist_resolutions,
-            mapping,
-            cover,
-            remote_covers,
             signals,
-            lookup_choices,
-            failure,
-            session: _,
             standing: facts,
             listed,
+            stage,
         } = self;
         let import_step = facts.import;
         let importing = facts.importing();
@@ -442,51 +457,89 @@ impl ImportCandidateDetailProjection {
             .as_ref()
             .map(crate::import::file_evidence)
             .unwrap_or_default();
-        let import_status = import_status_of(
-            imported.as_ref(),
-            source_error.as_ref(),
-            failure.as_ref().map(|failure| &failure.reason),
-        );
-        // The attempt running now, or the one that completed, is what the pane
-        // shows; an earlier failure is behind either.
-        let failure = if importing
-            || matches!(
-                import_status.as_ref(),
-                Some(TriageImportStatus::Complete { .. })
-            ) {
-            None
-        } else {
-            failure
-        };
-        let verdict = verdict.as_ref().filter(|_| actionable);
-        let draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(&listed.basis, facts, listed.standing);
-        // The catalogs the linked release is described in, as the row names
-        // them: only a linked candidate names any.
-        let draft_records = || {
-            let linked = release_link.as_ref().filter(|_| actionable);
-            let answered = linked.is_some() || metadata_provenance.is_some();
-            super::triage::TriageReading::of(
-                TriageMetadataSummary::of(&metadata_draft, answered).as_ref(),
-                linked,
-                records,
-            )
-            .records()
+        let (import_status, pane_placement, stage) = match stage {
+            ProjectedStage::Imported { release, folder } => (
+                import_status_of(Some(&release), source_error.as_ref(), None),
+                CandidatePanePlacement::Done,
+                CandidateStage::Imported { release, folder },
+            ),
+            ProjectedStage::Drafting(draft) => {
+                let session = draft.session_or_initial(verdict.is_some());
+                let DraftProjection {
+                    metadata_provenance,
+                    release_link,
+                    metadata_author,
+                    records,
+                    picked_library_status,
+                    album,
+                    metadata_draft,
+                    artist_resolutions,
+                    mapping,
+                    cover,
+                    remote_covers,
+                    lookup_choices,
+                    failure,
+                    session: _,
+                } = *draft;
+                let import_status = import_status_of(
+                    None,
+                    source_error.as_ref(),
+                    failure.as_ref().map(|failure| &failure.reason),
+                );
+                // The attempt running now is what the pane shows; an earlier
+                // failure is behind it.
+                let failure = if importing { None } else { failure };
+                let verdict = verdict.as_ref().filter(|_| actionable);
+                let draft_valid = metadata_draft.clone().shape().is_ok();
+                // The catalogs the linked release is described in, as the row
+                // names them: only a linked candidate names any.
+                let draft_records = || {
+                    let linked = release_link.as_ref().filter(|_| actionable);
+                    let answered = linked.is_some() || metadata_provenance.is_some();
+                    super::triage::TriageReading::of(
+                        TriageMetadataSummary::of(&metadata_draft, answered).as_ref(),
+                        linked,
+                        records,
+                    )
+                    .records()
+                };
+                let pane_placement = match placement.tab() {
+                    TriageTab::Pending => CandidatePanePlacement::Pending {
+                        folder_check: (placement == TriagePlacement::Pending)
+                            .then(|| stated_folder_check(metadata_author, draft_valid, verdict))
+                            .flatten(),
+                        records: draft_records(),
+                    },
+                    TriageTab::Skipped => CandidatePanePlacement::Skipped {
+                        records: draft_records(),
+                    },
+                    TriageTab::Done => CandidatePanePlacement::Done,
+                };
+                let metadata_draft_is_blank = metadata_draft.is_blank();
+                (
+                    import_status,
+                    pane_placement,
+                    CandidateStage::Drafting(Box::new(CandidateDraftPane {
+                        picked_library_status,
+                        album,
+                        metadata_draft,
+                        artist_resolutions,
+                        metadata_draft_is_blank,
+                        metadata_provenance,
+                        release_link,
+                        metadata_author,
+                        mapping,
+                        cover,
+                        remote_covers,
+                        lookup_choices,
+                        failure,
+                        session,
+                    })),
+                )
+            }
         };
-        let pane_placement = match placement.tab() {
-            TriageTab::Pending => CandidatePanePlacement::Pending {
-                folder_check: (placement == TriagePlacement::Pending)
-                    .then(|| stated_folder_check(metadata_author, draft_valid, verdict))
-                    .flatten(),
-                records: draft_records(),
-            },
-            TriageTab::Skipped => CandidatePanePlacement::Skipped {
-                records: draft_records(),
-            },
-            TriageTab::Done => CandidatePanePlacement::Done,
-        };
-        let metadata_draft_is_blank = metadata_draft.is_blank();
         let import_status = match import_step {
             Some(step) => Some(CandidateImportStatus::Importing { step }),
             None => import_status.map(CandidateImportStatus::of),
@@ -495,28 +548,14 @@ impl ImportCandidateDetailProjection {
             candidate,
             actionable,
             skipped,
-            is_added,
             resumed_identify_state,
             placement: pane_placement,
             live,
             import_status,
-            picked_library_status,
-            album,
             file_evidence,
-            metadata_draft,
-            artist_resolutions,
-            metadata_draft_is_blank,
-            metadata_provenance,
-            release_link,
-            metadata_author,
             metadata_revision,
-            mapping,
-            cover,
-            remote_covers,
             signals,
-            lookup_choices,
-            failure,
-            session,
+            stage,
         }
     }
 }
@@ -581,13 +620,13 @@ impl CandidateImportStatus {
 }
 
 /// One candidate, whole: the folder with its files, what the queue makes of
-/// it, and the identify state it resumes.
+/// it, the identify state it resumes, and its draft or the release this
+/// device imported from it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetail {
     pub candidate: FolderCandidate,
     pub actionable: bool,
     pub skipped: bool,
-    pub is_added: bool,
     pub resumed_identify_state: IdentifyState,
     /// Where the queue places the candidate, with what the pane states beside
     /// it.
@@ -598,13 +637,51 @@ pub struct ImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<CandidateImportStatus>,
-    pub picked_library_status: Option<LibraryStatus>,
-    /// The library album an import of it files under.
-    pub album: crate::import::DraftAlbum,
     /// Extracted identifying signals pinned to their source files. Independent
     /// of the selected pressing; which lookups found a result is the run's
     /// ledger's to say.
     pub file_evidence: Vec<FileEvidence>,
+    /// Revision of the exact metadata draft and selected cover in this value.
+    pub metadata_revision: u64,
+    pub signals: Option<Signals>,
+    pub stage: CandidateStage,
+}
+
+impl ImportCandidateDetail {
+    /// Whether this device imported a release from the candidate's files.
+    pub fn is_added(&self) -> bool {
+        matches!(self.stage, CandidateStage::Imported { .. })
+    }
+
+    /// The candidate's draft and what goes with it; `None` once this device
+    /// imported its files, when it holds none.
+    pub fn draft(&self) -> Option<&CandidateDraftPane> {
+        match &self.stage {
+            CandidateStage::Drafting(draft) => Some(draft),
+            CandidateStage::Imported { .. } => None,
+        }
+    }
+}
+
+/// What a candidate's pane draws besides its folder: the draft an import
+/// would write, or, once this device imported the candidate's files, the
+/// library release it became, the candidate holding no draft.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CandidateStage {
+    Drafting(Box<CandidateDraftPane>),
+    Imported {
+        release: ImportedRelease,
+        /// The folder's images and its other files, read from its scan.
+        folder: super::mapping::FolderFiles,
+    },
+}
+
+/// A candidate's draft and what goes with it, as its pane draws them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CandidateDraftPane {
+    pub picked_library_status: Option<LibraryStatus>,
+    /// The library album an import of it files under.
+    pub album: crate::import::DraftAlbum,
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds for every artist credit of the draft and the
     /// mapping rows, as the pane's live read found it.
@@ -616,12 +693,9 @@ pub struct ImportCandidateDetail {
     /// Who wrote the draft: nobody, the tag prefill, identification's own
     /// pick, or the person.
     pub metadata_author: crate::import::MetadataAuthor,
-    /// Revision of the exact metadata draft and selected cover in this value.
-    pub metadata_revision: u64,
     pub mapping: MappingTable,
     pub cover: Option<CoverChoice>,
     pub remote_covers: Vec<RemoteCover>,
-    pub signals: Option<Signals>,
     /// What this candidate's identification asks about: the signals its runs
     /// leave out and the catalog numbers they look up. A control that changes
     /// one sends the whole value back, computed from this.

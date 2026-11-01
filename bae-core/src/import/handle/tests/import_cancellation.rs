@@ -402,7 +402,10 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     assert_imports_again_from_the_start(&handle, &key).await;
     let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
     assert!(
-        pane.failure.is_none(),
+        matches!(
+            pane.import_status,
+            Some(crate::import::CandidateImportStatus::Complete { .. })
+        ),
         "the import that landed answers the one that failed"
     );
     shut_down(handle).await;
@@ -437,7 +440,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     );
     let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
     assert_eq!(
-        pane.failure.map(|failure| failure.reason),
+        pane.draft().unwrap().failure.clone().map(|failure| failure.reason),
         Some(crate::import::ImportFailureReason::error(error)),
         "the failure the retry was answering still stands"
     );

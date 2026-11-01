@@ -768,14 +768,26 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The rows an import of the candidate `content_hash` consumes. A
+    /// candidate whose files this device already imported holds no draft, so
+    /// it fails as an import of those files does.
     pub async fn load_import_candidate_preparation(
         &self,
         content_hash: &str,
     ) -> Result<Option<crate::db::DbCandidateImportPreparation>, LibraryError> {
-        Ok(self
+        match self
             .database
             .load_import_candidate_preparation(content_hash)
-            .await?)
+            .await?
+        {
+            None => Ok(None),
+            Some(crate::db::DbPreparationRead::Prepared(preparation)) => Ok(Some(preparation)),
+            Some(crate::db::DbPreparationRead::Imported { release_id }) => {
+                Err(LibraryError::Import(Box::new(
+                    crate::import::ImportError::FilesAlreadyImported { release_id },
+                )))
+            }
+        }
     }
 
     pub async fn load_import_candidate_prepared_assets(

@@ -292,7 +292,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
             .pane(&dir)
             .await
             .expect("scanned")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::Draft,
         "a scanned candidate nobody has touched opens on its draft"
@@ -306,7 +306,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
             .pane(&dir)
             .await
             .expect("still scanned")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::FindOnline,
         "the admission moved the pane to the page its run reports on"

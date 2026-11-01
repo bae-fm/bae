@@ -273,27 +273,75 @@ pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {
+    let (draft, cover) = load_draft_and_cover_on(sql, content_hash)?;
     Ok(DbCandidatePaneRows {
-        cover: load_cover_on(sql, content_hash)?,
-        draft: load_draft_on(sql, content_hash)?,
+        cover,
+        draft,
         failure: load_failure_on(sql, content_hash)?,
         session: load_session_on(sql, content_hash)?,
     })
 }
 
-/// The candidate's draft. Every stored candidate has one: the write that
-/// stores the candidate writes its draft.
-pub(super) fn load_draft_on(
+/// Whether the candidate `content_hash` holds a draft row.
+pub(super) fn has_draft_row_on(
+    sql: &impl super::super::query::QueryOne,
+    content_hash: &str,
+) -> Result<bool, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
+            [content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some())
+}
+
+/// The candidate's draft and cover: its rows', or, with no draft row, the
+/// blank draft of its files and the folder's own cover, which a scan seeds a
+/// new candidate with when it reads no tags. A candidate whose release this
+/// device deleted holds no draft row, and reads as that until a write stores
+/// one. A candidate this device imported holds no draft, so reading one
+/// fails.
+pub(super) fn load_draft_and_cover_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
-) -> Result<CandidateDraft, DbError> {
-    load_drafts_on(sql, CandidateRows::One(content_hash))?
-        .remove(content_hash)
+) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
+    if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
+    {
+        return Ok((draft, load_cover_on(sql, content_hash)?));
+    }
+    let imported = sql
+        .query_row(
+            "SELECT 1 FROM local_release_origin WHERE content_hash = ?",
+            [content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    if imported {
+        return Err(DbError::Message(format!(
+            "candidate {content_hash} was imported, and holds no draft"
+        )));
+    }
+    let key: CandidateKey = sql
+        .query_row(
+            "SELECT candidate_key FROM import_candidate_state WHERE content_hash = ?",
+            [content_hash],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| DbError::Message(format!("candidate {content_hash} has no state")))?;
+    let candidate = super::super::release_groupings::load_candidate_on(sql, &key)?
+        .map(|stored| stored.candidate)
+        .filter(|candidate| candidate.files.content_hash() == content_hash)
         .ok_or_else(|| {
             DbError::Message(format!(
-                "candidate {content_hash} has no editable metadata draft"
+                "candidate {content_hash} holds no draft row, and the scan holds no files of it \
+                 at {key} to read its blank one from"
             ))
-        })
+        })?;
+    Ok((candidate.blank_draft(), candidate.blank_cover()))
 }
 
 /// A candidate's cover choice as columns of a read that joins its row as

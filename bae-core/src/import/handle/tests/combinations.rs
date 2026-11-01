@@ -55,7 +55,12 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .unwrap()
         .is_none());
     assert_eq!(
-        pane(&handle, &key).await.metadata_draft.album_title,
+        pane(&handle, &key)
+            .await
+            .draft()
+            .unwrap()
+            .metadata_draft
+            .album_title,
         leading.name
     );
     // A combined key is not a folder to combine again; separating it first is.
@@ -92,9 +97,11 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .await
         .unwrap();
     let projected = pane(&handle, &key).await;
-    assert_eq!(projected.metadata_draft.tracks.len(), 4);
+    assert_eq!(projected.draft().unwrap().metadata_draft.tracks.len(), 4);
     assert_eq!(
         projected
+            .draft()
+            .unwrap()
             .mapping
             .track_sides
             .iter()
@@ -137,7 +144,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             (disc(2), "2")
         ]
     );
-    assert!(pane(&handle, &key).await.is_added);
+    assert!(pane(&handle, &key).await.is_added());
     handle.separate_candidate(&key).await.unwrap();
     assert_eq!(
         handle
@@ -196,7 +203,12 @@ async fn separating_picked_folders_returns_them_as_they_were() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
-    let before = pane(&handle, &first_key).await.metadata_draft;
+    let before = pane(&handle, &first_key)
+        .await
+        .draft()
+        .unwrap()
+        .metadata_draft
+        .clone();
     assert_eq!(pending(&handle).await.len(), 2);
 
     let key = handle
@@ -226,7 +238,14 @@ async fn separating_picked_folders_returns_them_as_they_were() {
         .is_none());
     assert!(handle.get_release_candidate(&key).await.unwrap().is_none());
     assert_eq!(pending(&handle).await.len(), 2);
-    assert_eq!(pane(&handle, &first_key).await.metadata_draft, before);
+    assert_eq!(
+        pane(&handle, &first_key)
+            .await
+            .draft()
+            .unwrap()
+            .metadata_draft,
+        before
+    );
     assert_eq!(
         handle
             .get_release_candidate(&first_key)

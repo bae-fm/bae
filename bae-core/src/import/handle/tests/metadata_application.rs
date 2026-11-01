@@ -49,7 +49,7 @@ fn seed_discogs_release(
 #[tokio::test(flavor = "multi_thread")]
 async fn resetting_to_the_tags_drops_what_was_typed() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let from_tags = pane(&handle, &key).await.metadata_draft;
+    let from_tags = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
 
     handle
         .set_candidate_edit_field(
@@ -81,11 +81,11 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
     shut_down(handle).await;
 
     assert_eq!(
-        reset.metadata_draft.album_title, from_tags.album_title,
+        reset.draft().unwrap().metadata_draft.album_title, from_tags.album_title,
         "the title the tags state replaces the one that was typed over it"
     );
     assert_eq!(
-        reset.metadata_draft.pressing.labels, from_tags.pressing.labels,
+        reset.draft().unwrap().metadata_draft.pressing.labels, from_tags.pressing.labels,
         "a field the tags leave blank goes back to blank"
     );
 }
@@ -125,7 +125,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     shut_down(handle).await;
 
     assert_eq!(
-        pane.metadata_draft.pressing.labels,
+        pane.draft().unwrap().metadata_draft.pressing.labels,
         vec![crate::import::RawLabelEdit {
             name: "Label Name".to_string(),
             catalog_number: "CAT-1".to_string(),
@@ -133,7 +133,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         }]
     );
     assert_eq!(
-        pane.metadata_draft.pressing.barcodes,
+        pane.draft().unwrap().metadata_draft.pressing.barcodes,
         Vec::<String>::new(),
         "explicit application replaces typed values, including with absent metadata"
     );
@@ -176,8 +176,8 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     shut_down(handle).await;
 
     let both = ["5 012345 678900", "0 12345 67890 5"];
-    assert_eq!(pane.metadata_draft.pressing.barcodes, both);
-    let shaped = pane.metadata_draft.shape().expect("the applied draft shapes");
+    assert_eq!(pane.draft().unwrap().metadata_draft.pressing.barcodes, both);
+    let shaped = pane.draft().unwrap().metadata_draft.shape().expect("the applied draft shapes");
     assert_eq!(shaped.pressing.barcodes, both);
     assert_eq!(
         crate::import::RawPressingEdit::from_pressing(&shaped.pressing).barcodes,

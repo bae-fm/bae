@@ -370,7 +370,9 @@ struct Candidate: Equatable, Identifiable {
         placement = detail.placement
         live = detail.live
         self.detail = detail
-        session = CandidateSessionState(bridge: detail.session)
+        if case .drafting(let draft) = detail.stage {
+            session = CandidateSessionState(bridge: draft.session)
+        }
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
@@ -408,10 +410,26 @@ struct Candidate: Equatable, Identifiable {
         )
     }
 
+    /// The candidate's draft and what goes with it; `nil` until the first
+    /// read answers, and once this device imported its files, when it holds
+    /// none.
+    var draft: BridgeCandidateDraftPane? {
+        guard case .drafting(let draft) = detail?.stage else { return nil }
+        return draft
+    }
+
+    /// The folder's images and its other files, once this device imported
+    /// its files: what the imported folder's pane shows beside the library
+    /// release.
+    var importedFolder: BridgeFolderFiles? {
+        guard case .imported(_, let folder) = detail?.stage else { return nil }
+        return folder
+    }
+
     /// The covers the picker offers from the catalogs: what the applied
     /// release offered, stored with the draft.
     var remoteCovers: [BridgeRemoteCover] {
-        detail?.remoteCovers ?? []
+        draft?.remoteCovers ?? []
     }
 
     /// Identifying signals extracted from the candidate, each entry naming
@@ -422,14 +440,14 @@ struct Candidate: Equatable, Identifiable {
 
     /// The candidate's editable metadata draft.
     var edit: BridgeRawReleaseEdit? {
-        detail?.metadataDraft
+        draft?.metadataDraft
     }
 
     /// Every source unit the folder offers with the track committing makes of
     /// it. An empty table until the first read answers; the pane's own shape
     /// does not change for it.
     var mapping: BridgeMappingTable {
-        detail?.mapping
+        draft?.mapping
             ?? BridgeMappingTable(
                 images: [],
                 trackSides: [],
@@ -440,24 +458,24 @@ struct Candidate: Equatable, Identifiable {
 
     /// The cover this candidate commits with.
     var cover: BridgeCoverChoice? {
-        detail?.cover
+        draft?.cover
     }
 
     /// The last import of this candidate that failed, as it survives a
     /// relaunch.
     var failure: BridgeImportFailure? {
-        detail?.failure
+        draft?.failure
     }
 
     /// Whether the applied external release is already in the library.
     var pickedLibraryStatus: BridgeLibraryStatus? {
-        detail?.pickedLibraryStatus
+        draft?.pickedLibraryStatus
     }
 
     /// Where the current draft was populated from. Directly entered and
     /// cleared drafts have no provenance.
     var metadataProvenance: BridgeMetadataProvenance? {
-        detail?.metadataProvenance
+        draft?.metadataProvenance
     }
 
     /// Every catalog that describes the release this candidate's draft was
@@ -488,7 +506,7 @@ struct Candidate: Equatable, Identifiable {
     }
 
     var metadataDraftIsBlank: Bool {
-        detail?.metadataDraftIsBlank ?? true
+        draft?.metadataDraftIsBlank ?? true
     }
 
     var localCoverSelections: [String: BridgeCoverSelection] {
@@ -503,7 +521,7 @@ struct Candidate: Equatable, Identifiable {
     /// or the album whose pressing is unknown, whatever its draft was read
     /// from since.
     var releaseLink: BridgeReleaseLink? {
-        detail?.releaseLink
+        draft?.releaseLink
     }
 
     /// The signals identification settled on for this candidate's files, as

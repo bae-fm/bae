@@ -270,7 +270,7 @@ async fn next_resolution(
                 .expect("the pane reads")
                 .expect("the candidate stays in the queue");
             let Some(resolved) = projection
-                .artist_resolutions
+                .draft().unwrap().artist_resolutions
                 .iter()
                 .find(|resolved| resolved.credit.name == name)
             else {

@@ -57,12 +57,12 @@ async fn keeping_the_draft_makes_the_folder_unmatched() {
             reason: NeedsYouReason::NotFound
         }
     );
-    let before = pane(&handle, &key).await.metadata_draft;
+    let before = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
 
     handle.keep_candidate_draft(key.clone()).await.unwrap();
 
     assert_eq!(standing(&handle, &key).await, PendingStanding::Unmatched);
-    assert_eq!(pane(&handle, &key).await.metadata_draft, before);
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft, before);
     shut_down(handle).await;
 }
 

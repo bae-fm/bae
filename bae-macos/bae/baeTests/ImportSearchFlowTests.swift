@@ -531,7 +531,12 @@ struct ImportSearchFlowCoverSelectionTests {
             mapping: MappingFixtures.thirteenFileTable
         )
         let cover = try #require(PreviewData.releaseDetailBridge.defaultCover)
-        detail.cover = cover
+        guard case .drafting(var draft) = detail.stage else {
+            Issue.record("the fixture's candidate holds a draft")
+            return
+        }
+        draft.cover = cover
+        detail.stage = .drafting(draft: draft)
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: detail

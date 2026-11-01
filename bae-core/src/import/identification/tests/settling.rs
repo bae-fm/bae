@@ -175,17 +175,17 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         "reading the candidate does not fetch metadata"
     );
     let link = detail
-        .release_link
+        .draft().unwrap().release_link
         .as_ref()
         .and_then(crate::import::ReleaseLink::pressing)
         .expect("the pick names a release");
     assert_eq!(link.record.key, "mb-offline-1");
-    let edit = detail.metadata_draft;
+    let edit = detail.draft().unwrap().metadata_draft.clone();
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.album_title, "Album");
     assert_eq!(
         detail
-            .remote_covers
+            .draft().unwrap().remote_covers
             .iter()
             .map(|cover| cover.image.url.as_str())
             .collect::<Vec<_>>(),
@@ -592,7 +592,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
             .pane(&dir)
             .await
             .expect("the settled candidate reads back")
-            .metadata_draft
+            .draft().unwrap().metadata_draft
             .album_year,
         "1996",
         "and the draft carries the year only the Discogs document states"
@@ -786,7 +786,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
         .await
         .expect("the settled candidate has a pane");
     assert_eq!(
-        pane.release_link,
+        pane.draft().unwrap().release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
@@ -796,7 +796,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
         }))
     );
     assert_eq!(
-        pane.lookup_choices,
+        pane.draft().unwrap().lookup_choices,
         crate::import::LookupChoices::default(),
         "the number the record carries and the folder prints is not chosen"
     );

@@ -426,23 +426,27 @@
                         badge: nil
                     ),
                     importStatus: nil,
-                    remoteCovers: remoteCovers,
-                    pickedLibraryStatus: nil,
-                    album: .new,
                     fileEvidence: [],
-                    metadataDraft: edit,
-                    artistResolutions: [],
-                    metadataDraftIsBlank: edit.albumTitle.isEmpty,
-                    metadataProvenance: metadataProvenance,
-                    releaseLink: releaseLink,
-                    metadataAuthor: metadataProvenance == nil
-                        ? .nobody : .person,
                     metadataRevision: 1,
-                    mapping: mapping,
-                    cover: cover,
                     signals: nil,
-                    failure: failure,
-                    session: paneSession(presentation: presentation)
+                    stage: .drafting(
+                        draft: BridgeCandidateDraftPane(
+                            remoteCovers: remoteCovers,
+                            pickedLibraryStatus: nil,
+                            album: .new,
+                            metadataDraft: edit,
+                            artistResolutions: [],
+                            metadataDraftIsBlank: edit.albumTitle.isEmpty,
+                            metadataProvenance: metadataProvenance,
+                            releaseLink: releaseLink,
+                            metadataAuthor: metadataProvenance == nil
+                                ? .nobody : .person,
+                            mapping: mapping,
+                            cover: cover,
+                            failure: failure,
+                            session: paneSession(presentation: presentation)
+                        )
+                    )
                 )
             )
         }

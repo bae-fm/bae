@@ -233,25 +233,19 @@ pub struct MappingContainer {
     pub audio_format: crate::album_detail::AudioFormat,
 }
 
-/// Project the mapping table for one folder and the draft committing it.
-///
-/// Refuses a draft whose tracks are not the folder's audio units in order: the
-/// draft is redrawn with every change to the folder's files, so a mismatch is a
-/// stored state that contradicts itself.
-///
-/// A row whose track holds the length its source lists shows that length
-/// beside its file's own.
-pub(crate) fn mapping_table(
-    files: &CategorizedFiles,
-    durations: &SourceDurations,
-    draft: &CandidateDraft,
-) -> Result<MappingTable, ImportError> {
-    let layout = audio_layout(files);
-    let contributions: HashMap<&str, &UnitContribution<'_>> = layout
-        .iter()
-        .map(|(file, contribution)| (file.relative_path.as_str(), contribution))
-        .collect();
-    let carving: BTreeSet<&str> = layout
+/// The folder's images and the files carried with the release that no track
+/// row stands for, in the scan's order: what a folder shows besides its
+/// tracks, which reads its files alone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FolderFiles {
+    pub images: Vec<MappingImage>,
+    pub files: Vec<MappingFileRow>,
+}
+
+/// The track sheets of `files` that carve the audio they are bound to into
+/// track rows, by relative path.
+fn carving_sheets<'a>(layout: &'a [(&'a ScannedFile, UnitContribution<'a>)]) -> BTreeSet<&'a str> {
+    layout
         .iter()
         .filter_map(|(_, contribution)| match contribution {
             UnitContribution::Runs(sheets) => Some(sheets),
@@ -259,19 +253,25 @@ pub(crate) fn mapping_table(
         })
         .flatten()
         .map(|sheet| sheet.file.relative_path.as_str())
-        .collect();
-    let disc_options = disc_options(files);
-    let mut rows = RowBuilder {
-        durations,
-        mediums: &draft.mediums,
-        tracks: draft.tracks.iter(),
-    };
-    let mut track_sides = Vec::new();
-    let mut file_rows = Vec::new();
-    // The folder's images become one gallery beside the rows while retaining
-    // the scan's order.
-    let mut images: Vec<MappingImage> = Vec::new();
+        .collect()
+}
 
+/// The folder's images and its files no track row stands for. A sheet that
+/// carves track rows heads them, so it is not among the files.
+pub(crate) fn folder_files(files: &CategorizedFiles) -> FolderFiles {
+    let layout = audio_layout(files);
+    folder_files_besides(files, &carving_sheets(&layout), &disc_options(files))
+}
+
+/// [`folder_files`] with the sheets that carve track rows and the discs a
+/// bound sheet may be assigned to already worked out.
+fn folder_files_besides(
+    files: &CategorizedFiles,
+    carving: &BTreeSet<&str>,
+    disc_options: &[u32],
+) -> FolderFiles {
+    let mut images = Vec::new();
+    let mut file_rows = Vec::new();
     for entry in &files.files {
         match &entry.role {
             // A carving sheet is named at the position its run occupies, which
@@ -298,49 +298,88 @@ pub(crate) fn mapping_table(
                 reference_options: files.sheet_binding_options(&entry.file.relative_path),
                 assignment: *disc,
                 disc_options: if binding.is_resolved() {
-                    disc_options.clone()
+                    disc_options.to_vec()
                 } else {
                     Vec::new()
                 },
             })),
-            FileRole::Audio => match contributions.get(entry.file.relative_path.as_str()) {
-                Some(UnitContribution::Runs(sheets)) => {
-                    for sheet in sheets.iter() {
-                        let group = SheetGroup {
-                            sheet_id: sheet.file.relative_path.clone(),
-                            name: sheet.file.relative_path.clone(),
-                            size: sheet.file.size,
-                            path: sheet.file.path.clone(),
-                            bound: bound_sheet(sheet),
-                            reference_options: files
-                                .sheet_binding_options(&sheet.file.relative_path),
-                            assignment: sheet.disc,
-                            disc_options: disc_options.clone(),
-                        };
-                        for (side, mapping) in rows.sheet_entries(sheet)? {
-                            push_sheet_entry(&mut track_sides, &group, side, mapping);
-                        }
-                    }
-                }
-                Some(UnitContribution::Whole) => {
-                    let (side, mapping) = rows.audio_row(entry)?;
-                    push_track_mapping(&mut track_sides, side, mapping);
-                }
-                // A carving sheet speaks for this file, so the sheet's rows are
-                // what it contributes and it has none of its own.
-                Some(UnitContribution::SpokenFor) => {}
-                None => unreachable!(
-                    "{} carries the audio role, and the layout places every audio file",
-                    entry.file.relative_path
-                ),
-            },
+            // The track rows stand for the audio.
+            FileRole::Audio => {}
             // Nothing else the folder holds is in the tracklist — the role says
             // so on its own. The folder is the release, so all of it is still
-            // carried.
+            // carried. The images become one gallery beside the rows.
             FileRole::Artwork => images.push(mapping_image(entry)),
             FileRole::Document => file_rows.push(carried(entry, MappingRole::Document)),
             FileRole::DamagedImage => file_rows.push(carried(entry, MappingRole::DamagedImage)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
+        }
+    }
+    FolderFiles {
+        images,
+        files: file_rows,
+    }
+}
+
+/// Project the mapping table for one folder and the draft committing it.
+///
+/// Refuses a draft whose tracks are not the folder's audio units in order: the
+/// draft is redrawn with every change to the folder's files, so a mismatch is a
+/// stored state that contradicts itself.
+///
+/// A row whose track holds the length its source lists shows that length
+/// beside its file's own.
+pub(crate) fn mapping_table(
+    files: &CategorizedFiles,
+    durations: &SourceDurations,
+    draft: &CandidateDraft,
+) -> Result<MappingTable, ImportError> {
+    let layout = audio_layout(files);
+    let contributions: HashMap<&str, &UnitContribution<'_>> = layout
+        .iter()
+        .map(|(file, contribution)| (file.relative_path.as_str(), contribution))
+        .collect();
+    let carving = carving_sheets(&layout);
+    let disc_options = disc_options(files);
+    let mut rows = RowBuilder {
+        durations,
+        mediums: &draft.mediums,
+        tracks: draft.tracks.iter(),
+    };
+    let mut track_sides = Vec::new();
+
+    for entry in &files.files {
+        if !matches!(entry.role, FileRole::Audio) {
+            continue;
+        }
+        match contributions.get(entry.file.relative_path.as_str()) {
+            Some(UnitContribution::Runs(sheets)) => {
+                for sheet in sheets.iter() {
+                    let group = SheetGroup {
+                        sheet_id: sheet.file.relative_path.clone(),
+                        name: sheet.file.relative_path.clone(),
+                        size: sheet.file.size,
+                        path: sheet.file.path.clone(),
+                        bound: bound_sheet(sheet),
+                        reference_options: files.sheet_binding_options(&sheet.file.relative_path),
+                        assignment: sheet.disc,
+                        disc_options: disc_options.clone(),
+                    };
+                    for (side, mapping) in rows.sheet_entries(sheet)? {
+                        push_sheet_entry(&mut track_sides, &group, side, mapping);
+                    }
+                }
+            }
+            Some(UnitContribution::Whole) => {
+                let (side, mapping) = rows.audio_row(entry)?;
+                push_track_mapping(&mut track_sides, side, mapping);
+            }
+            // A carving sheet speaks for this file, so the sheet's rows are
+            // what it contributes and it has none of its own.
+            Some(UnitContribution::SpokenFor) => {}
+            None => unreachable!(
+                "{} carries the audio role, and the layout places every audio file",
+                entry.file.relative_path
+            ),
         }
     }
     if let Some(extra) = rows.tracks.next() {
@@ -351,6 +390,7 @@ pub(crate) fn mapping_table(
             ),
         });
     }
+    let FolderFiles { images, files } = folder_files_besides(files, &carving, &disc_options);
 
     let untitled_track_count = track_sides
         .iter()
@@ -360,7 +400,7 @@ pub(crate) fn mapping_table(
     Ok(MappingTable {
         images,
         track_sides,
-        files: file_rows,
+        files,
         untitled_track_count: u32::try_from(untitled_track_count).map_err(|error| {
             ImportError::Internal {
                 detail: format!("{untitled_track_count} untitled tracks overflow a count: {error}"),

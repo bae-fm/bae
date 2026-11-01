@@ -48,11 +48,11 @@ async fn reading_the_tags_after_a_pick_keeps_the_link() {
 
     let after = pane(&handle, &key).await;
     assert_eq!(
-        after.metadata_provenance,
+        after.draft().unwrap().metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata),
         "the draft is the files' tags now"
     );
-    assert_eq!(after.release_link, Some(linked_to("linked-then-tags")));
+    assert_eq!(after.draft().unwrap().release_link, Some(linked_to("linked-then-tags")));
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
     shut_down(handle).await;
 }
@@ -67,9 +67,9 @@ async fn unlinking_keeps_the_draft_and_unmatches_the_folder() {
     handle.unlink_candidate_release(key.clone()).await.unwrap();
 
     let after = pane(&handle, &key).await;
-    assert_eq!(after.release_link, None);
-    assert_eq!(after.metadata_draft, before.metadata_draft);
-    assert_eq!(after.metadata_provenance, before.metadata_provenance);
+    assert_eq!(after.draft().unwrap().release_link, None);
+    assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
+    assert_eq!(after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance);
     assert_eq!(standing(&handle, &key).await, PendingStanding::Unmatched);
     shut_down(handle).await;
 }
@@ -91,13 +91,13 @@ async fn editing_or_clearing_the_draft_keeps_the_link() {
         .await
         .unwrap();
     let edited = pane(&handle, &key).await;
-    assert_eq!(edited.metadata_draft.album_title, "Typed Title");
-    assert_eq!(edited.release_link, Some(linked_to("linked-then-edited")));
+    assert_eq!(edited.draft().unwrap().metadata_draft.album_title, "Typed Title");
+    assert_eq!(edited.draft().unwrap().release_link, Some(linked_to("linked-then-edited")));
 
     handle.clear_candidate_metadata(key.clone()).await.unwrap();
     let cleared = pane(&handle, &key).await;
-    assert!(cleared.metadata_draft.is_blank());
-    assert_eq!(cleared.release_link, Some(linked_to("linked-then-edited")));
+    assert!(cleared.draft().unwrap().metadata_draft.is_blank());
+    assert_eq!(cleared.draft().unwrap().release_link, Some(linked_to("linked-then-edited")));
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
     shut_down(handle).await;
 }

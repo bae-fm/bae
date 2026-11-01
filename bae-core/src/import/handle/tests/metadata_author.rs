@@ -13,7 +13,7 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
         ..
     } = stored_candidate().await;
     assert_eq!(
-        pane(&handle, &key).await.metadata_author,
+        pane(&handle, &key).await.draft().unwrap().metadata_author,
         MetadataAuthor::Prefill,
         "a candidate nobody has picked for carries the scan's draft"
     );
@@ -24,7 +24,7 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
         .unwrap();
 
     assert_eq!(
-        pane(&handle, &key).await.metadata_author,
+        pane(&handle, &key).await.draft().unwrap().metadata_author,
         MetadataAuthor::Person
     );
     shut_down(handle).await;
@@ -36,14 +36,14 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
 async fn clearing_the_draft_leaves_the_person_its_author() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     assert_eq!(
-        pane(&handle, &key).await.metadata_author,
+        pane(&handle, &key).await.draft().unwrap().metadata_author,
         MetadataAuthor::Person
     );
 
     handle.clear_candidate_metadata(key.clone()).await.unwrap();
 
     let cleared = pane(&handle, &key).await;
-    assert_eq!(cleared.metadata_author, MetadataAuthor::Person);
-    assert_eq!(cleared.metadata_provenance, None);
+    assert_eq!(cleared.draft().unwrap().metadata_author, MetadataAuthor::Person);
+    assert_eq!(cleared.draft().unwrap().metadata_provenance, None);
     shut_down(handle).await;
 }

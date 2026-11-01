@@ -168,27 +168,31 @@ private func detail(
             badge: nil
         ),
         importStatus: nil,
-        remoteCovers: remoteCovers,
-        pickedLibraryStatus: nil,
-        album: .new,
         fileEvidence: [],
-        metadataDraft: MappingFixtures.albumEdit,
-        artistResolutions: [],
-        metadataDraftIsBlank: false,
-        metadataProvenance: MappingFixtures.provenance,
-        releaseLink: MappingFixtures.releaseLink,
-        metadataAuthor: .person,
         metadataRevision: 1,
-        mapping: BridgeMappingTable(
-            images: [],
-            trackSides: [],
-            files: [],
-            untitledTrackCount: 0
-        ),
-        cover: cover,
         signals: nil,
-        failure: nil,
-        session: MappingFixtures.session(presentation: presentation)
+        stage: .drafting(
+            draft: BridgeCandidateDraftPane(
+                remoteCovers: remoteCovers,
+                pickedLibraryStatus: nil,
+                album: .new,
+                metadataDraft: MappingFixtures.albumEdit,
+                artistResolutions: [],
+                metadataDraftIsBlank: false,
+                metadataProvenance: MappingFixtures.provenance,
+                releaseLink: MappingFixtures.releaseLink,
+                metadataAuthor: .person,
+                mapping: BridgeMappingTable(
+                    images: [],
+                    trackSides: [],
+                    files: [],
+                    untitledTrackCount: 0
+                ),
+                cover: cover,
+                failure: nil,
+                session: MappingFixtures.session(presentation: presentation)
+            )
+        )
     )
 }
 

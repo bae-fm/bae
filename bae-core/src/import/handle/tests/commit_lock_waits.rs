@@ -118,7 +118,7 @@ async fn retitle(handle: &ImportServiceHandle, key: &crate::import::CandidateKey
             .expect("the query stays open").result
             .unwrap()
             .expect("the candidate is still stored");
-        if projection.metadata_draft.album_title == "Retitled" {
+        if projection.draft().unwrap().metadata_draft.album_title == "Retitled" {
             return;
         }
     }

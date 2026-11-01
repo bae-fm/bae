@@ -253,8 +253,10 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
         .await
         .unwrap()
         .unwrap();
-    assert!(!detail.is_added);
-    assert_eq!(detail.imported, None);
+    assert!(
+        detail.draft().is_some(),
+        "the folder holds a draft, as one nobody imported does"
+    );
 }
 
 /// Done is keyed by the folder's hash, not its path: a folder imported here
@@ -339,7 +341,8 @@ async fn one_folder_hash_records_one_release() {
 /// The pane of a candidate its import put in the library is placed Done, which
 /// carries nothing of the candidate's draft: its folder check and its draft's
 /// catalogs belong to a candidate still in the queue. Its import status names
-/// the release imported from it.
+/// the release imported from it, and it draws the folder's files from its
+/// scan, holding no draft.
 #[tokio::test]
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let (db, _temp) = live_db().await;
@@ -376,6 +379,17 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
         .live
         .actions
         .contains(&crate::import::CandidateAction::Import));
+    assert_eq!(
+        done.stage,
+        crate::import::CandidateStage::Imported {
+            release: crate::import::ImportedRelease {
+                release_id: RELEASE_ID.to_string(),
+                album_id: ALBUM_ID.to_string(),
+            },
+            folder: crate::import::mapping::folder_files(&candidate.files),
+        },
+        "an imported candidate's pane reads no draft, whatever rows it holds"
+    );
 }
 
 /// Moving the window is a request change, not a commit: the query reruns and

@@ -16,6 +16,7 @@ use crate::identify::VerdictSummary;
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
 use crate::import::{CoverSelection, PressingLink, ReleaseLink};
+use crate::import::{DraftProjection, ProjectedStage};
 
 #[derive(Clone, PartialEq)]
 pub(super) struct CandidateDetailRows {
@@ -23,18 +24,31 @@ pub(super) struct CandidateDetailRows {
     source_error: Option<crate::import::GroupingBlock>,
     actionable: bool,
     skipped: bool,
-    imported: Option<ImportedRelease>,
     current: Option<DbImportCandidateState>,
+    metadata_revision: u64,
+    standing: crate::import::TriageRuntimeFacts,
+    listed: ListedColumns,
+    stage: StageRows,
+}
+
+/// What the pane reads past the candidate's folder: its draft and what goes
+/// with it, or the release this device imported from its files.
+#[derive(Clone, PartialEq)]
+enum StageRows {
+    Drafting(Box<DraftRows>),
+    Imported(ImportedRelease),
+}
+
+/// A candidate's draft and the rows its pane draws beside it.
+#[derive(Clone, PartialEq)]
+struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
-    metadata_revision: u64,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
-    standing: crate::import::TriageRuntimeFacts,
-    listed: ListedColumns,
 }
 
 /// One candidate, whole, with its standing and where the list places it.
@@ -85,17 +99,6 @@ pub(super) fn load_candidate_detail_on(
     let state = load_states_on(sql, super::super::query::CandidateRows::One(&content_hash))?
         .remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-    let release_link = current
-        .as_ref()
-        .and_then(|state| state.release_link.clone());
-    let pane_rows = load_pane_rows_on(sql, &content_hash)?;
-    // Read here, inside the pane's live query, so an artist another import
-    // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = super::super::artist_identity_choice::resolve_import_credits_on(
-        sql,
-        &content_hash,
-        pane_rows.draft.credits(),
-    )?;
     let metadata_revision = sql.query_row(
         "SELECT s.metadata_revision \
              FROM scan_candidate c JOIN import_candidate_state s \
@@ -110,12 +113,53 @@ pub(super) fn load_candidate_detail_on(
     let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
         DbError::Message(format!("candidate metadata revision is negative: {error}"))
     })?;
+    // An imported candidate holds no draft: its pane reads the library
+    // release, and the folder's files from its scan.
+    let stage = match imported {
+        Some(release) => StageRows::Imported(release),
+        None => StageRows::Drafting(Box::new(draft_rows_on(
+            sql,
+            &candidate,
+            &content_hash,
+            current.as_ref(),
+        )?)),
+    };
+    Ok(Some(CandidateDetailRows {
+        candidate,
+        source_error,
+        actionable,
+        skipped,
+        current,
+        metadata_revision,
+        standing,
+        listed,
+        stage,
+    }))
+}
 
+/// The draft of the candidate `content_hash` and what its pane draws beside
+/// it: the linked releases' records and covers, the album an import files
+/// under, and what the library holds for the draft's credits.
+fn draft_rows_on(
+    sql: &SqlReadContext<'_>,
+    candidate: &FolderCandidate,
+    content_hash: &str,
+    current: Option<&DbImportCandidateState>,
+) -> Result<DraftRows, DbError> {
+    let release_link = current.and_then(|state| state.release_link.clone());
+    let pane_rows = load_pane_rows_on(sql, content_hash)?;
+    // Read here, inside the pane's live query, so an artist another import
+    // commits — or any artist row that changes — reads the credits again.
+    let artist_resolutions = super::super::artist_identity_choice::resolve_import_credits_on(
+        sql,
+        content_hash,
+        pane_rows.draft.credits(),
+    )?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
     let claimed = claimed_releases_on(
         sql,
-        &candidate,
+        candidate,
         release_link.as_ref().and_then(ReleaseLink::pressing),
     )?;
     // Every catalog record of what the candidate is linked to: the linked
@@ -129,14 +173,14 @@ pub(super) fn load_candidate_detail_on(
                 .collect::<Vec<_>>(),
         ),
     };
-    let cover_options = offered_covers(current.as_ref(), release_link.as_ref(), &claimed);
+    let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
         Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
             .into_iter()
             .next(),
         None => None,
     };
-    let album = candidate_album_on(sql, &content_hash, &records)?;
+    let album = candidate_album_on(sql, content_hash, &records)?;
     let embedded_cover = match pane_rows.cover.as_ref() {
         Some(CoverSelection::Embedded(source_file_id)) => Some(stored_embedded_cover(
             sql,
@@ -146,24 +190,15 @@ pub(super) fn load_candidate_detail_on(
         )?),
         _ => None,
     };
-    Ok(Some(CandidateDetailRows {
-        candidate,
-        source_error,
-        actionable,
-        skipped,
-        imported,
-        current,
+    Ok(DraftRows {
         pane_rows,
         cover_options,
         artist_resolutions,
-        metadata_revision,
         records,
         picked_library_status,
         album,
         embedded_cover,
-        standing,
-        listed,
-    }))
+    })
 }
 
 /// The album an import of the candidate `content_hash`, linked to what
@@ -205,31 +240,13 @@ impl CandidateDetailRows {
             source_error,
             actionable,
             skipped,
-            imported,
             current,
-            pane_rows,
-            cover_options,
-            artist_resolutions,
             metadata_revision,
-            records,
-            picked_library_status,
-            album,
-            embedded_cover,
             standing,
             listed,
+            stage,
         } = self;
         let listed = listed.listed(&candidate.key())?;
-        let metadata_provenance = current
-            .as_ref()
-            .and_then(|state| state.metadata_provenance.clone());
-        let release_link = current
-            .as_ref()
-            .and_then(|state| state.release_link.clone());
-        let metadata_author = current
-            .as_ref()
-            .map_or(crate::import::MetadataAuthor::Nobody, |state| {
-                state.metadata_author
-            });
         let signals = current.as_ref().and_then(|state| state.signals.clone());
         let lookup_choices = current
             .as_ref()
@@ -238,7 +255,6 @@ impl CandidateDetailRows {
 
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let durations = &audio.durations;
         let mut verdict = None;
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
@@ -253,41 +269,72 @@ impl CandidateDetailRows {
             let text = crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
             resumed_identify_state = identify.verdict.clone().resume_state(text, audio.clone());
         }
-        let pane = crate::import::pane::draft_pane(&candidate.files, durations, &pane_rows.draft)
-            .map_err(|error| {
-            DbError::Message(format!(
-                "candidate {} cannot be drawn: {error}",
-                candidate.key()
-            ))
-        })?;
-        let cover = chosen_cover(&candidate.files, pane_rows.cover.as_ref(), embedded_cover);
+        let stage = match stage {
+            StageRows::Imported(release) => ProjectedStage::Imported {
+                release,
+                folder: crate::import::mapping::folder_files(&candidate.files),
+            },
+            StageRows::Drafting(draft) => {
+                let DraftRows {
+                    pane_rows,
+                    cover_options,
+                    artist_resolutions,
+                    records,
+                    picked_library_status,
+                    album,
+                    embedded_cover,
+                } = *draft;
+                let pane = crate::import::pane::draft_pane(
+                    &candidate.files,
+                    &audio.durations,
+                    &pane_rows.draft,
+                )
+                .map_err(|error| {
+                    DbError::Message(format!(
+                        "candidate {} cannot be drawn: {error}",
+                        candidate.key()
+                    ))
+                })?;
+                let cover =
+                    chosen_cover(&candidate.files, pane_rows.cover.as_ref(), embedded_cover);
+                ProjectedStage::Drafting(Box::new(DraftProjection {
+                    metadata_provenance: current
+                        .as_ref()
+                        .and_then(|state| state.metadata_provenance.clone()),
+                    release_link: current
+                        .as_ref()
+                        .and_then(|state| state.release_link.clone()),
+                    metadata_author: current
+                        .as_ref()
+                        .map_or(crate::import::MetadataAuthor::Nobody, |state| {
+                            state.metadata_author
+                        }),
+                    records,
+                    picked_library_status,
+                    album,
+                    metadata_draft: pane.edit,
+                    artist_resolutions,
+                    mapping: pane.mapping,
+                    cover,
+                    remote_covers: cover_options,
+                    lookup_choices,
+                    failure: pane_rows.failure,
+                    session: pane_rows.session,
+                }))
+            }
+        };
         Ok(ImportCandidateDetailProjection {
-            is_added: imported.is_some(),
             candidate,
             source_error,
             actionable,
             skipped,
             resumed_identify_state,
             verdict,
-            metadata_provenance,
-            release_link,
-            metadata_author,
             metadata_revision,
-            imported,
-            records,
-            picked_library_status,
-            album,
-            metadata_draft: pane.edit,
-            artist_resolutions,
-            mapping: pane.mapping,
-            cover,
-            remote_covers: cover_options,
             signals,
-            lookup_choices,
-            failure: pane_rows.failure,
-            session: pane_rows.session,
             standing,
             listed,
+            stage,
         })
     }
 }

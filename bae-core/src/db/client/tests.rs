@@ -289,6 +289,8 @@ mod album_group_tests;
 mod album_credit_tests;
 
 #[cfg(test)]
+mod draftless_candidate_tests;
+#[cfg(test)]
 mod import_list_live_query_tests;
 
 #[cfg(test)]

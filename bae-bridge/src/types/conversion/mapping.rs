@@ -320,6 +320,15 @@ mirror_enum! {
 }
 
 mirror_struct! {
+    BridgeFolderFiles = bae_core::import::FolderFiles,
+    from_core: pub(crate) fn,
+    fields: {
+        images: (each BridgeMappingImage),
+        files: (each BridgeMappingFileRow),
+    },
+}
+
+mirror_struct! {
     BridgeMappingTable = bae_core::import::MappingTable,
     from_core: pub(crate) fn,
     fields: {

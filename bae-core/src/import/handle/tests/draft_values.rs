@@ -194,7 +194,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
     shut_down(fixture.handle).await;
 
     let rows: Vec<_> = pane
-        .mapping
+        .draft().unwrap().mapping
         .track_sides
         .iter()
         .flat_map(crate::import::MappingTrackSide::mappings)
@@ -320,11 +320,11 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
             )
             .await
             .unwrap();
-        let draft = pane(&handle, &key).await.metadata_draft;
+        let draft = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
         let mut track = draft.tracks[1].clone();
         track.title = "Typed Track".to_string();
         handle.set_candidate_track_edit(&key, track).await.unwrap();
-        let draft = pane(&handle, &key).await.metadata_draft;
+        let draft = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
 
         let mut events = handle.every_event();
         let import_id = handle.start_import(&key).await.unwrap().expect_queued();

@@ -42,8 +42,14 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             })?;
         let content_hash = projection.candidate.files.content_hash();
-        let choices = projection.lookup_choices.clone().edited(edit);
-        let change = match choices.asks_the_same_as(&projection.lookup_choices) {
+        let stored = &projection
+            .draft()
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} was imported, and is looked up no more"),
+            })?
+            .lookup_choices;
+        let choices = stored.clone().edited(edit);
+        let change = match choices.asks_the_same_as(stored) {
             true => ChoiceChange::Ranking,
             false => ChoiceChange::Lookups,
         };

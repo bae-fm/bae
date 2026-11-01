@@ -377,16 +377,16 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         );
         let after = candidate_pane(&f, &candidate_key).await;
         assert_eq!(
-            after.release_link,
+            after.draft().unwrap().release_link,
             Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
         );
-        assert_eq!(after.release_link, before.release_link);
-        assert_eq!(after.metadata_draft, before.metadata_draft);
-        assert_eq!(after.metadata_provenance, before.metadata_provenance);
+        assert_eq!(after.draft().unwrap().release_link, before.draft().unwrap().release_link);
+        assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
+        assert_eq!(after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance);
         assert_eq!(after.metadata_revision, before.metadata_revision);
-        assert_eq!(after.cover, before.cover);
+        assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
         assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
-        let tracks = bae_core::import::mapping_tracks(&after.mapping);
+        let tracks = bae_core::import::mapping_tracks(&after.draft().unwrap().mapping);
         assert_eq!(tracks.len(), 12);
         assert!(tracks.iter().all(|track| track.file.is_some()));
     }
@@ -405,17 +405,17 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
 
     let pane = candidate_pane(&f, &candidate_key).await;
     assert_eq!(
-        pane.release_link,
+        pane.draft().unwrap().release_link,
         Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
     );
     assert_eq!(
-        pane.metadata_provenance,
+        pane.draft().unwrap().metadata_provenance,
         Some(bae_core::import::MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, fitting.clone()),
         })
     );
     let titles: Vec<_> = pane
-        .metadata_draft
+        .draft().unwrap().metadata_draft
         .tracks
         .iter()
         .map(|track| track.title.as_str())
@@ -440,18 +440,18 @@ async fn a_release_listing_no_tracks_applies() {
 
     let after = candidate_pane(&f, &candidate_key).await;
     assert_eq!(
-        after.release_link,
+        after.draft().unwrap().release_link,
         Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&lists_nothing)))
     );
     assert_eq!(
-        after.metadata_provenance,
+        after.draft().unwrap().metadata_provenance,
         Some(bae_core::import::MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, lists_nothing.clone()),
         })
     );
-    assert_eq!(after.metadata_draft.album_title, "Album Title");
-    assert_eq!(after.metadata_draft.tracks, before.metadata_draft.tracks);
-    let tracks = bae_core::import::mapping_tracks(&after.mapping);
+    assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
+    assert_eq!(after.draft().unwrap().metadata_draft.tracks, before.draft().unwrap().metadata_draft.tracks);
+    let tracks = bae_core::import::mapping_tracks(&after.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 12);
     assert!(tracks.iter().all(|track| track.file.is_some()));
 }
@@ -473,7 +473,7 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
 
     let (candidate_key, pane) = pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    let mut tracks = bae_core::import::mapping_tracks(&pane.mapping);
+    let mut tracks = bae_core::import::mapping_tracks(&pane.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 3);
     tracks[0].file = tracks[1].file.clone();
     assert!(f

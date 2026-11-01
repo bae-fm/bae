@@ -154,7 +154,12 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             })?;
         let content_hash = projection.candidate.files.content_hash();
-        let mut session = projection.session_or_initial();
+        let mut session = projection
+            .draft()
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} was imported, and its pane keeps no session"),
+            })?
+            .session_or_initial(projection.verdict.is_some());
         change(&mut session);
         self.library_manager
             .save_import_candidate_session(&content_hash, &session)

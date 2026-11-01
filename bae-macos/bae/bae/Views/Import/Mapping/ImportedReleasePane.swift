@@ -2,7 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// A completed import: the saved release's editable metadata, with the source
-/// folder's images and files. It cannot change the candidate.
+/// folder's images and files as its scan read them. It cannot change the
+/// candidate, which holds no draft once imported.
 struct ImportedReleasePane: View {
     let candidate: Candidate
     let releaseId: String
@@ -15,6 +16,12 @@ struct ImportedReleasePane: View {
 
     /// The height the loading and failed states hold.
     private static let placeholderHeight: CGFloat = 280
+
+    /// The folder's images and its other files, as its scan read them: the
+    /// candidate holds no draft once imported, so no mapping table.
+    private var folder: BridgeFolderFiles {
+        candidate.importedFolder ?? BridgeFolderFiles(images: [], files: [])
+    }
 
     @State
     private var session: ReleaseMetadataEditSession?
@@ -38,10 +45,10 @@ struct ImportedReleasePane: View {
                     onPlayTrack: onPlayTrack,
                     onSaved: { _ in }
                 )
-                if !candidate.mapping.images.isEmpty {
+                if !folder.images.isEmpty {
                     imagesSection
                 }
-                if !candidate.mapping.files.isEmpty {
+                if !folder.files.isEmpty {
                     filesSection
                 }
             }
@@ -84,7 +91,7 @@ struct ImportedReleasePane: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Images"), ruled: true)
             ImportMappingGallery(
-                images: candidate.mapping.images,
+                images: folder.images,
                 evidence: candidate.fileEvidence,
                 onOpen: onOpenImages
             )
@@ -95,7 +102,7 @@ struct ImportedReleasePane: View {
         VStack(alignment: .leading, spacing: 0) {
             FormSectionHeader(title: String(localized: "Files"), ruled: true)
                 .padding(.bottom, ThemeSpace.compact)
-            ForEach(candidate.mapping.files, id: \.rowId) { row in
+            ForEach(folder.files, id: \.rowId) { row in
                 completedFileRow(row)
                     .padding(.horizontal, ThemeSpace.line)
                     .padding(.vertical, ThemeSpace.related)

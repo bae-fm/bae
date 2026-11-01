@@ -2648,7 +2648,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_folder (
 CREATE INDEX IF NOT EXISTS idx_import_candidate_folder_folder
     ON import_candidate_folder (folder);
 
--- The release-level metadata draft the import will write.
+-- The release-level metadata draft the import will write. A candidate this
+-- device did not import that has no row holds the blank draft of its files
+-- and the folder's own cover, as a scan seeds a new candidate it reads no
+-- tags of: a folder whose release was deleted is back in Found so, and the
+-- first write to its draft stores the row. An imported candidate holds no
+-- draft: the import deletes it, with its source, its cover and its link.
 CREATE TABLE IF NOT EXISTS import_candidate_edit (
     content_hash   TEXT PRIMARY KEY,
     album_title    TEXT NOT NULL,
@@ -4150,7 +4155,7 @@ FROM (
            -- credits, as the library holds them now.
            CASE WHEN item = 'invalid' THEN COALESCE(tag_title, name)
                 WHEN imported THEN library_title
-                WHEN has_summary THEN draft_title
+                WHEN has_summary THEN COALESCE(draft_title, name)
                 ELSE name END AS shown_title,
            CASE WHEN item = 'invalid' THEN tag_artist
                 WHEN imported THEN COALESCE(library_credit_line, '')
@@ -4306,6 +4311,11 @@ FROM (
                                            WHERE p.content_hash = e.content_hash)
                                 OR EXISTS (SELECT 1 FROM import_candidate_release_link AS l
                                            WHERE l.content_hash = e.content_hash)))
+                       -- With no draft row the candidate holds its files'
+                       -- blank draft, which titles a release read from
+                       -- several folders by the name it is listed as.
+                       OR (s.content_hash IS NOT NULL AND e.content_hash IS NULL
+                           AND c.grouping_key IS NOT NULL)
                    END AS has_summary,
                    -- The draft's album credits as one line: each printed
                    -- name, after the join the credit before it states, or a

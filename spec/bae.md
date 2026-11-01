@@ -493,10 +493,16 @@ sits now.
 One hash is one release on a device. An import of files this device already
 imported is refused when it is asked for, and nothing runs; the person is told
 this device already imported those files. Two imports of the same files asked
-for before either lands both run, and the one that writes second finds the hash
-taken: it fails with the same words and writes nothing. The release imported
-first stands. Deleting the release deletes the record with it, and the folder
-is back in Found.
+for before either lands both run, and the one that comes second finds the hash
+taken, as it reads what to import or as it writes: it fails with the same
+words and writes nothing. The release imported
+first stands. Deleting the release, here or on another device, deletes the
+record with it, and the folder is back in Found as a folder whose tags bae
+never read: an imported folder holds no draft (§3.7), so it holds its files'
+blank draft and its own cover, and its row shows its folder's name (a release
+read from several folders, the name it is listed as) until something is
+written to its draft. It is identified like any folder in Found, and Reset to
+file metadata reads its tags again.
 
 The hash reads no bytes, so it tells files apart by name, size and time alone.
 A copy to another disk usually changes the modification times, so the same rip
@@ -613,8 +619,10 @@ costs the same however much else the watched folder holds.
 
 **What a scan reads.** A scan reads each file once. It opens a track twice:
 FFmpeg's probe, which says whether it plays, and one read of its tags, which
-places it in play order, names a broken folder, and seeds its release's draft,
-picture included. A folder read again within the same scan, such as disc
+places it in play order, names a broken folder, and seeds a new release's
+draft, picture included: the scan seeds the draft and the cover in the write
+that first stores the release's state, and never for files this device
+imported, whose release is the library's. A folder read again within the same scan, such as disc
 folders read as one release after each was read on its own, reads none of its
 files again.
 
@@ -746,7 +754,9 @@ holds it now — its album's title and credits, each printed as the library
 prints it, its cover, and the arrow of a release a catalog's record describes
 — so retitling the album, editing its credits or merging an artist they name
 changes the row in the same write. It says nothing more but its release's
-upload: the tab says it is done. While files of the release wait in this device's
+upload: the tab says it is done. Its pane is that release, to edit as the
+library editor edits it (§3.8), with the folder's images and other files as
+its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
 Storage Manager does (§4.2): Uploading while any file is being sent, beside a
 bar of the bytes of the release's whole size stored or sent, or Queued with no
@@ -1222,7 +1232,10 @@ since no source said anything about it, and the draft keeps only the works its
 tracks still perform.
 
 Every draft records who wrote it: nobody yet, the folder's tags, an
-identification, or the person. Every pane control is stored the moment it's
+identification, or the person. A folder this device did not import that
+holds no stored draft, as one whose release was deleted does (§2.7), holds
+its files' blank draft, which nobody wrote, and the first write to its draft
+stores it whole, with the cover the folder came with. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half
 done and come back to it, even after a restart. Where the pane was, such as a
 half-typed search, is stored too. Since each edit is written as it is made,
@@ -1325,9 +1338,12 @@ Ana clicks Import. bae:
    reads once the release is in: the identify verdict with the releases it
    found, what the person let the lookups use, where the pane was, the
    artist and label decisions it just resolved its credits and labels by,
-   and the album picked for it. The draft, its source, its link and its
-   cover stay, since the imported folder's pane draws its files from them,
-   and so do the clues, since that pane marks the files they were read off. An
+   the album picked for it, and the draft with its source, its link and its
+   cover, since the Done row and the imported folder's pane read the
+   library release (§3.2). The clues stay, since that pane marks the files
+   they were read off, and so do the file decisions, which lay its files
+   out. Every later command that would change the draft of a folder this
+   device imported is refused with the words an import of its files is. An
    import that fails deletes none of it, so a retry reads what the person
    and the run settled.
 
@@ -3676,7 +3692,7 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6) |
+| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). No row: a folder this device did not import holds its files' blank draft and the folder's own cover; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |

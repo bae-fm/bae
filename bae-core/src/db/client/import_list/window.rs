@@ -19,7 +19,7 @@ use super::super::import_state::{
 };
 use super::super::queued_uploads::release_upload_on;
 use super::super::read::get_release_records_on;
-use super::super::release_groupings::block_of;
+use super::super::release_groupings::{block_of, load_candidate_on};
 use super::super::source_releases::load_release_records_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
@@ -192,6 +192,9 @@ struct ReleaseRows {
     /// Whether the candidate's state describes its current files, which is
     /// when its draft, link, lookup and cover are its own.
     current: bool,
+    /// Whether that state holds a draft row; one that holds none holds its
+    /// files' blank draft and the folder's own cover.
+    drafted: bool,
     imported: Option<ImportedRelease>,
     /// The version of the imported release's library cover, if it has one.
     library_cover: Option<String>,
@@ -236,6 +239,8 @@ fn release_rows(
                     EXISTS (SELECT 1 FROM import_list_selection AS chosen \
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
                     w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
+                    EXISTS (SELECT 1 FROM import_candidate_edit AS drafted \
+                            WHERE drafted.content_hash = s.content_hash) AS drafted, \
                     {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover} \
              FROM json_each(:keys) AS w \
              JOIN import_list_placement AS p \
@@ -289,6 +294,7 @@ fn release_rows(
                     None => None,
                 },
                 library_cover: row.get("library_cover")?,
+                drafted: row.get("drafted")?,
                 block: (row.get(22)?, row.get(23)?, row.get(24)?),
                 failure: match failed {
                     true => Some(failure_reason_from_row(row)?),
@@ -400,13 +406,7 @@ fn candidate_item(
                 ),
                 release_link,
                 picked,
-                cover: release
-                    .cover
-                    .as_ref()
-                    .map(|cover| {
-                        row_cover_source(sql, &release.watched_folder_path, &release.key, cover)
-                    })
-                    .transpose()?,
+                cover: row_cover(sql, &release)?,
             }
         }
     };
@@ -512,6 +512,35 @@ impl LinkedRows {
             Self::Album(records) => records,
         }
     }
+}
+
+/// The cover the row of a candidate this device did not import draws: its
+/// stored selection, or, for a state holding no draft row, the folder's own
+/// cover its blank draft comes with, read from its scan. Only such a row
+/// reads its scan's files.
+fn row_cover(
+    sql: &SqlReadContext<'_>,
+    release: &ReleaseRows,
+) -> Result<Option<crate::import::CoverImageSource>, DbError> {
+    let blank;
+    let cover = match (release.current, release.drafted) {
+        (true, false) => {
+            blank = load_candidate_on(sql, &release.key)?
+                .ok_or_else(|| {
+                    DbError::Message(format!(
+                        "the list lists {}, which no scan stored",
+                        release.key
+                    ))
+                })?
+                .candidate
+                .blank_cover();
+            blank.as_ref()
+        }
+        _ => release.cover.as_ref(),
+    };
+    cover
+        .map(|cover| row_cover_source(sql, &release.watched_folder_path, &release.key, cover))
+        .transpose()
 }
 
 /// The image the row of the candidate at `candidate_path` draws for `cover`.

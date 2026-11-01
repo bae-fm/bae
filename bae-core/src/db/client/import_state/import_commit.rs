@@ -102,12 +102,13 @@ pub(crate) fn record_import_origin_on(
 }
 
 /// Delete, inside the commit, what the candidate holds that nothing reads once
-/// its release is in: the identify verdict (its releases and ledger go with it), what
-/// the person let the lookups use, where the pane was, the artist and label
-/// decisions this commit just resolved its credits and labels by, and the
-/// library album picked for it. The Done row and the
-/// imported folder's pane read the rest: the draft, its source, the link and
-/// the cover draw the row, and the clues mark the files they were read off. A
+/// its release is in: the identify verdict (its releases and ledger go with
+/// it), what the person let the lookups use, where the pane was, the artist
+/// and label decisions this commit just resolved its credits and labels by,
+/// the library album picked for it, and its draft with its source, its cover
+/// and its link: the Done row and the imported folder's pane read the
+/// library release. The clues stay, since that pane marks the files they
+/// were read off, and so do the file decisions, which lay its files out. A
 /// commit that does not land deletes none of it, so a retry finds the
 /// candidate as the failed attempt left it.
 pub(crate) fn delete_what_the_import_spent_on(
@@ -124,6 +125,12 @@ pub(crate) fn delete_what_the_import_spent_on(
                 "import_candidate_artist_identity_choice",
                 "import_candidate_label_identity_choice",
                 "import_candidate_album_pick",
+                // The draft takes its source and every row below it.
+                "import_candidate_edit",
+                // The cover takes its copies and its fetched bytes.
+                "import_candidate_cover",
+                // The link takes its partners and its albums.
+                "import_candidate_release_link",
             ] {
                 sql.execute(
                     &format!("DELETE FROM {table} WHERE content_hash = ?"),

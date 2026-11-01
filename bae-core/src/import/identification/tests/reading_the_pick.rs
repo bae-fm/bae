@@ -227,14 +227,18 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
     assert_eq!(failure, None, "the import completes");
     let row = fixture.stored_for(&dir).await.expect("the candidate's row");
-    assert_eq!(
-        row.metadata_author,
-        crate::import::MetadataAuthor::Identification,
-        "what imported is the pick's draft"
-    );
     assert!(
         row.identify.is_none(),
         "the import's write deletes the verdict it imported the pick of"
+    );
+    assert_eq!(
+        fixture
+            .database
+            .query_texts_for_test("SELECT catalog || ' ' || key FROM release_records")
+            .await
+            .unwrap(),
+        vec!["musicbrainz mb-pane".to_string()],
+        "what imported is the pick's draft, read from the picked release"
     );
 
     tokio::time::timeout(

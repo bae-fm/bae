@@ -283,7 +283,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
             .pane(&waiting)
             .await
             .expect("the candidate is still listed")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::Draft,
         "the pane is back on the draft"

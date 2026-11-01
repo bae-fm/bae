@@ -27,7 +27,7 @@ async fn picked_with_front(
 async fn offered(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> Vec<String> {
     pane(handle, key)
         .await
-        .remote_covers
+        .draft().unwrap().remote_covers.clone()
         .into_iter()
         .map(|cover| cover.image.url)
         .collect()
@@ -53,7 +53,7 @@ async fn a_pick_offers_its_releases_covers() {
 async fn a_draft_read_from_the_tags_offers_no_catalog_cover() {
     let (handle, _tmp, key, _hash) = picked_with_front("tags-release").await;
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    assert!(pane(&handle, &key).await.release_link.is_some());
+    assert!(pane(&handle, &key).await.draft().unwrap().release_link.is_some());
     assert_eq!(offered(&handle, &key).await, Vec::<String>::new());
     shut_down(handle).await;
 }

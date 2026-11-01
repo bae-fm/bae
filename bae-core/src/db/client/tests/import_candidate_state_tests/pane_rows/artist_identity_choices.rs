@@ -354,7 +354,7 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
             .ids,
         [discogs.id]
     );
-    let mut prep = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let mut prep = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = crate::db::CandidateSaveExpectation {
         edit_revision: prep.file_edits.revision,
         metadata_revision: prep.metadata_revision,

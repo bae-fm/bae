@@ -659,12 +659,14 @@ impl StoredCandidate {
                 "import candidate {content_hash} has a negative metadata revision: {error}"
             ))
         })?;
-        let author = author.ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} has no editable metadata draft"
-            ))
-        })?;
-        let author = super::pane_rows::author_of(&author)?;
+        // With no draft row a candidate holds its files' blank draft, which
+        // nobody wrote; an imported candidate holds none, and nothing reads
+        // its author.
+        let author = author
+            .as_deref()
+            .map(super::pane_rows::author_of)
+            .transpose()?
+            .unwrap_or(crate::import::MetadataAuthor::Nobody);
         let provenance = provenance.map(StoredProvenance::provenance).transpose()?;
         author
             .check_provenance(provenance.as_ref())

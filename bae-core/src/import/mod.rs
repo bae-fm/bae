@@ -302,19 +302,20 @@ pub use identification::IdentificationHandle;
 pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
 pub use list::{
-    ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement, FolderScanActivity,
-    FolderScanProgress, ImportCandidateDetail, ImportCandidateDetailProjection,
-    ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
-    ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
-    ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-    ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter, PendingFilterEntry,
+    ActiveFolderScan, CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement,
+    CandidateStage, DraftProjection, FolderScanActivity, FolderScanProgress, ImportCandidateDetail,
+    ImportCandidateDetailProjection, ImportCandidateListLocation, ImportCounts, ImportListId,
+    ImportListItem, ImportListNarrowing, ImportListOrder, ImportListProjection, ImportListRequest,
+    ImportListSnapshot, ImportListSubscription, ImportListSubscriptionError, ImportListView,
+    ImportListWindow, ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter,
+    PendingFilterEntry, ProjectedStage,
 };
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 #[cfg(desktop)]
 pub use mapping::{
-    mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
-    MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable, MappingTrackRun,
-    MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
+    mapping_tracks, FolderFiles, InvalidCandidateDetail, MappingContainer, MappingEntry,
+    MappingFile, MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
+    MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
 };
 #[cfg(desktop)]
 pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};

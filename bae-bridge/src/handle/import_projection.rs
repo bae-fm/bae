@@ -723,34 +723,19 @@ impl crate::types::BridgeCandidatePanePlacement {
 
 impl crate::types::BridgeImportCandidateDetail {
     pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
+        let is_added = detail.is_added();
         let bae_core::import::ImportCandidateDetail {
             candidate,
             actionable,
             skipped,
-            is_added,
             resumed_identify_state,
             placement,
             live,
             import_status,
-            picked_library_status,
-            album,
             file_evidence,
-            metadata_draft,
-            artist_resolutions,
-            metadata_draft_is_blank,
-            metadata_provenance,
-            release_link,
-            metadata_author,
             metadata_revision,
-            mapping,
-            cover,
-            remote_covers,
             signals,
-            // Changed through `edit_candidate_lookup_choices`; nothing on the
-            // pane reads it back.
-            lookup_choices: _,
-            failure,
-            session,
+            stage,
         } = detail;
         let rate = resumed_identify_state
             .audio()
@@ -764,6 +749,52 @@ impl crate::types::BridgeImportCandidateDetail {
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+            file_evidence: file_evidence
+                .into_iter()
+                .map(crate::types::BridgeFileEvidence::from_core)
+                .collect(),
+            metadata_revision,
+            signals: signals.map(crate::types::BridgeSignals::from_core),
+            stage: crate::types::BridgeCandidateStage::from_core(stage),
+        }
+    }
+}
+
+impl crate::types::BridgeCandidateStage {
+    fn from_core(stage: bae_core::import::CandidateStage) -> Self {
+        match stage {
+            bae_core::import::CandidateStage::Drafting(draft) => Self::Drafting {
+                draft: crate::types::BridgeCandidateDraftPane::from_core(*draft),
+            },
+            bae_core::import::CandidateStage::Imported { release, folder } => Self::Imported {
+                release: crate::types::BridgeImportedRelease::from_core(release),
+                folder: crate::types::BridgeFolderFiles::from_core(folder),
+            },
+        }
+    }
+}
+
+impl crate::types::BridgeCandidateDraftPane {
+    fn from_core(draft: bae_core::import::CandidateDraftPane) -> Self {
+        let bae_core::import::CandidateDraftPane {
+            picked_library_status,
+            album,
+            metadata_draft,
+            artist_resolutions,
+            metadata_draft_is_blank,
+            metadata_provenance,
+            release_link,
+            metadata_author,
+            mapping,
+            cover,
+            remote_covers,
+            // Changed through `edit_candidate_lookup_choices`; nothing on the
+            // pane reads it back.
+            lookup_choices: _,
+            failure,
+            session,
+        } = draft;
+        Self {
             remote_covers: remote_covers
                 .into_iter()
                 .map(crate::types::BridgeRemoteCover::from_core)
@@ -771,10 +802,6 @@ impl crate::types::BridgeImportCandidateDetail {
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),
             album: crate::types::BridgeDraftAlbum::from_core(album),
-            file_evidence: file_evidence
-                .into_iter()
-                .map(crate::types::BridgeFileEvidence::from_core)
-                .collect(),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
             artist_resolutions: artist_resolutions
                 .into_iter()
@@ -785,10 +812,8 @@ impl crate::types::BridgeImportCandidateDetail {
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             release_link: release_link.map(crate::types::BridgeReleaseLink::from_core),
             metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
-            metadata_revision,
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
-            signals: signals.map(crate::types::BridgeSignals::from_core),
             failure: failure.map(crate::types::BridgeImportFailure::from_core),
             session: crate::types::BridgeCandidateSession::from_core(session),
         }

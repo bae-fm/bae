@@ -8,6 +8,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
+        .and_then(crate::db::DbPreparationRead::prepared)
         .expect("the scanned candidate is prepared");
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
@@ -53,6 +54,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
+        .and_then(crate::db::DbPreparationRead::prepared)
         .expect("the scanned candidate is prepared");
     let root = host_root("/music");
     let mut replacement = scanned_candidate(&root, "Album");
@@ -138,6 +140,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
+        .and_then(crate::db::DbPreparationRead::prepared)
         .expect("the candidate is prepared");
     crate::import::CandidatePreparations::new(db.clone())
         .set_field(&hash, CandidateEditField::PressingYear, "1991")
@@ -487,6 +490,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
+        .and_then(crate::db::DbPreparationRead::prepared)
         .expect("the candidate has a stored preparation");
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit_prepared(

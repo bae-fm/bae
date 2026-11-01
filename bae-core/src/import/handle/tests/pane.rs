@@ -954,7 +954,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     .await
     .expect("the pick is announced");
     assert_eq!(
-        pane(&handle, &key).await.metadata_provenance,
+        pane(&handle, &key).await.draft().unwrap().metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata),
         "the pick landed"
     );

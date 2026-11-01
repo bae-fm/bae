@@ -75,7 +75,7 @@ async fn assert_every_mutation_refused(
 async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let seeded = pane(&handle, &key).await;
-    let seeded_artists = seeded.metadata_draft.album_artist_assignments;
+    let seeded_artists = seeded.draft().unwrap().metadata_draft.clone().album_artist_assignments;
 
     handle
         .set_candidate_edit_field(
@@ -88,7 +88,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .await
         .unwrap();
 
-    let edited = pane(&handle, &key).await.metadata_draft;
+    let edited = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(edited.album_title, "Typed Title");
     assert_eq!(
         edited.album_artist_assignments, seeded_artists,
@@ -106,7 +106,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .await
         .unwrap();
 
-    assert_eq!(pane(&handle, &key).await.metadata_draft.album_title, "");
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title, "");
     let stored = handle
         .library_manager
         .load_import_candidate_pane_rows(&hash)
@@ -143,7 +143,7 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
         .await
         .unwrap();
     assert_eq!(
-        pane(&handle, &key).await.metadata_draft.pressing.year,
+        pane(&handle, &key).await.draft().unwrap().metadata_draft.pressing.year,
         "1991"
     );
 
@@ -172,7 +172,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     assert_eq!(
         pane(&handle, &key)
             .await
-            .metadata_draft
+            .draft().unwrap().metadata_draft
             .album_artist_assignments,
         crate::import::Credited::plain_list(assignments)
     );
@@ -184,7 +184,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
+    let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let stored = handle
         .library_manager
         .load_import_candidate_preparation(&hash)
@@ -222,7 +222,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edited_track_row_redraws_alone() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
+    let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let first = before.first().expect("the folder names tracks").clone();
     let untouched = before[1].title.clone();
 
@@ -240,7 +240,7 @@ async fn an_edited_track_row_redraws_alone() {
         .await
         .unwrap();
 
-    let after = track_rows(&pane(&handle, &key).await.mapping);
+    let after = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     assert_eq!(after.len(), before.len());
     assert_eq!(after[0].title, "Renamed");
     assert_eq!(
@@ -274,7 +274,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
-    let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
+    let mut tracks = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 3);
     tracks[0].title = "Renamed".to_string();
     handle
@@ -323,9 +323,9 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
         .unwrap()
         .expect("the candidate is prepared");
     let pane_before = pane(&handle, &key).await;
-    let first_track = track_rows(&pane_before.mapping)[0].clone();
+    let first_track = track_rows(&pane_before.draft().unwrap().mapping)[0].clone();
     let cover = pane_before
-        .cover
+        .draft().unwrap().cover.clone()
         .expect("the fixture has a selected cover")
         .selection;
     handle.claim_candidate_for_import_for_test(&key, "import-1").await;
@@ -350,9 +350,12 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     shut_down(handle).await;
 }
 
+/// An imported candidate holds no draft: an edit of it is refused as an
+/// import of those files would be, and the library release stays as the
+/// import wrote it.
 #[tokio::test(flavor = "multi_thread")]
-async fn editing_a_candidate_preserves_its_imported_copy() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
             &key,
@@ -377,56 +380,32 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
         .opened()
         .clone();
 
-    handle.set_candidate_edit_field(
-        &key,
-        crate::import::DraftFieldEdit::Text {
-            field: crate::import::CandidateEditField::AlbumTitle,
-            value: "Edited candidate".into(),
-        },
-    ).await.unwrap();
-    let candidate_before = handle.library_manager.load_import_candidate_preparation(&hash)
-        .await.unwrap().unwrap();
-    assert_eq!(candidate_before.draft.album_title, "Edited candidate");
+    let refused = handle
+        .set_candidate_edit_field(
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Edited candidate".into(),
+            },
+        )
+        .await;
+    assert_eq!(
+        refused.map_err(|error| error.to_string()),
+        Err(crate::import::ImportError::FilesAlreadyImported {
+            release_id: release_id.clone()
+        }
+        .to_string())
+    );
     assert_eq!(
         handle
             .library_manager
             .open_release_edit(&release_id)
             .await
             .unwrap()
-        .opened()
-        .clone(),
+            .opened()
+            .clone(),
         release_before
     );
-
-    let mut persisted_edit = release_before.edit;
-    persisted_edit.album_title = "Edited imported release".to_string();
-    handle
-        .library_manager
-        .apply_release_metadata_user_edit(&release_id, &persisted_edit.shape().unwrap())
-        .await
-        .unwrap();
-    assert_eq!(
-        handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .expect("the persisted release edit leaves candidate preparation alone"),
-        candidate_before
-    );
-    assert_eq!(
-        handle
-            .library_manager
-            .open_release_edit(&release_id)
-            .await
-            .unwrap()
-        .opened()
-        .clone()
-            .edit
-            .album_title,
-        "Edited imported release"
-    );
-    shut_down(handle).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -461,7 +440,7 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
 #[tokio::test(flavor = "multi_thread")]
 async fn track_artist_assignments_fill_across_named_rows() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
+    let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let target_ids = before.iter().map(|track| track.id.clone()).collect();
     let assignments = crate::import::TrackArtistAssignments::Explicit(vec![
         crate::import::Credited::plain(crate::import::ArtistAssignment::named("Filled Artist")),
@@ -472,7 +451,7 @@ async fn track_artist_assignments_fill_across_named_rows() {
         .await
         .unwrap();
 
-    let after = track_rows(&pane(&handle, &key).await.mapping);
+    let after = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     assert_eq!(after.len(), before.len());
     for (before, after) in before.iter().zip(after.iter()) {
         assert_eq!(after.artist_assignments, assignments);
@@ -545,7 +524,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         .unwrap();
     let cover = pane(&handle, &key)
         .await
-        .cover
+        .draft().unwrap().cover.clone()
         .expect("file metadata applies its deterministic default cover");
     assert_eq!(
         cover.selection,
@@ -588,7 +567,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
 
     let cover = pane(&handle, &key)
         .await
-        .cover
+        .draft().unwrap().cover.clone()
         .expect("applying tags that embed artwork selects a cover");
     assert_eq!(
         cover.selection,
@@ -603,7 +582,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     assert_eq!(
         pane(&reopened, &key)
             .await
-            .cover
+            .draft().unwrap().cover.clone()
             .expect("the persisted selection survives a relaunch")
             .selection,
         crate::import::CoverSelection::Local("cover.jpg".to_string())

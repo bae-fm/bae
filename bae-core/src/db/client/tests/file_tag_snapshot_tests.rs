@@ -444,7 +444,13 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     db.replace_candidate_file_tag_snapshot(&root, &key, &reading)
         .await
         .unwrap();
-    let mut stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let mut stale = db
+        .load_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .stored()
+        .unwrap();
     let expected = save_expectation(&candidate, &stale);
     crate::import::CandidatePreparations::new(db.clone())
         .set_field(
@@ -454,7 +460,13 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
         )
         .await
         .unwrap();
-    let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let before = db
+        .load_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .stored()
+        .unwrap();
     stale.metadata_revision += 1;
     let mut replacement = reading.clone();
     replacement.files[0].tags.title = Some("Stale title".into());
@@ -472,7 +484,12 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
         .unwrap();
     assert!(matches!(result, crate::db::CandidateSaved::Superseded));
     assert_eq!(
-        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        db.load_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .unwrap()
+            .stored()
+            .unwrap(),
         before
     );
     assert_eq!(
@@ -491,7 +508,13 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let hash = candidate.files.content_hash();
-    let mut prep = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let mut prep = db
+        .load_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .stored()
+        .unwrap();
     let expected = save_expectation(&candidate, &prep);
     prep.file_edits.revision += 1;
     prep.metadata_revision += 1;
@@ -530,7 +553,13 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
         db.replace_candidate_file_tag_snapshot(&root, &key, &original)
             .await
             .unwrap();
-        let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+        let before = db
+            .load_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .unwrap()
+            .stored()
+            .unwrap();
         let expected = save_expectation(&candidate, &before);
         let mut prep = before.clone();
         prep.metadata_revision += 1;
@@ -556,7 +585,12 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
             .await
             .is_err());
         assert_eq!(
-            db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+            db.load_candidate_preparation(&hash)
+                .await
+                .unwrap()
+                .unwrap()
+                .stored()
+                .unwrap(),
             before
         );
         assert_eq!(

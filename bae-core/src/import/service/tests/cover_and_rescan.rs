@@ -786,13 +786,13 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .unwrap()
         .expect("the candidate is stored");
     assert_eq!(
-        detail.metadata_provenance,
+        detail.draft().unwrap().metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata)
     );
-    assert_eq!(detail.metadata_draft.album_title, "Test Album");
+    assert_eq!(detail.draft().unwrap().metadata_draft.album_title, "Test Album");
     assert_eq!(
         detail
-            .metadata_draft
+            .draft().unwrap().metadata_draft
             .tracks
             .iter()
             .map(|track| track.title.clone())

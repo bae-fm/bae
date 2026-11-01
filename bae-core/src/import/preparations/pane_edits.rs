@@ -238,15 +238,11 @@ impl CandidatePreparations {
         expected_metadata_revision: Option<u64>,
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
     ) -> Result<u64, LibraryError> {
-        let mut prep = self
-            .database
-            .load_candidate_preparation(content_hash)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Refused(format!(
-                    "the metadata edit for {content_hash} has no candidate state row"
-                ))
-            })?;
+        let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
+            LibraryError::Refused(format!(
+                "the metadata edit for {content_hash} has no candidate state row"
+            ))
+        })?;
         if let Some(expected) = expected_file_edit_revision {
             if prep.file_edits.revision != expected {
                 return Err(CandidateAsRead::files_moved(

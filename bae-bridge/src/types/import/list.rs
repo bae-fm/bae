@@ -200,9 +200,10 @@ pub struct BridgeImportListSnapshot {
 }
 
 /// One candidate as the pane reads it, whole: the folder with its files, what
-/// the queue makes of it, the identify state it resumes, and everything the
-/// pane draws — the picked release, the metadata form, the mapping table, the
-/// cover, and the failure its last import left.
+/// the queue makes of it, the identify state it resumes, and its draft — the
+/// picked release, the metadata form, the mapping table, the cover, and the
+/// failure its last import left — or the release this device imported from
+/// it.
 ///
 /// The pane holds no copy of any of it. Every control writes, and the next
 /// value of this record is what redraws.
@@ -223,6 +224,35 @@ pub struct BridgeImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<BridgeCandidateImportStatus>,
+    /// Extracted identifying signals pinned to their source files. Independent
+    /// of the selected pressing; which lookups found a result is the run's
+    /// ledger's to say.
+    pub file_evidence: Vec<BridgeFileEvidence>,
+    /// Revision of the exact metadata draft and selected cover in this value.
+    pub metadata_revision: u64,
+    /// The signals identification settled on, or `None` before it has.
+    pub signals: Option<BridgeSignals>,
+    pub stage: BridgeCandidateStage,
+}
+
+/// What a candidate's pane draws besides its folder: the draft an import
+/// would write, or, once this device imported the candidate's files, the
+/// library release it became, the candidate holding no draft.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCandidateStage {
+    Drafting {
+        draft: BridgeCandidateDraftPane,
+    },
+    Imported {
+        release: BridgeImportedRelease,
+        /// The folder's images and its other files, read from its scan.
+        folder: crate::types::BridgeFolderFiles,
+    },
+}
+
+/// A candidate's draft and what goes with it, as its pane draws them.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCandidateDraftPane {
     /// The covers the picker offers from the catalogs: what the applied
     /// release offered, stored with the draft. Empty for a draft read from
     /// the files' tags, typed in, or linked to an album.
@@ -231,10 +261,6 @@ pub struct BridgeImportCandidateDetail {
     pub picked_library_status: Option<BridgeLibraryStatus>,
     /// The library album an import of it files under.
     pub album: BridgeDraftAlbum,
-    /// Extracted identifying signals pinned to their source files. Independent
-    /// of the selected pressing; which lookups found a result is the run's
-    /// ledger's to say.
-    pub file_evidence: Vec<BridgeFileEvidence>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: BridgeRawReleaseEdit,
     /// What the library holds for every artist credit of the draft and the
@@ -252,15 +278,11 @@ pub struct BridgeImportCandidateDetail {
     /// `Identification`: the run wrote the pick a click there would have
     /// written, so the pane is done.
     pub metadata_author: BridgeMetadataAuthor,
-    /// Revision of the exact metadata draft and selected cover in this value.
-    pub metadata_revision: u64,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,
     /// The cover this candidate commits with.
     pub cover: Option<BridgeCoverChoice>,
-    /// The signals identification settled on, or `None` before it has.
-    pub signals: Option<BridgeSignals>,
     /// The last import of this candidate that failed.
     pub failure: Option<BridgeImportFailure>,
     /// Where the pane was when the person last left this candidate, or where

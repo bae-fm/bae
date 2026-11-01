@@ -33,7 +33,7 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::Draft
     );
@@ -75,7 +75,7 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::FindOnline
     );
@@ -108,9 +108,9 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
 
     assert_eq!(fixture.provider.requests().len(), asked);
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert_eq!(pane.session.presentation, crate::import::MetadataPresentation::FindOnline);
+    assert_eq!(pane.draft().unwrap().session.presentation, crate::import::MetadataPresentation::FindOnline);
     assert_eq!(
-        pane.session.find_online_section,
+        pane.draft().unwrap().session.find_online_section,
         crate::import::FindOnlineSection::Automatic
     );
     assert!(
@@ -119,7 +119,7 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
     );
     assert!(
         matches!(
-            &pane.metadata_provenance,
+            &pane.draft().unwrap().metadata_provenance,
             Some(crate::import::MetadataProvenance::ExternalRelease { record, .. })
                 if record.key == "mb-automatic-1"
         ),
@@ -141,7 +141,7 @@ async fn automatic_with_no_stored_verdict_owes_a_run() {
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .session
+            .draft().unwrap().session
             .presentation,
         crate::import::MetadataPresentation::FindOnline
     );

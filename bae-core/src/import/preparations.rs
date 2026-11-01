@@ -31,6 +31,28 @@ impl CandidatePreparations {
         Self { database }
     }
 
+    /// One candidate's whole stored state, or `None` for a hash no scan has
+    /// stored a candidate under. A candidate whose files this device imported
+    /// holds no draft, so loading it fails as an import of those files does.
+    async fn load_stored(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<CandidatePreparation>, LibraryError> {
+        match self
+            .database
+            .load_candidate_preparation(content_hash)
+            .await?
+        {
+            None => Ok(None),
+            Some(crate::db::CandidatePreparationRead::Stored(prep)) => Ok(Some(prep)),
+            Some(crate::db::CandidatePreparationRead::Imported { release_id }) => {
+                Err(LibraryError::Import(Box::new(
+                    super::ImportError::FilesAlreadyImported { release_id },
+                )))
+            }
+        }
+    }
+
     /// Record one candidate's terminal verdict under its content hash, stamped
     /// from the injected clock. A verdict that picked one release unattended
     /// links the candidate to it and replaces the draft; one that picked none
@@ -99,11 +121,7 @@ impl CandidatePreparations {
         )>,
         LibraryError,
     > {
-        let Some(mut prep) = self
-            .database
-            .load_candidate_preparation(&verdict.content_hash)
-            .await?
-        else {
+        let Some(mut prep) = self.load_stored(&verdict.content_hash).await? else {
             return Ok(None);
         };
         if prep.file_edits.revision != verdict.file_edit_revision {
@@ -181,13 +199,9 @@ impl CandidatePreparations {
                 "candidate edit revision exhausted the u64 range".to_string(),
             )
         })?;
-        let mut prep = self
-            .database
-            .load_candidate_preparation(&read.content_hash)
-            .await?
-            .ok_or_else(|| {
-                CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
-            })?;
+        let mut prep = self.load_stored(&read.content_hash).await?.ok_or_else(|| {
+            CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
+        })?;
         read.verify(&prep, CandidateWrite::FileDecisions)?;
         let expected = CandidateSaveExpectation {
             edit_revision: read.file_edit_revision,
@@ -232,15 +246,11 @@ impl CandidatePreparations {
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
     ) -> Result<u64, LibraryError> {
-        let prep = self
-            .database
-            .load_candidate_preparation(content_hash)
-            .await?
-            .ok_or_else(|| {
-                crate::library::LibraryError::Refused(
-                    "metadata replacement has no candidate state row".into(),
-                )
-            })?;
+        let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
+            crate::library::LibraryError::Refused(
+                "metadata replacement has no candidate state row".into(),
+            )
+        })?;
         let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)?;
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
@@ -261,15 +271,11 @@ impl CandidatePreparations {
         content_hash: &str,
         link: Option<&crate::import::ReleaseLink>,
     ) -> Result<(), LibraryError> {
-        let mut prep = self
-            .database
-            .load_candidate_preparation(content_hash)
-            .await?
-            .ok_or_else(|| {
-                crate::library::LibraryError::Refused(
-                    "link replacement has no candidate state row".into(),
-                )
-            })?;
+        let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
+            crate::library::LibraryError::Refused(
+                "link replacement has no candidate state row".into(),
+            )
+        })?;
         prep.link = link.cloned();
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
@@ -488,13 +494,9 @@ impl CandidatePreparations {
         &self,
         read: &CandidateAsRead,
     ) -> Result<CandidatePreparation, LibraryError> {
-        let prep = self
-            .database
-            .load_candidate_preparation(&read.content_hash)
-            .await?
-            .ok_or_else(|| {
-                crate::library::LibraryError::Refused("candidate metadata row is missing".into())
-            })?;
+        let prep = self.load_stored(&read.content_hash).await?.ok_or_else(|| {
+            crate::library::LibraryError::Refused("candidate metadata row is missing".into())
+        })?;
         read.verify(&prep, CandidateWrite::Metadata)?;
         Ok(prep)
     }

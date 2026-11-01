@@ -38,7 +38,7 @@ async fn edit(
 async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     assert_eq!(
-        pane(&handle, &key).await.lookup_choices,
+        pane(&handle, &key).await.draft().unwrap().lookup_choices,
         LookupChoices::default(),
         "a candidate nobody has chosen for excludes nothing and chooses nothing"
     );
@@ -56,7 +56,7 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
     .await;
 
     assert_eq!(
-        pane(&handle, &key).await.lookup_choices,
+        pane(&handle, &key).await.draft().unwrap().lookup_choices,
         LookupChoices {
             disc_id_excluded: false,
             excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
@@ -74,11 +74,11 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
 async fn applying_the_tags_again_keeps_the_lookup_choices() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001")]).await;
-    let chosen = pane(&handle, &key).await.lookup_choices;
+    let chosen = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
-    assert_eq!(pane(&handle, &key).await.lookup_choices, chosen);
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().lookup_choices, chosen);
     shut_down(handle).await;
 }
 
@@ -94,7 +94,7 @@ async fn two_quick_changes_both_land() {
     first.unwrap();
     second.unwrap();
 
-    let stored = pane(&handle, &key).await.lookup_choices;
+    let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert!(stored.disc_id_excluded);
     assert_eq!(stored.chosen_catalogs, vec!["WPCR-80001".to_string()]);
@@ -152,7 +152,7 @@ async fn a_struck_out_number_is_written_as_still_chosen() {
         [catalog("WPCR-80001"), catalog("NJ 8255"), discounted("NJ-8255")],
     )
     .await;
-    let stored = pane(&handle, &key).await.lookup_choices;
+    let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert_eq!(
         stored.chosen_catalogs,
@@ -167,13 +167,13 @@ async fn a_struck_out_number_is_written_as_still_chosen() {
 async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     edit(&handle, &key, [catalog("NJ-8255")]).await;
-    let chosen = pane(&handle, &key).await.lookup_choices;
+    let chosen = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     assert_eq!(
         edit(&handle, &key, [discounted("NJ-8255")]).await,
         vec![ChoiceChange::Lookups]
     );
     assert_eq!(
-        pane(&handle, &key).await.lookup_choices,
+        pane(&handle, &key).await.draft().unwrap().lookup_choices,
         LookupChoices {
             discounted_catalogs: vec!["NJ-8255".to_string()],
             ..chosen.clone()
@@ -183,7 +183,7 @@ async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
         edit(&handle, &key, [discounted("NJ-8255")]).await,
         vec![ChoiceChange::Lookups]
     );
-    let stored = pane(&handle, &key).await.lookup_choices;
+    let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert_eq!(stored, chosen);
 }
@@ -198,7 +198,7 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
 
     pick(&handle, &key, "chosen-mb-rel-1").await;
 
-    let stored = pane(&handle, &key).await.lookup_choices;
+    let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert_eq!(stored, LookupChoices::default());
 }
@@ -214,12 +214,12 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
         [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")],
     )
     .await;
-    let choices = pane(&handle, &key).await.lookup_choices;
+    let choices = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;
 
-    let stored = pane(&handle, &key).await.lookup_choices;
+    let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert_eq!(stored, choices);
 }

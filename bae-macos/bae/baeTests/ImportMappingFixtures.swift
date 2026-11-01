@@ -429,29 +429,33 @@ extension MappingFixtures {
                 badge: nil
             ),
             importStatus: nil,
-            remoteCovers: [],
-            pickedLibraryStatus: nil,
-            album: .new,
             fileEvidence: [],
-            metadataDraft: edit,
-            artistResolutions: [],
-            metadataDraftIsBlank: edit.albumTitle.isEmpty,
-            metadataProvenance: metadataProvenance,
-            releaseLink: releaseLink,
-            metadataAuthor: metadataAuthor
-                ?? (metadataProvenance == nil ? .nobody : .person),
             metadataRevision: metadataRevision,
-            mapping: mapping
-                ?? BridgeMappingTable(
-                    images: [],
-                    trackSides: [],
-                    files: [],
-                    untitledTrackCount: 0
-                ),
-            cover: nil,
             signals: nil,
-            failure: failure,
-            session: session(presentation: presentation)
+            stage: .drafting(
+                draft: BridgeCandidateDraftPane(
+                    remoteCovers: [],
+                    pickedLibraryStatus: nil,
+                    album: .new,
+                    metadataDraft: edit,
+                    artistResolutions: [],
+                    metadataDraftIsBlank: edit.albumTitle.isEmpty,
+                    metadataProvenance: metadataProvenance,
+                    releaseLink: releaseLink,
+                    metadataAuthor: metadataAuthor
+                        ?? (metadataProvenance == nil ? .nobody : .person),
+                    mapping: mapping
+                        ?? BridgeMappingTable(
+                            images: [],
+                            trackSides: [],
+                            files: [],
+                            untitledTrackCount: 0
+                        ),
+                    cover: nil,
+                    failure: failure,
+                    session: session(presentation: presentation)
+                )
+            )
         )
     }
 

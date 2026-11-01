@@ -777,7 +777,12 @@ async fn the_scan_stores_the_folders_own_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail.cover.map(|cover| cover.selection),
+        detail
+            .draft()
+            .unwrap()
+            .cover
+            .clone()
+            .map(|cover| cover.selection),
         Some(crate::import::CoverSelection::Local(
             "cover.jpg".to_string()
         ))
@@ -899,7 +904,12 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail.cover.map(|cover| cover.image),
+        detail
+            .draft()
+            .unwrap()
+            .cover
+            .clone()
+            .map(|cover| cover.image),
         Some(crate::import::CoverImageSource::Embedded {
             source: FileVersion {
                 path: root.join("Album").join("01.flac"),

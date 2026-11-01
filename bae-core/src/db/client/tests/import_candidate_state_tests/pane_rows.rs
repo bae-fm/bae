@@ -499,7 +499,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
             crate::import::CandidateAction::RevealFolder
         ]
     );
-    assert!(detail.failure.is_none());
+    assert!(detail.draft().unwrap().failure.is_none());
 }
 
 /// The pane draws a queued import differently from a running one, and names
@@ -809,6 +809,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
+        .and_then(crate::db::DbPreparationRead::prepared)
         .expect("the candidate is prepared");
     assert_eq!(preparation.draft, draft);
 }

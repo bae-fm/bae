@@ -100,7 +100,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         .await
         .unwrap()
         .expect("the scanned candidate reads back")
-        .metadata_draft;
+        .draft().unwrap().metadata_draft.clone();
 
     assert_eq!(draft.album_title, "Test Album");
     assert_eq!(
@@ -520,8 +520,8 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
         .await
         .unwrap()
         .expect("the prepared file-metadata candidate reads back");
-    assert_eq!(pane.metadata_draft.album_title, "Mystery Rip");
-    assert!(pane.metadata_draft.album_artist_assignments.is_empty());
+    assert_eq!(pane.draft().unwrap().metadata_draft.album_title, "Mystery Rip");
+    assert!(pane.draft().unwrap().metadata_draft.album_artist_assignments.is_empty());
 
     f.handle
         .set_candidate_album_artists(

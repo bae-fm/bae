@@ -126,6 +126,26 @@ pub struct DbCandidatePaneRows {
     pub failure: Option<crate::import::ImportFailure>,
 }
 
+/// What one read of a candidate's preparation found: the rows an import of
+/// it consumes, or the release this device already imported from its files,
+/// once the candidate holds no draft.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DbPreparationRead {
+    Prepared(DbCandidateImportPreparation),
+    Imported { release_id: String },
+}
+
+#[cfg(test)]
+impl DbPreparationRead {
+    /// The rows an import consumes; `None` for an imported candidate.
+    pub(crate) fn prepared(self) -> Option<DbCandidateImportPreparation> {
+        match self {
+            Self::Prepared(preparation) => Some(preparation),
+            Self::Imported { .. } => None,
+        }
+    }
+}
+
 /// One atomic read of the existing candidate rows the import worker consumes.
 /// The revision is checked against the queued expectation before any source
 /// file is read.

@@ -12,7 +12,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     // A picked candidate opens on the draft until told otherwise.
     assert_eq!(
-        pane(&handle, &key).await.session.presentation,
+        pane(&handle, &key).await.draft().unwrap().session.presentation,
         MetadataPresentation::Draft
     );
 
@@ -32,7 +32,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
         .await
         .unwrap();
 
-    let session = pane(&handle, &key).await.session;
+    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(session.presentation, MetadataPresentation::FindOnline);
     assert_eq!(
         session.find_online_section,
@@ -43,7 +43,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 
     // Back to the draft keeps the section Find online opens on.
     handle.move_candidate_pane(&key, PaneMove::Back).await.unwrap();
-    let session = pane(&handle, &key).await.session;
+    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(session.presentation, MetadataPresentation::Draft);
     assert_eq!(
         session.find_online_section,
@@ -82,7 +82,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
         .await
         .unwrap();
     assert_eq!(failed, PaneOutcome::Failed);
-    let session = pane(&handle, &key).await.session;
+    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(
         session.error,
         Some(PaneFailure {
@@ -104,7 +104,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
         .await
         .unwrap();
     assert_eq!(done, PaneOutcome::Done);
-    assert_eq!(pane(&handle, &key).await.session.error, None);
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().session.error, None);
     shut_down(handle).await;
 }
 
