@@ -1797,6 +1797,8 @@ pushes the covers out:
 A file downloads when it is first read: a cover when it is first shown, a
 track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
+Shown large, in the lightbox on the Mac or the gallery on Android, an image
+the app is still loading is named under its spinner.
 
 Pins download one release at a time from a queue that can be paused,
 cancelled and retried. A pin that fails stays in the queue with its error,

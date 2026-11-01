@@ -237,8 +237,16 @@ struct LightboxView<Item: LightboxImage>: View {
             loadFailedView
         }
         else {
-            ProgressView()
-                .controlSize(.large)
+            ProgressView {
+                Text(
+                    "Loading the image…",
+                    comment:
+                        "Lightbox, while bae reads the image shown large, which can come from the library's storage."
+                )
+                .themeText(.body)
+                .foregroundStyle(Theme.onFillSecondary)
+            }
+            .controlSize(.large)
         }
     }
 

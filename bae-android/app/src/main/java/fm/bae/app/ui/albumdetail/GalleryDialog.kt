@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -237,7 +238,8 @@ private fun BoxScope.GalleryCaption(
 
 /**
  * A gallery image decoded to the page bounds, then again at full resolution once
- * the user zooms in; a spinner while loading, a failure message if it fails.
+ * the user zooms in; a spinner naming the load while it runs, a failure
+ * message if it fails.
  */
 @Composable
 private fun GalleryImage(
@@ -288,7 +290,16 @@ private fun GalleryImage(
             }
 
             else -> {
-                CircularProgressIndicator(color = BaeTheme.colors.onFill)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+                ) {
+                    CircularProgressIndicator(color = BaeTheme.colors.onFill)
+                    Text(
+                        text = stringResource(R.string.gallery_loading_image),
+                        color = BaeTheme.colors.onFillSecondary,
+                    )
+                }
             }
         }
     }

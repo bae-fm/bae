@@ -88,6 +88,7 @@
     <string name="artist_detail_not_found">Fant ikke detaljer om artisten</string>
     <string name="sort_name">Navn</string>
     <string name="image_load_failed">Bildet kunne ikke lastes inn</string>
+    <string name="gallery_loading_image">Laster inn bildet…</string>
     <string name="settings_library">Bibliotek</string>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Bare lokalt</string>

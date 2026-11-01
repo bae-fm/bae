@@ -84,6 +84,7 @@
     <string name="artist_detail_not_found">Detail interpreta nebyl nalezen</string>
     <string name="sort_name">Název</string>
     <string name="image_load_failed">Nelze načíst obrázek</string>
+    <string name="gallery_loading_image">Načítání obrázku…</string>
     <string name="settings_library">Knihovna</string>
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_local_only">Pouze místně</string>
