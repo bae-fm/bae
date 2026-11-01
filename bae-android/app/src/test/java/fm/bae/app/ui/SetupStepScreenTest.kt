@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeSetupStep
 
 /**
  * A setup call's screen names the step the call starts with before the call writes one. The step's catalog key comes
- * from the bridge, which a unit test can't load, so the test names it.
+ * from the bridge, which a unit test can't load, so the test names it from the step.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -30,7 +30,7 @@ class SetupStepScreenTest {
                 SetupStepScreen(
                     steps = LatestStream.setupProgress().only,
                     starting = BridgeSetupStep.FINISHING_REMOVALS,
-                    stepKey = { "core.library.setup_step.finishing_removals" },
+                    stepKey = { step -> "core.library.setup_step.${step.name.lowercase()}" },
                 )
             }
         }
