@@ -1,5 +1,7 @@
+//! The queue's upcoming tail as the queue screen pulls it.
+
 use super::detail::live_read_error;
-use super::*;
+use crate::types::BridgeError;
 
 /// One requested window of the context's upcoming tail, with its entries.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -21,22 +23,18 @@ pub struct BridgeQueueUpcomingSnapshot {
 
 /// The context's upcoming tail, read in the windows the UI asks for: one live
 /// read for as long as the queue is shown, moved in place as it scrolls and as
-/// the queue changes.
+/// the queue changes. It reads no windows until `set_windows`.
 #[derive(uniffi::Object)]
 pub struct QueueUpcomingSubscription {
     inner: bae_core::library::QueueUpcomingSubscription,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
-#[uniffi::export]
-impl AppHandle {
-    /// A subscription that reads no windows until `set_windows`.
-    pub fn subscribe_queue_upcoming(&self) -> std::sync::Arc<QueueUpcomingSubscription> {
-        std::sync::Arc::new(QueueUpcomingSubscription {
-            inner: self.services.subscribe_queue_upcoming(),
-            runtime: self.runtime.clone(),
-        })
-    }
+pub(crate) fn queue_upcoming(
+    inner: bae_core::library::QueueUpcomingSubscription,
+    runtime: crate::operation_runtime::OperationRuntime,
+) -> std::sync::Arc<QueueUpcomingSubscription> {
+    std::sync::Arc::new(QueueUpcomingSubscription { inner, runtime })
 }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]

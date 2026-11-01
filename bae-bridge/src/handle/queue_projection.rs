@@ -6,13 +6,13 @@ mirror_struct! {
 
 mirror_struct! {
     crate::types::BridgeUploadTransfer = bae_core::library::UploadTransfer,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 
 mirror_struct! {
     crate::types::BridgeReleaseUploadTransfer = bae_core::library::ReleaseUploadTransfer,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: { bar: (crate::types::BridgeUploadBar), throughput_bps },
 }
 
@@ -52,7 +52,7 @@ impl crate::types::BridgeDownloadState {
 }
 
 impl crate::types::BridgeDownloadOp {
-    pub(super) fn from_core(row: bae_core::library::DownloadRow) -> Self {
+    pub(crate) fn from_core(row: bae_core::library::DownloadRow) -> Self {
         let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
         let bae_core::library::release_queue::ReleaseQueueOp {
             release_id,
@@ -138,7 +138,7 @@ impl crate::types::BridgeOutputOp {
 }
 
 impl crate::types::BridgeQueueEntry {
-    pub(super) fn from_core(i: bae_core::queue::QueueItem) -> Self {
+    pub(crate) fn from_core(i: bae_core::queue::QueueItem) -> Self {
         let bae_core::queue::QueueItem {
             entry_id,
             track_id,

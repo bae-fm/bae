@@ -3481,7 +3481,8 @@ release's or track's id as UTF-8, or a candidate's key.
   `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
   The macOS app doesn't: the OS ends no app there for holding memory.
 - **Screen subscriptions** are objects the app pulls from, built only in the
-  bridge's `screens.rs` from a live query: `next()` answers the first value at
+  bridge's `screens` module (`screens.rs` and its submodules) from a live
+  query: `next()` answers the first value at
   once, then one after each write that changes it; a failed read answers as
   an error and the next pull waits for the read after it; `cancel()`, or
   closing the library, answers a waiting pull and every later one that it was
@@ -3499,7 +3500,8 @@ release's or track's id as UTF-8, or a candidate's key.
   of an open and of a setup call — reach an app
   only in a `KeyedValueStream`, keyed by release, file, track or candidate,
   never in a callback, a
-  record field or a subscription value. A `feed_*` call starts writing one
+  record field or a subscription value. Every stream is built in the
+  bridge's `screens` module. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing, whatever still runs that
   wrote it — a bulk action's stream included. The writing runs as one of the
@@ -3515,9 +3517,12 @@ release's or track's id as UTF-8, or a candidate's key.
   apart from where a restore or join stands, which changes now and then and
   which the screen reads ten times a second while the call runs.
 - **Pulled subscriptions** — the browse and download lists, the searches,
-  the import list and its counts, and the reads of which selected albums are gone and which
+  the import list and its counts, the detail views, the Storage Manager's
+  list, a release's files, the queue's upcoming tail, and the reads of which
+  selected albums are gone and which
   offered releases the library holds — are objects the app asks for each
-  next value and points at new windows or a new query in place. Closing or
+  next value and points at new windows or a new query in place, built in the
+  bridge's `screens` module like every screen subscription. Closing or
   removing the library cancels every one before the store closes: a read
   waiting on one, or asked of it after, answers that it was cancelled, never
   with the closed store, and it takes no new request. One opened as the

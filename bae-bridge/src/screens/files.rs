@@ -1,5 +1,7 @@
+//! A release's files as the Storage sheet's file table pulls them.
+
 use super::detail::live_read_error;
-use super::*;
+use crate::types::{BridgeError, BridgeFile};
 
 mirror_enum! {
     crate::types::BridgeReleaseFileColumn = bae_core::library::ReleaseFileColumn,
@@ -32,22 +34,18 @@ impl crate::types::BridgeReleaseFilesRequest {
 
 /// A release's files in the order the Storage sheet's file table sorts by,
 /// read live: one read for as long as the sheet shows, moved in place as its
-/// order changes.
+/// order changes. It shows nothing until `set_request` names a release.
 #[derive(uniffi::Object)]
 pub struct ReleaseFilesSubscription {
     inner: bae_core::library::ReleaseFilesSubscription,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
-#[uniffi::export]
-impl AppHandle {
-    /// A read that shows nothing until `set_request` names a release.
-    pub fn subscribe_release_files(&self) -> std::sync::Arc<ReleaseFilesSubscription> {
-        std::sync::Arc::new(ReleaseFilesSubscription {
-            inner: self.services.subscribe_release_files(),
-            runtime: self.runtime.clone(),
-        })
-    }
+pub(crate) fn release_files(
+    inner: bae_core::library::ReleaseFilesSubscription,
+    runtime: crate::operation_runtime::OperationRuntime,
+) -> std::sync::Arc<ReleaseFilesSubscription> {
+    std::sync::Arc::new(ReleaseFilesSubscription { inner, runtime })
 }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]

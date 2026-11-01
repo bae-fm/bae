@@ -15,7 +15,7 @@ mirror_enum! {
 }
 
 impl BridgeFile {
-    pub(super) fn from_core(f: bae_core::album_detail::FileDetail) -> Self {
+    pub(crate) fn from_core(f: bae_core::album_detail::FileDetail) -> Self {
         let bae_core::album_detail::FileDetail {
             id,
             original_filename,
@@ -91,7 +91,7 @@ impl BridgeTrackGroup {
 }
 
 impl BridgeRelease {
-    pub(super) fn from_core(rel: bae_core::album_detail::ReleaseDetail) -> Self {
+    pub(crate) fn from_core(rel: bae_core::album_detail::ReleaseDetail) -> Self {
         let bae_core::album_detail::ReleaseDetail {
             summary,
             name,
@@ -231,7 +231,7 @@ mirror_struct! {
 
 mirror_struct! {
     BridgeStorageRow = bae_core::album_detail::StorageRow,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         release: (BridgeReleaseSummary),
         album: (BridgeAlbum),
@@ -298,7 +298,7 @@ impl BridgeReleaseSummary {
 }
 
 impl BridgeAlbumDetail {
-    pub(super) fn from_core(detail: bae_core::album_detail::AlbumDetail) -> Self {
+    pub(crate) fn from_core(detail: bae_core::album_detail::AlbumDetail) -> Self {
         let bae_core::album_detail::AlbumDetail {
             album,
             // The credits' names arrive joined in `artist_names`; no surface
@@ -341,7 +341,7 @@ impl BridgeAlbumDetail {
 
 mirror_struct! {
     BridgeAlbum = bae_core::album_detail::AlbumSummary,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         id,
         title,
@@ -355,7 +355,7 @@ mirror_struct! {
 }
 
 impl BridgeComposerSummary {
-    pub(super) fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
+    pub(crate) fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
         let bae_core::album_detail::ComposerSummary { raw } = s;
         let bae_core::db::DbComposerSummary {
             artist,
@@ -386,7 +386,7 @@ impl BridgeComposerSummary {
 }
 
 impl BridgeArtistSummary {
-    pub(super) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
+    pub(crate) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
         let bae_core::album_detail::ArtistSummary { raw } = s;
         let bae_core::db::DbArtistSummary {
             artist,
@@ -414,7 +414,7 @@ impl BridgeArtistSummary {
 
 mirror_struct! {
     BridgeArtistDetail = bae_core::album_detail::ArtistDetail,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         artist: (BridgeArtistSummary),
         credit_names: (each crate::types::BridgeArtistCreditName),
@@ -620,7 +620,7 @@ mirror_struct! {
 
 mirror_struct! {
     BridgeComposerDetail = bae_core::album_detail::ComposerDetail,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         composer: (BridgeComposerSummary),
         work_groups: (each BridgeComposerWorkGroup),
@@ -632,7 +632,7 @@ mirror_struct! {
 
 mirror_struct! {
     BridgeWorkDetail = bae_core::album_detail::WorkDetail,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         work: (BridgeWorkSummary),
         child_works: (each BridgeWorkSummary),

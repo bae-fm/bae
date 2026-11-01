@@ -1,5 +1,8 @@
+//! The Storage Manager's list as it pulls it: one live read for as long as
+//! the manager is open, whose view moves in place.
+
 use super::detail::live_read_error;
-use super::*;
+use crate::types::{BridgeError, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort};
 
 /// One requested window of the Storage Manager list, with its rows.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -71,36 +74,21 @@ impl BridgeStorageQueues {
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
-/// is open, whose sort, filter, search text and windows move in place.
+/// is open, whose sort, filter, search text and windows move in place. It
+/// starts under the sort and filter it was opened with, searching for
+/// nothing, reading no windows and holding no selection until `set_view`
+/// names them.
 #[derive(uniffi::Object)]
 pub struct StorageBrowseSubscription {
     inner: bae_core::library::StorageBrowseSubscription,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
-#[uniffi::export]
-impl AppHandle {
-    /// A subscription to the list under `sort` and `filter`, searching for
-    /// nothing, reading no windows and holding no selection until `set_view`
-    /// names them.
-    pub fn subscribe_storage_browse(
-        &self,
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-    ) -> std::sync::Arc<StorageBrowseSubscription> {
-        std::sync::Arc::new(StorageBrowseSubscription {
-            inner: self
-                .services
-                .subscribe_storage_browse(bae_core::library::StorageBrowseView {
-                    sort: sort.into_core(),
-                    filter: filter.into_core(),
-                    search: String::new(),
-                    windows: Default::default(),
-                    selected: Default::default(),
-                }),
-            runtime: self.runtime.clone(),
-        })
-    }
+pub(crate) fn storage_browse(
+    inner: bae_core::library::StorageBrowseSubscription,
+    runtime: crate::operation_runtime::OperationRuntime,
+) -> std::sync::Arc<StorageBrowseSubscription> {
+    std::sync::Arc::new(StorageBrowseSubscription { inner, runtime })
 }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]

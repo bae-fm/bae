@@ -7,13 +7,13 @@ use tracing::info;
 use crate::types::BridgeDiscogsSaveOutcome;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
-    BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog,
-    BridgeComposerDetail, BridgeComposerSortCriterion, BridgeComposerSummary,
-    BridgeComposerWorkGroup, BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem,
-    BridgeGallerySource, BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary,
-    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
-    BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus,
-    BridgeStorageSort, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog, BridgeComposerDetail,
+    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup,
+    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
+    BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
+    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
+    BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort,
+    BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
     BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
@@ -94,28 +94,9 @@ macro_rules! forward {
     };
 }
 
-mod album_selection;
-mod artist_search;
-pub use artist_search::{
-    ArtistSearchSubscription, BridgeArtistSearchSnapshot, BridgeArtistSearchWindow,
-};
 mod base;
 mod cloud_operations;
-mod collection_subscription;
 mod configuration;
-mod detail;
-mod download_browse;
-pub use download_browse::{
-    BridgeDownloadBrowseSnapshot, BridgeDownloadBrowseWindow, DownloadBrowseSubscription,
-};
-mod library_search;
-#[cfg(feature = "desktop")]
-pub use collection_subscription::{
-    AlbumBrowseSubscription, ArtistBrowseSubscription, BridgeAlbumBrowseSnapshot,
-    BridgeAlbumBrowseWindow, BridgeArtistBrowseSnapshot, BridgeArtistBrowseWindow,
-    BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
-};
-pub use library_search::{BridgeLibrarySearchSnapshot, LibrarySearchSubscription};
 #[cfg(any(feature = "cast", desktop))]
 mod desktop;
 #[cfg(feature = "desktop")]
@@ -130,27 +111,18 @@ mod release_edit;
 #[cfg(feature = "desktop")]
 mod release_grouping;
 #[cfg(feature = "desktop")]
-pub use import_list::ImportListSubscription;
-#[cfg(feature = "desktop")]
 pub use release_edit::ReleaseEditSession;
 #[cfg(feature = "desktop")]
 mod import_projection;
 mod library_projection;
-#[cfg(feature = "desktop")]
-mod library_status;
-#[cfg(feature = "desktop")]
-pub use library_status::{BridgeLibraryCheck, BridgeLibraryStatusSnapshot};
 mod live;
 mod memory;
 mod playback_persistence;
 mod queue_projection;
-mod queue_upcoming;
-#[cfg(desktop)]
-mod release_files;
 mod service_status;
-mod storage_browse;
 #[cfg(desktop)]
 mod storage_inspector;
+mod subscriptions;
 mod sync_status;
 
 /// The runtime every task of an open library runs on, and whether the library

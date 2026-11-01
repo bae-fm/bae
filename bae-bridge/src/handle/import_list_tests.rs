@@ -31,7 +31,7 @@ fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
 /// The list's values until one `accept` admits.
 fn until(
     handle: &super::super::AppHandle,
-    list: &Arc<super::ImportListSubscription>,
+    list: &Arc<crate::ImportListSubscription>,
     accept: impl Fn(&BridgeImportListSnapshot) -> bool,
 ) -> BridgeImportListSnapshot {
     handle.runtime.block_on(async {

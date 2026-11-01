@@ -12,7 +12,7 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
 
     /// The folder the app names. Only bytes no folder here has, which core
     /// never gave the app, fail.
-    pub(super) fn into_core(
+    pub(crate) fn into_core(
         self,
     ) -> Result<bae_core::import::FolderReleaseDecisionKey, crate::types::BridgeError> {
         let Self {
@@ -471,7 +471,7 @@ mirror_struct! {
 
 mirror_struct! {
     crate::types::BridgeImportListView = bae_core::import::ImportListView,
-    into_core: pub(super) fn,
+    into_core: pub(crate) fn,
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
@@ -601,7 +601,7 @@ impl crate::types::BridgeImportQueueSummary {
 mirror_struct! {
     crate::types::BridgeImportCandidateListLocation
         = bae_core::import::ImportCandidateListLocation,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         stable_key,
         tab: (crate::types::BridgeTriageTab),
@@ -639,7 +639,7 @@ impl crate::types::BridgeSelectionSummary {
 }
 
 impl crate::types::BridgeImportListSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::import::ImportListSnapshot) -> Self {
+    pub(crate) fn from_core(snapshot: bae_core::import::ImportListSnapshot) -> Self {
         let bae_core::import::ImportListSnapshot {
             windows,
             total_count,
@@ -699,7 +699,7 @@ impl crate::types::BridgeCandidatePanePlacement {
 }
 
 impl crate::types::BridgeImportCandidateDetail {
-    pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
+    pub(crate) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
         let is_added = detail.is_added();
         let bae_core::import::ImportCandidateDetail {
             candidate,
@@ -841,7 +841,7 @@ impl crate::types::BridgeImportFailure {
 
 mirror_enum! {
     crate::types::BridgeSelectionChange = bae_core::import::selection::SelectionChange,
-    into_core: pub(super) fn,
+    into_core: pub(crate) fn,
     variants: {
         Replace { keys: (each into) },
         Toggle { add: (each into), remove: (each into) },

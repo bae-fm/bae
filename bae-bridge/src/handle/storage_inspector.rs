@@ -3,7 +3,7 @@
 use super::*;
 
 impl crate::types::BridgeStorageInspector {
-    pub(super) fn from_core(
+    pub(crate) fn from_core(
         inspector: bae_core::library::storage_inspector::StorageInspector,
     ) -> Self {
         let bae_core::library::storage_inspector::StorageInspector { transfers, files } = inspector;

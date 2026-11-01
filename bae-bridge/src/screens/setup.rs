@@ -1,15 +1,78 @@
-//! One setup call, as the app follows it: the stream its steps are reported
-//! in, which the call writes. A restore, a join, a creation, a first storage
-//! connect and a dev reset each take their own.
+//! A library's open and each setup call (a restore, a join, a creation, a
+//! first storage connect, a dev reset), as the app follows them: the stream
+//! the call reports its steps in, which the call writes. The app makes the
+//! object, starts reading its steps, then hands it to the call.
 
 use std::sync::{Arc, Mutex};
 
 use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::types::{
-    BridgeBootstrapStatus, BridgeFastValue, BridgeSetupProgress, BridgeSetupStep,
-    KeyActivityCallback,
+    BridgeBootstrapStatus, BridgeFastValue, BridgeOpenProgress, BridgeSetupProgress,
+    BridgeSetupStep, KeyActivityCallback,
 };
 use crate::BridgeDiagnostics;
+
+/// A setup call's steps, or an open's, as the app reads them: the stream's
+/// one key, `""`, while the call runs a step. The call that is handed the
+/// stream's values writes them; cancelling the stream ends what it holds.
+fn setup_steps(values: Arc<StreamValues>) -> Arc<KeyedValueStream> {
+    Arc::new(KeyedValueStream::new(
+        values,
+        bae_core::library::CancellationToken::new(),
+    ))
+}
+
+/// The app makes one for each call that opens a library, starts reading its
+/// steps with [`Self::feed_open_steps`], then hands it to that call.
+#[derive(uniffi::Object)]
+pub struct BridgeLibraryOpening {
+    /// Where a throw from the app's activity callback is reported.
+    diagnostics: Arc<BridgeDiagnostics>,
+    /// Where the open reports its steps: the stream
+    /// [`Self::feed_open_steps`] last handed out.
+    steps: Mutex<Option<Arc<StreamValues>>>,
+}
+
+#[uniffi::export]
+impl BridgeLibraryOpening {
+    /// An opening whose stream reports a throw from the app's activity
+    /// callback to `diagnostics`, the process's sink.
+    #[uniffi::constructor]
+    pub fn new(diagnostics: Arc<BridgeDiagnostics>) -> Arc<Self> {
+        Arc::new(Self {
+            diagnostics,
+            steps: Mutex::new(None),
+        })
+    }
+
+    /// The stream the open reports its steps in: its one key, `""`, while
+    /// the open runs a step, and nothing once the open ends. A cancelled
+    /// stream holds nothing from then on.
+    pub fn feed_open_steps(&self, activity: Box<dyn KeyActivityCallback>) -> Arc<KeyedValueStream> {
+        let values = self.diagnostics.stream_values(activity);
+        *self.steps.lock().unwrap() = Some(values.clone());
+        setup_steps(values)
+    }
+}
+
+impl BridgeLibraryOpening {
+    /// Write each step the open reports into the stream; dropping what this
+    /// returns, as the open ends, empties the stream. An opening nobody reads
+    /// writes nothing.
+    pub(crate) fn report(&self) -> impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static {
+        let writer = self.steps.lock().unwrap().clone().map(StreamWriter::new);
+        move |progress| {
+            if let Some(writer) = &writer {
+                writer.set(
+                    String::new(),
+                    BridgeFastValue::OpenProgress {
+                        progress: BridgeOpenProgress::from_core(progress),
+                    },
+                );
+            }
+        }
+    }
+}
 
 /// The app makes one for each setup call, starts reading its steps with
 /// [`Self::feed_setup_steps`], then hands it to that call.
@@ -49,7 +112,7 @@ impl BridgeLibrarySetup {
     ) -> Arc<KeyedValueStream> {
         let values = self.diagnostics.stream_values(activity);
         *self.steps.lock().unwrap() = Some(values.clone());
-        crate::screens::setup_steps(values)
+        setup_steps(values)
     }
 }
 
@@ -116,5 +179,5 @@ impl Drop for SetupSteps {
 }
 
 #[cfg(test)]
-#[path = "library_setup_tests.rs"]
+#[path = "setup_tests.rs"]
 mod tests;

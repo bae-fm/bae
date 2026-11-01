@@ -2,11 +2,41 @@
 //! comes from a coven live query (core's typed wrappers over one) or from a
 //! `KeyedValueStream`, and reaches the app by pull: the app awaits each
 //! value's `next()`. Nothing here takes a channel or a closure loop.
+//!
+//! This file holds the live queries a screen follows whole; the submodules
+//! hold the reads a screen moves in place (lists, searches, details, the
+//! Storage Manager, the queue's tail, the import list) and the streams
+//! (fast values, and the steps of an open or a setup call).
+//! `AppHandle`'s `subscribe_*` and `feed_*` calls hand out what is built
+//! here, and nothing else builds a pull object.
 
 use std::sync::Arc;
 
-use crate::keyed_values::{KeyedValueStream, StreamValues};
 use crate::types::BridgeError;
+
+mod browse;
+mod detail;
+#[cfg(desktop)]
+mod files;
+#[cfg(feature = "desktop")]
+mod import_list;
+mod queue;
+mod search;
+mod setup;
+mod storage;
+mod streams;
+
+pub use browse::*;
+pub use detail::*;
+#[cfg(desktop)]
+pub use files::*;
+#[cfg(feature = "desktop")]
+pub use import_list::*;
+pub use queue::*;
+pub use search::*;
+pub use setup::*;
+pub use storage::*;
+pub(crate) use streams::*;
 
 /// A live query's values as the app pulls them: `$object` holds core's
 /// [`LiveValues`](bae_core::library::LiveValues) of `$core`, each pulled
@@ -160,16 +190,6 @@ pulled_values! {
     built by config
 }
 
-/// A setup call's steps, or an open's, as the app reads them: the stream's
-/// one key, `""`, while the call runs a step. The call that is handed the
-/// stream's values writes them; cancelling the stream ends what it holds.
-pub(crate) fn setup_steps(values: Arc<StreamValues>) -> Arc<KeyedValueStream> {
-    Arc::new(KeyedValueStream::new(
-        values,
-        bae_core::library::CancellationToken::new(),
-    ))
-}
-
 pulled_values! {
     /// The queue as its screens show it.
     QueueSubscription: bae_core::queue::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
@@ -293,88 +313,4 @@ pulled_values! {
         bae_core::import::FolderScanProgress => crate::types::BridgeFolderScans,
     converted by crate::types::BridgeFolderScans::from_core,
     built by folder_scans
-}
-
-/// Whether the releases an import pane offers are already in the library:
-/// one live query for as long as the pane is open, whose checks move in place
-/// as its offers change. It starts with no checks.
-#[cfg(feature = "desktop")]
-#[derive(uniffi::Object)]
-pub struct LibraryStatusSubscription {
-    inner: bae_core::library::LibraryStatusSubscription,
-    runtime: crate::operation_runtime::OperationRuntime,
-}
-
-#[cfg(feature = "desktop")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl LibraryStatusSubscription {
-    /// Check `checks` from now on. Returns the revision the answer will
-    /// carry.
-    pub fn set_checks(
-        &self,
-        checks: Vec<crate::handle::BridgeLibraryCheck>,
-    ) -> Result<u64, BridgeError> {
-        self.inner
-            .set_checks(checks.into_iter().map(|check| bae_core::db::LibraryCheck {
-                release_id: check.release_id,
-                source: check.source.into_core(),
-                source_group_id: check.source_group_id,
-            }))
-            .map_err(status_error)
-    }
-
-    pub async fn next(
-        self: Arc<Self>,
-    ) -> Result<crate::handle::BridgeLibraryStatusSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| crate::handle::BridgeLibraryStatusSnapshot {
-                        statuses: snapshot
-                            .statuses
-                            .into_iter()
-                            .map(|status| {
-                                (
-                                    status.release_id.clone(),
-                                    crate::types::BridgeLibraryStatus::from_core(status),
-                                )
-                            })
-                            .collect(),
-                        request_revision: snapshot.request_revision,
-                    })
-                    .map_err(status_error)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[cfg(feature = "desktop")]
-fn status_error(error: bae_core::library::LibraryStatusSubscriptionError) -> BridgeError {
-    match error {
-        bae_core::library::LibraryStatusSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LibraryStatusSubscriptionError::Query(error) => {
-            BridgeError::database_query(error)
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-pub(crate) fn library_statuses(
-    inner: bae_core::library::LibraryStatusSubscription,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<LibraryStatusSubscription> {
-    Arc::new(LibraryStatusSubscription { inner, runtime })
 }

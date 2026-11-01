@@ -1,20 +1,23 @@
-use super::*;
+//! The album, release, artist, composer, work, import candidate, invalid
+//! import folder, and storage inspector detail views, each read live through
+//! one subscription whose id moves in place as the view shows another item.
 
-/// The album, release, artist, composer, work, import candidate, invalid
-/// import folder, and storage inspector detail views read live through one
-/// subscription each, whose id moves in place as the view shows another item.
+use std::sync::Arc;
+
+use crate::types::BridgeError;
+
 /// A macro rather than a generic: uniffi exports concrete objects and records,
 /// so each detail needs its own named types.
 macro_rules! detail_subscription {
     (
         object: $object:ident,
-        subscribe: $subscribe:ident,
+        built by $make:ident,
         snapshot: $snapshot:ident,
         value: $bridge_value:ty,
     ) => {
         detail_subscription! {
             object: $object,
-            subscribe: $subscribe,
+            built by $make,
             snapshot: $snapshot,
             value: $bridge_value,
             id: String = String,
@@ -22,7 +25,7 @@ macro_rules! detail_subscription {
     };
     (
         object: $object:ident,
-        subscribe: $subscribe:ident,
+        built by $make:ident,
         snapshot: $snapshot:ident,
         value: $bridge_value:ty,
         id: $id:ty = $core_id:ty,
@@ -35,6 +38,7 @@ macro_rules! detail_subscription {
             pub value: Option<$bridge_value>,
         }
 
+        /// A read that shows nothing until `set_id` names an item.
         #[derive(uniffi::Object)]
         pub struct $object {
             inner: bae_core::library::DetailSubscription<
@@ -44,15 +48,14 @@ macro_rules! detail_subscription {
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
-        #[uniffi::export]
-        impl AppHandle {
-            /// A read that shows nothing until `set_id` names an item.
-            pub fn $subscribe(&self) -> std::sync::Arc<$object> {
-                std::sync::Arc::new($object {
-                    inner: self.services.$subscribe(),
-                    runtime: self.runtime.clone(),
-                })
-            }
+        pub(crate) fn $make(
+            inner: bae_core::library::DetailSubscription<
+                <$bridge_value as DetailValue>::Core,
+                $core_id,
+            >,
+            runtime: crate::operation_runtime::OperationRuntime,
+        ) -> Arc<$object> {
+            Arc::new($object { inner, runtime })
         }
 
         #[uniffi::export(async_runtime = "tokio", cancellable)]
@@ -64,7 +67,7 @@ macro_rules! detail_subscription {
                     .map_err(live_read_error)
             }
 
-            pub async fn next(self: std::sync::Arc<Self>) -> Result<$snapshot, BridgeError> {
+            pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
@@ -80,7 +83,7 @@ macro_rules! detail_subscription {
                     .await
             }
 
-            pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+            pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(
@@ -97,27 +100,27 @@ macro_rules! detail_subscription {
 }
 
 /// The core detail each bridge detail mirrors.
-trait DetailValue {
+pub(crate) trait DetailValue {
     type Core;
 }
 
-impl DetailValue for BridgeAlbumDetail {
+impl DetailValue for crate::types::BridgeAlbumDetail {
     type Core = bae_core::album_detail::AlbumDetail;
 }
 
-impl DetailValue for BridgeRelease {
+impl DetailValue for crate::types::BridgeRelease {
     type Core = bae_core::album_detail::ReleaseDetail;
 }
 
-impl DetailValue for BridgeArtistDetail {
+impl DetailValue for crate::types::BridgeArtistDetail {
     type Core = bae_core::album_detail::ArtistDetail;
 }
 
-impl DetailValue for BridgeComposerDetail {
+impl DetailValue for crate::types::BridgeComposerDetail {
     type Core = bae_core::album_detail::ComposerDetail;
 }
 
-impl DetailValue for BridgeWorkDetail {
+impl DetailValue for crate::types::BridgeWorkDetail {
     type Core = bae_core::album_detail::WorkDetail;
 }
 
@@ -140,7 +143,7 @@ impl DetailValue for crate::types::BridgeStorageInspector {
 #[cfg(desktop)]
 detail_subscription! {
     object: StorageInspectorSubscription,
-    subscribe: subscribe_storage_inspector,
+    built by storage_inspector,
     snapshot: BridgeStorageInspectorSnapshot,
     value: crate::types::BridgeStorageInspector,
 }
@@ -148,7 +151,7 @@ detail_subscription! {
 #[cfg(feature = "desktop")]
 detail_subscription! {
     object: InvalidCandidateSubscription,
-    subscribe: subscribe_invalid_candidate,
+    built by invalid_candidate,
     snapshot: BridgeInvalidCandidateSnapshot,
     value: crate::types::BridgeInvalidCandidateDetail,
     id: Vec<u8> = bae_core::import::CandidateKey,
@@ -157,7 +160,7 @@ detail_subscription! {
 #[cfg(feature = "desktop")]
 detail_subscription! {
     object: ImportCandidateSubscription,
-    subscribe: subscribe_import_candidate,
+    built by import_candidate,
     snapshot: BridgeImportCandidateSnapshot,
     value: crate::types::BridgeImportCandidateDetail,
     id: Vec<u8> = bae_core::import::CandidateKey,
@@ -165,37 +168,37 @@ detail_subscription! {
 
 detail_subscription! {
     object: AlbumDetailSubscription,
-    subscribe: subscribe_album_detail,
+    built by album_detail,
     snapshot: BridgeAlbumDetailSnapshot,
-    value: BridgeAlbumDetail,
+    value: crate::types::BridgeAlbumDetail,
 }
 
 detail_subscription! {
     object: ReleaseDetailSubscription,
-    subscribe: subscribe_release_detail,
+    built by release_detail,
     snapshot: BridgeReleaseDetailSnapshot,
-    value: BridgeRelease,
+    value: crate::types::BridgeRelease,
 }
 
 detail_subscription! {
     object: ArtistDetailSubscription,
-    subscribe: subscribe_artist_detail,
+    built by artist_detail,
     snapshot: BridgeArtistDetailSnapshot,
-    value: BridgeArtistDetail,
+    value: crate::types::BridgeArtistDetail,
 }
 
 detail_subscription! {
     object: ComposerDetailSubscription,
-    subscribe: subscribe_composer_detail,
+    built by composer_detail,
     snapshot: BridgeComposerDetailSnapshot,
-    value: BridgeComposerDetail,
+    value: crate::types::BridgeComposerDetail,
 }
 
 detail_subscription! {
     object: WorkDetailSubscription,
-    subscribe: subscribe_work_detail,
+    built by work_detail,
     snapshot: BridgeWorkDetailSnapshot,
-    value: BridgeWorkDetail,
+    value: crate::types::BridgeWorkDetail,
 }
 
 /// A task-driven live read's failure as the bridge reports it.

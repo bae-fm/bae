@@ -39,7 +39,7 @@ impl BridgeHost {
         self: &Arc<Self>,
         profile: crate::BridgeDevResetProfile,
         device_name: &str,
-        steps: &crate::library_setup::SetupSteps,
+        steps: &crate::screens::SetupSteps,
     ) -> Result<String, BridgeError> {
         use crate::types::BridgeSetupStep as Step;
 
@@ -120,7 +120,7 @@ impl BridgeHost {
         app: &Arc<crate::AppHandle>,
         profile: crate::BridgeDevResetProfile,
         device_name: &str,
-        steps: &crate::library_setup::SetupSteps,
+        steps: &crate::screens::SetupSteps,
     ) -> Result<(), BridgeError> {
         tracing::info!(
             identify_automatically = profile.identify_automatically,
