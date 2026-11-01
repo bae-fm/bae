@@ -1805,16 +1805,19 @@ track plays, leaves no record: its failure goes to whatever read it. A release
 becomes pinned only once every file lands. The
 queue is kept on the device and emptied as the library opens: after a restart
 it is empty and running, and a release that wasn't fully pinned stays as it
-was. How far the release downloading has got is not kept, nor how fast it
-goes. Its bytes are the sizes of its files kept whole and, of each file
-`coven_downloading` lists, the share of its size its object has moved, as
-coven's download watch tells it, so they move as a file arrives rather than
-as each lands; a share counts against the file's own size, since the
-watch's bytes are the encrypted object's. They never go back as a file
-lands: whether each file is kept is read after the watch last told of a
-download ending, and coven ends one only once its file is kept, so a file
-just downloaded counts whole, never as nothing. Its rate is what it has moved
-since it began over the time since. Unpinning moves the files into the
+was. coven downloads each file whole first and pins nothing until then; one
+write pins every file of the release once the last is whole
+([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
+so a failed or cancelled pin leaves no file of it pinned. How far the release
+downloading has got is not kept, nor how fast it goes. Its bytes are the sizes
+of its files kept whole, of its files whose download for this pin has ended,
+each whole and waiting for that write, and, of each file `coven_downloading`
+lists, the share of its size its object has moved, as coven's download watch
+tells it, so they move as a file arrives rather than as each lands; a share
+counts against the file's own size, since the watch's bytes are the encrypted
+object's. They never go back as a file lands: coven ends a download only once
+its file is whole, and the watch's word of the end counts it whole, never as
+nothing. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
 cache, still readable, now evictable.
 
 Asking to pin several releases queues, in the order asked and in one write,

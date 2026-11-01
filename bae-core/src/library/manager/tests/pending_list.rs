@@ -217,7 +217,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     .await;
     for file in release_files(&manager, &release_id).await {
         manager
-            .evict_file_for_test(&manager.release_file_ref(&file.id).await.unwrap())
+            .evict_file_for_test(file.file)
             .await
             .unwrap();
     }

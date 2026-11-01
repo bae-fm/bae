@@ -174,7 +174,7 @@ impl Database {
     async fn change_playlist(
         &self,
         id: uuid::Uuid,
-        change: impl FnOnce(&SqlContext<'_, '_>) -> Result<Result<(), CollectionError>, DbError>
+        change: impl FnOnce(&CovenWrite<'_>) -> Result<Result<(), CollectionError>, DbError>
             + Send
             + 'static,
     ) -> Result<(), CollectionError> {

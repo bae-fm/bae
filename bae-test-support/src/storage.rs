@@ -82,7 +82,7 @@ pub async fn remove_uploaded_file(
     file_id: &str,
 ) {
     let reference = manager.release_file_ref_for_test(file_id).await.unwrap();
-    manager.evict_file_for_test(&reference).await.unwrap();
+    manager.evict_file_for_test(reference.id()).await.unwrap();
     let before = storage.reads().await.len();
     manager
         .materialize_release_file_for_test(file_id)
@@ -101,7 +101,7 @@ pub async fn remove_uploaded_file(
     for object in objects {
         storage.delete(&object).await.unwrap();
     }
-    manager.evict_file_for_test(&reference).await.unwrap();
+    manager.evict_file_for_test(reference.id()).await.unwrap();
 }
 
 /// This release's storage state and whether it is pinned on this device.

@@ -76,7 +76,7 @@ impl CandidateFilter {
     }
 }
 
-/// One-row SELECT shared by coven's write [`SqlContext`] and its read
+/// One-row SELECT shared by coven's write [`CovenWrite`] and its read
 /// [`SqlReadContext`], used when artist resolution runs inside either context.
 pub(super) trait QueryOne {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
@@ -148,25 +148,25 @@ impl QueryRows for SqlReadContext<'_> {
     }
 }
 
-impl QueryOne for SqlContext<'_, '_> {
+impl QueryOne for CovenWrite<'_> {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
     ) -> rusqlite::Result<T> {
-        SqlContext::query_row(self, sql, params, f)
+        CovenWrite::query_row(self, sql, params, f)
     }
 }
 
-impl QueryRows for SqlContext<'_, '_> {
+impl QueryRows for CovenWrite<'_> {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
     ) -> rusqlite::Result<Vec<T>> {
-        SqlContext::query(self, sql, params, f)
+        CovenWrite::query(self, sql, params, f)
     }
 }
 
@@ -193,7 +193,7 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
 ///
 /// Precondition: the release row must already be deleted or repointed away from
 /// `album_id`, since this counts what remains.
-pub(super) fn vacate_album_on(conn: &SqlContext<'_, '_>, album_id: &str) -> Result<bool, DbError> {
+pub(super) fn vacate_album_on(conn: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
     let remaining: i64 = conn.query_row(
         "SELECT COUNT(*) FROM releases WHERE album_id = ?",
         params![album_id],

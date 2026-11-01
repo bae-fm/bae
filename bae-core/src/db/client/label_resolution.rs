@@ -189,7 +189,7 @@ impl Decided {
 /// library label the rule in the module doc decides, inserting the new labels
 /// and filling in the linked ones first.
 pub(super) fn write_release_labels_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     release_id: &str,
     labels: &[ReleaseLabel],
     write: &LabelWrite<'_>,
@@ -257,7 +257,7 @@ fn labels_named_on<Q: QueryRows>(
 
 /// The library label `label`, named `name`, names.
 fn resolve_label_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     label: &ReleaseLabel,
     name: &str,
     named_now: &[(String, String)],
@@ -390,7 +390,7 @@ fn resolve_label_on(
 /// import answered none for these ids.
 #[cfg(desktop)]
 fn import_answer_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     label: &ReleaseLabel,
     name: &str,
     decided: &mut Decided,
@@ -506,7 +506,7 @@ fn label_by_catalog_id_on<Q: QueryOne>(
 /// touching only the rows that differ: a row is a place in the list, so
 /// another device's edit of another place merges with this one.
 fn replace_release_label_rows(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     release_id: &str,
     rows: &[(Option<String>, Option<&str>)],
 ) -> Result<(), DbError> {

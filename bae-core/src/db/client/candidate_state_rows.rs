@@ -7,7 +7,7 @@ use crate::import::CoverSelection;
 pub(super) const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
 
 pub(super) fn require_state_row(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     what: &str,
 ) -> Result<(), DbError> {
@@ -47,7 +47,7 @@ pub(super) fn cover_columns(
 }
 
 pub(super) fn save_cover(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     cover: &CoverSelection,
 ) -> Result<(), DbError> {

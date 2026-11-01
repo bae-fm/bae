@@ -208,7 +208,7 @@ async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> St
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.
-fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), crate::db::DbError> {
+fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), crate::db::DbError> {
     conn.execute_batch(
         "
         INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');

@@ -194,10 +194,10 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let refs = release_file_refs(&manager, &releases[index].id).await;
                 let one = rng.random_range(0..refs.len());
                 if rng.random_bool(0.5) {
-                    manager.database.unpin(&refs[one..=one]).await.unwrap();
+                    manager.database.unpin(&[refs[one].id()]).await.unwrap();
                     "unpin"
                 } else {
-                    manager.evict_file_for_test(&refs[one]).await.unwrap();
+                    manager.evict_file_for_test(refs[one].id()).await.unwrap();
                     "evict"
                 }
             }

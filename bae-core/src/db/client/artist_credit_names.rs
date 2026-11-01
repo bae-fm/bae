@@ -15,7 +15,7 @@ use crate::credits::{ArtistCreditName, CreditName};
 /// artist's `artist_credits` if it is new there. A name already there keeps
 /// its spelling.
 pub(super) fn settle_credit_name(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     artist_id: &str,
     credit: Option<&CreditName>,
     now: &str,
@@ -34,7 +34,7 @@ pub(super) fn settle_credit_name(
     Ok(Some(credit.key.clone()))
 }
 
-fn own_name_key_on(conn: &SqlContext<'_, '_>, artist_id: &str) -> Result<String, DbError> {
+fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<String, DbError> {
     conn.query_row(
         "SELECT name_key FROM artists WHERE id = ?",
         params![artist_id],
@@ -47,7 +47,7 @@ fn own_name_key_on(conn: &SqlContext<'_, '_>, artist_id: &str) -> Result<String,
 /// Point every link naming `artist_id`'s credit name `from` at `to` (`None`:
 /// the artist's own name).
 fn relink_credit_name(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     artist_id: &str,
     from: &str,
     to: Option<&str>,

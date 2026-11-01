@@ -310,7 +310,7 @@ fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbErr
 /// scan holding the candidate with, `None` for a write that leaves the scan
 /// without it.
 pub(crate) fn end_file_work_unless_of_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
@@ -329,7 +329,7 @@ pub(crate) fn end_file_work_unless_of_on(
 /// an admission joins the batch, an ending counts as ended, and the batch is
 /// over once every identification it admitted has ended.
 fn count_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     moved: &IdentificationMove,
 ) -> Result<(), DbError> {
@@ -358,7 +358,7 @@ fn count_on(
 /// Store `standing` as `candidate_key`'s row, or remove the row when nothing
 /// is running for it.
 fn write_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     standing: &StoredStanding,
 ) -> Result<(), DbError> {
@@ -454,7 +454,7 @@ fn write_on(
 /// Apply `change` to `candidate_key`'s identification as stored, inside the
 /// caller's write.
 pub(crate) fn change_identification_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     change: &IdentificationChange,
 ) -> Result<IdentificationMove, DbError> {
@@ -473,7 +473,7 @@ pub(crate) fn change_identification_on(
 /// Claim `candidate_key` for `import_id`, queued. `false`, changing nothing,
 /// when an import already owns it: one import of a candidate at a time.
 fn claim_import_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     import_id: &str,
 ) -> Result<bool, DbError> {
@@ -493,7 +493,7 @@ fn claim_import_on(
 /// its end with `None`, inside the caller's write. Refused when that import
 /// does not own it: only the import holding a claim moves or ends it.
 pub(crate) fn move_import_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     import_id: &str,
     next: Option<ImportStep>,

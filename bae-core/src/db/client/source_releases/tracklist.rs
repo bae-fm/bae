@@ -12,7 +12,7 @@ pub(super) struct Numbering {
 }
 
 pub(super) fn insert_entry(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     catalog: &str,
     key: &str,
     medium: i64,
@@ -118,7 +118,7 @@ fn direction_column(direction: PartDirection) -> &'static str {
 }
 
 fn insert_work(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     catalog: &str,
     key: &str,
     place: WorkPlace,

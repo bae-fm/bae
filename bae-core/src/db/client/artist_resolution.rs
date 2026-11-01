@@ -75,9 +75,7 @@ impl Database {
     /// [`IdentityWriteError`] the closure fails with handed back as itself.
     pub(super) async fn write_resolving_identities<R>(
         &self,
-        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, IdentityWriteError>
-            + Send
-            + 'static,
+        f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
     ) -> Result<R, IdentityWriteError>
     where
         R: Send + 'static,
@@ -196,7 +194,7 @@ pub(crate) struct ResolvedArtists {
 impl ResolvedArtists {
     /// Insert the new artists and fill in the linked ones, before any link
     /// that points at them is written.
-    pub(super) fn write_on(&self, tx: &SqlContext<'_, '_>) -> Result<(), DbError> {
+    pub(super) fn write_on(&self, tx: &CovenWrite<'_>) -> Result<(), DbError> {
         for artist in &self.inserts {
             insert_artist_row(tx, artist)?;
         }

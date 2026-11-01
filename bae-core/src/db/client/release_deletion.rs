@@ -53,7 +53,7 @@ impl ReleaseDeletion {
         })
     }
 
-    pub(super) fn apply_on(&self, sql: &SqlContext<'_, '_>) -> Result<(), DbError> {
+    pub(super) fn apply_on(&self, sql: &CovenWrite<'_>) -> Result<(), DbError> {
         let current = Self::plan_on(sql, &self.release_id)?;
         if current != *self {
             return Err(DbError::Message(format!(

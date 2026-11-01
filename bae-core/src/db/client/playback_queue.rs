@@ -414,7 +414,7 @@ fn queue_row_on(sql: &impl coven::SqlRead) -> rusqlite::Result<QueueRow> {
     )
 }
 
-fn set_cursor_on(sql: &SqlContext<'_, '_>, position: i64) -> rusqlite::Result<()> {
+fn set_cursor_on(sql: &CovenWrite<'_>, position: i64) -> rusqlite::Result<()> {
     sql.execute("UPDATE playback_queue SET cursor = ?", [position])?;
     Ok(())
 }
@@ -437,7 +437,7 @@ struct Located {
     position: i64,
 }
 
-fn locate_on(sql: &SqlContext<'_, '_>, id: QueueEntryId) -> rusqlite::Result<Option<Located>> {
+fn locate_on(sql: &CovenWrite<'_>, id: QueueEntryId) -> rusqlite::Result<Option<Located>> {
     let (lane, entry) = row_key(&id);
     sql.query_row(
         &format!(
@@ -476,7 +476,7 @@ fn context_from_row(row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
 }
 
 /// The highest position in `lane`, `None` when it is empty.
-fn lane_top_on(sql: &SqlContext<'_, '_>, lane: Lane) -> rusqlite::Result<Option<i64>> {
+fn lane_top_on(sql: &CovenWrite<'_>, lane: Lane) -> rusqlite::Result<Option<i64>> {
     sql.query_row(
         &format!("SELECT max(position) FROM {}", lane.table()),
         [],
@@ -489,7 +489,7 @@ fn lane_top_on(sql: &SqlContext<'_, '_>, lane: Lane) -> rusqlite::Result<Option<
 /// position the lane holds, then come down to where they belong. The caller
 /// has left the positions they come down to free.
 fn shift_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     lane: Lane,
     low: i64,
     high: i64,
@@ -521,11 +521,7 @@ fn shift_on(
 
 /// Give the context lane's rows after `after` new positions above every one
 /// it holds, in the order `order` sorts them by.
-fn reorder_context_after_on(
-    sql: &SqlContext<'_, '_>,
-    after: i64,
-    order: &str,
-) -> rusqlite::Result<()> {
+fn reorder_context_after_on(sql: &CovenWrite<'_>, after: i64, order: &str) -> rusqlite::Result<()> {
     let Some(top) = lane_top_on(sql, Lane::Context)? else {
         return Ok(());
     };
@@ -715,7 +711,7 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
 }
 
 fn add_manual_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     track_ids: &[String],
     place: ManualPlace,
 ) -> Result<usize, DbError> {
@@ -773,7 +769,7 @@ fn add_manual_on(
     Ok(count as usize)
 }
 
-fn set_shuffle_on(sql: &SqlContext<'_, '_>, on: bool) -> Result<ShuffleChange, DbError> {
+fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<ShuffleChange, DbError> {
     let row = queue_row_on(sql)?;
     let (Some(cursor), Some(shuffled)) = (row.cursor, row.shuffled) else {
         return Ok(ShuffleChange::NoContext);
@@ -793,7 +789,7 @@ fn set_shuffle_on(sql: &SqlContext<'_, '_>, on: bool) -> Result<ShuffleChange, D
 }
 
 fn reorder_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     id: QueueEntryId,
     before: Option<QueueEntryId>,
 ) -> Result<bool, DbError> {
@@ -870,7 +866,7 @@ fn reorder_on(
     Ok(true)
 }
 
-fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
+fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     let manual_front = sql
         .query_row(
             "SELECT entry, track_id, position FROM playback_manual ORDER BY position LIMIT 1",
@@ -898,7 +894,7 @@ fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
     Ok(Some(entry))
 }
 
-fn wrap_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
+fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
     let Some(shuffled) = row.shuffled else {
         return Ok(None);
@@ -919,7 +915,7 @@ fn wrap_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
 }
 
 fn step_back_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     current: Option<QueueEntryId>,
 ) -> Result<Option<QueueEntry>, DbError> {
     let Some(cursor) = queue_row_on(sql)?.cursor else {

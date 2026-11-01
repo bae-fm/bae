@@ -13,7 +13,7 @@ pub(super) struct FolderDiscovery {
 
 impl FolderDiscovery {
     pub(super) fn observe(
-        sql: &SqlContext<'_, '_>,
+        sql: &CovenWrite<'_>,
         folder: &Path,
         observed: Option<FolderDate>,
         now: i64,
@@ -71,7 +71,7 @@ impl FolderDiscovery {
 
     /// Store what is known, marking the folder read as a release or as broken
     /// when `settles`. Writes nothing when nothing changed.
-    pub(super) fn store(&self, sql: &SqlContext<'_, '_>, settles: bool) -> Result<(), DbError> {
+    pub(super) fn store(&self, sql: &CovenWrite<'_>, settles: bool) -> Result<(), DbError> {
         let date = self.folder_date.map(FolderDate::columns);
         sql.execute(
             "INSERT INTO folder_discovery \

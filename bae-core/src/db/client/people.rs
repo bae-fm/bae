@@ -169,7 +169,7 @@ impl Database {
         let person = self.own_profile().await?.id.to_string();
         match avatar {
             Some(bytes) => {
-                self.write_with_files(
+                self.write_staged(
                     move |batch| {
                         Ok(batch.put_file(
                             crate::sync::AVATARS_NAMESPACE,
@@ -296,7 +296,7 @@ fn profile_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<PersonProfile>
 }
 
 fn update_profile(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     statement: &str,
     params: impl Params,
 ) -> rusqlite::Result<()> {

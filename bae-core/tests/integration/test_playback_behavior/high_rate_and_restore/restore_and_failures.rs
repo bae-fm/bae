@@ -252,8 +252,7 @@ impl CloudOnlyPlaybackFixture {
         ) {}
 
         for file in library_manager.get_files_for_release(&release_id).await? {
-            let reference = library_manager.release_file_ref_for_test(&file.id).await?;
-            library_manager.evict_file_for_test(&reference).await?;
+            library_manager.evict_file_for_test(file.file).await?;
         }
 
         // Delete the import originals so file resolution can't fall back to them.

@@ -128,7 +128,7 @@ pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
-pub(super) fn delete_verdict(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_verdict WHERE content_hash = ?",
         [content_hash],
@@ -142,7 +142,7 @@ pub(super) fn delete_verdict(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
 /// no matches on its way from one verdict to another, and the matches past
 /// the new last go.
 pub(super) fn store_verdict(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     identification: &DbCandidateIdentifyResult,
 ) -> Result<(), DbError> {
@@ -158,7 +158,7 @@ pub(super) fn store_verdict(
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
 /// that has not settled.
 pub(super) fn store_outcome(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     outcome: Outcome<'_>,
     kept_own_draft: bool,
@@ -287,7 +287,7 @@ pub(super) fn store_outcome(
 /// other kinds hold no findings, and a ledger of theirs lists nothing.
 /// Answers the releases written, in position order.
 fn store_matches<'a>(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     outcome: Outcome<'a>,
 ) -> Result<Vec<&'a MetadataResult>, DbError> {

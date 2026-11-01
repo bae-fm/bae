@@ -82,7 +82,7 @@ fn recorded_conflict_on<Q: QueryOne>(sql: &Q, hash: &str) -> Result<RecordedConf
 }
 
 fn record_choice_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     hash: &str,
     conflict: &RecordedConflict,
     choice: Choice,
@@ -129,7 +129,7 @@ fn record_choice_on(
 /// devices that may be naming the absorbed label while apart, and every read
 /// shows the survivor.
 fn merge_labels_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     conflict: &RecordedConflict,
     now: &str,
 ) -> Result<(), DbError> {

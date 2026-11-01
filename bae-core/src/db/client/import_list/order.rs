@@ -748,7 +748,7 @@ impl<'a> Items<'a> {
     /// groups' headers left out.
     pub(super) fn select_window(
         &self,
-        sql: &SqlContext<'_, '_>,
+        sql: &CovenWrite<'_>,
         window: &LibraryPageWindow,
     ) -> Result<(), DbError> {
         for PartWindow {

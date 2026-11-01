@@ -81,7 +81,7 @@ impl StoredLookupChoices {
 /// A hash no candidate row stands under has nothing to hold a decision, and
 /// the write says so rather than landing nowhere.
 pub(super) fn replace_lookup_choices_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     choices: &LookupChoices,
 ) -> Result<(), DbError> {

@@ -295,7 +295,7 @@ pub(super) fn load_searches_on(
 /// `held` — the files the write leaves the candidate with, `None` for a write
 /// that leaves the scan without it. Every row it owns goes with it.
 pub(super) fn end_search_unless_of_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
@@ -320,7 +320,7 @@ pub(super) fn end_search_unless_of_on(
 /// Store `search`, just started, as `key`'s, of `files`, in place of any
 /// search it had; the run its parts' answers land on.
 fn start_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     files: Option<&CandidateFiles>,
     search: &CandidateSearch,
@@ -377,7 +377,7 @@ fn start_on(
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
 /// still searching; whether it landed.
 fn land_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     run: SearchRun,
     catalog: Catalog,
     outcome: &Result<Vec<MetadataResult>, Failure>,

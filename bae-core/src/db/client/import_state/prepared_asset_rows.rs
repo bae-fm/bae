@@ -5,7 +5,7 @@ use bae_util::content_type::ContentType;
 /// Make the remote cover bytes stored under the hash the value's: in place
 /// when there are bytes, removed when there are none.
 pub(super) fn store_asset_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     assets: &CandidatePreparedAssets,
 ) -> Result<(), DbError> {

@@ -152,7 +152,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
 }
 
 fn apply_artist_identity_merge(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     plan: &ArtistIdentityMergePlan,
 ) -> Result<(), DbError> {
     super::artist_identity_choice::record_choice_on(
@@ -262,7 +262,7 @@ fn apply_artist_identity_merge(
 }
 
 fn merge_local_artist_references(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     table: &str,
     unique_columns: &[&str],
     surviving_artist_id: &str,

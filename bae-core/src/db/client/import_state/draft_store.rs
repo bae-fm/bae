@@ -17,7 +17,7 @@ use crate::import::{
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
 /// wrote.
 pub(super) fn store_draft(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     (stored, stored_author): (&CandidateDraft, MetadataAuthor),
     (draft, author): (&CandidateDraft, MetadataAuthor),
@@ -127,7 +127,7 @@ impl<'a> TrackRows<'a> {
 
 /// The rows hanging off one track: its artists, its roles and its works.
 fn delete_track_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     track_id: &str,
 ) -> Result<(), DbError> {
@@ -147,7 +147,7 @@ fn delete_track_rows(
 /// Each album artist that differs from the one stored at its position, in
 /// place, and the stored ones past the last.
 fn store_album_artist_assignments(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     stored: &[Credited],
     assignments: &[Credited],
@@ -206,7 +206,7 @@ impl<'a> DraftBody<'a> {
 
 /// Clear the draft's body: tracks first, which reference the mediums and the
 /// works, each taking the rows that hang off it.
-fn delete_draft_body(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+fn delete_draft_body(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     for table in [
         "import_candidate_track",
         "import_candidate_work",

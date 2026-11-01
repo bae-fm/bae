@@ -81,7 +81,7 @@ pub(super) fn require_revision<Q: QueryOne>(
 }
 
 pub(super) fn record_choice_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     hash: &str,
     discogs: &str,
     musicbrainz: &str,

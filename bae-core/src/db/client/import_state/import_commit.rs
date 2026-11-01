@@ -10,7 +10,7 @@ use crate::import::preparation::CommittingCandidate;
 /// [`ImportExpectation::verify`](crate::import::service::ImportExpectation::verify)'s
 /// to say.
 pub(crate) fn require_import_commit_guard(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
@@ -37,7 +37,7 @@ pub(crate) fn require_import_commit_guard(
 /// this write — an attempt that never commits, cancelled or failing with a
 /// failure of its own, leaves it as it found it or replaces it.
 pub(crate) fn end_import_attempt_of_commit(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
@@ -62,7 +62,7 @@ pub(crate) fn end_import_attempt_of_commit(
 /// that landed in between leaves the hash taken, and the unique hash refuses
 /// this commit whole as [`IdentityWriteError::FilesAlreadyImported`].
 pub(crate) fn record_import_origin_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
     release_id: &str,
 ) -> Result<(), IdentityWriteError> {
@@ -112,7 +112,7 @@ pub(crate) fn record_import_origin_on(
 /// commit that does not land deletes none of it, so a retry finds the
 /// candidate as the failed attempt left it.
 pub(crate) fn delete_what_the_import_spent_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
@@ -147,7 +147,7 @@ pub(crate) fn delete_what_the_import_spent_on(
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     candidate_key: &crate::import::CandidateKey,
     expectation: &crate::import::service::ImportExpectation,
 ) -> Result<Option<CommittingCandidate>, DbError> {

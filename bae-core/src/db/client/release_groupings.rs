@@ -117,7 +117,7 @@ pub(super) fn skipped_on(
 /// `touched` (releases just written or removed) or sits in one of `sidecars`
 /// (folders whose sidecar was just written or removed).
 pub(super) fn rebuild_groupings(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     touched: &[CandidateKey],
     sidecars: &[PathBuf],
 ) -> Result<GroupingChanges, DbError> {
@@ -144,10 +144,7 @@ pub(super) fn rebuild_groupings(
 /// Build and store the release of the grouping `key` from the releases it
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
-fn rebuild_grouping(
-    sql: &SqlContext<'_, '_>,
-    key: &CandidateKey,
-) -> Result<GroupingChanges, DbError> {
+fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<GroupingChanges, DbError> {
     let member_keys: Vec<CandidateKey> = sql.query(
         "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
         [key],
@@ -458,7 +455,7 @@ fn parent_files_on(
 /// Rebuild each grouping but `key` sitting in `folder` that is blocked, now
 /// that `key` no longer stands in the way of reading the folder's files.
 fn rebuild_blocked_in(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     folder: &Path,
 ) -> Result<GroupingChanges, DbError> {
@@ -477,7 +474,7 @@ fn rebuild_blocked_in(
 
 /// Say why grouping `key`'s release cannot be worked on as it stands.
 fn blocked(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     block: &GroupingBlock,
 ) -> Result<GroupingChanges, DbError> {

@@ -14,7 +14,7 @@ fn medium_id(position: u16) -> String {
 }
 
 /// The seeded release with two CDs and one track on each.
-fn seed_two_discs(conn: &coven::SqlContext<'_, '_>) -> Result<(), crate::db::DbError> {
+fn seed_two_discs(conn: &coven::CovenWrite<'_>) -> Result<(), crate::db::DbError> {
     seed_artist_album_release(conn)?;
     for position in [1u16, 2] {
         conn.execute(
@@ -30,7 +30,7 @@ fn seed_two_discs(conn: &coven::SqlContext<'_, '_>) -> Result<(), crate::db::DbE
 }
 
 fn insert_track(
-    conn: &coven::SqlContext<'_, '_>,
+    conn: &coven::CovenWrite<'_>,
     track: &str,
     position: i64,
     medium: u16,

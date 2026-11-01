@@ -219,10 +219,33 @@ pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
     }
 }
 
+/// A write coven ran for the app that failed other than in the database, as
+/// in a failed rollback: the custody it read, or the database beneath it.
+fn write_category(error: &coven::CovenError) -> C {
+    use coven::CovenError as E;
+    match error {
+        E::Key(error) => key_category(error),
+        E::Rollback { operation, .. } => write_category(operation),
+        E::FileCleanup { write, .. } => write_category(write),
+        E::Database(_)
+        | E::Migration(_)
+        | E::CovenMigration(_)
+        | E::Settings(_)
+        | E::Lock(_)
+        | E::MissingConfiguration { .. }
+        | E::DeviceKeyMissing { .. }
+        | E::MemberKeysMissing { .. } => C::Database,
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with.
+        E::Shutdown(_) => C::Internal,
+    }
+}
+
 pub(super) fn device_only_category(error: &coven::DeviceOnlyError) -> C {
     use coven::DeviceOnlyError as E;
     match error {
         E::Download { error, .. } => file_read_category(error),
+        E::Write(error) => write_category(error),
         E::Database(_) => C::Database,
         E::Cleanup { error, .. } => device_only_category(error),
         E::RepeatedFile { .. } | E::Path(_) | E::Disk(_) | E::Cancelled => C::Internal,
@@ -233,6 +256,7 @@ pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),
+        E::Write(error) => write_category(error),
         E::Database(_) => C::Database,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::NoStorage => C::Config,

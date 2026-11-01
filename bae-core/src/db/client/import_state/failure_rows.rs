@@ -117,10 +117,7 @@ pub(super) fn load_failure_on(
 
 /// Drop the failure the last import of `content_hash` left, and the identity
 /// conflict that hangs off it.
-pub(super) fn delete_failure_on(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-) -> Result<(), DbError> {
+pub(super) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_failure WHERE content_hash = ?",
         [content_hash],
@@ -131,7 +128,7 @@ pub(super) fn delete_failure_on(
 /// Record that an import of `content_hash` at `edit_revision` failed, inside
 /// the caller's write.
 fn save_failure_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     edit_revision: u64,
     failure: &ImportFailure,

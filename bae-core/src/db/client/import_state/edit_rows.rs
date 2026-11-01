@@ -6,10 +6,7 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
 
-pub(super) fn delete_file_edits(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-) -> Result<(), DbError> {
+pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
         [content_hash],
@@ -24,7 +21,7 @@ pub(super) fn delete_file_edits(
 /// Write every decision `edits` holds. The caller has already cleared what
 /// stood under this hash, so this is always writing into empty space.
 pub(super) fn insert_file_edits(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {

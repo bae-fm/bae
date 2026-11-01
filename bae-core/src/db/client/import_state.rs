@@ -58,7 +58,7 @@ use verdict_rows::{delete_verdict, store_verdict};
 
 /// Move the pane inside a candidate write, without splitting the transaction.
 pub(super) fn move_pane_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     pane_move: crate::import::PaneMove,
 ) -> Result<(), DbError> {
@@ -67,7 +67,7 @@ pub(super) fn move_pane_on(
 
 /// Replace every file decision held for `content_hash` with `edits`.
 pub(super) fn store_file_edits(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
@@ -78,7 +78,7 @@ pub(super) fn store_file_edits(
 /// Seed a candidate's draft from the folder's file tags, authored by the
 /// pre-fill, with provenance naming the tags as its source.
 pub(crate) fn insert_file_tags_draft(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &crate::import::CandidateDraft,
 ) -> Result<(), DbError> {
@@ -97,7 +97,7 @@ pub(crate) fn insert_file_tags_draft(
 }
 
 pub(super) fn require_current_candidate(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     content_hash: &str,
@@ -138,7 +138,7 @@ pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolde
 /// The watched folder covering `folder`. A decision about a folder is deleted
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
-pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &Path) -> Result<PathBuf, DbError> {
+pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<PathBuf, DbError> {
     watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
         DbError::Message(format!(
             "{} is under no watched folder",
@@ -166,7 +166,7 @@ pub(super) fn watched_folder_among_on<'a>(
 
 /// The next scan generation. An upsert, so a missing seed row is created
 /// rather than failing the scan.
-pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
+pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
     let generation: i64 = sql.query_row(
         "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \
          VALUES (1, 1) \
@@ -727,7 +727,7 @@ impl Database {
 /// every grouping built from one of them. Every row must still be at the
 /// revision the caller prepared against.
 pub(super) fn settle_scanned_candidates(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,

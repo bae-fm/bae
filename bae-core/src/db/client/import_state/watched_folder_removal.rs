@@ -100,7 +100,7 @@ fn is_among(roots: &[PathBuf], path: &Path) -> bool {
 /// Watch `parent` in place of `roots`, which must be exactly the watched
 /// folders inside it, with nothing watching it or a folder holding it.
 fn watch_in_place_of(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched: &[PathBuf],
     parent: &Path,
     roots: &[PathBuf],
@@ -158,7 +158,7 @@ fn watch_in_place_of(
 /// releases that went with their groupings. Each table is read and written
 /// by the range of folders at or below each root, on its folder index.
 fn forget_folders_under(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     roots: &[PathBuf],
 ) -> Result<Vec<CandidateKey>, DbError> {
     let mut removed = Vec::new();

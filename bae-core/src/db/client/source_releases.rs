@@ -118,7 +118,7 @@ fn check_derived_facts(release: &SourceRelease) -> Result<(), DbError> {
 
 /// Write `release`, replacing whatever was stored for it.
 pub(super) fn replace_source_release_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     release: &SourceRelease,
 ) -> Result<(), DbError> {
     check_derived_facts(release)?;
@@ -801,7 +801,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
 /// release no row names is not stored: a catalog release is stored only while
 /// something names it.
 pub(super) fn store_named_releases_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     releases: &[SourceRelease],
 ) -> Result<(), DbError> {
     for release in releases {

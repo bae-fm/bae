@@ -15,7 +15,7 @@ use crate::import::CandidateKey;
 /// Remove the entry at `key`: its candidate leaves the scan, and its
 /// identification ends with it.
 pub(crate) fn delete_entry(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
@@ -24,7 +24,7 @@ pub(crate) fn delete_entry(
 }
 
 fn delete_entry_row(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
@@ -49,7 +49,7 @@ pub(super) const ENTRY_ROW_TABLES: [&str; 5] = [
 /// stores the entry again over that row and says itself what that does to
 /// its candidate's identification.
 pub(super) fn clear_entry_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
@@ -74,7 +74,7 @@ const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE
 /// Replace one candidate's stored file-tag reading, inside the caller's
 /// transaction.
 pub(crate) fn replace_candidate_file_tag_snapshot(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
@@ -152,7 +152,7 @@ fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError>
 /// generation than `generation`, ending each candidate's identification, and
 /// return their keys.
 pub(super) fn prune_other_generations(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<Vec<CandidateKey>, DbError> {
@@ -179,7 +179,7 @@ pub(super) fn prune_other_generations(
 /// nothing else, so the completion prune keeps the row. The row keeps the
 /// files the reading was taken from, so the reading stays current with it.
 pub(crate) fn touch_candidate(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     path: &CandidateKey,
     generation: i64,
@@ -197,7 +197,7 @@ pub(crate) fn touch_candidate(
 }
 
 pub(super) fn insert_item(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     item: &ScanItem,
@@ -240,7 +240,7 @@ pub(super) fn insert_item(
 }
 
 fn insert_candidate(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     kind: &str,
@@ -283,7 +283,7 @@ fn insert_candidate(
 /// key, and its parts. `source_kind` is `folder` for a scan's row, `grouping`
 /// for a grouping's.
 pub(crate) fn insert_candidate_row(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     kind: &str,
@@ -354,7 +354,7 @@ pub(crate) enum CandidateStateSeed<'a> {
 /// unless this device imported the files, whose candidate holds neither; a
 /// state that already exists keeps what it holds, its draft row or none.
 pub(crate) fn ensure_candidate_state(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     path: &CandidateKey,
     folder: &std::path::Path,
     files: &crate::import::folder_scanner::CategorizedFiles,
@@ -416,7 +416,7 @@ pub(crate) fn ensure_candidate_state(
 }
 
 fn insert_invalid(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     source_kind: &str,
@@ -490,7 +490,7 @@ fn insert_invalid(
 /// links go in last, since they reference file rows that may sort after the
 /// sheet's.
 pub(crate) fn insert_candidate_files(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     files: &crate::import::folder_scanner::CategorizedFiles,
@@ -523,7 +523,7 @@ pub(crate) fn insert_candidate_files(
 }
 
 fn insert_file(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     position: usize,
@@ -593,7 +593,7 @@ fn insert_file(
 }
 
 fn insert_cue_sheet(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     sheet_relative_path: &str,

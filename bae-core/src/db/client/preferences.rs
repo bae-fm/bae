@@ -207,7 +207,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
 /// Write what `edited` changed of `stored`: the row's columns, and the
 /// presets whole when any of them changed.
 fn write_preferences_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     stored: &Preferences,
     edited: &Preferences,
 ) -> rusqlite::Result<()> {

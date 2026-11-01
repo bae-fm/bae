@@ -36,19 +36,15 @@ impl Database {
                 false => coven::MoveFile::User(file.file),
             })
             .collect();
-        self.write_with_files(
-            |_| Ok(()),
-            move |sql, ()| {
-                sql.move_to_cloud(moving)?;
-                sql.execute(
-                    super::release_storage_action::END_RELEASE_STORAGE_ACTION,
-                    [&release_id],
-                )?;
-                Ok(())
-            },
-        )
+        self.call_sql(move |sql| {
+            sql.move_to_cloud(moving)?;
+            sql.execute(
+                super::release_storage_action::END_RELEASE_STORAGE_ACTION,
+                [&release_id],
+            )?;
+            Ok(())
+        })
         .await
-        .map_err(Self::coven_error)
     }
 
     /// Cancel each move this device is making of these releases' files to
@@ -60,27 +56,23 @@ impl Database {
         &self,
         releases: Vec<String>,
     ) -> Result<Vec<String>, DbError> {
-        self.write_with_files(
-            |_| Ok(()),
-            move |sql, ()| {
-                let mut cancelled = Vec::with_capacity(releases.len());
-                for release in releases {
-                    let moves: Vec<coven::MoveId> =
-                        sql.query(RELEASE_MOVES, [&release], |row| row.get(0))?;
-                    if moves.is_empty() {
-                        tracing::debug!(release, "no move to the cloud to cancel");
-                        continue;
-                    }
-                    for id in moves {
-                        sql.cancel_move(id)?;
-                    }
-                    cancelled.push(release);
+        self.call_sql(move |sql| {
+            let mut cancelled = Vec::with_capacity(releases.len());
+            for release in releases {
+                let moves: Vec<coven::MoveId> =
+                    sql.query(RELEASE_MOVES, [&release], |row| row.get(0))?;
+                if moves.is_empty() {
+                    tracing::debug!(release, "no move to the cloud to cancel");
+                    continue;
                 }
-                Ok(cancelled)
-            },
-        )
+                for id in moves {
+                    sql.cancel_move(id)?;
+                }
+                cancelled.push(release);
+            }
+            Ok(cancelled)
+        })
         .await
-        .map_err(Self::coven_error)
     }
 
     /// End the failed move `id`, whose original changed before its upload,
@@ -90,14 +82,10 @@ impl Database {
         &self,
         id: coven::MoveId,
     ) -> Result<(), DbError> {
-        self.write_with_files(
-            |_| Ok(()),
-            move |sql, ()| {
-                sql.cancel_move(id)?;
-                Ok(())
-            },
-        )
+        self.call_sql(move |sql| {
+            sql.cancel_move(id)?;
+            Ok(())
+        })
         .await
-        .map_err(Self::coven_error)
     }
 }

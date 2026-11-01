@@ -58,25 +58,24 @@ impl Database {
                 audios.push((rows, audio.audio_formats, audio.audio_segments));
             }
         }
-        self.write_with_files(
+        self.write_staged(
             move |batch| {
-                let covers: Vec<coven::FileId> = cover_files
+                Ok(cover_files
                     .into_iter()
                     .map(|(namespace, bytes)| batch.put_file(namespace, bytes, coven::Place::Cloud))
-                    .collect();
-                let files: Vec<coven::FileId> = originals
+                    .collect::<Vec<coven::FileId>>())
+            },
+            move |sql, covers| {
+                let files = originals
                     .into_iter()
                     .map(|prepared| {
-                        batch.put_user_file(
+                        sql.put_user_file(
                             crate::sync::RELEASE_FILES_NAMESPACE,
                             prepared,
                             coven::Place::Cloud,
                         )
                     })
-                    .collect();
-                Ok((covers, files))
-            },
-            move |sql, (covers, files)| {
+                    .collect::<Result<Vec<coven::FileId>, _>>()?;
                 let tx = &sql;
                 let mut covers = covers.into_iter();
                 let mut files = files.into_iter();

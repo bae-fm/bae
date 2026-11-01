@@ -63,7 +63,7 @@ impl PlaybackNowRow {
     }
 }
 
-fn apply_on(sql: &SqlContext<'_, '_>, change: &PlaybackChange) -> rusqlite::Result<()> {
+fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<()> {
     match change {
         PlaybackChange::State(state) => {
             let columns = StateColumns::of(state);

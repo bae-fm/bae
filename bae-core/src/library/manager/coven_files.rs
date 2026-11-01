@@ -66,11 +66,8 @@ impl LibraryManager {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn evict_file_for_test(&self, file: &coven::FileRef) -> Result<(), LibraryError> {
-        self.database
-            .evict_file(file)
-            .await
-            .map_err(|error| LibraryError::file_read("evict", error))
+    pub async fn evict_file_for_test(&self, file: coven::FileId) -> Result<(), LibraryError> {
+        Ok(self.database.evict_file(file).await?)
     }
 
     /// coven's record of the file a release file's row references, as this
@@ -187,16 +184,13 @@ impl LibraryManager {
     /// droppable). No cloud read, no bae flag. The low-level cache op behind the
     /// "Unpin" transition.
     pub(crate) async fn unpin_release_files(&self, release_id: &str) -> Result<(), LibraryError> {
-        let files: Vec<coven::FileRef> = self
+        let files: Vec<coven::FileId> = self
             .release_pinnable_files(release_id)
             .await?
-            .into_iter()
-            .map(|entry| entry.file)
+            .iter()
+            .map(|entry| entry.file.id())
             .collect();
-        self.database
-            .unpin(&files)
-            .await
-            .map_err(|e| LibraryError::file_read(format!("unpin release {release_id}"), e))
+        Ok(self.database.unpin(&files).await?)
     }
 
     /// Store a bae-produced host-provided image and its row in one coven batch.

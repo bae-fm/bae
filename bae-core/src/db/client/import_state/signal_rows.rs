@@ -72,7 +72,7 @@ pub(super) fn signals_read_columns() -> String {
 }
 
 /// Every signal row under `content_hash`. The values cascade from the header.
-pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_signals WHERE content_hash = ?",
         [content_hash],
@@ -84,7 +84,7 @@ pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
 /// `owner` held: the header in place, its values anew. Only a run in flight
 /// stores a pass still scanning.
 pub(super) fn store_signals(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     signals: &Signals,
 ) -> Result<(), DbError> {

@@ -278,7 +278,7 @@ impl Database {
     ) -> Result<(), coven::DeviceOnlyError> {
         self.inner
             .handle
-            .make_device_only(folder, files, cancel)
+            .make_device_only(folder, files, cancel, |_| {})
             .await
     }
 
@@ -315,8 +315,8 @@ impl Database {
         self.inner.handle.subscribe_download_transfers()
     }
 
-    pub(crate) async fn unpin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
-        self.inner.handle.unpin(files).await
+    pub(crate) async fn unpin(&self, files: &[coven::FileId]) -> Result<(), DbError> {
+        self.inner.handle.unpin(files).await.map_err(DbError::from)
     }
 
     pub(crate) async fn files_pinned(
@@ -331,11 +331,12 @@ impl Database {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) async fn evict_file(
-        &self,
-        file: &coven::FileRef,
-    ) -> Result<(), coven::FileReadError> {
-        self.inner.handle.evict_file(file).await
+    pub(crate) async fn evict_file(&self, file: coven::FileId) -> Result<(), DbError> {
+        self.inner
+            .handle
+            .evict_file(file)
+            .await
+            .map_err(DbError::from)
     }
 
     /// coven's whole upload queue, for a test's drain to count what left it.

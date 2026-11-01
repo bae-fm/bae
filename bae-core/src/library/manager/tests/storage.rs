@@ -507,9 +507,9 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
-    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    let file = release_files(&manager, &release.id).await[0].file;
     manager
-        .evict_file_for_test(&manager.release_file_ref(&file_id).await.unwrap())
+        .evict_file_for_test(file)
         .await
         .unwrap();
 
@@ -551,9 +551,9 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
-    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    let file = release_files(&manager, &release.id).await[0].file;
     manager
-        .evict_file_for_test(&manager.release_file_ref(&file_id).await.unwrap())
+        .evict_file_for_test(file)
         .await
         .unwrap();
     home.set_online(false);

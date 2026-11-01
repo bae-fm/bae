@@ -108,7 +108,7 @@ impl ScanItemWrite {
 /// write transaction, so a scan that lost the root after the caller's check
 /// cannot write over its successor.
 fn ensure_generation(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<(), DbError> {
@@ -151,7 +151,7 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
 /// if its scan generation and file edit revision still match the snapshot's.
 /// `false` means the candidate changed first and nothing was written.
 pub(super) fn replace_candidate_file_tag_snapshot_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
@@ -491,7 +491,7 @@ impl Database {
 /// candidate replaces nothing; it is seen before the folders around it are
 /// read, and the reading that settles them does the replacing.
 fn superseded_keys(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     entry_key: &CandidateKey,
     item: &ScanItem,
@@ -535,7 +535,7 @@ pub(crate) enum ScanItemSeed {
 /// Write one scan item under `generation`, inside the caller's transaction,
 /// deleting the entries it supersedes. The caller has checked `generation`.
 fn write_scan_item(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     to_write: &ScanItemToWrite,
@@ -618,7 +618,7 @@ pub(super) enum EntryWrite {
 
 /// Write one entry under `generation`, inside the caller's transaction.
 pub(super) fn write_entry(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
     to_write: &ScanItemToWrite,
@@ -860,7 +860,7 @@ pub(super) fn validate_scan_item_ownership(
 /// its key while stored, since its release is addressed by it, so a reading
 /// naming a different key is stale and refused.
 pub(super) fn store_folder_reading(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &FolderReleaseDecisionKey,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     author: crate::import::folder_scanner::FolderReleaseDecisionAuthor,

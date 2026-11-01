@@ -41,7 +41,7 @@ impl PlaybackTimelineRow {
     }
 }
 
-fn write_on(sql: &SqlContext<'_, '_>, timeline: &PlaybackTimeline) -> rusqlite::Result<()> {
+fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Result<()> {
     let library = timeline.library.as_ref();
     let preview = timeline.preview.as_ref().map(|preview| {
         let (path, start_sample, end_sample) = preview.target.clone().into_sample_range();

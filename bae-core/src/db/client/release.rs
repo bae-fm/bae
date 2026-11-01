@@ -85,7 +85,7 @@ pub(crate) enum AlbumFields {
 /// Write `release`'s pressing over its row, its labels naming the library
 /// labels `labels` decides.
 pub(super) fn update_release_pressing_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     release: &DbRelease,
     labels: &super::LabelWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
@@ -124,7 +124,7 @@ pub(super) fn update_release_pressing_on(
 /// independent of a user edit) and the release's records and where the draft
 /// was read (a record is orthogonal to editable metadata).
 pub(super) fn write_release_metadata_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     metadata: &ReleaseMetadataRows,
     album_fields: AlbumFields,
     now: &str,
@@ -434,28 +434,20 @@ impl Database {
             prepared.push(coven::prepare_user_file(&original, |_| ()).await?);
             rows.push(file);
         }
-        self.write_with_files(
-            move |w| {
-                Ok(prepared
-                    .into_iter()
-                    .map(|original| {
-                        w.put_user_file(
-                            crate::sync::RELEASE_FILES_NAMESPACE,
-                            original,
-                            coven::Place::DeviceOnly,
-                        )
-                    })
-                    .collect::<Vec<_>>())
-            },
-            move |sql, staged| {
-                for (file, id) in rows.iter().zip(&staged) {
-                    insert_release_file_row(&sql, file, *id)?;
-                }
-                Ok(staged)
-            },
-        )
+        self.call_sql(move |sql| {
+            let mut staged = Vec::with_capacity(rows.len());
+            for (file, original) in rows.iter().zip(prepared) {
+                let id = sql.put_user_file(
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    original,
+                    coven::Place::DeviceOnly,
+                )?;
+                insert_release_file_row(&sql, file, id)?;
+                staged.push(id);
+            }
+            Ok(staged)
+        })
         .await
-        .map_err(Self::coven_error)
     }
 
     /// The release's files in their order, each with the path of the original
@@ -632,21 +624,20 @@ impl Database {
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
         let labels = self.label_parts(&release.pressing.labels);
-        self.write_with_files(
+        self.write_staged(
             move |w| {
-                let images: Vec<coven::FileId> = image_files
+                Ok(image_files
                     .into_iter()
                     .map(|(namespace, bytes)| w.put_file(namespace, bytes, coven::Place::Cloud))
-                    .collect();
-                let originals: Vec<coven::FileId> = originals
+                    .collect::<Vec<coven::FileId>>())
+            },
+            move |sql, image_file_ids| {
+                let original_file_ids = originals
                     .into_iter()
                     .map(|(original, place)| {
-                        w.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, original, place)
+                        sql.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, original, place)
                     })
-                    .collect();
-                Ok((images, originals))
-            },
-            move |sql, (image_file_ids, original_file_ids)| {
+                    .collect::<Result<Vec<coven::FileId>, _>>()?;
                 let tx = &sql;
                 require_import_commit_guard(tx, &guard)?;
                 end_import_attempt_of_commit(tx, &guard)?;

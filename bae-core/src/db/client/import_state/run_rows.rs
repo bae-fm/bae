@@ -121,7 +121,7 @@ fn load_stored_runtimes_on(
 /// its rows name, and `signals`, where given, as what extraction last read
 /// for it.
 fn store_run_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     run: i64,
     outcome: &RunOutcome,
@@ -156,7 +156,7 @@ fn store_run_on(
 /// its rows name, and the signals it last read, if its standing names that
 /// run; whether it did.
 fn publish_candidate_run_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     key: &CandidateKey,
     run: IdentifyRunId,
     outcome: &RunOutcome,

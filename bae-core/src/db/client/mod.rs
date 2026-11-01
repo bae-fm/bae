@@ -12,7 +12,7 @@ use rusqlite::named_params;
 use rusqlite::{params, OptionalExtension, Params, Row};
 // coven owns production connections; row-mapping tests also use bare SQLite.
 use crate::db::DbError;
-use coven::{ClockRef, CovenError, CovenHandle, SqlContext, SqlReadContext};
+use coven::{ClockRef, CovenError, CovenHandle, CovenWrite, SqlReadContext};
 #[cfg(test)]
 use rusqlite::Connection;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -289,7 +289,7 @@ impl Database {
     /// Run a write with a borrowed transaction context.
     async fn call<R>(
         &self,
-        f: impl for<'ctx, 'conn> FnOnce(&SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
@@ -297,15 +297,16 @@ impl Database {
         self.call_sql(move |sql| f(&sql)).await
     }
 
-    /// Run an atomic write through coven.
+    /// Run an atomic write through coven: the closure's SQL and coven's
+    /// steps in one transaction.
     async fn call_sql<R>(
         &self,
-        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
     {
-        self.write_with_files(|_| Ok(()), move |sql, ()| f(sql).map_err(CovenError::from))
+        self.write_coven(move |sql| f(sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
     }
@@ -328,20 +329,38 @@ impl Database {
             .map_err(Self::coven_error)
     }
 
-    /// Keep coven's file-staging buffers off the caller's async stack, including
-    /// the import worker's stack. Row-only writes use this same boundary.
-    fn write_with_files<T, R>(
+    /// Run one coven write, its future boxed to keep it off the caller's
+    /// async stack, including the import worker's stack.
+    fn write_coven<R>(
+        &self,
+        write: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, CovenError> + Send + 'static,
+    ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
+    where
+        R: Send + 'static,
+    {
+        Box::pin(self.inner.handle.write(write))
+    }
+
+    /// Stage app bytes, then run a write that puts them in its rows: `stage`
+    /// returns what the write needs, such as the ids staging gave the files,
+    /// and `sql` gets it once the write has taken the staged files. The
+    /// staging future is boxed, as the write's is, to keep coven's buffers off
+    /// the caller's async stack.
+    async fn write_staged<T, R>(
         &self,
         stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, CovenError> + Send + 'static,
-        sql: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>, T) -> Result<R, CovenError>
-            + Send
-            + 'static,
-    ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
+        sql: impl for<'ctx> FnOnce(CovenWrite<'ctx>, T) -> Result<R, CovenError> + Send + 'static,
+    ) -> Result<R, CovenError>
     where
         T: Send + 'static,
         R: Send + 'static,
     {
-        Box::pin(self.inner.handle.write_with_files(stage, sql))
+        let staged = Box::pin(self.inner.handle.stage_files(stage)).await?;
+        self.write_coven(move |write| {
+            let value = write.put_staged(staged)?;
+            sql(write, value)
+        })
+        .await
     }
 
     pub fn from_handle(handle: CovenHandle, clock: ClockRef, ids: coven::IdSourceRef) -> Self {

@@ -1,9 +1,6 @@
 use super::*;
 
-pub(super) fn insert_artist_row(
-    conn: &SqlContext<'_, '_>,
-    artist: &DbArtist,
-) -> Result<(), DbError> {
+pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO artists (
@@ -26,7 +23,7 @@ pub(super) fn insert_artist_row(
 }
 
 pub(super) fn update_artist_external_ids_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     id: &str,
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
@@ -45,7 +42,7 @@ pub(super) fn update_artist_external_ids_row(
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Result<(), DbError> {
+pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
@@ -68,7 +65,7 @@ pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
 /// the group's) can be here already, emptied, when a release is filed under it
 /// again.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Result<(), DbError> {
+pub(super) fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
@@ -92,7 +89,7 @@ pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
 }
 
 pub(super) fn insert_album_artist_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     aa: &DbAlbumArtist,
 ) -> Result<(), DbError> {
     let created_at = aa.created_at.to_rfc3339();
@@ -123,7 +120,7 @@ pub(super) fn insert_album_artist_row(
 /// album's first release stays its primary one. Its labels name the library
 /// labels `labels` decides.
 pub(super) fn insert_release_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     release: &DbRelease,
     labels: &super::LabelWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
@@ -175,7 +172,7 @@ pub(super) fn insert_release_row(
 /// touching only the rows that differ: a row is a place in the list, so
 /// another device's edit of another place merges with this one.
 pub(super) fn replace_release_barcodes(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     release_id: &str,
     barcodes: &[String],
 ) -> Result<(), DbError> {
@@ -220,7 +217,7 @@ pub(super) fn replace_release_barcodes(
 /// only the rows that differ: a row is a place in the list, so another
 /// device's edit of another place merges with this one.
 pub(super) fn replace_release_media(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     release_id: &str,
     media: &[bae_types::pressing::MediaCount],
 ) -> Result<(), DbError> {
@@ -273,7 +270,7 @@ pub(super) fn replace_release_media(
 }
 
 pub(super) fn insert_release_medium_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     medium: &DbReleaseMedium,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -292,7 +289,7 @@ pub(super) fn insert_release_medium_row(
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Result<(), DbError> {
+pub(super) fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO tracks (
@@ -318,7 +315,7 @@ pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Re
 }
 
 pub(super) fn insert_track_artist_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     ta: &DbTrackArtist,
 ) -> Result<(), DbError> {
     let created_at = ta.created_at.to_rfc3339();
@@ -348,7 +345,7 @@ pub(super) fn insert_track_artist_row(
     feature = "test-utils",
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub(super) fn insert_work_row(conn: &SqlContext<'_, '_>, work: &DbWork) -> Result<(), DbError> {
+pub(super) fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO works (
@@ -370,7 +367,7 @@ pub(super) fn insert_work_row(conn: &SqlContext<'_, '_>, work: &DbWork) -> Resul
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_work_artist_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     link: &DbWorkArtist,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -393,7 +390,7 @@ pub(super) fn insert_work_artist_row(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_work_part_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     part: &DbWorkPart,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -421,7 +418,7 @@ pub(super) fn insert_work_part_row(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub(super) fn insert_track_work_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     link: &DbTrackWork,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -444,7 +441,7 @@ pub(super) fn insert_track_work_row(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_release_artist_role_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     role: &DbReleaseArtistRole,
 ) -> Result<(), DbError> {
     insert_artist_role_row(
@@ -465,7 +462,7 @@ pub(super) fn insert_release_artist_role_row(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_track_artist_role_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     role: &DbTrackArtistRole,
 ) -> Result<(), DbError> {
     insert_artist_role_row(
@@ -486,7 +483,7 @@ pub(super) fn insert_track_artist_role_row(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_artist_role_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     table: &'static str,
     target_column: &'static str,
     values: impl Params,
@@ -532,7 +529,7 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub(super) fn insert_release_file_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     file: &NewReleaseFile,
     coven_file: coven::FileId,
 ) -> Result<(), DbError> {
@@ -595,7 +592,7 @@ pub(super) fn insert_release_file_row(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub(super) fn insert_audio_format_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     af: &DbAudioFormat,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -628,7 +625,7 @@ pub(super) fn insert_audio_format_row(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub(super) fn insert_audio_segment_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     segment: &DbAudioSegment,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -656,7 +653,7 @@ pub(super) fn insert_audio_segment_row(
 
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_scrub_points_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     points: &DbScrubPoints,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -697,7 +694,7 @@ fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, 
 /// Write an image's row, pointing it at `file`, the coven file its write
 /// staged.
 pub(super) fn upsert_library_image_row(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     image: &DbLibraryImage,
     file: &coven::FileId,
 ) -> Result<(), DbError> {
@@ -737,7 +734,7 @@ pub(super) fn upsert_library_image_row(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub(super) fn write_release_records(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     release_id: &str,
     records: &[crate::import::ReleaseRecord],
 ) -> Result<(), DbError> {
@@ -774,7 +771,7 @@ pub(super) fn write_release_records(
 /// Make `album_id`'s credit list exactly `artists`, touching only the rows
 /// that differ (see [`write_credits`]).
 pub(super) fn replace_album_artists(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
     now: &str,
@@ -805,7 +802,7 @@ pub(super) fn replace_album_artists(
 /// track ids explicitly because `artists` may not cover every track (a track
 /// legitimately has no per-track artists when it inherits from the album).
 pub(super) fn replace_track_artists(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     track_ids: &[&str],
     artists: &[DbTrackArtist],
     now: &str,
@@ -858,7 +855,7 @@ type StoredCredit = (String, Option<String>, Option<String>);
 /// it stands is not touched. So a write that keeps a credit leaves its row,
 /// and its `created_at`, as they were, and syncs nothing for it.
 fn write_credits(
-    conn: &SqlContext<'_, '_>,
+    conn: &CovenWrite<'_>,
     table: &'static str,
     owner_column: &'static str,
     owner_id: &str,

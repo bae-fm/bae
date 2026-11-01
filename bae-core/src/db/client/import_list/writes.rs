@@ -19,7 +19,7 @@ pub(crate) enum SelectionWrite {
     RunNotShown,
 }
 
-fn view_revision(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbError> {
+fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let revision = sql
         .query_row(
             "SELECT view_revision FROM import_list WHERE id = ?",
@@ -31,7 +31,7 @@ fn view_revision(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, Db
     to_u64(revision, "a list's view revision")
 }
 
-fn selection_revision(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbError> {
+fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let revision = sql
         .query_row(
             "SELECT selection_revision FROM import_list WHERE id = ?",
@@ -44,7 +44,7 @@ fn selection_revision(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u6
 }
 
 /// The view moved: a fold folded or opened something.
-fn view_moved(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<(), DbError> {
+fn view_moved(sql: &CovenWrite<'_>, list: ImportListId) -> Result<(), DbError> {
     sql.execute(
         "UPDATE import_list SET view_revision = view_revision + 1 WHERE id = ?",
         [list.0],
@@ -54,7 +54,7 @@ fn view_moved(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<(), DbErro
 
 /// Where the list's view opens: the position of its first selected row,
 /// reading the items before it, or its top with no selected row shown.
-fn opened_at(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbError> {
+fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let row = list_row(sql, list)?;
     Ok(row
         .items(Shown::View)
@@ -69,7 +69,7 @@ fn opened_at(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbErro
 
 /// Insert every key of `keys` the list shows into its selection.
 fn select_shown(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     list: ImportListId,
     keys: &[CandidateKey],
 ) -> Result<(), DbError> {

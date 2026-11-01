@@ -5,7 +5,7 @@ async fn insert_pinnable_release(manager: &TestManager) -> String {
     let release = uploaded_release(manager, &source, "Test Album", false).await;
     let file = release_files(manager, &release).await.remove(0);
     manager
-        .evict_file_for_test(&manager.release_file_ref(&file.id).await.unwrap())
+        .evict_file_for_test(file.file)
         .await
         .unwrap();
     release

@@ -20,7 +20,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     .await;
     let file = release_files(&manager, &release_id).await.remove(0);
     manager
-        .evict_file_for_test(&manager.release_file_ref(&file.id).await.unwrap())
+        .evict_file_for_test(file.file)
         .await
         .unwrap();
     let mut files = manager.watch_pin_file_transfers();
@@ -95,7 +95,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let file = release_files(&manager, &release_id).await.remove(0);
     let size = u64::try_from(file.file_size).unwrap();
     let file = manager.release_file_ref(&file.id).await.unwrap();
-    manager.evict_file_for_test(&file).await.unwrap();
+    manager.evict_file_for_test(file.id()).await.unwrap();
     let coven::FilePlace::Cloud { location, .. } = file.place() else {
         panic!("the uploaded file is stored");
     };
@@ -139,7 +139,8 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     }
 
     // From here the pins query runs no more until the pin ends, so it still
-    // says the file downloads after coven has kept it and ended the download.
+    // says the file downloads after coven has the whole copy and ended the
+    // download.
     let reads = manager.pin_reads_hold.hold();
     resume.send(()).unwrap();
     pin.await.unwrap().unwrap();

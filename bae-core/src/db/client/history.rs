@@ -105,7 +105,7 @@ fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>>
 }
 
 pub(super) fn adopt_local_history(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     profile: &crate::people::PersonProfile,
 ) -> rusqlite::Result<()> {
     sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) SELECT id, ?1, track_id, started_at, played_ms, ?2 FROM local_history", params![profile.id.to_string(), coven::Audience::Circle(profile.private_circle)])?;

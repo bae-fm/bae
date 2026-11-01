@@ -78,7 +78,7 @@ pub(super) enum Written<'a> {
 /// search writes a returned release, and only a verdict-shaped owner a listed
 /// or unlisted one.
 pub(super) fn store_match(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,
     position: usize,
     result: &MetadataResult,
@@ -295,7 +295,7 @@ pub(super) fn store_match(
 
 /// The album link rows of the match at `position`, which holds none yet.
 fn store_album_link_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,
     position: i64,
     links: &AlbumLinks,
@@ -323,7 +323,7 @@ fn store_album_link_rows(
 /// stating `links` as its album on the other catalog, in place of what it
 /// stated.
 pub(super) fn store_picked(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     search_run: i64,
     release: &MetadataRef,
     links: &AlbumLinks,

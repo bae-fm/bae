@@ -177,7 +177,7 @@ pub(crate) struct RecordsChange {
 /// release used may be another candidate's.
 #[cfg(desktop)]
 pub(super) fn set_records_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     change: &RecordsChange,
     now_dt: chrono::DateTime<chrono::Utc>,
 ) -> Result<(), DbError> {

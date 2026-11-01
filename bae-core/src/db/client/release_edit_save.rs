@@ -72,7 +72,7 @@ impl Database {
 /// its roles and works, every one the rows hold and no other.
 #[cfg(desktop)]
 fn write_applied_rows_on(
-    tx: &SqlContext<'_, '_>,
+    tx: &CovenWrite<'_>,
     rows: &ReleaseRows,
     picked: &[String],
     album_fields: AlbumFields,

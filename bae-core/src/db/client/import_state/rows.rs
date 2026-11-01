@@ -42,7 +42,7 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
 /// stays, so the draft never reads as read from nowhere on its way from one
 /// source to another.
 pub(super) fn store_provenance(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     provenance: Option<&MetadataProvenance>,
 ) -> Result<(), DbError> {
@@ -72,7 +72,7 @@ pub(super) fn store_provenance(
 
 /// Write the provenance of a draft just written, which has none yet.
 pub(super) fn insert_provenance(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     provenance: &MetadataProvenance,
 ) -> Result<(), DbError> {
@@ -144,7 +144,7 @@ impl StoredProvenance {
 /// stays is written in place, so the candidate never reads as unlinked on
 /// its way from one link to another.
 pub(super) fn store_release_link(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     link: Option<&ReleaseLink>,
 ) -> Result<(), DbError> {

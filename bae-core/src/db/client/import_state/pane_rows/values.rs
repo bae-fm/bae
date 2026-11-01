@@ -10,7 +10,7 @@ use crate::import::{CreditedRole, GraphWork, WorkGraph, WorkPart};
 /// Write the values `draft` holds beside its rows besides its tracks': the
 /// works and the roles on the release. The draft row is already written.
 pub(super) fn insert_draft_values(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
@@ -76,7 +76,7 @@ pub(super) fn insert_draft_values(
 /// credits on it and the works it performs. The track row is already
 /// written, and the works are.
 pub(super) fn insert_track_values(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     track: &CandidateTrack,
 ) -> Result<(), DbError> {

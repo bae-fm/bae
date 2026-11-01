@@ -33,7 +33,7 @@ impl ScannedCandidateKey {
     /// the files the write was prepared against; returns its scan generation.
     fn verify(
         &self,
-        sql: &SqlContext<'_, '_>,
+        sql: &CovenWrite<'_>,
         content_hash: &str,
         file_revision: u64,
     ) -> Result<u64, DbError> {
@@ -178,7 +178,7 @@ pub(super) fn load_preparation_on(
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,

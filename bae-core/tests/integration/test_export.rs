@@ -78,8 +78,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     assert_eq!(uploaded, files.len(), "each release file uploaded");
 
     for file in files {
-        let reference = f.mgr.release_file_ref_for_test(&file.id).await.unwrap();
-        f.mgr.evict_file_for_test(&reference).await.unwrap();
+        f.mgr.evict_file_for_test(file.file).await.unwrap();
     }
     fs::remove_dir_all(album_dir).unwrap();
     (release_id, original_bytes)

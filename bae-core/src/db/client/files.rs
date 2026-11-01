@@ -46,7 +46,7 @@ impl Database {
             .await?;
         after_planning().await;
         let bytes = bytes.to_vec();
-        self.write_with_files(
+        self.write_staged(
             move |w| Ok(w.put_file(namespace, bytes, coven::Place::Cloud)),
             move |sql, file| {
                 // Refuse a replacement when another write of the image landed

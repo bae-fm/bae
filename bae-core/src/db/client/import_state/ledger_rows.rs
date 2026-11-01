@@ -120,7 +120,7 @@ pub(super) fn step_columns<'a>(
 
 /// Clear the ledger rows `owner` holds; the lookups and the releases they
 /// found go with their rows.
-pub(super) fn delete_ledger(sql: &SqlContext<'_, '_>, owner: Owner<'_>) -> Result<(), DbError> {
+pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     for table in [
         "import_candidate_lookup_value",
         "import_candidate_lookup_provider",
@@ -145,7 +145,7 @@ pub(super) type MatchPositions<'a> = HashMap<(Catalog, &'a str), (usize, &'a Met
 /// it: the cell is laid out again from that row. `running`: the ledger is a
 /// run's in flight, whose cells may be queued or looking up.
 pub(super) fn store_ledger(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     ledger: &IdentifyRunView,
     matches: &MatchPositions<'_>,
@@ -257,7 +257,7 @@ struct LookupKey<'a> {
 /// One cell, and the releases it found linked to their match rows; queued
 /// or looking up only in a run's ledger in flight (`running`).
 fn store_lookup(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     key: LookupKey<'_>,
     catalog: Option<Catalog>,

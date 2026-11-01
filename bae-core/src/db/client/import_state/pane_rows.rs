@@ -29,7 +29,7 @@ const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
      file_kind, file_id, sheet_id, slice_index";
 
-pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_cover WHERE content_hash = ?",
         [content_hash],
@@ -60,7 +60,7 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
 /// The draft row of a candidate that has none yet, with everything hanging
 /// off it: its album artists, its mediums, its tracks and their values.
 pub(crate) fn insert_draft(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
     author: MetadataAuthor,
@@ -111,7 +111,7 @@ pub(super) fn edit_row_values(
 
 /// The draft's label rows, as the form holds them, where none are stored.
 pub(super) fn insert_label_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     labels: &[RawLabelEdit],
 ) -> Result<(), DbError> {
@@ -135,7 +135,7 @@ pub(super) fn insert_label_rows(
 
 /// The draft's barcode rows, as the form holds them, where none are stored.
 pub(super) fn insert_barcode_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     barcodes: &[String],
 ) -> Result<(), DbError> {
@@ -152,7 +152,7 @@ pub(super) fn insert_barcode_rows(
 /// The draft's mediums, tracks and the values hanging off them: the rows
 /// below the draft row besides its album artists.
 pub(super) fn insert_draft_body(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
@@ -179,7 +179,7 @@ pub(super) fn insert_draft_body(
 /// The track at `position` with the rows hanging off it, where none is
 /// stored.
 fn insert_track(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     position: usize,
     track: &CandidateTrack,
@@ -190,7 +190,7 @@ fn insert_track(
 
 /// The track's own row at `position`, in place of the one stored with its id.
 pub(super) fn store_track_row(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     position: usize,
     track: &CandidateTrack,
@@ -234,7 +234,7 @@ pub(super) fn store_track_row(
 
 /// The rows hanging off a track: its own artists, its roles and its works.
 pub(super) fn insert_track_rows(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     track: &CandidateTrack,
 ) -> Result<(), DbError> {
@@ -813,7 +813,7 @@ impl StoredAssignment {
 }
 
 fn insert_album_artist_assignments(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     assignments: &[Credited],
 ) -> Result<(), DbError> {
@@ -826,7 +826,7 @@ fn insert_album_artist_assignments(
 /// Make the album artist at `position` `assignment`, in place when one is
 /// there.
 pub(super) fn store_album_artist_assignment(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     position: usize,
     assignment: &Credited,
@@ -861,7 +861,7 @@ pub(super) fn store_album_artist_assignment(
 }
 
 fn insert_track_artist_assignments(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     track_id: &str,
     assignments: &[Credited],

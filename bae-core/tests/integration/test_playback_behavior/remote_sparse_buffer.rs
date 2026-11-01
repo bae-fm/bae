@@ -28,8 +28,7 @@ impl RemoteMultiWindowPlayback {
         let (release_id, _) = wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
         library_manager.drain_uploads_expecting_work().await?;
         for file in library_manager.get_files_for_release(&release_id).await? {
-            let reference = library_manager.release_file_ref_for_test(&file.id).await?;
-            library_manager.evict_file_for_test(&reference).await?;
+            library_manager.evict_file_for_test(file.file).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library_manager.get_tracks_for_release(&release_id).await?.into_iter().map(|track| track.id).collect();

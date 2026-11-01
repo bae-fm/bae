@@ -390,7 +390,7 @@ pub(super) fn load_session_on(
 
 /// Store `session` whole for `content_hash`, inside the caller's write.
 fn save_session_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     session: &CandidateSession,
 ) -> Result<(), DbError> {
@@ -450,7 +450,7 @@ fn save_session_on(
 /// leaving the rest of its session as it is. A candidate with no session yet
 /// gets a fresh one moved the same way; one with no state row gets nothing.
 pub(super) fn move_pane_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &CovenWrite<'_>,
     content_hash: &str,
     pane_move: PaneMove,
 ) -> Result<(), DbError> {
