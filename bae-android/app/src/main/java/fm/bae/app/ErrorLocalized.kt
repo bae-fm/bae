@@ -29,9 +29,7 @@ import java.util.Date
  * has none to show — core's answer, not this app's. A cancellation is the user's
  * own doing and says nothing back to them.
  *
- * Null, never "": an empty string is not "nothing", it is a blank line, and it
- * only stayed invisible here because [fm.bae.app.data.UiEventAdapter] happened to
- * catch Cancelled separately before ever asking.
+ * Null, never "": an empty string is not "nothing", it is a blank line.
  */
 fun Context.localizedLine(error: BridgeException): String? =
     bridgeErrorLineKey(error)?.let { key ->
@@ -149,8 +147,7 @@ fun Context.displayError(outcome: BridgeSyncRetryOutcome): DisplayError? =
 /**
  * Resolves a typed error event to what a person is shown. Production binds a
  * [Context] ([LocaleErrorDisplays]); unit tests pass a fixed one so the reducer
- * stays plain-JVM-testable — the same reason playback goes through a
- * [fm.bae.app.playback.PlaybackEventSink] rather than a live player.
+ * stays plain-JVM-testable.
  */
 interface ErrorDisplays {
     /** Null when core says the failure has nothing to show. */

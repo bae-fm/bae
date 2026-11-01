@@ -243,7 +243,7 @@ impl Database {
     // Lookup methods come in two shapes, picked by where the ID came from. Using
     // the wrong one is a bug.
     //
-    // 1. `find_*` — the ID came from the caller (a UI event, an API parameter, a
+    // 1. `find_*` — the ID came from the caller (a screen's action, an API parameter, a
     //    user-provided string). The row may not exist; the user could be looking
     //    at something since deleted. Returns `Result<Option<T>>`.
     //

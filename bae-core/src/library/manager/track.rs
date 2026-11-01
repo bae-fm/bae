@@ -58,6 +58,13 @@ impl LibraryManager {
         self.database.subscribe_queue_value()
     }
 
+    /// Follow the queue's last addition to Up Next.
+    pub(crate) fn subscribe_queue_addition(
+        &self,
+    ) -> coven::LiveQuery<Option<crate::queue::QueueAddition>> {
+        self.database.subscribe_queue_addition()
+    }
+
     /// The queue as its screens show it now.
     pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
         Ok(self.database.queue_value().await?)

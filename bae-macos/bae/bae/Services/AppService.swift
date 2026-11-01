@@ -180,15 +180,13 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     }
 
     /// Wire the live `AppHandle` into the stores: start the common and desktop
-    /// value subscriptions, subscribe to Rust UI events, register the artwork
-    /// analyzer, set up macOS media remote-control bindings, and re-check a
-    /// deferred Discogs token.
+    /// value subscriptions, register the artwork analyzer, set up macOS media
+    /// remote-control bindings, and re-check a deferred Discogs token.
     /// Called once after construction; previews skip it.
     func wireUp() {
         libraryBrowseSession.start()
         startCommonSubscriptions()
         desktopSubscriptions.start()
-        subscribeUIEvents()
         registerArtworkAnalyzer(VisionArtworkAnalyzer())
         activateMediaControls(previewAudio: previewAudio)
         revalidateDiscogsToken()

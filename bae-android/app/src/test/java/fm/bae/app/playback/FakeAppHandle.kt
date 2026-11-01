@@ -41,6 +41,7 @@ import uniffi.bae_bridge.BridgePlaylist
 import uniffi.bae_bridge.BridgePlaylistEntry
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeProviderSignOut
+import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeRating
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
@@ -87,6 +88,7 @@ import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.PlaylistEntriesCallback
 import uniffi.bae_bridge.PlaylistsCallback
 import uniffi.bae_bridge.ProfilesCallback
+import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.RatingsCallback
@@ -95,7 +97,6 @@ import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.StreamFailureCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
-import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.UploadsPausedCallback
 import uniffi.bae_bridge.WorkDetailSubscription
 
@@ -148,8 +149,6 @@ internal open class FakeAppHandle(
 
     override suspend fun savePlaybackState() {}
 
-    override fun subscribeUiEvents(callback: UiEventCallback) {}
-
     override fun subscribeConfig(callback: ConfigCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
@@ -183,6 +182,8 @@ internal open class FakeAppHandle(
     override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
 
     override fun subscribePlaybackValues(): PlaybackValuesSubscription = FakePlaybackValuesSubscription()
+
+    override fun subscribeQueueAdditions(): QueueAdditionsSubscription = FakeQueueAdditionsSubscription()
 
     override fun subscribePlaybackTimeline(callback: PlaybackTimelineCallback): LiveSubscription = liveSubscription()
 
@@ -787,5 +788,20 @@ internal class FakePlaybackValuesSubscription : PlaybackValuesSubscription(NoHan
 
     override fun close() {
         values.close(BridgeException.Cancelled())
+    }
+}
+
+/** Queue additions nothing delivers: each pull waits until cancelled. */
+internal class FakeQueueAdditionsSubscription : QueueAdditionsSubscription(NoHandle) {
+    private val additions = Channel<BridgeQueueAddition>(Channel.UNLIMITED)
+
+    override suspend fun next(): BridgeQueueAddition = additions.receive()
+
+    override suspend fun cancel() {
+        additions.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        additions.close(BridgeException.Cancelled())
     }
 }

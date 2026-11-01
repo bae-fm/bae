@@ -3227,10 +3227,8 @@ What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A
 detail embeds its summary, so a surface holding a detail can treat it as one.
 
-`subscribe_ui_events` carries what isn't a value: tracks added to the
-queue. How far the
-identifications and imports in flight have got is a live query of its own,
-`subscribe_import_counts`, which the app pulls.
+How far the identifications and imports in flight have got is a live query
+of its own, `subscribe_import_counts`, which the app pulls.
 
 ### 9.3 Importing
 
@@ -3273,6 +3271,12 @@ the playing track's display and the queue's repeat mode, a value after each
 change; while the row names a track the library no longer holds, until
 playback moves off it, no value is sent. A failure shows once wherever the
 person is: a value reading a failure whose number was shown shows nothing.
+Each time tracks go into Up Next, the write that puts them in counts the
+addition on the queue's row, with how many tracks it put in; starting
+playback with the library zeroes the count, so no earlier addition is
+confirmed again. The app pulls a live query of that count, a value per
+addition, or the last one when several land before the app pulls again,
+and confirms it: the queue button's badge on macOS, a snackbar on Android.
 Its other values are live subscriptions: the timeline, the line of the playing
 track and of a preview, each a position and whether it moves on from it,
 sent only as playback leaves the line it holds (a seek, another track or
@@ -3449,13 +3453,13 @@ release's or track's id as UTF-8, or a candidate's key.
   library closes is cancelled from the start. One whose task breaks on a bug
   answers with that failure, "Something went wrong", and ends; the bug is
   reported.
-- **Callbacks the app provides**: UI events, the artwork reader, and on phones
-  the sign-in presenter, which shows the provider's page and returns where it
-  redirected. Desktops sign in through coven's own browser flow; iCloud runs in
-  coven. A callback that throws what it doesn't declare is reported as the
-  app's bug and answered as that call fails: a UI event it throws on is
-  skipped and the next one delivered, a request for audio focus is refused, a
-  sign-in fails. A throw from the crash reporter itself is logged.
+- **Callbacks the app provides**: the artwork reader, and on phones the audio
+  focus and the sign-in presenter, which shows the provider's page and returns
+  where it redirected. Desktops sign in through coven's own browser flow;
+  iCloud runs in coven. A callback that throws what it doesn't declare is
+  reported as the app's bug and answered as that call fails: a request for
+  audio focus is refused, a sign-in fails. A throw from the crash reporter
+  itself is logged.
 
 ### 10.3 Generated bindings
 
@@ -3968,11 +3972,11 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | File | Types for |
 |---|---|
 | `library_playback.rs` | albums, releases, tracks, files, audio formats, covers and galleries, records, catalogs, cloud providers, libraries |
-| `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue, sync status and pending records |
+| `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue and its additions, sync status and pending records |
 | `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, cloud-home setup |
 | `configuration/settings.rs` | sorting, restore codes, people and devices, save presets, errors |
 | `playback_values.rs` | the playing track, position, side-pause prompt, media controls, preview |
-| `events_and_transfers.rs` | UI events, uploads, downloads, exports and saves |
+| `events_and_transfers.rs` | the artwork reader, uploads, downloads, exports and saves |
 | `editing.rs` | release detail and edits, artist credits, the mapping table, edit validation |
 | `pressing.rs` | pressing facts: area, media, labels, status, packaging, Discogs details |
 | `storage_inspector.rs` | the storage inspector's files and transfers |

@@ -288,6 +288,21 @@ pub struct BridgeQueueSnapshot {
     pub has_previous: bool,
 }
 
+/// The last time tracks went into Up Next: which addition since playback
+/// started with the library it was, counting from one, and how many tracks it
+/// put in. Each addition is a value of its own, even two alike in a row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeQueueAddition {
+    pub number: u64,
+    pub tracks: u32,
+}
+
+mirror_struct! {
+    BridgeQueueAddition = bae_core::queue::QueueAddition,
+    from_core: pub(crate) fn,
+    fields: { number, tracks },
+}
+
 /// Which kind of source the context plays from, so the UI labels the section
 /// (a release's "Playing From" vs the whole library). A single- or multi-release
 /// source is both `Release` here — the queue pane's "Playing From" title is the

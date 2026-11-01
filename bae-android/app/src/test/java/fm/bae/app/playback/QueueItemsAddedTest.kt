@@ -11,13 +11,15 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeQueueAddition
 
 /**
- * The queue-add confirmation flow ([BaeCorePlayer.onQueueItemsAdded] →
- * [BaeCorePlayer.queueItemsAdded]). It carries a one-shot count for the in-app
- * root to surface as a snackbar. The contract that matters is that it is a
- * transient event, not state: a collector that subscribes after an add must not
- * see it, so a recomposition or screen change never re-shows a stale "+N added".
+ * The queue-add confirmation flow ([BaeCorePlayer.onQueueAddition] →
+ * [BaeCorePlayer.queueItemsAdded]). Each addition the session pulls carries
+ * how many tracks it put in, for the in-app root to surface as a snackbar.
+ * The contract that matters is that the confirmation is shown once, not held:
+ * a collector that subscribes after an add must not see it, so a
+ * recomposition or screen change never re-shows a stale "+N added".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -29,7 +31,7 @@ class QueueItemsAddedTest {
         val scope = CoroutineScope(Dispatchers.Unconfined)
         val job = scope.launch { player.queueItemsAdded.collect { received.add(it) } }
 
-        player.onQueueItemsAdded(3)
+        player.onQueueAddition(BridgeQueueAddition(number = 2u, tracks = 3u))
 
         assertEquals(listOf(3), received)
         job.cancel()
@@ -41,7 +43,7 @@ class QueueItemsAddedTest {
 
         // Emitted before anyone is listening: with no replay the confirmation is
         // gone, not buffered for the next collector.
-        player.onQueueItemsAdded(3)
+        player.onQueueAddition(BridgeQueueAddition(number = 2u, tracks = 3u))
 
         val received = mutableListOf<Int>()
         val scope = CoroutineScope(Dispatchers.Unconfined)

@@ -1,6 +1,7 @@
 //! The queue screens' reads of the playback queue tables: the queue value,
-//! with Up Next whole and what the context lane plays from, and the windows
-//! of the context lane's upcoming tracks with their length.
+//! with Up Next whole and what the context lane plays from, the windows of
+//! the context lane's upcoming tracks with their length, and the last
+//! addition to Up Next.
 
 use super::playback::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::playback_queue::repeat_from_column;
@@ -16,6 +17,23 @@ impl Database {
         self.inner
             .handle
             .subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
+    }
+
+    /// Follow the queue's last addition to Up Next; `None` until there is
+    /// one since playback started with the library.
+    pub(crate) fn subscribe_queue_addition(
+        &self,
+    ) -> coven::LiveQuery<Option<crate::queue::QueueAddition>> {
+        self.inner
+            .handle
+            .subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
+    }
+
+    /// The queue's last addition to Up Next, as
+    /// [`Self::subscribe_queue_addition`] reads it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn queue_addition(&self) -> Result<Option<crate::queue::QueueAddition>, DbError> {
+        self.read(|sql| queue_addition_on(&sql)).await
     }
 
     /// The queue as its screens show it now.
@@ -128,6 +146,18 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
         repeat: repeat_from_column(&repeat)?,
         context,
     })
+}
+
+fn queue_addition_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<Option<crate::queue::QueueAddition>, DbError> {
+    let (number, added_tracks): (u64, Option<u32>) = sql.query_row(
+        "SELECT additions, added_tracks FROM playback_queue",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    // The table's CHECK sets the count exactly when there was an addition.
+    Ok(added_tracks.map(|tracks| crate::queue::QueueAddition { number, tracks }))
 }
 
 fn queue_value_on(

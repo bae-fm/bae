@@ -233,13 +233,3 @@ impl PlaybackDiagnostic {
         }
     }
 }
-
-/// What the UI hears outside its value subscriptions: playback's notices.
-#[derive(Debug, Clone)]
-pub enum UiEvent {
-    /// Tracks were just appended/inserted into the queue. Carries the count
-    /// for a transient "+N" UI indicator. Fires only on add operations
-    /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),
-    /// never on remove/reorder/clear. Suppressed when count is zero.
-    QueueItemsAdded { count: u32 },
-}

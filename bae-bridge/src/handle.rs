@@ -151,7 +151,6 @@ mod storage_browse;
 #[cfg(desktop)]
 mod storage_inspector;
 mod sync_status;
-mod ui_events;
 
 /// The runtime every task of an open library runs on, and whether the library
 /// is still open on it. A library ends before its runtime does: closing the

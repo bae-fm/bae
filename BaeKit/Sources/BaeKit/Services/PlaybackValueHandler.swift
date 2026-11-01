@@ -47,8 +47,9 @@ final class PlaybackValueHandler {
         return failure.reason
     }
 
-    func applyQueueItemsAdded(_ count: UInt32) {
-        playbackStore.publishQueueItemsAdded(Int(count))
+    /// Tracks went into Up Next: the queue button's badge shows how many.
+    func applyQueueAddition(_ addition: BridgeQueueAddition) {
+        playbackStore.publishQueueItemsAdded(Int(addition.tracks))
     }
 
     func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {

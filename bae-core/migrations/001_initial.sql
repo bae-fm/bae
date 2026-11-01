@@ -1975,13 +1975,21 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     source_release_id TEXT,
     shuffled          INTEGER CHECK (shuffled IN (0, 1)),
     cursor            INTEGER,
+    -- How many times tracks went into Up Next since playback started with
+    -- the library, and how many tracks the last of those put in, NULL before
+    -- the first. The write that adds the tracks counts them here, so a
+    -- screen confirming each addition reads one value per addition, even
+    -- two alike in a row. Starting playback with the library zeroes both.
+    additions    INTEGER NOT NULL CHECK (additions >= 0),
+    added_tracks INTEGER CHECK (added_tracks > 0),
     CHECK ((source_kind IS NULL) = (shuffled IS NULL)
         AND (source_kind IS NULL) = (cursor IS NULL)),
-    CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL))
+    CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL)),
+    CHECK ((additions = 0) = (added_tracks IS NULL))
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_queue (singleton, repeat, next_entry)
-VALUES (1, 'off', 1);
+INSERT OR IGNORE INTO playback_queue (singleton, repeat, next_entry, additions)
+VALUES (1, 'off', 1, 0);
 
 -- Up Next: tracks queued by hand, drained first, in position order. Each is an
 -- entry of its own, so a track queued twice is two rows. Positions are only an

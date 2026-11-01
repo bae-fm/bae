@@ -63,8 +63,3 @@ data class QueueProjection(
         val EMPTY = QueueProjection(manual = emptyList(), context = null)
     }
 }
-
-/** Playback events [fm.bae.app.data.UiEventAdapter] passes to [BaeCorePlayer]. */
-interface PlaybackEventSink {
-    fun onQueueItemsAdded(count: Int)
-}

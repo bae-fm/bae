@@ -27,6 +27,15 @@ impl AppHandle {
         )
     }
 
+    /// Each time tracks go into Up Next, with how many, for the screens that
+    /// confirm an addition.
+    pub fn subscribe_queue_additions(&self) -> std::sync::Arc<crate::QueueAdditionsSubscription> {
+        crate::screens::queue_additions(
+            self.services.subscribe_queue_additions(),
+            self.runtime.clone(),
+        )
+    }
+
     /// What playback is doing, apart from where it is in what it plays: the
     /// first value at once, then one after each change.
     pub fn subscribe_playback_values(&self) -> std::sync::Arc<crate::PlaybackValuesSubscription> {
@@ -424,3 +433,7 @@ mod tests;
 #[cfg(test)]
 #[path = "playback_values_tests.rs"]
 mod playback_values_tests;
+
+#[cfg(test)]
+#[path = "queue_additions_tests.rs"]
+mod queue_additions_tests;

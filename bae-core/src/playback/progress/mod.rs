@@ -181,7 +181,6 @@ impl PlaybackValues {
             PlaybackProgress::PositionUpdate { .. }
             | PlaybackProgress::Seeked { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
-            | PlaybackProgress::QueueItemsAdded { .. }
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. } => None,
         }
@@ -284,7 +283,6 @@ impl PlaybackPositions {
             PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }
             | PlaybackProgress::RemoteStatusChanged { .. }
-            | PlaybackProgress::QueueItemsAdded { .. }
             | PlaybackProgress::PlaybackError { .. }
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. } => return None,
@@ -357,12 +355,6 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
-    },
-    /// Tracks were appended/inserted into the queue. Fired only by add
-    /// operations; never by remove/reorder/clear. The UI surfaces this as
-    /// a transient "+N" badge.
-    QueueItemsAdded {
-        count: u32,
     },
     VolumeChanged {
         volume: f32,

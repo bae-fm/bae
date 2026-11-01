@@ -1,5 +1,6 @@
-//! The playback queue's live reads on [`AppServices`]: the queue value and the
-//! upcoming tail's windows past it, both read from the queue tables.
+//! The playback queue's live reads on [`AppServices`]: the queue value, the
+//! upcoming tail's windows past it, and the last addition to Up Next, all
+//! read from the queue tables.
 
 use super::*;
 
@@ -25,6 +26,17 @@ impl AppServices {
                 }
             });
         rx
+    }
+
+    /// The last time tracks went into Up Next, as the screens confirming
+    /// each addition read it: the first value at once, then one per
+    /// addition. `None` until there is one since playback started with the
+    /// library.
+    pub fn subscribe_queue_additions(
+        &self,
+    ) -> crate::library::LiveValues<Option<crate::queue::QueueAddition>> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_queue_addition())
     }
 
     /// The context's upcoming tail, read in the windows the subscription is

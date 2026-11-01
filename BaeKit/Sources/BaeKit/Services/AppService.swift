@@ -276,14 +276,6 @@ open class AppService: @unchecked Sendable, Observable {
         }
     #endif
 
-    public func subscribeUIEvents() {
-        appHandle.subscribeUiEvents(
-            callback: UiEventPump(
-                sink: UiEventDispatcher.makeSink(appService: self)
-            )
-        )
-    }
-
     /// Report that a host UI screen was opened, as a typed telemetry event,
     /// through the process-lifetime telemetry sink. Infallible — telemetry must
     /// never affect navigation. This is the only host-originated event;
@@ -336,6 +328,9 @@ open class AppService: @unchecked Sendable, Observable {
             applyTimeline: { [weak self] timeline in
                 self?.mediaControlService.applyTimeline(timeline)
             },
+            applyQueueAddition: { [weak self] addition in
+                self?.playbackValues.applyQueueAddition(addition)
+            },
             applyQueue: { [weak self] snapshot in
                 self?.playbackValues.applyQueueSnapshot(snapshot)
                 self?.mediaControlService
@@ -349,10 +344,6 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     open func applyPlatformPlaybackValues(_: BridgePlaybackValues) {}
-
-    func applyQueueItemsAdded(_ count: UInt32) {
-        playbackValues.applyQueueItemsAdded(count)
-    }
 
     #if DEBUG
         public var stateForTesting: AppServiceTestState {

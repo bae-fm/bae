@@ -16,10 +16,9 @@ impl PlaybackService {
     /// Tracks went into Up Next, or the write failed.
     pub(super) async fn queue_added(&mut self, added: Result<usize, crate::db::DbError>) {
         match added {
-            Ok(count) => {
-                self.emit_queue_items_added(count as u32);
-                self.on_queue_mutated().await;
-            }
+            // The write counted the addition on the queue row, which the
+            // screens confirming it read.
+            Ok(_) => self.on_queue_mutated().await,
             Err(e) => {
                 error!("couldn't add tracks to the queue: {e}");
                 self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
@@ -55,16 +54,6 @@ impl PlaybackService {
                 NextEntry::Stop
             }
         }
-    }
-
-    pub(super) fn emit_queue_items_added(&self, count: u32) {
-        if count == 0 {
-            return;
-        }
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::QueueItemsAdded { count },
-        );
     }
 
     pub(super) async fn apply_repeat_mode(&mut self, mode: RepeatMode) {

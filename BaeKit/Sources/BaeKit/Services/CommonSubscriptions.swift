@@ -137,6 +137,7 @@ final class CommonSubscriptions {
     private let castStore: CastStore
     private var subscriptions: [LiveSubscription] = []
     private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
+    private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -165,6 +166,8 @@ final class CommonSubscriptions {
             @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
         applyTimeline:
             @escaping @MainActor @Sendable (BridgePlaybackTimeline) -> Void,
+        applyQueueAddition:
+            @escaping @MainActor @Sendable (BridgeQueueAddition) -> Void,
         applyQueue:
             @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
@@ -173,6 +176,11 @@ final class CommonSubscriptions {
         playbackValues = ScreenSubscription(
             appHandle.subscribePlaybackValues(),
             onValue: applyPlayback,
+            onError: onError
+        )
+        queueAdditions = ScreenSubscription(
+            appHandle.subscribeQueueAdditions(),
+            onValue: applyQueueAddition,
             onError: onError
         )
         feeds = [

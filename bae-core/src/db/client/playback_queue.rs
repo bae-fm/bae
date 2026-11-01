@@ -2,7 +2,8 @@
 //! a play fills is `playback_context`; in both each row is an entry of its own,
 //! named by its entry number and ordered by its position, so a track queued
 //! twice is two rows. The one `playback_queue` row says what the context lane
-//! plays from, which of its rows is playing, and how the queue repeats. The
+//! plays from, which of its rows is playing, how the queue repeats, and the
+//! additions to Up Next since playback started with the library. The
 //! playback service is the only writer, each change one transaction; the queue
 //! screens read the same tables through live queries.
 
@@ -118,8 +119,8 @@ impl Database {
     /// played. A library with nothing to resume opens with an empty queue,
     /// and one opened with "restore on launch" off forgets what it played.
     /// Either way `playback_now` starts stopped, at the resumed volume or at
-    /// full volume. A bulk write, so emptying a library-sized lane takes one
-    /// step.
+    /// full volume, and the queue's count of additions starts at none. A
+    /// bulk write, so emptying a library-sized lane takes one step.
     pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), DbError> {
         self.call_bulk(move |sql| {
             let stored = sql
@@ -127,6 +128,12 @@ impl Database {
                 .optional()?
                 .is_some();
             super::playback_now::reset_playback_now_on(sql, resume && stored)?;
+            // No addition outlives the playback that made it, so a resumed
+            // queue confirms none of its earlier ones again.
+            sql.execute(
+                "UPDATE playback_queue SET additions = 0, added_tracks = NULL",
+                [],
+            )?;
             if resume && stored {
                 return Ok(());
             }
@@ -173,7 +180,8 @@ impl PlaybackQueueTables {
     }
 
     /// Add tracks to Up Next where `place` says, leaving out any the library
-    /// does not hold, and say how many went in.
+    /// does not hold, and say how many went in. Putting any in counts one
+    /// addition on the queue row, with how many.
     pub async fn add_manual(
         &self,
         track_ids: Vec<String>,
@@ -753,7 +761,13 @@ fn add_manual_on(
              FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
         params![track_ids, base, start],
     )?;
-    sql.execute("UPDATE playback_queue SET next_entry = ?", [base + count])?;
+    // The addition is counted in the write that makes it, so the screens
+    // confirming additions read exactly the ones that happened.
+    sql.execute(
+        "UPDATE playback_queue \
+         SET next_entry = ?, additions = additions + 1, added_tracks = ?",
+        params![base + count, count],
+    )?;
     Ok(count as usize)
 }
 

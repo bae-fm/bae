@@ -95,20 +95,6 @@ impl OperationRuntime {
         })?
     }
 
-    /// Run `task` on the runtime with nobody awaiting it. A panic in it is
-    /// reported, and `on_panic` ends what it served.
-    pub(crate) fn spawn_reported(
-        &self,
-        name: &'static str,
-        task: impl Future<Output = ()> + Send + 'static,
-        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
-    ) {
-        drop(
-            self.diagnostics
-                .spawn_reported(&self.runtime, name, task, on_panic),
-        );
-    }
-
     /// Run `future` to its end on the runtime, for a test driving the
     /// bridge from outside it.
     #[cfg(test)]

@@ -5,11 +5,10 @@ import Testing
 
 @testable import bae
 
-/// Drives the real macOS sink (`UiEventDispatcher.makeSink`) with a faked
-/// `AppHandle` (no live core) against every arm the dispatcher handles.
-/// These read and write process-global singletons (Now Playing info + remote
-/// command center), so every suite here is serialized and resets state on
-/// exit.
+/// Drives the real macOS `AppService` with a faked `AppHandle` (no live
+/// core) through the subscriptions it starts. These read and write
+/// process-global singletons (Now Playing info + remote command center), so
+/// every suite here is serialized and resets state on exit.
 @MainActor
 @Suite("Playback failure display", .serialized)
 struct PlaybackFailureDisplayTests {
@@ -47,20 +46,23 @@ struct PlaybackFailureDisplayTests {
 }
 
 @MainActor
-@Suite("UiEventDispatcher control arms", .serialized)
-struct UiEventDispatcherControlTests {
-    @Test("queueItemsAdded reaches the transient playback signal")
-    func queueItemsAddedReachesPlaybackSignal() {
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(appService: appService)
+@Suite("Queue additions", .serialized)
+struct QueueAdditionTests {
+    @Test("each pulled queue addition reaches the badge with its track count")
+    func queueAdditionReachesBadge() async throws {
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
         var addedCounts: [Int] = []
         let subscription = appService.queueItemsAddedPublisherForTesting
             .sink { addedCounts.append($0) }
         defer { subscription.cancel() }
+        appService.startCommonSubscriptions()
 
-        sink(.queueItemsAdded(count: 3))
+        // Two additions alike in their count are two badges.
+        handle.deliverQueueAddition(BridgeQueueAddition(number: 1, tracks: 3))
+        handle.deliverQueueAddition(BridgeQueueAddition(number: 2, tracks: 3))
 
-        #expect(addedCounts == [3])
+        try await Wait.until { addedCounts == [3, 3] }
     }
 }
 
@@ -256,11 +258,12 @@ private var emptySeed: LibrarySessionSeed {
 }
 
 /// A handle-less `AppHandle` that answers the reads the macOS `AppService`
-/// constructor and its subscriptions make so a dispatcher test can build the
-/// real service without a live core.
+/// constructor and its subscriptions make, so a test can build the real
+/// service without a live core.
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
     private let playbackValues = FakePlaybackValues()
+    private let queueAdditions = FakeQueueAdditions()
     private var timelineCallback: (any PlaybackTimelineCallback)?
 
     init() {
@@ -305,6 +308,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     override func subscribePlaybackValues() -> PlaybackValuesSubscription {
         playbackValues
+    }
+
+    override func subscribeQueueAdditions() -> QueueAdditionsSubscription {
+        queueAdditions
     }
 
     override func subscribePlaybackTimeline(
@@ -385,6 +392,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         playbackValues.deliver(value)
     }
 
+    func deliverQueueAddition(_ addition: BridgeQueueAddition) {
+        queueAdditions.deliver(addition)
+    }
+
     func deliverTimeline(_ timeline: BridgePlaybackTimeline) {
         timelineCallback?.onValue(timeline: timeline)
     }
@@ -405,24 +416,14 @@ private final class NoopLiveSubscription: LiveSubscription,
     override func cancel() {}
 }
 
-/// Playback values a test hands the app one at a time, each answering the
-/// app's next pull.
-private final class FakePlaybackValues: PlaybackValuesSubscription,
-    @unchecked Sendable
-{
+/// Values a test hands the app one at a time, each answering the app's next
+/// pull; cancelling answers a waiting pull that it was cancelled.
+private final class PullQueue<Value: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
-    private var waiting: [BridgePlaybackValues] = []
-    private var puller: CheckedContinuation<BridgePlaybackValues, any Error>?
+    private var waiting: [Value] = []
+    private var puller: CheckedContinuation<Value, any Error>?
 
-    init() {
-        super.init(noHandle: PlaybackValuesSubscription.NoHandle())
-    }
-
-    required init(unsafeFromHandle handle: UInt64) {
-        super.init(unsafeFromHandle: handle)
-    }
-
-    func deliver(_ value: BridgePlaybackValues) {
+    func deliver(_ value: Value) {
         let puller = lock.withLock {
             let puller = self.puller
             self.puller = nil
@@ -432,12 +433,12 @@ private final class FakePlaybackValues: PlaybackValuesSubscription,
         puller?.resume(returning: value)
     }
 
-    override func next() async throws -> BridgePlaybackValues {
+    func next() async throws -> Value {
         try await withCheckedThrowingContinuation { continuation in
             let value = lock.withLock {
                 if waiting.isEmpty {
                     puller = continuation
-                    return BridgePlaybackValues?.none
+                    return Value?.none
                 }
                 return waiting.removeFirst()
             }
@@ -445,7 +446,7 @@ private final class FakePlaybackValues: PlaybackValuesSubscription,
         }
     }
 
-    override func cancel() async throws {
+    func cancel() {
         let puller = lock.withLock {
             let puller = self.puller
             self.puller = nil
@@ -453,6 +454,54 @@ private final class FakePlaybackValues: PlaybackValuesSubscription,
         }
         puller?.resume(throwing: BridgeError.Cancelled)
     }
+}
+
+/// Playback values a test hands the app one at a time.
+private final class FakePlaybackValues: PlaybackValuesSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<BridgePlaybackValues>()
+
+    init() {
+        super.init(noHandle: PlaybackValuesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    func deliver(_ value: BridgePlaybackValues) { values.deliver(value) }
+
+    override func next() async throws -> BridgePlaybackValues {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
+/// Queue additions a test hands the app one at a time.
+private final class FakeQueueAdditions: QueueAdditionsSubscription,
+    @unchecked Sendable
+{
+    private let additions = PullQueue<BridgeQueueAddition>()
+
+    init() {
+        super.init(noHandle: QueueAdditionsSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    func deliver(_ addition: BridgeQueueAddition) {
+        additions.deliver(addition)
+    }
+
+    override func next() async throws -> BridgeQueueAddition {
+        try await additions.next()
+    }
+
+    override func cancel() async throws { additions.cancel() }
 }
 
 /// A stream nothing feeds, which holds nothing.

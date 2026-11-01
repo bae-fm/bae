@@ -49,7 +49,6 @@ CAPABILITY_TYPES = {
     "SubsonicServer",
     "Sync",
     "TrackSave",
-    "UiEventPump",
     "UiStore",
 }
 

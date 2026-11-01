@@ -98,6 +98,19 @@ pulled_values! {
     built by playback_values
 }
 
+pulled_values! {
+    /// Each time tracks go into Up Next, with how many: one value per
+    /// addition, none before the first since playback started with the
+    /// library.
+    QueueAdditionsSubscription:
+        Option<bae_core::queue::QueueAddition> => crate::types::BridgeQueueAddition,
+    converted by |addition: Option<bae_core::queue::QueueAddition>| {
+        addition.map(crate::types::BridgeQueueAddition::from_core)
+    },
+    when present,
+    built by queue_additions
+}
+
 #[cfg(feature = "desktop")]
 pulled_values! {
     /// How far the identifications and imports in flight have got.

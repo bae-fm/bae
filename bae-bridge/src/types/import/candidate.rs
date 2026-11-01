@@ -344,5 +344,3 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: { album_id, album_title, holds_release },
 }
-
-// ── Unified UI event system ─────────────────────────────────────────────

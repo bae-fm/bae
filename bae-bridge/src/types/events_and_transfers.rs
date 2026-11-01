@@ -1,11 +1,5 @@
 use super::*;
 
-/// Callback for the unified UI event stream.
-#[uniffi::export(callback_interface)]
-pub trait UiEventCallback: Send + Sync {
-    fn on_event(&self, event: BridgeUiEvent);
-}
-
 /// What one analyzer pass over an image read. Mirrors
 /// `bae_core::signals::ArtworkAnalysis`.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -23,13 +17,6 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
     /// Empty on failure, as when there is nothing to read. `path` is the
     /// image's path as coven's bytes (`coven::path_bytes`).
     fn analyze(&self, path: Vec<u8>) -> BridgeArtworkAnalysis;
-}
-
-/// A UI event; database-backed state arrives through live results instead.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeUiEvent {
-    /// Tracks were added to the queue; never sent for zero.
-    QueueItemsAdded { count: u32 },
 }
 
 /// The activity exposed by coven's committed upload queue.

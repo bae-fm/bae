@@ -20,7 +20,6 @@ import fm.bae.app.data.ScreenSubscription
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
-import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.pulled
 import fm.bae.app.playback.BaeCorePlayer
@@ -34,7 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,7 +45,6 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
@@ -56,7 +53,6 @@ import uniffi.bae_bridge.PlaybackTimelineCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
-import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.UploadsPausedCallback
 
 private val logger = BaeLogger("bae.OpenLibrary")
@@ -116,8 +112,6 @@ class OpenLibrary internal constructor(
 
     /** Where this library's code reports a broken guarantee without crashing. */
     val bugs: BugReports get() = runtime.bugs
-    private var eventChannel: Channel<BridgeUiEvent>? = null
-    private var eventJob: Job? = null
     private var widgetJob: Job? = null
     private var networkReports: NetworkChangeReporter? = null
     private var memoryRelease: MemoryRelease? = null
@@ -156,27 +150,6 @@ class OpenLibrary internal constructor(
 
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
-        val channel = Channel<BridgeUiEvent>(Channel.UNLIMITED)
-        eventChannel = channel
-        eventJob =
-            scope.launch(Dispatchers.Main.immediate) {
-                for (event in channel) {
-                    UiEventAdapter.handle(
-                        event = event,
-                        messages = messages,
-                        bugs = bugs,
-                        player = playback,
-                        errors = LocaleErrorDisplays(appContext),
-                    )
-                }
-            }
-        appHandle.subscribeUiEvents(
-            object : UiEventCallback {
-                override fun onEvent(event: BridgeUiEvent) {
-                    channel.trySend(event)
-                }
-            },
-        )
         appHandle.triggerSync()
         networkReports =
             NetworkChangeReporter(
@@ -226,6 +199,7 @@ class OpenLibrary internal constructor(
                 },
             )
         screenSubscriptions += playbackValues(scope)
+        screenSubscriptions += queueAdditions(scope)
         valueSubscriptions +=
             appHandle.subscribePlaybackTimeline(
                 object : PlaybackTimelineCallback {
@@ -318,6 +292,15 @@ class OpenLibrary internal constructor(
             onError = { error ->
                 subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
             },
+        )
+
+    /** Each time tracks go into Up Next, which the snackbar confirms. */
+    private fun queueAdditions(scope: CoroutineScope) =
+        ScreenSubscription(
+            appHandle.subscribeQueueAdditions().pulled(),
+            scope,
+            onValue = playback::onQueueAddition,
+            onError = { error -> subscriptionFailed("queue additions", error)?.let(messages::show) },
         )
 
     /**
@@ -426,12 +409,8 @@ class OpenLibrary internal constructor(
         // player outlives the service), so this is the only place the player's
         // system hooks come off — do it before close().
         playback.closeSession()
-        eventJob?.cancel()
         widgetJob?.cancel()
-        eventChannel?.close()
-        eventJob = null
         widgetJob = null
-        eventChannel = null
         valueSubscriptions.forEach(LiveSubscription::cancel)
         valueSubscriptions.clear()
         screenSubscriptions.forEach(ScreenSubscription<*>::stop)

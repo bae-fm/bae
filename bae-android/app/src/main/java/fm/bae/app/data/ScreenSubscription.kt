@@ -8,7 +8,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackValues
+import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.PlaybackValuesSubscription
+import uniffi.bae_bridge.QueueAdditionsSubscription
 
 /**
  * A bridge object a screen pulls its values from: each [next] answers with
@@ -58,6 +60,13 @@ class ScreenSubscription<Value>(
 fun PlaybackValuesSubscription.pulled(): PulledSubscription<BridgePlaybackValues> =
     object : PulledSubscription<BridgePlaybackValues> {
         override suspend fun next(): BridgePlaybackValues = this@pulled.next()
+
+        override suspend fun cancel() = this@pulled.cancel()
+    }
+
+fun QueueAdditionsSubscription.pulled(): PulledSubscription<BridgeQueueAddition> =
+    object : PulledSubscription<BridgeQueueAddition> {
+        override suspend fun next(): BridgeQueueAddition = this@pulled.next()
 
         override suspend fun cancel() = this@pulled.cancel()
     }

@@ -31,6 +31,7 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
+import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTimelinePoint
@@ -53,8 +54,7 @@ class BaeCorePlayer(
     private val system: PlaybackSystem,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
-) : SimpleBasePlayer(applicationLooper),
-    PlaybackEventSink {
+) : SimpleBasePlayer(applicationLooper) {
     internal val systemHooks =
         PlaybackSystemHooks(
             system = system,
@@ -456,8 +456,9 @@ class BaeCorePlayer(
         positionModel.reset()
     }
 
-    override fun onQueueItemsAdded(count: Int) {
-        _queueItemsAdded.tryEmit(count)
+    /** Tracks went into Up Next: confirm how many to whoever collects [queueItemsAdded] now. */
+    fun onQueueAddition(addition: BridgeQueueAddition) {
+        _queueItemsAdded.tryEmit(addition.tracks.toInt())
     }
 
     fun onQueueValue(

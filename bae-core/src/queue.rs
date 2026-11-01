@@ -1,5 +1,5 @@
 //! Resolved types for the playback queue — the display-ready shapes the bridge
-//! and UI event payloads carry, read from the queue tables.
+//! carries, read from the queue tables.
 
 /// Display-ready queue entry. `entry_id` is unique across both lanes, so the UI
 /// keys each row on a stable identity even when the queue holds a track twice.
@@ -34,4 +34,13 @@ pub struct ResolvedQueueSnapshot {
     pub context: Option<ResolvedContext>,
     pub has_next: bool,
     pub has_previous: bool,
+}
+
+/// The last time tracks went into Up Next since playback started with the
+/// library: which addition it was, counting from one, and how many tracks it
+/// put in. Two additions alike in their count are still two values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QueueAddition {
+    pub number: u64,
+    pub tracks: u32,
 }
