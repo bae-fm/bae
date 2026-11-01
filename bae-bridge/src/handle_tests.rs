@@ -346,10 +346,11 @@ fn enqueue_export_missing_release_does_not_panic() {
     ));
 }
 
-/// Extraction's text pools cross keyed by candidate, as the run produced them.
+/// The text pools the run in flight last read cross with its runtime, for
+/// the search form's autocomplete; a queued key carries none.
 #[cfg(feature = "desktop")]
 #[test]
-fn extracted_signals_cross_with_their_key() {
+fn a_run_s_signals_cross_with_its_runtime() {
     let signals = bae_core::signals::Signals {
         origin: bae_core::signals::AudioOrigin::default(),
         disc_id: bae_core::signals::DiscIdSignal::Absent,
@@ -362,30 +363,59 @@ fn extracted_signals_cross_with_their_key() {
         isrcs: Vec::new(),
         track_titles: Vec::new(),
     };
-
-    let crossed =
-        super::ui_events::convert_ui_event(bae_core::ui::UiEvent::CandidateSignalsUpdated {
-            key: bae_core::import::CandidateKey::reidentify("release-1"),
-            signals,
-        })
-        .expect("a desktop bridge carries the import stream");
-
-    let crate::types::BridgeUiEvent::CandidateSignalsUpdated { key, signals } = crossed else {
-        panic!("expected the signals event, got {crossed:?}");
+    let running = |signals: Option<bae_core::signals::Signals>| {
+        crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+            bae_core::import::CandidateRuntimeSnapshot {
+                identification: Some(bae_core::import::IdentificationRuntime::Running(
+                    bae_core::identify::PublishedRun {
+                        outcome: bae_core::identify::RunOutcome::Answered(
+                            bae_core::identify::TerminalVerdict::ManualOnly {
+                                track_count: 9,
+                                ledger: None,
+                            },
+                        ),
+                        signals,
+                    },
+                )),
+                import: None,
+                search: None,
+            },
+        )
     };
-    assert_eq!(key, b"reidentify:release-1");
+
+    let crossed = running(Some(signals))
+        .signals
+        .expect("the run's signals cross with its runtime");
     let crate::types::BridgeTextSignal::Settled {
         catalogs,
         free_text,
-    } = signals.text
+    } = crossed.text
     else {
         panic!(
             "a settled text signal crosses as settled, got {:?}",
-            signals.text
+            crossed.text
         );
     };
     assert_eq!(free_text, vec!["Album Title".to_string()]);
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
+    assert!(
+        running(None).signals.is_none(),
+        "a run extraction has not reported to carries none"
+    );
+
+    let queued = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+        bae_core::import::CandidateRuntimeSnapshot {
+            identification: Some(bae_core::import::IdentificationRuntime::Queued(
+                bae_core::import::Admission::Automatic,
+            )),
+            import: None,
+            search: None,
+        },
+    );
+    assert!(
+        queued.signals.is_none(),
+        "a queued key has no run to have read any"
+    );
 }
 
 #[test]

@@ -3187,8 +3187,8 @@ What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A
 detail embeds its summary, so a surface holding a detail can treat it as one.
 
-`subscribe_ui_events` carries what isn't a value: a playback error, tracks
-added to the queue, a candidate's extracted signals. How far the
+`subscribe_ui_events` carries what isn't a value: a playback error and
+tracks added to the queue. How far the
 identifications and imports in flight have got is a live query of its own,
 `subscribe_import_counts`, which the app pulls.
 
@@ -3205,8 +3205,11 @@ the rest of the row. Each identify run in flight is stored beside the standings
 in the shape of the verdict it may end on, with the signals it last read, as
 the run publishes it (A.5), and a person's typed search beside them, each
 catalog's answer landing in a write of its own. What each candidate has in
-flight — its standing, its run's state, its search — is a subscription by
-key, sent as it steps; how far through its step a running import is moves many times a second,
+flight — its standing, its run's state and the signals that run last read,
+its search — is a subscription by key, sent as it steps. The search form's
+autocomplete pools are those signals while a run reads the folder, else the
+candidate's stored ones; the settle of a run's answer stores the signals of
+that run's own rows beside its verdict; how far through its step a running import is moves many times a second,
 so it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
 write to a candidate loads it whole, applies its rule, and saves it against the
 revisions it read, so two writers never disagree about which rows belong

@@ -427,7 +427,7 @@ impl BridgeIdentifyState {
 
     /// What a run published, as its rows hold it.
     pub(crate) fn from_published(published: bae_core::identify::PublishedRun) -> Self {
-        Self::from_view(published.view(), published.rate_ruling_out_cd)
+        Self::from_view(published.view(), published.rate_ruling_out_cd())
     }
 
     fn from_view(view: bae_core::identify::IdentifyStateView, rate: Option<u32>) -> Self {

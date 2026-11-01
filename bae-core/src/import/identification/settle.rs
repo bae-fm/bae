@@ -156,14 +156,26 @@ async fn settle_verdict(
     let mut verdict =
         TerminalVerdict::try_from(state).expect("the queue settles only terminal identify states");
 
-    // This run's own snapshot, not another run's of the same candidate.
-    let Some(signals) = context.import.candidate_run_signals(&candidate.key(), run) else {
-        return Settled::Unwritable {
-            error: format!(
-                "{} reached a verdict with no settled signals",
-                candidate.key()
-            ),
-        };
+    // This run's own signals, not another run's of the same candidate.
+    let signals = match context
+        .import
+        .candidate_run_signals(&candidate.key(), run)
+        .await
+    {
+        Ok(Some(signals)) => signals,
+        Ok(None) => {
+            return Settled::Unwritable {
+                error: format!(
+                    "{} reached a verdict with no settled signals",
+                    candidate.key()
+                ),
+            }
+        }
+        Err(error) => {
+            return Settled::Unwritable {
+                error: error.to_string(),
+            }
+        }
     };
     let settled_lead = match settle_lead(context, &mut verdict, &text, priority, token).await {
         Ok(settled_lead) => settled_lead,

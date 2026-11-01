@@ -55,12 +55,6 @@ impl AppServices {
         self.inner.import.register_artwork_analyzer(analyzer);
     }
 
-    pub(crate) fn watch_import_runtime_values(
-        &self,
-    ) -> crate::import::candidate_runtime::RuntimeValuesWatch {
-        self.inner.import.watch_runtime_values()
-    }
-
     /// Identify an existing library release after the person opens the
     /// re-identify sheet, asking about what this session's choices say —
     /// none made yet on its first run. Extraction resolves the disc ID and
@@ -237,15 +231,6 @@ impl AppServices {
             .import
             .end_candidate_import_for_test(candidate_key, import_id)
             .await;
-    }
-
-    /// The signals extraction has found for one key so far — the read a form
-    /// does once when it opens, after it has subscribed to the UI events.
-    pub fn candidate_signals(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> Option<crate::signals::Signals> {
-        self.inner.import.candidate_signals(key)
     }
 
     /// Every key with something in flight, and each key that changes after.

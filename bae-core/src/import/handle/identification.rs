@@ -189,27 +189,13 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// The settled snapshot `run` was judged against — what a settle of that
-    /// run's answer stores beside its verdict.
-    pub(crate) fn candidate_run_signals(
+    /// The signals `run` was judged against, as its rows hold them — what a
+    /// settle of that run's answer stores beside its verdict.
+    pub(crate) async fn candidate_run_signals(
         &self,
         candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
-    ) -> Option<crate::signals::Signals> {
-        self.runtime.run_signals(candidate_key, run)
-    }
-
-    /// The signals extraction has found for one key so far. `None` before the
-    /// first snapshot, and for a key whose run settled in an earlier session —
-    /// what that run stored is on the candidate's row instead.
-    ///
-    /// The read a form does once when it opens, after it has subscribed to
-    /// the UI events, so a form opened partway through a run has the pool the
-    /// run has built rather than an empty one.
-    pub fn candidate_signals(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> Option<crate::signals::Signals> {
-        self.runtime.signals(key)
+    ) -> Result<Option<crate::signals::Signals>, crate::db::DbError> {
+        self.runtime.run_signals(candidate_key, run).await
     }
 }

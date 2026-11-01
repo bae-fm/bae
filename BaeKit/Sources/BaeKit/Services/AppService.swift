@@ -276,16 +276,10 @@ open class AppService: @unchecked Sendable, Observable {
         }
     #endif
 
-    public func subscribeUIEvents(
-        onUnhandled:
-            @escaping @MainActor @Sendable (BridgeUiEvent) -> Void
-    ) {
+    public func subscribeUIEvents() {
         appHandle.subscribeUiEvents(
             callback: UiEventPump(
-                sink: UiEventDispatcher.makeSink(
-                    appService: self,
-                    onUnhandled: { event, _ in onUnhandled(event) }
-                )
+                sink: UiEventDispatcher.makeSink(appService: self)
             )
         )
     }

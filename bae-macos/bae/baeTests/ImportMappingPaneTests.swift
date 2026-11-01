@@ -129,7 +129,8 @@ private func runtime(
     BridgeCandidateRuntimeSnapshot(
         identification: .run(state: identifyState),
         import: nil,
-        search: nil
+        search: nil,
+        signals: nil
     )
 }
 

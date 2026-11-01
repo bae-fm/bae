@@ -1,6 +1,5 @@
 import AppKit
 import BaeKit
-import Combine
 import SwiftUI
 import os.log
 
@@ -35,7 +34,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
 
     /// Owns the desktop value subscriptions and their apply wiring.
     private let desktopSubscriptions: DesktopSubscriptions
-    private let desktopEvents: DesktopEventHandler
 
     /// The library browser's session state (lists, selections, sort criteria).
     /// Construction wires its subscriptions; `wireUp()` starts delivery
@@ -133,7 +131,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             downloadStore: downloadStore,
             uiStore: uiStore
         )
-        desktopEvents = DesktopEventHandler(importStore: importStore)
         mainAppMenuTarget = MainAppMenuTarget(
             playbackStore: playbackStore,
             configStore: configStore,
@@ -174,8 +171,12 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         uiStore.showError(error)
     }
 
+    /// Playback values arrive as often as the volume slider moves; the
+    /// preview's state is written, and its readers redrawn, only when it
+    /// changes.
     override func applyPlatformPlaybackValues(_ values: BridgePlaybackValues) {
-        desktopEvents.applyPreview(values.preview)
+        guard importStore.previewState != values.preview else { return }
+        importStore.previewState = values.preview
     }
 
     /// Wire the live `AppHandle` into the stores: start the common and desktop
@@ -187,10 +188,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         libraryBrowseSession.start()
         startCommonSubscriptions()
         desktopSubscriptions.start()
-        subscribeUIEvents { [weak self] event in
-            guard let self else { return }
-            DesktopUiEvents.apply(event, appService: self)
-        }
+        subscribeUIEvents()
         registerArtworkAnalyzer(VisionArtworkAnalyzer())
         activateMediaControls(previewAudio: previewAudio)
         revalidateDiscogsToken()
@@ -218,29 +216,15 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(\.previewPosition, importStore.previewPosition.only)
             .environment(\.candidateRuntimes, importStore.candidateRuntimes)
             .environment(\.importPercents, importStore.importPercents)
-            .environment(
-                \.candidateSignalsPublisher,
-                candidateSignalsPublisher
-            )
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)
             #endif
-    }
-
-    private var candidateSignalsPublisher:
-        AnyPublisher<CandidateSignalsEvent, Never>
-    {
-        importStore.candidateSignalsSubject.eraseToAnyPublisher()
     }
 
     /// Where Finder's Open With hands a folder: the same entry the window's
     /// picker and drop use.
     var importFolderEntry: ImportFolderEntry {
         ImportFolderEntry(importer: importer, uiStore: uiStore)
-    }
-
-    func applyDesktopUIEvent(_ event: BridgeUiEvent) {
-        desktopEvents.apply(event)
     }
 
     #if DEBUG

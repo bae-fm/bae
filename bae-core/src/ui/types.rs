@@ -215,17 +215,4 @@ pub enum UiEvent {
     /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),
     /// never on remove/reorder/clear. Suppressed when count is zero.
     QueueItemsAdded { count: u32 },
-
-    // ── Import live progress ───────────────────────────────────────
-    /// A candidate's extracted signals, as extraction settles each one. Goes
-    /// to the one form that reads them — the search pane's autocomplete pools
-    /// and its scanning indicator — rather than to the candidate's runtime,
-    /// which every row and both panes hold: OCR reports several times per
-    /// candidate and nothing else on screen changes with it. `key` routes it to
-    /// that candidate's form.
-    #[cfg(desktop)]
-    CandidateSignalsUpdated {
-        key: crate::import::CandidateKey,
-        signals: crate::signals::Signals,
-    },
 }

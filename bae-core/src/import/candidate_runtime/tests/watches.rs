@@ -3,18 +3,6 @@
 // Each wakes when the runtime or the table changes and reads what it draws,
 // so however many changes land before it looks, it reads where they left off.
 
-fn signals_event(key: &crate::import::CandidateKey, text: &str) -> ImportEvent {
-    let mut signals = extracted_signals();
-    signals.track_titles = vec![text.to_string()];
-    ImportEvent::SignalsUpdated {
-        candidate_key: key.clone(),
-        run: IdentifyRunId::for_test(1),
-        signals,
-        artwork: crate::signals::ArtworkScan::Absent,
-        priority: CallPriority::Background,
-    }
-}
-
 /// Wait until the view shows each of `keys` claimed and running. A claim
 /// reaches the view queued, then running as a later read of the table says;
 /// a reader taking the view before that is told the move later, as if
@@ -150,23 +138,6 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
     live.abort();
 }
 
-#[tokio::test]
-async fn a_values_reader_reads_the_signals_as_they_stand() {
-    let runtime = CandidateRuntime::for_test().await;
-    let mut watch = RuntimeValuesWatch::of(&runtime);
-    let key = &crate::import::CandidateKey::test("/watch/a/rel3");
-    runtime.record_event(&signals_event(key, "first"));
-    runtime.record_event(&signals_event(key, "last"));
-
-    let mut changed = Vec::new();
-    while !changed
-        .iter()
-        .any(|value: &RuntimeValue| value.key == *key && value.signals.track_titles == ["last"])
-    {
-        changed.extend(watch.next().await.expect("the runtime is there"));
-    }
-}
-
 /// The import counts' live query delivers each write that moves them: an
 /// admission opens the batch at its total, a withdrawal ends one of it, and
 /// a claim puts an import in flight.
@@ -218,38 +189,6 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
             imports_in_flight: 1,
         }
     );
-}
-
-/// A signals change names only the key whose signals moved, not every key
-/// the runtime holds signals for.
-#[tokio::test]
-async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
-    let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
-    let mut watch = RuntimeValuesWatch::of(&runtime);
-    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel1"), "first"));
-    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel2"), "first"));
-    let mut told = Vec::new();
-    while told.len() < 2 {
-        told.extend(
-            watch
-                .next()
-                .await
-                .expect("the runtime is there"),
-        );
-    }
-
-    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel2"), "second"));
-    let next = watch.next().await.expect("the runtime is there");
-    assert!(
-        matches!(
-            next.as_slice(),
-            [RuntimeValue { key, signals }]
-                if key == &crate::import::CandidateKey::test("/watch/a/rel2") && signals.track_titles == ["second"]
-        ),
-        "{next:?}"
-    );
-    live.abort();
 }
 
 /// A change to one key's runtime names that key alone.

@@ -37,11 +37,6 @@ extension ImportSearchFlow {
         /// Take the candidate off the identification queue and leave the
         /// pane; `nil` for a library release, which is never queued.
         let onCancelIdentification: (() -> Void)?
-        /// What extraction has found for this key so far, feeding the form's
-        /// suggestion pools and its scanning indicator. `nil` before
-        /// extraction has reported any, and for a candidate whose run settled
-        /// in an earlier session — the stored row answers for that one.
-        let liveSignals: Signals?
     }
 
     /// `onSelect` owns what picking a pressing means for the surface that
@@ -278,10 +273,12 @@ extension ImportSearchFlow {
             // Each offered release's library status, from the candidate's
             // live read of them.
             libraryStatuses: candidate.libraryStatuses,
-            // The run in flight knows more than the last stored answer does,
-            // and for a re-identify key — which has no row at all — it is the
-            // only answer.
-            signals: input.liveSignals ?? candidate.settledSignals,
+            // The signals the run in flight last read, feeding the form's
+            // suggestion pools and its scanning indicator: it knows more than
+            // the last stored answer does, and for a re-identify key — which
+            // has no row at all — it is the only answer.
+            signals: input.runtime?.signals.map(Signals.init(bridge:))
+                ?? candidate.settledSignals,
             needsYou: candidate.live?.standing?.needsYou,
         )
     }

@@ -21,14 +21,16 @@
 //! (`import_candidate_search`, see [`CandidateSearch`]): each catalog's
 //! answer lands on it in a write of its own.
 //!
+//! The signals extraction read for a run are stored with what the run
+//! published, under the run, so a run's pane and its settle read the same
+//! rows.
+//!
 //! This runtime holds what is not stored: how far through its step an import
-//! is, for the import percents' stream alone, and extraction's
-//! [`Signals`](crate::signals::Signals). [`CandidateRuntimeSnapshot`] is the
-//! stored runtime as one read of the tables composes it.
+//! is, for the import percents' stream alone. [`CandidateRuntimeSnapshot`] is
+//! the stored runtime as one read of the tables composes it.
 //!
 //! Readers of the snapshots wake on [`RuntimeView`], which each read of the
-//! tables moves key by key, naming the keys it moved; readers of the signals
-//! wake on [`Revisions`], which names the keys whose signals moved.
+//! tables moves key by key, naming the keys it moved.
 
 use super::candidate_key::CandidateKey;
 use super::candidate_search::{CandidateSearch, SearchRun};
@@ -52,7 +54,6 @@ mod snapshots;
 mod snapshots_watch;
 mod standing_writes;
 mod stored_standing;
-mod values_watch;
 mod work;
 pub(crate) use snapshots::RuntimeView;
 pub use snapshots_watch::RuntimeSnapshotsWatch;
@@ -61,7 +62,6 @@ pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredRuntime, StoredStanding,
 };
-pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
 #[cfg(test)]
@@ -80,14 +80,6 @@ pub enum CandidateRuntimeChange {
     Reset {
         runtimes: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
     },
-}
-
-/// How many times the signals the runtime holds have changed. A reader wakes
-/// on it moving and reads the keys whose signals moved since it last looked
-/// ([`CandidateRuntime::signals_since`]).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct Revisions {
-    pub(crate) signals: u64,
 }
 
 /// The files a candidate's runtime was recorded against; a scan reporting
@@ -127,10 +119,6 @@ struct Inner {
     shapes: HashMap<CandidateKey, CandidateShape>,
     /// How far through its step each key's import is, as it last reported.
     imports: HashMap<CandidateKey, ImportReport>,
-    /// The latest signals extraction reported for each key, and their run.
-    signals: HashMap<CandidateKey, (IdentifyRunId, Signals)>,
-    /// Which keys' signals moved, so a reader reads only those.
-    signal_changes: change_log::ChangeLog,
 }
 
 #[derive(Clone)]
@@ -139,7 +127,6 @@ pub struct CandidateRuntime {
     /// Its own lock: work emits through the bus while holding it, and the
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
-    revisions: Arc<watch::Sender<Revisions>>,
     /// The library the standings table is in.
     database: Database,
     /// Where a bug the runtime finds with no caller to fail is reported.
@@ -182,7 +169,6 @@ impl CandidateRuntime {
         Self {
             inner: Arc::default(),
             work: Arc::default(),
-            revisions: Arc::new(watch::Sender::new(Revisions::default())),
             database,
             diagnostics,
             // The library opens with the table empty and nothing held, so
@@ -245,47 +231,15 @@ impl CandidateRuntime {
         Self::new(self.database.clone(), self.diagnostics.clone())
     }
 
-    /// The signals extraction has found for a key so far, or `None` before it
-    /// has reported any.
-    pub fn signals(&self, key: &CandidateKey) -> Option<Signals> {
-        self.held()
-            .signals
-            .get(key)
-            .map(|(_, signals)| signals.clone())
-    }
-
-    /// The signals `run` was judged against, or `None` once the key is on
-    /// another run.
-    pub(super) fn run_signals(&self, key: &CandidateKey, run: IdentifyRunId) -> Option<Signals> {
-        self.held()
-            .signals
-            .get(key)
-            .filter(|(extracted, _)| *extracted == run)
-            .map(|(_, signals)| signals.clone())
-    }
-
-    /// Wakes whenever a part of the runtime changes; a reader takes it before
-    /// its first read, so no change lands between the two.
-    pub(crate) fn watch_revisions(&self) -> watch::Receiver<Revisions> {
-        self.revisions.subscribe()
-    }
-
-    /// The signals of each key whose signals moved after `seen`, and where
-    /// that leaves a reader who has read them. A key whose signals went with
-    /// its files is left out.
-    pub(crate) fn signals_since(&self, seen: u64) -> (u64, Vec<(CandidateKey, Signals)>) {
-        let inner = self.held();
-        let moved = inner
-            .signal_changes
-            .since(seen)
-            .filter_map(|key| {
-                inner
-                    .signals
-                    .get(key)
-                    .map(|(_, signals)| (key.clone(), signals.clone()))
-            })
-            .collect();
-        (inner.signal_changes.sequence(), moved)
+    /// The signals `run` of `key` last read, as the run's rows hold them:
+    /// what the settle of its answer stores beside its verdict. `None` once
+    /// the run's rows are gone.
+    pub(super) async fn run_signals(
+        &self,
+        key: &CandidateKey,
+        run: IdentifyRunId,
+    ) -> Result<Option<Signals>, DbError> {
+        self.database.load_candidate_run_signals(key, run).await
     }
 
     /// Every move of the identification count from now on, for a test.
@@ -410,24 +364,12 @@ impl CandidateRuntime {
         }
     }
 
-    /// The scan dropped or reshaped the key: its work in flight ends, and its
-    /// signals go with the files they were of. Its search went in the scan's
-    /// own write, and what its runs published goes as each run ends; an
-    /// import outlives it, and only that import's ending clears it.
+    /// The scan dropped or reshaped the key: its work in flight ends. Its
+    /// search went in the scan's own write, and what its runs published, the
+    /// signals they read among it, goes as each run ends; an import outlives
+    /// it, and only that import's ending clears it.
     fn end_candidate(&self, key: &CandidateKey) {
         self.end_work(key);
-        let signals_removed = {
-            let mut inner = self.held();
-            let removed = inner.signals.remove(key).is_some();
-            if removed {
-                inner.signal_changes.record(key);
-            }
-            removed
-        };
-        if signals_removed {
-            self.revisions
-                .send_modify(|revisions| revisions.signals += 1);
-        }
     }
 
     /// A scan reported `candidate`. A first report or a repeat of the recorded
@@ -514,9 +456,9 @@ impl CandidateRuntime {
         });
     }
 
-    /// Hold what `event` says that is not a standing: how far an import has
-    /// got, which files a candidate has, the signals extraction found. Every
-    /// standing an event announces is written before it is sent.
+    /// Hold what `event` says that is not stored: how far an import has got,
+    /// which files a candidate has. Every standing an event announces is
+    /// written before it is sent.
     pub(super) fn record_event(&self, event: &ImportEvent) {
         match event {
             ImportEvent::ImportProgress {
@@ -540,29 +482,9 @@ impl CandidateRuntime {
             ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
                 self.forget(candidate_key)
             }
-            ImportEvent::SignalsUpdated {
-                candidate_key,
-                run,
-                signals,
-                artwork: _,
-                priority: _,
-            } => {
-                let moved = {
-                    let mut inner = self.held();
-                    let previous = inner
-                        .signals
-                        .insert(candidate_key.clone(), (*run, signals.clone()));
-                    let moved = previous.is_none_or(|(_, previous)| previous != *signals);
-                    if moved {
-                        inner.signal_changes.record(candidate_key);
-                    }
-                    moved
-                };
-                if moved {
-                    self.revisions
-                        .send_modify(|revisions| revisions.signals += 1);
-                }
-            }
+            // The driver stores the signals its run reads with the state it
+            // reaches from them.
+            ImportEvent::SignalsUpdated { .. } => {}
             // These change rows, not runtime.
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }

@@ -189,6 +189,11 @@ pub struct BridgeCandidateRuntimeSnapshot {
     pub import: Option<BridgeImportInFlight>,
     /// The typed search submitted for this candidate, as its sources answer.
     pub search: Option<BridgeCandidateSearch>,
+    /// The signals the run in flight, or the answer being written, last read:
+    /// the search form's autocomplete pools while a run reads the folder.
+    /// `None` while no run is, and the form reads the candidate's stored
+    /// signals.
+    pub signals: Option<BridgeSignals>,
 }
 
 /// What identification is doing for a candidate right now.

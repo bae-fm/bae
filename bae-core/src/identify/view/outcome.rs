@@ -87,26 +87,23 @@ impl RunOutcome {
     }
 }
 
-/// What a run published, with the text its rows are judged against and the
-/// sample rate that rules a CD out, both read off the signals the run last
-/// read.
+/// What a run published: how it stands and the signals it last read, none
+/// before extraction has reported.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PublishedRun {
     pub outcome: RunOutcome,
-    pub text: CandidateText,
-    pub rate_ruling_out_cd: Option<u32>,
+    pub signals: Option<Signals>,
 }
 
 impl PublishedRun {
-    /// `outcome` judged against `signals`, the ones its run last read; none
-    /// before extraction has reported.
+    /// The text the run's rows are judged against, read off its signals.
     ///
     /// The numbers the person struck out are the ones the ledger leaves out:
     /// a struck-out number counts against a row only where the folder's text
     /// prints it, and the ledger lays out every struck-out number the text
     /// prints as a row left out.
-    pub fn of(outcome: RunOutcome, signals: Option<&Signals>) -> Self {
-        let struck_out: Vec<String> = match outcome.ledger().map(|ledger| &ledger.catalog) {
+    pub fn text(&self) -> CandidateText {
+        let struck_out: Vec<String> = match self.outcome.ledger().map(|ledger| &ledger.catalog) {
             Some(CatalogStepView::Numbers { rows, .. }) => rows
                 .iter()
                 .filter(|row| row.excluded)
@@ -114,19 +111,23 @@ impl PublishedRun {
                 .collect(),
             Some(CatalogStepView::NoneFound) | None => Vec::new(),
         };
-        let text = signals.map_or_else(CandidateText::default, |signals| {
-            CandidateText::of(&signals.text_pool, &struck_out, signals.barcode.codes())
-        });
-        Self {
-            outcome,
-            text,
-            rate_ruling_out_cd: signals.and_then(|signals| signals.origin.not_cd_rate),
-        }
+        self.signals
+            .as_ref()
+            .map_or_else(CandidateText::default, |signals| {
+                CandidateText::of(&signals.text_pool, &struck_out, signals.barcode.codes())
+            })
+    }
+
+    /// The sample rate that rules a CD out, read off the run's signals.
+    pub fn rate_ruling_out_cd(&self) -> Option<u32> {
+        self.signals
+            .as_ref()
+            .and_then(|signals| signals.origin.not_cd_rate)
     }
 
     /// The run as every surface draws it.
     pub fn view(&self) -> IdentifyStateView {
-        IdentifyStateView::of_outcome(self.outcome.clone(), &self.text)
+        IdentifyStateView::of_outcome(self.outcome.clone(), &self.text())
     }
 }
 

@@ -88,16 +88,6 @@ impl AppHandle {
 
 #[uniffi::export]
 impl AppHandle {
-    /// The signals extraction has found for one key so far — the read a form
-    /// does once when it opens, after it has subscribed to the UI events. `None`
-    /// before the first snapshot, and for a run that settled in an earlier
-    /// session: what that run stored is on the candidate's row instead.
-    pub fn candidate_signals(&self, candidate_key: Vec<u8>) -> Option<crate::types::BridgeSignals> {
-        self.services
-            .candidate_signals(&candidate_key.into())
-            .map(crate::types::BridgeSignals::from_core)
-    }
-
     /// Where each watched folder's scan stands, now and as it changes.
     pub fn subscribe_folder_scans(
         &self,

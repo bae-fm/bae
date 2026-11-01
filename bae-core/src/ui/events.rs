@@ -1,40 +1,24 @@
 use super::*;
 
 /// What one UI subscriber hears: each playback notice sent after it
-/// subscribed, and on desktop each candidate's extracted signals, first as
-/// they stand and then as they change. Nothing is dropped however far behind the
-/// subscriber falls: notices wait in order, and values are read where the
-/// runtime is when the subscriber looks.
+/// subscribed. Nothing is dropped however far behind the subscriber falls:
+/// notices wait in order.
 pub struct UiEvents {
     playback: tokio::sync::mpsc::UnboundedReceiver<crate::playback::PlaybackProgress>,
-    #[cfg(desktop)]
-    import_values: crate::import::candidate_runtime::RuntimeValuesWatch,
 }
 
 impl UiEvents {
     pub(crate) fn of(app_services: &crate::library::AppServices) -> Self {
         Self {
             playback: app_services.subscribe_playback_progress(),
-            #[cfg(desktop)]
-            import_values: app_services.watch_import_runtime_values(),
         }
     }
 
-    /// The next events, in order. `None` once playback or the import runtime
-    /// is gone.
+    /// The next events, in order. `None` once playback is gone.
     pub async fn next(&mut self) -> Option<Vec<UiEvent>> {
         loop {
-            #[cfg(desktop)]
-            let events: Vec<UiEvent> = tokio::select! {
-                progress = self.playback.recv() => playback_notice(progress?).into_iter().collect(),
-                values = self.import_values.next() => values?.into_iter().map(import_value).collect(),
-            };
-            #[cfg(not(desktop))]
-            let events: Vec<UiEvent> = playback_notice(self.playback.recv().await?)
-                .into_iter()
-                .collect();
-            if !events.is_empty() {
-                return Some(events);
+            if let Some(event) = playback_notice(self.playback.recv().await?) {
+                return Some(vec![event]);
             }
         }
     }
@@ -48,13 +32,5 @@ fn playback_notice(progress: crate::playback::PlaybackProgress) -> Option<UiEven
         PlaybackProgress::QueueItemsAdded { count } => Some(UiEvent::QueueItemsAdded { count }),
         PlaybackProgress::PlaybackError { reason } => Some(UiEvent::PlaybackError { reason }),
         _ => None,
-    }
-}
-
-#[cfg(desktop)]
-fn import_value(value: crate::import::candidate_runtime::RuntimeValue) -> UiEvent {
-    UiEvent::CandidateSignalsUpdated {
-        key: value.key,
-        signals: value.signals,
     }
 }

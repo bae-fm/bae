@@ -107,41 +107,38 @@ struct ReleaseEditorView: View {
     private func search(_ section: BridgeFindOnlineSection) -> some View {
         if let candidate = importStore.reIdentifyCandidates[searchKey] {
             CandidateRuntimeReader(key: searchKey) { runtime in
-                CandidateSignalsReader(key: searchKey) { signals in
-                    ImportSearchFlow.buildSearchPane(
-                        services: ImportSearchFlow.ImportServices(
-                            importer: importer,
-                            importStore: importStore
-                        ),
-                        input: ImportSearchFlow.SearchPaneInput(
-                            candidate: candidate,
-                            key: searchKey,
-                            selectedReleaseId: nil,
-                            runtime: runtime,
-                            openSection: section,
-                            onOpenSection: { searchSection = $0 },
-                            // A library release has no folder draft to keep.
-                            onKeepOwnDraft: nil,
-                            // Nor a folder to link to an album.
-                            onLinkSharedAlbum: nil,
-                            // Its runs start straight away, never waiting on
-                            // the identification queue.
-                            onCancelIdentification: nil,
-                            liveSignals: signals
-                        ),
-                        openSettings: {
-                            settingsNavigation.open(
-                                .importing,
-                                present: { openSettings() }
-                            )
-                        },
-                        onBack: { searchSection = nil },
-                        onSelect: { pressing in
-                            searchSection = nil
-                            session.apply(pressing.link)
-                        }
-                    )
-                }
+                ImportSearchFlow.buildSearchPane(
+                    services: ImportSearchFlow.ImportServices(
+                        importer: importer,
+                        importStore: importStore
+                    ),
+                    input: ImportSearchFlow.SearchPaneInput(
+                        candidate: candidate,
+                        key: searchKey,
+                        selectedReleaseId: nil,
+                        runtime: runtime,
+                        openSection: section,
+                        onOpenSection: { searchSection = $0 },
+                        // A library release has no folder draft to keep.
+                        onKeepOwnDraft: nil,
+                        // Nor a folder to link to an album.
+                        onLinkSharedAlbum: nil,
+                        // Its runs start straight away, never waiting on
+                        // the identification queue.
+                        onCancelIdentification: nil
+                    ),
+                    openSettings: {
+                        settingsNavigation.open(
+                            .importing,
+                            present: { openSettings() }
+                        )
+                    },
+                    onBack: { searchSection = nil },
+                    onSelect: { pressing in
+                        searchSection = nil
+                        session.apply(pressing.link)
+                    }
+                )
             }
             .frame(maxWidth: .infinity)
             .card()

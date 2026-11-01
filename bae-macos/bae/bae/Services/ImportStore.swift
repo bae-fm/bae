@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import OrderedCollections
 import SwiftUI
 import os.log
@@ -187,16 +186,6 @@ class ImportStore {
     /// that read it each display frame.
     @ObservationIgnored
     let importPercents = LatestStream<UInt32>.importPercents()
-
-    /// Each candidate's extracted signals as extraction settles them. A
-    /// signal rather than a stored value for the same reason the runtime is
-    /// one: OCR reports several times per candidate, one form reads the
-    /// result, and that form filters this to its own key. The latest value per
-    /// key lives in core, and the form reads its own when it opens.
-    @ObservationIgnored
-    let candidateSignalsSubject = PassthroughSubject<
-        CandidateSignalsEvent, Never
-    >()
 
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —

@@ -32,15 +32,6 @@ pub enum BridgeUiEvent {
     PlaybackError { reason: BridgePlaybackErrorReason },
     /// Tracks were added to the queue; never sent for zero.
     QueueItemsAdded { count: u32 },
-
-    // ── Import live progress ───────────────────────────────────────
-    /// A candidate's extracted text pools as extraction settles them, for the
-    /// search pane's autocomplete and scanning indicator.
-    #[cfg(feature = "desktop")]
-    CandidateSignalsUpdated {
-        key: Vec<u8>,
-        signals: BridgeSignals,
-    },
 }
 
 /// The activity exposed by coven's committed upload queue.

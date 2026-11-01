@@ -78,7 +78,6 @@ private struct ImportOperations: Sendable {
         @Sendable (Data, [BridgeCredited]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (Data, BridgeRawTrackEdit) async throws -> Void
-    let candidateSignals: @Sendable (Data) -> Signals?
     let startImport: @Sendable (Data) async throws -> BridgePaneOutcome
     let chooseCandidateArtistIdentity:
         @Sendable (Data, UInt64, BridgeArtistIdentityConflictChoice)
@@ -263,10 +262,6 @@ extension ImportOperations {
                     track: $1
                 )
             },
-            candidateSignals: {
-                handle.candidateSignals(candidateKey: $0)
-                    .map(Signals.init(bridge:))
-            },
             startImport: {
                 try await handle.startImport(candidateKey: $0)
             },
@@ -428,8 +423,6 @@ final class Importer: Sendable, Observable {
         setCandidateTrackEdit:
             @escaping @Sendable (Data, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
-        candidateSignals: @escaping @Sendable (Data) -> Signals? = { _ in nil
-        },
         startImport:
             @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in .done
@@ -489,7 +482,6 @@ final class Importer: Sendable, Observable {
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
-            candidateSignals: candidateSignals,
             startImport: startImport,
             chooseCandidateArtistIdentity: { _, _, _ in
                 throw StubError.notImplemented
@@ -852,15 +844,4 @@ extension Importer {
         self.init(operations: .live(handle: handle))
     }
 
-}
-
-/// What a view asks about one candidate the moment it appears, having already
-/// subscribed to the stream that keeps it current. Every one of these is a
-/// read: they start nothing and change nothing.
-extension Importer {
-    /// The signals extraction has found for one key so far — the read a form
-    /// does once when it opens, after it has subscribed to the changes.
-    func candidateSignals(_ candidateKey: Data) -> Signals? {
-        operations.candidateSignals(candidateKey)
-    }
 }

@@ -199,15 +199,15 @@ async fn a_run_in_flight_reads_back_as_it_published() {
         .publish_release_run(release, run(1), &state, Some(&signals))
         .await
         .unwrap();
-    let expected = crate::identify::PublishedRun::of(
-        crate::identify::RunOutcome::of(&state).unwrap(),
-        Some(&signals),
-    );
+    let expected = crate::identify::PublishedRun {
+        outcome: crate::identify::RunOutcome::of(&state).unwrap(),
+        signals: Some(signals.clone()),
+    };
     let crate::identify::RunOutcome::Running { findings, .. } = &expected.outcome else {
         panic!("a run partway through is running");
     };
     assert_eq!(findings.matches.len(), 1, "the half-answered barcode found one release");
-    assert_eq!(expected.rate_ruling_out_cd, Some(96_000));
+    assert_eq!(expected.rate_ruling_out_cd(), Some(96_000));
     assert_eq!(
         stored_runs(&runtime, release).await,
         std::collections::BTreeMap::from([(run(1), expected.clone())])
@@ -222,12 +222,63 @@ async fn a_run_in_flight_reads_back_as_it_published() {
         stored_runs(&runtime, release).await,
         std::collections::BTreeMap::from([(
             run(1),
-            crate::identify::PublishedRun::of(
-                crate::identify::RunOutcome::of(&search_waiting()).unwrap(),
-                Some(&signals),
-            )
+            crate::identify::PublishedRun {
+                outcome: crate::identify::RunOutcome::of(&search_waiting()).unwrap(),
+                signals: Some(signals.clone()),
+            }
         )])
     );
+}
+
+/// A folder candidate's run shows the signals it last read, and its settle
+/// reads that run's own: another run of the key reads none, and once the
+/// standing moves off the run its signals are gone with it.
+#[tokio::test]
+async fn a_run_s_signals_are_its_own_and_go_with_it() {
+    let runtime = CandidateRuntime::for_test().await;
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let files = scanned_key(&runtime, key).await;
+    runtime
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
+        .await
+        .unwrap();
+    report(&runtime, key, &files, run(1), triangulating()).await;
+    assert_eq!(runtime.run_signals(key, run(1)).await.unwrap(), None);
+
+    let scanning = scanning_signals();
+    assert!(runtime
+        .publish_candidate_run(key, run(1), &triangulating(), Some(&scanning))
+        .await
+        .unwrap());
+    assert_eq!(runtime.run_signals(key, run(1)).await.unwrap(), Some(scanning.clone()));
+    assert_eq!(runtime.run_signals(key, run(2)).await.unwrap(), None);
+    let shown = |snapshot: Option<crate::import::CandidateRuntimeSnapshot>| match snapshot
+        .and_then(|snapshot| snapshot.identification)
+    {
+        Some(IdentificationRuntime::Running(published)) => published.signals,
+        Some(IdentificationRuntime::Saving(answer)) => answer.state.signals,
+        other => panic!("the key is identifying, got {other:?}"),
+    };
+    assert_eq!(shown(runtime.snapshot(key).await.unwrap()), Some(scanning));
+
+    let settled = extracted_signals();
+    assert!(runtime
+        .publish_candidate_run(key, run(1), &manual_only(), Some(&settled))
+        .await
+        .unwrap());
+    assert!(runtime.run_answered(key, run(1), false).await.unwrap());
+    assert_eq!(
+        runtime.run_signals(key, run(1)).await.unwrap(),
+        Some(settled.clone()),
+        "the answer being written reads the signals it was judged against"
+    );
+    assert_eq!(shown(runtime.snapshot(key).await.unwrap()), Some(settled));
+
+    runtime
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
+        .await
+        .unwrap();
+    assert_eq!(runtime.run_signals(key, run(1)).await.unwrap(), None);
 }
 
 /// Every row a run owns goes with the run: its verdict-shaped rows, its

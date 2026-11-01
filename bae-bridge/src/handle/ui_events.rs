@@ -13,15 +13,6 @@ pub(super) fn convert_ui_event(
             reason: crate::types::BridgePlaybackErrorReason::from_core(reason),
         }),
         UiEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
-        #[cfg(feature = "desktop")]
-        UiEvent::CandidateSignalsUpdated { key, signals } => {
-            Some(BridgeUiEvent::CandidateSignalsUpdated {
-                key: key.into_bytes(),
-                signals: crate::types::BridgeSignals::from_core(signals),
-            })
-        }
-        #[cfg(all(not(feature = "desktop"), desktop))]
-        UiEvent::CandidateSignalsUpdated { .. } => None,
     }
 }
 

@@ -64,7 +64,7 @@ fn load_runs_on(
             .map_err(|error| DbError::Message(format!("{key} holds run {run}: {error}")))?;
         runs.entry(key).or_default().insert(
             IdentifyRunId::of_number(number),
-            PublishedRun::of(outcome, signals.as_ref()),
+            PublishedRun { outcome, signals },
         );
     }
     if let Some(run) = matches.keys().next() {
@@ -187,6 +187,38 @@ impl Database {
         &self,
     ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
         self.read(|sql| load_stored_runtimes_on(&sql)).await
+    }
+
+    /// The signals `run` of `key` last read, as its rows hold them; `None`
+    /// once the run's rows are gone or before extraction reported to it.
+    pub(crate) async fn load_candidate_run_signals(
+        &self,
+        key: &CandidateKey,
+        run: IdentifyRunId,
+    ) -> Result<Option<Signals>, DbError> {
+        let key = key.clone();
+        let run = to_i64(run.number(), "an identify run")?;
+        self.read(move |sql| {
+            let stored = sql.query(
+                &format!(
+                    "SELECT {signals} \
+                     FROM import_identify_run AS run \
+                     JOIN import_candidate_signals AS signals \
+                         ON signals.identify_run = run.identify_run \
+                     WHERE run.candidate_key = ?1 AND run.identify_run = ?2",
+                    signals = signals_read_columns(),
+                ),
+                params![key, run],
+                read_signals,
+            )?;
+            stored
+                .into_iter()
+                .next()
+                .flatten()
+                .map(|stored| stored.signals())
+                .transpose()
+        })
+        .await
     }
 
     /// Every key something is running for, live.

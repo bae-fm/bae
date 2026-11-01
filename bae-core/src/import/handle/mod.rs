@@ -697,11 +697,6 @@ impl ImportServiceHandle {
         self.runtime.every_count()
     }
 
-    /// Each candidate's signals and the two counts, as they change.
-    pub(crate) fn watch_runtime_values(&self) -> super::candidate_runtime::RuntimeValuesWatch {
-        super::candidate_runtime::RuntimeValuesWatch::of(&self.runtime)
-    }
-
     /// One candidate's pane as it reads back from the tables, its standing
     /// among them.
     #[cfg(any(test, feature = "test-utils"))]

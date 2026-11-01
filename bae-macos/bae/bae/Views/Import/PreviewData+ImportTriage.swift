@@ -725,7 +725,8 @@
                         BridgeCandidateRuntimeSnapshot(
                             identification: nil,
                             import: importTabImportInFlight,
-                            search: nil
+                            search: nil,
+                            signals: nil
                         )
                 ]
             )

@@ -14,7 +14,8 @@ struct ShownIdentifyStateTests {
         BridgeCandidateRuntimeSnapshot(
             identification: identification,
             import: nil,
-            search: nil
+            search: nil,
+            signals: nil
         )
     }
 

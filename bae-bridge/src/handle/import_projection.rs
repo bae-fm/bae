@@ -133,18 +133,24 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
         // A failed write, and whether an Import was asked of the answer,
         // reach the UI through the row's live state.
-        let identification = runtime
-            .identification_in_flight()
-            .map(crate::types::BridgeIdentificationInFlight::from_core);
+        let in_flight = runtime.identification_in_flight();
+        let signals = match &in_flight {
+            Some(bae_core::import::IdentificationInFlight::Run(published)) => published
+                .signals
+                .clone()
+                .map(crate::types::BridgeSignals::from_core),
+            Some(bae_core::import::IdentificationInFlight::Queued) | None => None,
+        };
         let bae_core::import::CandidateRuntimeSnapshot {
             identification: _,
             import,
             search,
         } = runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
-            identification,
+            identification: in_flight.map(crate::types::BridgeIdentificationInFlight::from_core),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
+            signals,
         }
     }
 }

@@ -6,21 +6,17 @@ import Testing
 @testable import bae
 
 /// Drives the real macOS sink (`UiEventDispatcher.makeSink`) with a faked
-/// `AppHandle` (no live core) against every shared arm the dispatcher handles,
-/// plus the `.handled`/`.unhandled` split that decides whether an event falls
-/// to the platform's own tail. These read and write process-global singletons
-/// (Now Playing info + remote command center), so every suite here is
-/// serialized and resets state on exit.
+/// `AppHandle` (no live core) against every arm the dispatcher handles.
+/// These read and write process-global singletons (Now Playing info + remote
+/// command center), so every suite here is serialized and resets state on
+/// exit.
 @MainActor
 @Suite("UiEventDispatcher error seams", .serialized)
 struct UiEventDispatcherErrorTests {
     @Test("playbackError reaches uiStore through the showError override")
     func playbackErrorReachesUiStore() {
         let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
+        let sink = UiEventDispatcher.makeSink(appService: appService)
 
         sink(.playbackError(reason: .syncDisconnected))
 
@@ -34,10 +30,7 @@ struct UiEventDispatcherControlTests {
     @Test("queueItemsAdded reaches the transient playback signal")
     func queueItemsAddedReachesPlaybackSignal() {
         let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
+        let sink = UiEventDispatcher.makeSink(appService: appService)
         var addedCounts: [Int] = []
         let subscription = appService.queueItemsAddedPublisherForTesting
             .sink { addedCounts.append($0) }
@@ -161,48 +154,6 @@ private func playbackValues(
         mediaControl: .library
     )
 }
-
-@MainActor
-@Suite("UiEventDispatcher outcome policy", .serialized)
-struct UiEventDispatcherOutcomeTests {
-    @Test("the desktop import events are unhandled")
-    func desktopImportEventsAreUnhandled() {
-        let appService = makeAppService()
-        for event in unhandledEvents {
-            #expect(
-                UiEventDispatcher.dispatch(event, appService: appService)
-                    == .unhandled
-            )
-        }
-    }
-
-    @Test("every other event is handled")
-    func everyOtherEventIsHandled() {
-        let appService = makeAppService()
-        for event in handledEvents {
-            #expect(
-                UiEventDispatcher.dispatch(event, appService: appService)
-                    == .handled
-            )
-        }
-    }
-}
-
-// MARK: - Shared fixtures
-
-private let unhandledEvents: [BridgeUiEvent] = [
-    .candidateSignalsUpdated(
-        key: Data("/watch/a/rel1".utf8),
-        signals: BridgeSignals(
-            text: .scanning(catalogs: [], freeText: [])
-        )
-    )
-]
-
-private let handledEvents: [BridgeUiEvent] = [
-    .playbackError(reason: .syncDisconnected),
-    .queueItemsAdded(count: 1),
-]
 
 // MARK: - Test doubles
 

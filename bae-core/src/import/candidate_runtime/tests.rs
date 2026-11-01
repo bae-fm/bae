@@ -10,7 +10,6 @@ use crate::import::types::{
 };
 use crate::import::ImportStep;
 use bae_catalogs::catalog::Catalog;
-use bae_catalogs::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {
@@ -142,10 +141,10 @@ pub(crate) fn manual_only() -> crate::identify::IdentifyState {
 
 /// `state` as its run's rows read it back, with no signals stored beside it.
 pub(crate) fn published(state: crate::identify::IdentifyState) -> crate::identify::PublishedRun {
-    crate::identify::PublishedRun::of(
-        crate::identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
-        None,
-    )
+    crate::identify::PublishedRun {
+        outcome: crate::identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
+        signals: None,
+    }
 }
 
 /// Store `key` as a candidate the scan holds under `/watch` with `revision`
@@ -535,36 +534,6 @@ async fn a_rescan_reporting_new_files_ends_the_key_s_work() {
         candidate: reshaped,
     }));
     assert!(work.is_cancelled());
-}
-
-/// Extraction's snapshots are kept for the one form that reads them, but they
-/// are not what is in flight: no entry appears for them. The form is fed by
-/// the UI events instead.
-#[tokio::test]
-async fn extracted_signals_are_retained_without_a_runtime_entry() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-
-    runtime.record_event(&ImportEvent::SignalsUpdated {
-        candidate_key: key.clone(),
-        run: crate::identify::IdentifyRunId::for_test(1),
-        signals: extracted_signals(),
-        artwork: crate::signals::ArtworkScan::Absent,
-        priority: CallPriority::Background,
-    });
-
-    assert!(
-        runtime.signals(key).is_some(),
-        "the form can read them back"
-    );
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-
-    // They describe this key's current files, so the scan dropping the key
-    // drops them with it.
-    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: key.clone(),
-    }));
-    assert!(runtime.signals(key).is_none());
 }
 
 /// A run's terminal state is its answer, and answering is not running: the
