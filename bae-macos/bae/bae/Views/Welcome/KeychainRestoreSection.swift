@@ -29,7 +29,6 @@ struct KeychainRestoreSection: View {
             ForEach(codes.list.value ?? [], id: \.libraryId) { entry in
                 SavedCodeRow(
                     entry: entry,
-                    isDeleting: codes.deletingLibraryId == entry.libraryId,
                     onRestore: onRestore,
                     onDelete: { codes.askToDelete(entry) }
                 )
@@ -68,10 +67,10 @@ struct KeychainRestoreSection: View {
 
 /// One saved entry. A readable code shows the library's name, its provider
 /// and location, and Restore; one bae can't read says why, with its library
-/// id. Both have Delete, which shows progress while the delete runs.
+/// id. Both have Delete; the section disables it while any delete runs, a
+/// local keychain call that ends at once.
 private struct SavedCodeRow: View {
     let entry: SavedRestoreEntry
-    let isDeleting: Bool
     let onRestore: (SavedRestoreCode) -> Void
     let onDelete: () -> Void
 
@@ -109,17 +108,10 @@ private struct SavedCodeRow: View {
                 }
                 Spacer(minLength: ThemeSpace.group)
             }
-            ZStack {
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    onDelete()
-                }
-                .buttonStyle(.bordered)
-                .opacity(isDeleting ? 0 : 1)
-                .allowsHitTesting(!isDeleting)
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(isDeleting ? 1 : 0)
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                onDelete()
             }
+            .buttonStyle(.bordered)
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)

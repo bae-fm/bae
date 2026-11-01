@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -145,11 +144,8 @@ private fun InviteFormFields(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
         )
         RoleChoice(fields.role) { fields.role = it }
-        if (storage == null) {
-            CircularProgressIndicator()
-        } else {
-            InviteAccessFields(storage, input)
-        }
+        // Where the library is stored is a local read; its fields show once it lands.
+        storage?.let { InviteAccessFields(it, input) }
         Choice(
             choices = DeliveryChoice.entries,
             chosen = fields.delivery,

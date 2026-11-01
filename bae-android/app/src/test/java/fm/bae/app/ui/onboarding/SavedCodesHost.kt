@@ -1,5 +1,6 @@
 package fm.bae.app.ui.onboarding
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -75,6 +76,9 @@ internal class SavedCodesHost(
     /** Refuse deletes, leaving every entry in place. */
     var refuseDeletes = false
 
+    /** Holds each delete until it completes, when set. */
+    var deleteGate: CompletableDeferred<Unit>? = null
+
     /** Answer a restore from a saved code as coven does once the code is gone. */
     var savedCodeGone = false
 
@@ -85,6 +89,7 @@ internal class SavedCodesHost(
     }
 
     override suspend fun forgetSavedRestoreCode(libraryId: String) {
+        deleteGate?.await()
         if (refuseDeletes) throw BridgeException.Diagnostic(BridgeErrorCategory.Keyring, "Block Store refused the delete")
         forgotten += libraryId
         readable.removeAll { it.libraryId == libraryId }

@@ -4,17 +4,14 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -125,7 +120,6 @@ private fun SavedCodesContent(
                 list.entries.forEach { entry ->
                     SavedCodeRow(
                         entry = entry,
-                        isDeleting = deletingLibraryId == entry.libraryId,
                         enabled = deletingLibraryId == null,
                         callbacks = callbacks,
                     )
@@ -139,12 +133,12 @@ private fun SavedCodesContent(
  * One saved entry. A readable code shows the library's saved name over where
  * it is stored, which tells apart two libraries with one name, and the row
  * restores it; one bae can't read says why, with its library id, and only
- * deletes. Both have Delete, which shows progress while the delete runs.
+ * deletes. Both have Delete, disabled while any delete runs: a local
+ * keystore call that ends at once.
  */
 @Composable
 private fun SavedCodeRow(
     entry: SavedRestoreEntry,
-    isDeleting: Boolean,
     enabled: Boolean,
     callbacks: SavedCodesCallbacks,
 ) {
@@ -189,18 +183,12 @@ private fun SavedCodeRow(
                 }
             }
         }
-        Box(contentAlignment = Alignment.Center) {
-            TextButton(
-                onClick = { callbacks.onDelete(entry) },
-                enabled = enabled,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.alpha(if (isDeleting) 0f else 1f),
-            ) {
-                Text(stringResource(R.string.onboarding_saved_code_delete))
-            }
-            if (isDeleting) {
-                CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
-            }
+        TextButton(
+            onClick = { callbacks.onDelete(entry) },
+            enabled = enabled,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+            Text(stringResource(R.string.onboarding_saved_code_delete))
         }
     }
 }

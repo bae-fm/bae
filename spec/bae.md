@@ -2598,7 +2598,11 @@ so nothing stands in for it, neither a spinner nor a line, until its rows
 arrive, and a failed read shows why in its place: the library's lists and
 detail pages, search, downloads, the Storage Manager and its inspector, an
 import folder's draft and imported release, what is waiting, what sync is
-doing, and who is in the library. While Android removes a release's download,
+doing, and who is in the library. A local action that ends at once shows no
+spinner either, its control only disabled while it runs: deleting a saved
+recovery code, saving or refreshing the MCP and Subsonic servers, and the
+invite form reading where the library is stored, whose access fields show once
+it has. While Android removes a release's download,
 its control says so in core's words for that transfer.
 
 - **Launching offline.** A failed connect at start-up opens the library

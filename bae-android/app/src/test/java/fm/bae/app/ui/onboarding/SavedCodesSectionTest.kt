@@ -4,8 +4,11 @@ import android.app.Application
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -13,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.ui.BaeTheme
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -33,7 +37,13 @@ class SavedCodesSectionTest {
             val scope = rememberCoroutineScope()
             val flow =
                 remember {
-                    OnboardingFlow(scope, context, OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus), null, null) {}
+                    OnboardingFlow(
+                        scope,
+                        context,
+                        OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                        null,
+                        null,
+                    ) {}
                 }
             BaeTheme { OnboardingSteps(flow) }
         }
@@ -92,6 +102,24 @@ class SavedCodesSectionTest {
 
         compose.onNodeWithText("Home Library").assertDoesNotExist()
         assertEquals(listOf("saved-dropbox"), host.forgotten)
+    }
+
+    /** Deleting is a local Block Store call, so its button only disables while it runs: no spinner stands in for it. */
+    @Test
+    fun aRunningDeleteDisablesDeleteWithNoSpinner() {
+        val host = SavedCodesHost(listOf(dropboxCode))
+        val gate = CompletableDeferred<Unit>()
+        host.deleteGate = gate
+        showWelcome(host)
+
+        compose.onNodeWithText("Delete").performScrollTo().performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+
+        compose.onNodeWithText("Delete").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertDoesNotExist()
+
+        gate.complete(Unit)
+        compose.waitUntil { host.forgotten == listOf("saved-dropbox") }
     }
 
     @Test

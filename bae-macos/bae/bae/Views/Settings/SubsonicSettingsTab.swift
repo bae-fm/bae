@@ -157,9 +157,6 @@ struct SubsonicSettingsContent: View {
                             .textSelection(.enabled)
                     }
                 }
-                if isWorking {
-                    ProgressView().controlSize(.small)
-                }
                 Button("Refresh", action: refreshStatus)
                     .disabled(isWorking)
             }
