@@ -79,9 +79,8 @@
             .environment(Importer.stub())
             // The pane's leaves read what is in flight by the candidate's key.
             .environment(
-                \.candidateRuntimes,
-                runtime.map { CandidateRuntimes(holding: [candidate.key: $0]) }
-                    ?? PreviewData.importTabRuntimes()
+                \.heldCandidateRuntimes,
+                runtime.map { [candidate.key: $0] } ?? [:]
             )
         }
     }

@@ -259,9 +259,11 @@ impl ImportServices {
 #[cfg(desktop)]
 pub use candidate_key::CandidateKey;
 #[cfg(desktop)]
-pub(crate) use candidate_runtime::CandidateWork;
+pub use candidate_runtime::CandidateRuntime;
+#[cfg(any(test, feature = "test-utils"))]
+pub use candidate_runtime::CandidateRuntimeChange;
 #[cfg(desktop)]
-pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange, RuntimeSnapshotsWatch};
+pub(crate) use candidate_runtime::CandidateWork;
 #[cfg(desktop)]
 pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
 #[cfg(desktop)]

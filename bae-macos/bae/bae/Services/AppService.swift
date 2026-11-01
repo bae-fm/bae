@@ -214,7 +214,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(outputStore)
             .environment(uiStore)
             .environment(\.previewPosition, importStore.previewPosition.only)
-            .environment(\.candidateRuntimes, importStore.candidateRuntimes)
             .environment(\.importPercents, importStore.importPercents)
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)

@@ -1,25 +1,6 @@
 import BaeKit
 import Foundation
 
-private final class CandidateRuntimeSink: CandidateRuntimeCallback,
-    @unchecked Sendable
-{
-    private let apply:
-        @MainActor @Sendable ([BridgeCandidateRuntimeChange]) -> Void
-
-    init(
-        apply:
-            @escaping @MainActor @Sendable ([BridgeCandidateRuntimeChange])
-            -> Void
-    ) {
-        self.apply = apply
-    }
-
-    func onChanges(changes: [BridgeCandidateRuntimeChange]) {
-        Task { @MainActor in apply(changes) }
-    }
-}
-
 private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
@@ -345,11 +326,6 @@ final class DesktopSubscriptions {
             importStore.importPercents.feed(from: appHandle),
         ]
         subscriptions = [
-            appHandle.subscribeCandidateRuntime(
-                callback: CandidateRuntimeSink { [importStore] changes in
-                    importStore.candidateRuntimes.apply(changes)
-                }
-            ),
             appHandle.subscribeFolderScans(
                 callback: FolderScansSink(
                     apply: { [importStore] scans in
@@ -357,7 +333,7 @@ final class DesktopSubscriptions {
                     },
                     fail: { [uiStore] error in uiStore.showError(error) }
                 )
-            ),
+            )
         ]
         importCounts = ScreenSubscription(
             appHandle.subscribeImportCounts(),

@@ -30,8 +30,6 @@ struct ImportCandidateTable: NSViewRepresentable {
     private var imageStore
     @Environment(Importer.self)
     private var importer: Importer?
-    @Environment(\.candidateRuntimes)
-    private var candidateRuntimes
     @Environment(\.importPercents)
     private var importPercents
     @Environment(OutboxStore.self)
@@ -45,7 +43,6 @@ struct ImportCandidateTable: NSViewRepresentable {
         ImportListRowEnvironment(
             imageStore: imageStore,
             importer: importer,
-            candidateRuntimes: candidateRuntimes,
             importPercents: importPercents,
             outboxStore: outboxStore,
             appearance: HostedAppearance(

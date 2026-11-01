@@ -400,11 +400,6 @@
         private static let importTabDoneCandidate = folderCandidates[3]
         private static let importTabFailedCandidate = folderCandidates[4]
 
-        /// The step the preview's running import is at.
-        static let importTabImportInFlight = BridgeImportInFlight(
-            step: .running(phase: .measuringLoudness)
-        )
-
         /// Pending until its running import writes the release.
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
@@ -712,22 +707,6 @@
                     .pending: importTabItems(.pending),
                     .done: importTabItems(.done),
                     .skipped: importTabItems(.skipped),
-                ]
-            )
-        }
-
-        /// What the preview's running import has in flight.
-        @MainActor
-        static func importTabRuntimes() -> CandidateRuntimes {
-            CandidateRuntimes(
-                holding: [
-                    importTabImportingCandidate.key:
-                        BridgeCandidateRuntimeSnapshot(
-                            identification: nil,
-                            import: importTabImportInFlight,
-                            search: nil,
-                            signals: nil
-                        )
                 ]
             )
         }

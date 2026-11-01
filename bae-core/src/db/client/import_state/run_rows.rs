@@ -221,13 +221,18 @@ impl Database {
         .await
     }
 
-    /// Every key something is running for, live.
-    pub(crate) fn subscribe_candidate_runtimes(
+    /// What is in flight for `key`, live: its snapshot as each write of its
+    /// standing, runs or search leaves it, `None` while nothing is.
+    pub(crate) fn subscribe_candidate_runtime(
         &self,
-    ) -> coven::LiveQuery<HashMap<CandidateKey, StoredRuntime>> {
-        self.inner
-            .handle
-            .subscribe(|sql| load_stored_runtimes_on(&sql).map_err(CovenError::from))
+        key: &CandidateKey,
+    ) -> coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>> {
+        let key = key.clone();
+        self.inner.handle.subscribe(move |sql| {
+            load_stored_runtime_on(&sql, &key)
+                .map(|stored| crate::import::candidate_runtime::compose(&key, &stored))
+                .map_err(CovenError::from)
+        })
     }
 
     /// Start `run` from `key`'s wait for `files`, with `outcome` as the first

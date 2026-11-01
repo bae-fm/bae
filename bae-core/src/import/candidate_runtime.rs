@@ -26,15 +26,13 @@
 //! rows.
 //!
 //! This runtime holds what is not stored: how far through its step an import
-//! is, for the import percents' stream alone. [`CandidateRuntimeSnapshot`] is
-//! the stored runtime as one read of the tables composes it.
-//!
-//! Readers of the snapshots wake on [`RuntimeView`], which each read of the
-//! tables moves key by key, naming the keys it moved.
+//! is, for the import percents' stream alone.
+//! [`CandidateRuntimeSnapshot`](crate::import::CandidateRuntimeSnapshot) is
+//! the stored runtime as one read of the tables composes it, and a screen
+//! follows one key's as a live query of those tables.
 
 use super::candidate_key::CandidateKey;
 use super::candidate_search::{CandidateSearch, SearchRun};
-use super::candidates::CandidateRuntimeSnapshot;
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
@@ -49,14 +47,11 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
-mod change_log;
 mod snapshots;
-mod snapshots_watch;
 mod standing_writes;
 mod stored_standing;
 mod work;
-pub(crate) use snapshots::RuntimeView;
-pub use snapshots_watch::RuntimeSnapshotsWatch;
+pub(crate) use snapshots::compose;
 pub(crate) use standing_writes::RunSubject;
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
@@ -67,19 +62,17 @@ pub(crate) use work::CandidateWork;
 #[cfg(test)]
 pub(crate) mod tests;
 
-/// One key's runtime after a change, or its removal.
+/// One key's runtime after a write of its standing, or its removal, as the
+/// test readers of every change hear it.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateRuntimeChange {
     Updated {
         key: CandidateKey,
-        runtime: CandidateRuntimeSnapshot,
+        runtime: super::candidates::CandidateRuntimeSnapshot,
     },
     /// Nothing is running for the key any more.
     Removed { key: CandidateKey },
-    /// Every key's runtime, as a reader first reads it.
-    Reset {
-        runtimes: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
-    },
 }
 
 /// The files a candidate's runtime was recorded against; a scan reporting
@@ -131,9 +124,6 @@ pub struct CandidateRuntime {
     database: Database,
     /// Where a bug the runtime finds with no caller to fail is reported.
     diagnostics: crate::diagnostics::Diagnostics,
-    /// Every key's snapshot, kept key by key from the live read of the table
-    /// and what `inner` holds.
-    view: Arc<watch::Sender<snapshots::RuntimeView>>,
     /// The percent of each key's running import, apart from its snapshot: it
     /// moves many times a second, and the step only a few times an import.
     percents: Arc<watch::Sender<HashMap<CandidateKey, u32>>>,
@@ -171,9 +161,6 @@ impl CandidateRuntime {
             work: Arc::default(),
             database,
             diagnostics,
-            // The library opens with the table empty and nothing held, so
-            // nothing is in flight until the first change.
-            view: Arc::new(watch::Sender::new(snapshots::RuntimeView::default())),
             percents: Arc::new(watch::Sender::new(HashMap::new())),
             #[cfg(any(test, feature = "test-utils"))]
             every_count: Arc::default(),

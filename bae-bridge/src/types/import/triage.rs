@@ -158,27 +158,6 @@ pub struct BridgeInvalidCandidateDetail {
     pub files: Vec<BridgeMappingFile>,
 }
 
-/// A change to what one key has in flight, or every key in flight.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeCandidateRuntimeChange {
-    Updated {
-        key: Vec<u8>,
-        runtime: BridgeCandidateRuntimeSnapshot,
-    },
-    /// Nothing is running for the key any more.
-    Removed { key: Vec<u8> },
-    /// Every key in flight now; a key not listed is removed.
-    Reset {
-        runtimes: Vec<BridgeKeyedCandidateRuntime>,
-    },
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedCandidateRuntime {
-    pub key: Vec<u8>,
-    pub runtime: BridgeCandidateRuntimeSnapshot,
-}
-
 /// What is happening for one candidate right now; what finished work left
 /// behind is on its row.
 #[derive(Debug, Clone, uniffi::Record)]

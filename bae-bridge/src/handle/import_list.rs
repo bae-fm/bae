@@ -111,23 +111,18 @@ impl AppHandle {
         )
     }
 
-    /// What every candidate has in flight: a run's identify state and a
-    /// running import's progress, keyed by candidate.
+    /// What one candidate has in flight — a run's identify state and the
+    /// signals it last read, a running import's step, its typed search — now
+    /// and as it changes; `None` while nothing is.
     pub fn subscribe_candidate_runtime(
         &self,
-        callback: Box<dyn crate::types::CandidateRuntimeCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services| async move {
-            let mut runtimes = services.watch_candidate_runtimes();
-            while let Some(changes) = runtimes.next().await {
-                callback.on_changes(
-                    changes
-                        .into_iter()
-                        .map(crate::types::BridgeCandidateRuntimeChange::from_core)
-                        .collect(),
-                );
-            }
-        })
+        candidate_key: Vec<u8>,
+    ) -> std::sync::Arc<crate::CandidateRuntimeSubscription> {
+        crate::screens::candidate_runtime(
+            self.services
+                .subscribe_candidate_runtime(&candidate_key.into()),
+            self.runtime.clone(),
+        )
     }
 }
 

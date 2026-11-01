@@ -3225,10 +3225,12 @@ in the shape of the verdict it may end on, with the signals it last read, as
 the run publishes it (A.5), and a person's typed search beside them, each
 catalog's answer landing in a write of its own. What each candidate has in
 flight — its standing, its run's state and the signals that run last read,
-its search — is a subscription by key, sent as it steps. The search form's
-autocomplete pools are those signals while a run reads the folder, else the
-candidate's stored ones; the settle of a run's answer stores the signals of
-that run's own rows beside its verdict; how far through its step a running import is moves many times a second,
+its search — is a live query of those tables by key, which the screen drawing
+that candidate pulls; a write to another key tells it nothing. The search
+form's autocomplete pools are those signals while a run reads the folder,
+else the candidate's stored ones; the settle of a run's answer stores the
+signals of that run's own rows beside its verdict. How far through its step a
+running import is moves many times a second,
 so it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
 write to a candidate loads it whole, applies its rule, and saves it against the
 revisions it read, so two writers never disagree about which rows belong

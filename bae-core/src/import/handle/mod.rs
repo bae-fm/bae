@@ -479,16 +479,6 @@ impl ImportServiceHandle {
             import_cancels,
             diagnostics,
         } = services;
-        library_manager.spawn_supervised_task(
-            "candidate runtime view",
-            runtime.clone().keep_view_current(),
-            // The view every import list reads is composed in steps beside
-            // the candidate runtime, as its lock guards the runtime; a panic
-            // between them leaves it partway through a change, or no longer
-            // following the table, for the rest of the session. The panic
-            // is reported first, then the process ends.
-            |_| std::process::abort(),
-        )?;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
             runtime_handle.clone(),
@@ -659,11 +649,6 @@ impl ImportServiceHandle {
             .run_answered(key, run, answer.picks_unattended())
             .await
             .unwrap());
-    }
-
-    /// Every key with something in flight, and each key that changes after.
-    pub fn watch_candidate_runtimes(&self) -> super::RuntimeSnapshotsWatch {
-        super::RuntimeSnapshotsWatch::of(&self.runtime)
     }
 
     /// Each running import's percent, by candidate key, as its import last

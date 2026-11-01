@@ -333,11 +333,6 @@ async fn reached_in_order(
                     .then_some(key)
                     .into_iter()
                     .collect(),
-                    CandidateRuntimeChange::Reset { runtimes } => runtimes
-                        .into_iter()
-                        .filter(|(key, runtime)| reached(runtime) && !order.contains(key))
-                        .map(|(key, _)| key)
-                        .collect(),
                     CandidateRuntimeChange::Removed { .. } => Vec::new(),
                 };
             assert!(

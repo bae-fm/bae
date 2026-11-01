@@ -88,6 +88,13 @@ impl LibraryManager {
         self.database.subscribe_import_counts()
     }
 
+    pub(crate) fn subscribe_candidate_runtime(
+        &self,
+        key: &crate::import::CandidateKey,
+    ) -> coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>> {
+        self.database.subscribe_candidate_runtime(key)
+    }
+
     pub(crate) async fn load_import_list(
         &self,
         request: crate::import::ImportListRequest,

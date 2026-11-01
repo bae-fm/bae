@@ -9,11 +9,11 @@ use crate::types::BridgeError;
 
 /// A live query's values as the app pulls them: `$object` holds core's
 /// [`LiveValues`](bae_core::library::LiveValues) of `$core`, each pulled
-/// value converted to `$bridge`, and `$make` builds it.
+/// value converted to `$bridge` by `$convert`, and `$make` builds it.
 macro_rules! pulled_values {
     (
         $(#[doc = $doc:literal])*
-        $object:ident: $core:ty => $bridge:ty, built by $make:ident
+        $object:ident: $core:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
     ) => {
         $(#[doc = $doc])*
         #[derive(uniffi::Object)]
@@ -34,7 +34,7 @@ macro_rules! pulled_values {
                         self.values
                             .next()
                             .await
-                            .map(<$bridge>::from_core)
+                            .map($convert)
                             .map_err(values_error)
                     })
                     .await
@@ -72,5 +72,17 @@ fn values_error(error: bae_core::library::LiveValuesError) -> BridgeError {
 pulled_values! {
     /// How far the identifications and imports in flight have got.
     ImportCountsSubscription: bae_core::import::ImportCounts => crate::types::BridgeImportCounts,
+    converted by crate::types::BridgeImportCounts::from_core,
     built by import_counts
+}
+
+pulled_values! {
+    /// What one candidate has in flight; `None` while nothing is.
+    CandidateRuntimeSubscription:
+        Option<bae_core::import::CandidateRuntimeSnapshot>
+            => Option<crate::types::BridgeCandidateRuntimeSnapshot>,
+    converted by |runtime: Option<bae_core::import::CandidateRuntimeSnapshot>| {
+        runtime.map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
+    },
+    built by candidate_runtime
 }

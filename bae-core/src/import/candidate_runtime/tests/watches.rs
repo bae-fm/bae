@@ -1,141 +1,88 @@
 // ── Readers of the current state ────────────────────────────────────────────
 //
-// Each wakes when the runtime or the table changes and reads what it draws,
-// so however many changes land before it looks, it reads where they left off.
+// A screen follows one key's runtime as a live query of the tables, so
+// however many writes land before it pulls, it reads where they left off.
 
-/// Wait until the view shows each of `keys` claimed and running. A claim
-/// reaches the view queued, then running as a later read of the table says;
-/// a reader taking the view before that is told the move later, as if
-/// whatever it waits for had moved the key.
-async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&crate::import::CandidateKey]) {
-    wait_until_at(
-        runtime,
-        keys,
-        ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
-    )
-    .await;
-}
-
-/// Wait until the view shows each of `keys`' import at `step`, as a read of
-/// the table after the step's write says.
-async fn wait_until_at(
-    runtime: &CandidateRuntime,
-    keys: &[&crate::import::CandidateKey],
-    step: ImportStep,
-) {
-    runtime
-        .watch_view()
-        .wait_for(|view| {
-            keys.iter().all(|key| {
-                view.snapshots
-                    .get(key)
-                    .and_then(|snapshot| snapshot.import.as_ref())
-                    .map(|import| import.step)
-                    == Some(step)
-            })
-        })
+/// The next value `query` delivers, or the test fails after five seconds.
+async fn next_runtime(
+    query: &mut coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>>,
+) -> Option<crate::import::CandidateRuntimeSnapshot> {
+    tokio::time::timeout(std::time::Duration::from_secs(5), query.next())
         .await
-        .unwrap();
+        .expect("the query delivers")
+        .expect("the query stays open")
+        .expect("the query reads")
 }
 
-/// The live read of every key, kept current for as long as the test runs.
-fn keep_current(runtime: &CandidateRuntime) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(runtime.clone().keep_view_current())
-}
-
-#[tokio::test]
-async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
-    let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
-    let mut view = runtime.watch_view();
-    view.wait_for(|view| view.snapshots.len() == 2)
-        .await
-        .unwrap();
-    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
-
-    let first = watch.next().await.expect("the runtime is there");
-    assert!(matches!(
-        first.as_slice(),
-        [CandidateRuntimeChange::Reset { runtimes }] if runtimes.len() == 2
-    ));
-
-    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
-    runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel2"), "imp-1", None).await.unwrap();
-    let mut changed = Vec::new();
-    while !(changed.iter().any(|change| {
-        matches!(change, CandidateRuntimeChange::Removed { key } if key == &crate::import::CandidateKey::test("/watch/a/rel2"))
-    }) && changed.iter().any(|change| {
-        matches!(change, CandidateRuntimeChange::Updated { key, runtime }
-            if key == &crate::import::CandidateKey::test("/watch/a/rel1")
-                && runtime.import.as_ref().map(|import| import.step)
-                    == Some(ImportStep::Running(ImportPhase::MeasuringLoudness)))
-    })) {
-        changed.extend(watch.next().await.expect("the runtime is there"));
+/// Pull from `query` until a value satisfies `wanted`, and return it.
+async fn runtime_until(
+    query: &mut coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>>,
+    wanted: impl Fn(&Option<crate::import::CandidateRuntimeSnapshot>) -> bool,
+) -> Option<crate::import::CandidateRuntimeSnapshot> {
+    loop {
+        let value = next_runtime(query).await;
+        if wanted(&value) {
+            return value;
+        }
     }
-    live.abort();
 }
 
-/// The pane's runtime stream draws Queued, then Running, from the table, with
-/// the state the run published beside it.
+/// Wait for the percents watch to satisfy a condition, or fail the test
+/// after five seconds.
+async fn within_five_seconds<T, E: std::fmt::Debug>(
+    waiting: impl std::future::Future<Output = Result<T, E>>,
+) {
+    tokio::time::timeout(std::time::Duration::from_secs(5), waiting)
+        .await
+        .expect("the percents get there")
+        .expect("the percents watch stays open");
+}
+
+/// The step `runtime`'s import is at, where one runs.
+fn import_step(runtime: &Option<crate::import::CandidateRuntimeSnapshot>) -> Option<ImportStep> {
+    runtime.as_ref()?.import.as_ref().map(|import| import.step)
+}
+
+/// A key's runtime query reads nothing in flight, then Queued, then Running
+/// with the state the run published, from the table, and nothing once the
+/// run ends.
 #[tokio::test]
-async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
+async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
     let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
-    watch.next().await.expect("the runtime is there");
+    let mut query = runtime.database.subscribe_candidate_runtime(key);
+    assert_eq!(next_runtime(&mut query).await, None);
 
     runtime
         .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
-    let queued = loop {
-        let changes = watch.next().await.expect("the runtime is there");
-        if let Some(runtime) = changes.into_iter().find_map(|change| match change {
-            CandidateRuntimeChange::Updated { key: changed, runtime } if changed == key.clone() => {
-                Some(runtime)
-            }
-            _ => None,
-        }) {
-            break runtime;
-        }
-    };
+    let queued = runtime_until(&mut query, Option::is_some).await.unwrap();
     assert_eq!(
         queued.identification,
         Some(IdentificationRuntime::Queued(Admission::Requested))
     );
 
-    // What the run publishes before the table names it is stored nowhere.
-    assert!(!runtime
-        .publish_candidate_run(key, run(1), &triangulating(), None)
-        .await
-        .unwrap());
     assert!(runtime
         .run_started(key, &files, run(1), &triangulating())
         .await
         .unwrap());
-    let running = loop {
-        let changes = watch.next().await.expect("the runtime is there");
-        if let Some(runtime) = changes.into_iter().find_map(|change| match change {
-            CandidateRuntimeChange::Updated { key: changed, runtime }
-                if changed == key.clone()
-                    && matches!(runtime.identification, Some(IdentificationRuntime::Running(_))) =>
-            {
-                Some(runtime)
-            }
-            _ => None,
-        }) {
-            break runtime;
-        }
-    };
+    let running = runtime_until(&mut query, |value| {
+        matches!(
+            value.as_ref().and_then(|runtime| runtime.identification.as_ref()),
+            Some(IdentificationRuntime::Running(_))
+        )
+    })
+    .await
+    .unwrap();
     assert_eq!(
         running.identification,
         Some(IdentificationRuntime::Running(published(triangulating())))
     );
-    live.abort();
+
+    runtime.run_ended(key, run(1)).await.unwrap();
+    runtime_until(&mut query, Option::is_none).await;
 }
 
 /// The import counts' live query delivers each write that moves them: an
@@ -191,85 +138,76 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
     );
 }
 
-/// A change to one key's runtime names that key alone.
+/// A key's runtime query hears its own key's writes and no other key's.
 #[tokio::test]
-async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
+async fn a_key_s_runtime_query_hears_only_its_key() {
     let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
-    wait_until_running(&runtime, &[&crate::import::CandidateKey::test("/watch/a/rel1"), &crate::import::CandidateKey::test("/watch/a/rel2")]).await;
-    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
-    watch.next().await.expect("the runtime is there");
-
-    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
-    let next = watch.next().await.expect("the runtime is there");
-    assert!(
-        matches!(
-            next.as_slice(),
-            [CandidateRuntimeChange::Updated { key, runtime }]
-                if key == &crate::import::CandidateKey::test("/watch/a/rel1")
-                    && runtime.import.as_ref().map(|import| import.step)
-                        == Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
-        ),
-        "{next:?}"
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
+    claim(&runtime, first).await;
+    let mut query = runtime.database.subscribe_candidate_runtime(first);
+    assert_eq!(
+        import_step(&next_runtime(&mut query).await),
+        Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
     );
-    live.abort();
+
+    claim(&runtime, second).await;
+    measuring(&runtime, second, 40).await;
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), query.next())
+            .await
+            .is_err(),
+        "another key's writes tell this key's query nothing"
+    );
+
+    measuring(&runtime, first, 40).await;
+    assert_eq!(
+        import_step(&next_runtime(&mut query).await),
+        Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
+    );
 }
 
 /// A running import's percent moves in the percents watch by its key; the
-/// snapshot stream hears only the step it reached, so a percent tick at the
+/// runtime query hears only the step it reached, so a percent tick at the
 /// same step tells it nothing.
 #[tokio::test]
-async fn an_import_percent_moves_the_percents_not_the_snapshots() {
+async fn an_import_percent_moves_the_percents_not_the_runtime() {
     let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let other = &crate::import::CandidateKey::test("/watch/a/rel2");
+    claim(&runtime, key).await;
+    claim(&runtime, other).await;
     let mut percents = runtime.watch_import_percents();
-    wait_until_running(&runtime, &[&crate::import::CandidateKey::test("/watch/a/rel1"), &crate::import::CandidateKey::test("/watch/a/rel2")]).await;
-    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
-    percents
-        .wait_for(|percents| percents.get(&crate::import::CandidateKey::test("/watch/a/rel1")) == Some(&40))
-        .await
-        .unwrap();
-    wait_until_at(
-        &runtime,
-        &[&crate::import::CandidateKey::test("/watch/a/rel1")],
-        ImportStep::Running(ImportPhase::MeasuringLoudness),
-    )
-    .await;
-    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
-    watch.next().await.expect("the runtime is there");
+    measuring(&runtime, key, 40).await;
+    within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&40))).await;
+    let mut query = runtime.database.subscribe_candidate_runtime(key);
+    assert_eq!(
+        import_step(&next_runtime(&mut query).await),
+        Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
+    );
 
-    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 41));
-    percents
-        .wait_for(|percents| percents.get(&crate::import::CandidateKey::test("/watch/a/rel1")) == Some(&41))
-        .await
-        .unwrap();
+    runtime.record_event(&progress(key, 41));
+    within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
     assert!(
-        !percents.borrow().contains_key(&crate::import::CandidateKey::test("/watch/a/rel2")),
+        !percents.borrow().contains_key(other),
         "a claim no report moved has no percent"
     );
     assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(50), watch.next())
+        tokio::time::timeout(std::time::Duration::from_millis(100), query.next())
             .await
             .is_err(),
-        "a percent at the same step tells the snapshot stream nothing"
+        "a percent at the same step tells the runtime query nothing"
     );
 
-    runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel1"), "imp-1", None).await.unwrap();
+    runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: crate::import::CandidateKey::test("/watch/a/rel1"),
+        candidate_key: key.clone(),
         progress: ImportProgress::Complete {
             id: "rel1".to_string(),
             import_id: "imp-1".to_string(),
             album_id: "alb".to_string(),
         },
     });
-    percents
-        .wait_for(|percents| !percents.contains_key(&crate::import::CandidateKey::test("/watch/a/rel1")))
-        .await
-        .unwrap();
-    live.abort();
+    within_five_seconds(percents.wait_for(|percents| !percents.contains_key(key))).await;
+    runtime_until(&mut query, Option::is_none).await;
 }

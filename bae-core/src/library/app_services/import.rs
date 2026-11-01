@@ -233,9 +233,14 @@ impl AppServices {
             .await;
     }
 
-    /// Every key with something in flight, and each key that changes after.
-    pub fn watch_candidate_runtimes(&self) -> crate::import::RuntimeSnapshotsWatch {
-        self.inner.import.watch_candidate_runtimes()
+    /// What is in flight for `key`: the first value at once, then a value
+    /// after each write that changes it; `None` while nothing is.
+    pub fn subscribe_candidate_runtime(
+        &self,
+        key: &crate::import::CandidateKey,
+    ) -> crate::library::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_candidate_runtime(key))
     }
 
     /// Each running import's percent, by candidate key, as its import last

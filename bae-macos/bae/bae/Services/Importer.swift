@@ -50,6 +50,9 @@ private struct ImportOperations: Sendable {
     let startCandidateSearch:
         @Sendable (Data, BridgeSearchQuery) async throws -> Void
     let retryCandidateSearch: @Sendable (Data) async throws -> Void
+    /// `nil` where no bridge is behind the importer: a preview or a test.
+    let subscribeCandidateRuntime:
+        @Sendable (Data) -> CandidateRuntimeSubscription?
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let editCandidateLookupChoices:
         @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
@@ -171,6 +174,9 @@ extension ImportOperations {
             },
             retryCandidateSearch: {
                 try await handle.retryCandidateSearch(candidateKey: $0)
+            },
+            subscribeCandidateRuntime: {
+                handle.subscribeCandidateRuntime(candidateKey: $0)
             },
             subscribeLibraryStatuses: {
                 let subscription = handle.subscribeLibraryStatuses()
@@ -370,6 +376,10 @@ final class Importer: Sendable, Observable {
             Void = { _, _ in },
         retryCandidateSearch:
             @escaping @Sendable (Data) async throws -> Void = { _ in },
+        subscribeCandidateRuntime:
+            @escaping @Sendable (Data) -> CandidateRuntimeSubscription? = {
+                _ in nil
+            },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         editCandidateLookupChoices:
@@ -464,6 +474,7 @@ final class Importer: Sendable, Observable {
             endReleaseIdentification: endReleaseIdentification,
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
+            subscribeCandidateRuntime: subscribeCandidateRuntime,
             subscribeLibraryStatuses: subscribeLibraryStatuses,
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
@@ -842,6 +853,13 @@ extension Importer {
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(operations: .live(handle: handle))
+    }
+
+    /// What one candidate has in flight, for a screen to pull; `nil` where
+    /// no bridge is behind the importer.
+    func subscribeCandidateRuntime(_ key: Data) -> CandidateRuntimeSubscription?
+    {
+        operations.subscribeCandidateRuntime(key)
     }
 
 }

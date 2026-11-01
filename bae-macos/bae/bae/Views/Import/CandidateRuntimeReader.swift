@@ -4,29 +4,51 @@ import SwiftUI
 // MARK: - Environment key
 
 extension EnvironmentValues {
-    /// What every candidate has in flight, by key, for the views drawing one
-    /// key; `nil` where no import list is.
+    /// What each candidate has in flight, by key, for a preview or a test
+    /// with no bridge behind it: a reader under it draws its key's entry and
+    /// subscribes to nothing. `nil` in the app.
     @Entry
-    var candidateRuntimes: CandidateRuntimes?
+    var heldCandidateRuntimes: [Data: BridgeCandidateRuntimeSnapshot]?
 }
 
 // MARK: - Reader
 
 /// Draws `content` with what is in flight for one key: a run's identify state
-/// and the signals it last read, a running import's step, which change as
-/// they step. It redraws as that key changes or as keys come and go; how far
-/// an import has got is not here but in the import percents' stream, which
-/// only a native bar reads.
+/// and the signals it last read, a running import's step, its typed search.
+/// It pulls the key's own subscription, so it redraws only as that key
+/// changes; how far an import has got is not here but in the import
+/// percents' stream, which only a native bar reads.
 struct CandidateRuntimeReader<Content: View>: View {
     let key: Data
     @ViewBuilder
     let content: (BridgeCandidateRuntimeSnapshot?) -> Content
 
-    @Environment(\.candidateRuntimes)
-    private var runtimes
+    @Environment(\.heldCandidateRuntimes)
+    private var held
+    @Environment(Importer.self)
+    private var importer: Importer?
+    @Environment(UiStore.self)
+    private var uiStore: UiStore?
+
+    @State
+    private var runtime: BridgeCandidateRuntimeSnapshot?
+    @State
+    private var subscription: ScreenSubscription<CandidateRuntimeSubscription>?
 
     var body: some View {
-        content(runtimes?.runtime(forKey: key))
+        content(held.map { $0[key] } ?? runtime)
+            .task(id: key) {
+                runtime = nil
+                subscription = nil
+                guard held == nil,
+                    let source = importer?.subscribeCandidateRuntime(key)
+                else { return }
+                subscription = ScreenSubscription(
+                    source,
+                    onValue: { runtime = $0 },
+                    onError: { error in uiStore?.showError(error) }
+                )
+            }
     }
 }
 
@@ -48,17 +70,17 @@ func shownIdentifyState(
 
 #if DEBUG
     extension View {
-        /// What the reader above takes its values from: the runtimes
-        /// `runtimes` holds, and the importer the views under it act
-        /// through. A preview that draws a candidate — a row with a running
-        /// import, a pane, the release editor's search — mounts it, so it
-        /// provides them and renders the same chain the app does.
+        /// What the reader above takes its values from in a preview: the
+        /// runtimes `runtimes` holds, by key, and the importer the views
+        /// under it act through. A preview that draws a candidate's pane or
+        /// the release editor's search mounts it, so it provides them and
+        /// renders the same chain the app does.
         func candidateReaderPreviewEnvironment(
-            runtimes: CandidateRuntimes = CandidateRuntimes()
+            runtimes: [Data: BridgeCandidateRuntimeSnapshot] = [:]
         ) -> some View {
             self
                 .environment(Importer.stub())
-                .environment(\.candidateRuntimes, runtimes)
+                .environment(\.heldCandidateRuntimes, runtimes)
         }
     }
 #endif

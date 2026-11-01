@@ -74,4 +74,5 @@ public final class ScreenSubscription<Source: PulledSubscription> {
 // `ScreenSubscription`.
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
+    extension CandidateRuntimeSubscription: PulledSubscription {}
 #endif

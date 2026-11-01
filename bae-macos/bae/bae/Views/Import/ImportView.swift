@@ -240,10 +240,6 @@ struct ImportView: View {
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
                 .environment(Importer.stub())
-                .environment(
-                    \.candidateRuntimes,
-                    PreviewData.importTabRuntimes()
-                )
                 .environment(\.importPercents, PreviewData.importTabPercents())
                 .frame(width: 1440, height: 900)
                 .preferredColorScheme(.dark)

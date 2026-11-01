@@ -174,29 +174,6 @@ mirror_struct! {
     },
 }
 
-impl crate::types::BridgeCandidateRuntimeChange {
-    pub(super) fn from_core(change: bae_core::import::CandidateRuntimeChange) -> Self {
-        match change {
-            bae_core::import::CandidateRuntimeChange::Updated { key, runtime } => Self::Updated {
-                key: key.into_bytes(),
-                runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-            },
-            bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed {
-                key: key.into_bytes(),
-            },
-            bae_core::import::CandidateRuntimeChange::Reset { runtimes } => Self::Reset {
-                runtimes: runtimes
-                    .into_iter()
-                    .map(|(key, runtime)| crate::types::BridgeKeyedCandidateRuntime {
-                        key: key.into_bytes(),
-                        runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-                    })
-                    .collect(),
-            },
-        }
-    }
-}
-
 impl crate::types::BridgeTriageImportStatus {
     pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
         match status {

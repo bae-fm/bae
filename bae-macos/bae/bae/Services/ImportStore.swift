@@ -19,12 +19,10 @@ private let importStoreLogger = Logger.bae("ImportStore")
 /// up by key without knowing its source.
 @Observable
 class ImportStore {
-    /// An empty store, made on the main actor, where the candidate runtimes
-    /// it holds are made and read.
+    /// An empty store, made on the main actor, where the streams it holds
+    /// are made and read.
     @MainActor
-    init() {
-        candidateRuntimes = CandidateRuntimes()
-    }
+    init() {}
 
     /// The list entries the sidebar has loaded, by stable key. The paged list
     /// holds the order; this holds what each key renders as.
@@ -175,12 +173,6 @@ class ImportStore {
     @ObservationIgnored
     let previewPosition = LatestStream<BridgePreviewPosition>
         .previewPosition()
-
-    /// What every candidate has in flight — a run's identify state, a running
-    /// import's step — by key, each key observed on its own, so a key's change
-    /// redraws the views reading that key rather than the sidebar.
-    @ObservationIgnored
-    let candidateRuntimes: CandidateRuntimes
 
     /// How far through its step each running import is, for the native bars
     /// that read it each display frame.

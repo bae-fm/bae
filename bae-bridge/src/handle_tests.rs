@@ -662,169 +662,44 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
     );
 }
 
-/// The runtime stream end to end: a claim crosses as a key in flight, its
-/// import ending removes it, and a subscriber joining mid-import is told.
+/// One candidate's runtime pulled end to end: a claim crosses as its import
+/// in flight, a subscriber opening mid-import reads it, and the import
+/// failing leaves nothing in flight.
 #[cfg(feature = "desktop")]
 mod candidate_runtime {
     use super::*;
-    use crate::types::{BridgeCandidateRuntimeChange, CandidateRuntimeCallback};
     use std::time::Duration;
 
-    struct ForwardingCallback {
-        changes: tokio::sync::mpsc::UnboundedSender<BridgeCandidateRuntimeChange>,
-    }
-
-    impl CandidateRuntimeCallback for ForwardingCallback {
-        fn on_changes(&self, changes: Vec<BridgeCandidateRuntimeChange>) {
-            for change in changes {
-                #[expect(
-                    clippy::let_underscore_must_use,
-                    reason = "a change arriving after the test dropped its receiver has no one to tell"
-                )]
-                let _ = self.changes.send(change);
-            }
-        }
-    }
-
-    fn subscribe(
+    /// Pull from `subscription` until a value satisfies `wanted`; only the
+    /// timeout fails.
+    fn pull_until(
         handle: &Arc<super::super::AppHandle>,
-    ) -> (
-        Arc<crate::LiveSubscription>,
-        tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-    ) {
-        let (changes, receiver) = tokio::sync::mpsc::unbounded_channel();
-        let subscription =
-            handle.subscribe_candidate_runtime(Box::new(ForwardingCallback { changes }));
-        (subscription, receiver)
-    }
-
-    /// What one change says about `key`. A `Reset` lists every key in flight,
-    /// so a key it leaves out is not in flight.
-    enum SaysAbout {
-        InFlight(Box<crate::types::BridgeCandidateRuntimeSnapshot>),
-        Gone,
-        /// A change about some other key.
-        NothingOfTheSort,
-    }
-
-    fn says_about(change: &BridgeCandidateRuntimeChange, key: &[u8]) -> SaysAbout {
-        match change {
-            BridgeCandidateRuntimeChange::Updated {
-                key: changed,
-                runtime,
-            } if changed.as_slice() == key => SaysAbout::InFlight(Box::new(runtime.clone())),
-            BridgeCandidateRuntimeChange::Removed { key: changed } if changed.as_slice() == key => {
-                SaysAbout::Gone
-            }
-            BridgeCandidateRuntimeChange::Updated { .. }
-            | BridgeCandidateRuntimeChange::Removed { .. } => SaysAbout::NothingOfTheSort,
-            BridgeCandidateRuntimeChange::Reset { runtimes } => runtimes
-                .iter()
-                .find(|entry| entry.key.as_slice() == key)
-                .map_or(SaysAbout::Gone, |entry| {
-                    SaysAbout::InFlight(Box::new(entry.runtime.clone()))
-                }),
-        }
-    }
-
-    /// Drain changes until the stream says `key` is in flight, and answer with
-    /// what it is running; only the timeout fails.
-    fn wait_in_flight(
-        handle: &Arc<super::super::AppHandle>,
-        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &[u8],
-    ) -> crate::types::BridgeCandidateRuntimeSnapshot {
-        drain_until(handle, receiver, key, |said| match said {
-            SaysAbout::InFlight(runtime) => Some(*runtime),
-            SaysAbout::Gone | SaysAbout::NothingOfTheSort => None,
-        })
-        .expect("the stream says the key is in flight")
-    }
-
-    /// Drain changes until the stream says `key` is not in flight, by either of
-    /// the two shapes that say it.
-    fn wait_gone(
-        handle: &Arc<super::super::AppHandle>,
-        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &[u8],
-    ) {
-        drain_until(handle, receiver, key, |said| match said {
-            SaysAbout::Gone => Some(()),
-            SaysAbout::InFlight(_) | SaysAbout::NothingOfTheSort => None,
-        })
-        .expect("the stream says the key is gone");
-    }
-
-    fn drain_until<T>(
-        handle: &Arc<super::super::AppHandle>,
-        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &[u8],
-        settled: impl Fn(SaysAbout) -> Option<T>,
-    ) -> Option<T> {
-        handle
-            .runtime
-            .block_on(async {
-                tokio::time::timeout(Duration::from_secs(5), async {
-                    loop {
-                        let change = receiver.recv().await.expect("the subscription stays open");
-                        if let Some(value) = settled(says_about(&change, key)) {
-                            return value;
-                        }
+        subscription: &Arc<crate::CandidateRuntimeSubscription>,
+        wanted: impl Fn(&Option<crate::types::BridgeCandidateRuntimeSnapshot>) -> bool,
+    ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
+        handle.runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                loop {
+                    let value = subscription.clone().next().await.expect("the pull reads");
+                    if wanted(&value) {
+                        return value;
                     }
-                })
-                .await
+                }
             })
-            .ok()
-    }
-
-    /// A lagged subscription sends one `Reset` instead of the `Removed`, and a
-    /// key it leaves out is gone.
-    #[test]
-    fn a_reset_that_omits_the_key_says_the_key_is_gone() {
-        let (handle, _root) = fresh_bridge_handle("candidate-runtime-reset");
-        let key = b"/watch/Album Title".to_vec();
-        let running = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-            bae_core::import::CandidateRuntimeSnapshot {
-                identification: None,
-                import: Some(bae_core::import::ImportInFlight {
-                    step: bae_core::import::ImportStep::Running(
-                        bae_core::import::ImportPhase::ReadingFiles,
-                    ),
-                }),
-                search: None,
-            },
-        );
-
-        let (changes, mut receiver) = tokio::sync::mpsc::unbounded_channel();
-        // A reset listing only another key still says this one is gone.
-        changes
-            .send(BridgeCandidateRuntimeChange::Reset {
-                runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
-                    key: b"/watch/Someone Else".to_vec(),
-                    runtime: running.clone(),
-                }],
-            })
-            .unwrap();
-        wait_gone(&handle, &mut receiver, &key);
-
-        // And the same reset listing the key says it is still in flight.
-        let (changes, mut receiver) = tokio::sync::mpsc::unbounded_channel();
-        changes
-            .send(BridgeCandidateRuntimeChange::Reset {
-                runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
-                    key: key.clone(),
-                    runtime: running,
-                }],
-            })
-            .unwrap();
-        wait_in_flight(&handle, &mut receiver, &key);
+            .await
+            .expect("the subscription gets there")
+        })
     }
 
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
         let (handle, _root) = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
-        let (_watching, mut watching_changes) = subscribe(&handle);
+        let watching = handle.subscribe_candidate_runtime(key.clone());
+        assert!(
+            pull_until(&handle, &watching, |_| true).is_none(),
+            "nothing runs yet"
+        );
 
         handle.runtime.block_on(
             handle
@@ -832,7 +707,8 @@ mod candidate_runtime {
                 .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
-        let claimed = wait_in_flight(&handle, &mut watching_changes, &key);
+        let claimed = pull_until(&handle, &watching, Option::is_some)
+            .expect("a claimed candidate is in flight");
         let import = claimed
             .import
             .clone()
@@ -846,13 +722,13 @@ mod candidate_runtime {
             import.step
         );
 
-        // A subscriber opening mid-import is told what is running.
-        let (_joining, mut joining_changes) = subscribe(&handle);
+        // A subscriber opening mid-import reads what is running.
+        let joining = handle.subscribe_candidate_runtime(key.clone());
         assert!(
-            wait_in_flight(&handle, &mut joining_changes, &key)
-                .import
+            pull_until(&handle, &joining, |_| true)
+                .and_then(|runtime| runtime.import)
                 .is_some(),
-            "a late subscriber is replayed the running import"
+            "a late subscriber reads the running import"
         );
 
         // The import fails as the worker fails it: its failure ends the
@@ -862,19 +738,18 @@ mod candidate_runtime {
                 .services
                 .end_candidate_import_for_test(&key.clone().into(), "import-1"),
         );
-        handle
-            .services
-            .import_emit_event_for_test(bae_core::import::ImportEvent::ImportProgress {
-                candidate_key: key.clone().into(),
-                progress: bae_core::import::ImportProgress::Failed {
-                    error: "no space left".to_string(),
-                    import_id: "import-1".to_string(),
-                },
-            });
 
         // A failed import is a row by the time it is announced, so the key
         // simply stops being in flight.
-        wait_gone(&handle, &mut watching_changes, &key);
+        pull_until(&handle, &watching, Option::is_none);
+
+        // Cancelling ends the pulls: a pull after it answers that it was
+        // cancelled.
+        handle.runtime.block_on(watching.clone().cancel()).unwrap();
+        assert!(matches!(
+            handle.runtime.block_on(watching.clone().next()),
+            Err(crate::types::BridgeError::Cancelled)
+        ));
     }
 }
 

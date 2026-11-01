@@ -61,11 +61,6 @@ callbacks! {
     PlaybackTimelineCallback: on_value(timeline: BridgePlaybackTimeline);
     DownloadCountsCallback: on_value(value: super::BridgeDownloadCounts) + on_error;
 
-    /// What every candidate has in flight: a `Reset` with every running key
-    /// when the subscription opens, then `Updated` as a key advances and
-    /// `Removed` once nothing is running for it, each batch in one call.
-    #[cfg(feature = "desktop")]
-    CandidateRuntimeCallback: on_changes(changes: Vec<BridgeCandidateRuntimeChange>);
     /// Where each watched folder's scan stands, now and as it changes.
     #[cfg(feature = "desktop")]
     FolderScansCallback: on_value(value: BridgeFolderScans) + on_error;
