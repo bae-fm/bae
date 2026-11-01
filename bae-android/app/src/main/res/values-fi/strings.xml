@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">Tätä laitetta lisätään</string>
     <string name="onboarding_joining_library">Liitytään: %1$s</string>
     <string name="onboarding_status_connecting">Yhdistetään…</string>
-    <string name="onboarding_status_loading">Ladataan kirjastoa…</string>
     <string name="onboarding_invite_declined">Kutsu hylättiin, peruttiin tai se on vanhentunut.</string>
     <string name="onboarding_checking">Tarkistetaan…</string>
     <string name="onboarding_next_check">Seuraava tarkistus %1$s kuluttua</string>

@@ -223,7 +223,6 @@
     <string name="onboarding_adding_device">Това устройство се добавя</string>
     <string name="onboarding_joining_library">Присъединяване към %1$s</string>
     <string name="onboarding_status_connecting">Свързване…</string>
-    <string name="onboarding_status_loading">Библиотеката се зарежда…</string>
     <string name="onboarding_invite_declined">Поканата е отхвърлена, отменена или е изтекла.</string>
     <string name="onboarding_checking">Проверка…</string>
     <string name="onboarding_next_check">Следваща проверка след %1$s</string>

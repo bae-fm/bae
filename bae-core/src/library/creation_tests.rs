@@ -677,3 +677,46 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     );
     restored.close().await.unwrap();
 }
+
+/// Resetting a connected library loads it from storage again, and tells its
+/// caller each step of the load as it goes, as a restore does: reading the
+/// library's history, then applying it.
+#[tokio::test]
+async fn a_reset_reports_each_step_of_loading_the_library() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::TestCoven::new();
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (store, device, _) =
+        connected_library(&installation, &app_dir, &storage, "Household").await;
+    let statuses = std::sync::Mutex::new(Vec::new());
+
+    let reset = reset_device(
+        installation
+            .builder(app_dir.store_layout())
+            .storage_connector(std::sync::Arc::new(storage.for_device())),
+        store,
+        "Replacement",
+        |status| statuses.lock().unwrap().push(status),
+    )
+    .await
+    .unwrap();
+    assert_ne!(reset.device_id(), device);
+    reset.close().await.unwrap();
+    let steps: Vec<coven::LoadStep> = statuses
+        .into_inner()
+        .unwrap()
+        .into_iter()
+        .filter_map(|status| match status {
+            coven::BootstrapStatus::Loading(progress) => Some(progress.step),
+            _ => None,
+        })
+        .collect();
+    // A library with no snapshot yet loads by reading its whole history.
+    let first = |step| steps.iter().position(|seen| *seen == step);
+    assert!(
+        first(coven::LoadStep::Reading) < first(coven::LoadStep::Applying)
+            && first(coven::LoadStep::Reading).is_some(),
+        "{steps:?}"
+    );
+}

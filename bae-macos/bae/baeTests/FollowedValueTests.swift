@@ -15,9 +15,12 @@ struct FollowedValueTests {
         let followed = FollowedValue(writer.stream.only)
         #expect(followed.value == .connecting)
 
-        writer.set(.loading)
+        let loading = BridgeBootstrapStatus.loading(
+            progress: BridgeLoadProgress(step: .reading, done: 2, total: 8)
+        )
+        writer.set(loading)
         try await Task.sleep(for: .milliseconds(300))
-        #expect(followed.value == .loading)
+        #expect(followed.value == loading)
 
         writer.remove()
         try await Task.sleep(for: .milliseconds(300))

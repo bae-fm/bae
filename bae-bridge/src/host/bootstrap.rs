@@ -344,7 +344,16 @@ impl BridgeDeviceReset {
     pub fn warning_key(&self) -> String {
         "core.sync.reset_device.warning".into()
     }
-    pub async fn confirm(self: Arc<Self>) -> Result<BridgeBootstrapResult, BridgeError> {
+    /// Reset the device after the person accepted the warning: coven loads
+    /// the library from storage again, telling `callback` how far it has
+    /// come.
+    /// Reset, writing where the reset stands into `setup`'s stream: the
+    /// new installation's open, then each step of loading the library.
+    pub async fn confirm(
+        self: Arc<Self>,
+        setup: Arc<crate::BridgeLibrarySetup>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let steps = setup.writer();
         self.host
             .operations
             .clone()
@@ -354,7 +363,7 @@ impl BridgeDeviceReset {
                     self.host.builder(),
                     self.store,
                     &self.device_name,
-                    |_| {},
+                    |status| steps.bootstrap(status),
                 )
                 .await
                 {

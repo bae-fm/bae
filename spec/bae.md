@@ -3170,6 +3170,20 @@ like an open's, never from a callback, and show the step's name over a bar:
 counted where the step is counted, moving without a count where it is not,
 never a bare spinner.
 
+A restore, a join and a device reset load the library from storage, and
+their streams say so step by step: a new installation's database opening,
+with the open's steps as above, then connecting, waiting for approval, and
+loading
+([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
+Loading reports its steps with how much of each is done: reading the
+library's history for the person's keys, counted in slots, when the saved copy
+holds none for them; downloading each saved copy, the one every member reads
+and then each circle's, counted in bytes; writing the copies into the library
+here, counted in tables; applying the changes saved with them, then
+downloading and applying the changes made since, counted in changes. A step
+runs only when it has work. The apps show each step's name over its bar on
+the restore and join screens, and on the screen a reset loads on.
+
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
 holding it.

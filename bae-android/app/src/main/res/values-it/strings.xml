@@ -224,7 +224,6 @@
     <string name="onboarding_adding_device">Aggiunta del dispositivo in corso</string>
     <string name="onboarding_joining_library">Ingresso in %1$s</string>
     <string name="onboarding_status_connecting">Connessione…</string>
-    <string name="onboarding_status_loading">Caricamento della libreria…</string>
     <string name="onboarding_invite_declined">L’invito è stato rifiutato, annullato o è scaduto.</string>
     <string name="onboarding_checking">Controllo in corso…</string>
     <string name="onboarding_next_check">Prossimo controllo tra %1$s</string>

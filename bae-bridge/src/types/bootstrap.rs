@@ -37,6 +37,11 @@ impl BridgeRestoreCodeShare {
 
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeBootstrapStatus {
+    /// A new installation's database opening, which runs every migration,
+    /// before it connects.
+    Opening {
+        progress: BridgeOpenProgress,
+    },
     Connecting,
     /// The request is sent. `confirmation` is set for a sent invite, as coven
     /// writes it (`041 778`).
@@ -44,7 +49,10 @@ pub enum BridgeBootstrapStatus {
         confirmation: Option<String>,
         next_check: BridgeNextCheck,
     },
-    Loading,
+    /// Loading the library from storage, at this step.
+    Loading {
+        progress: BridgeLoadProgress,
+    },
     Pending {
         records: Vec<BridgePendingRecord>,
     },
@@ -79,10 +87,12 @@ impl BridgeBootstrapStatus {
                 confirmation: confirmation.map(|number| number.to_string()),
                 next_check: BridgeNextCheck::from_core(next_check),
             },
-            coven::BootstrapStatus::Loading(_) => Self::Loading,
-            // A new installation's database opens before it connects, which
-            // the person sees as connecting.
-            coven::BootstrapStatus::Opening(_) => Self::Connecting,
+            coven::BootstrapStatus::Loading(progress) => Self::Loading {
+                progress: BridgeLoadProgress::from_core(progress),
+            },
+            coven::BootstrapStatus::Opening(progress) => Self::Opening {
+                progress: BridgeOpenProgress::from_core(progress),
+            },
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()
@@ -171,6 +181,35 @@ pub struct BridgeSetupProgress {
     pub total: u64,
 }
 
+/// A step of loading a library from storage onto this device, in the order
+/// they run; a step runs only when it has work. Mirrors `coven::LoadStep`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLoadStep {
+    /// Reading the library's history for copies of the person's keys.
+    FindingKeys,
+    /// Downloading the saved copy of the data every member reads.
+    StreamingLibrary,
+    /// Downloading the saved copy of one circle's data.
+    StreamingCircle,
+    /// Writing the downloaded copies into the library here.
+    Installing,
+    /// Applying the changes saved with those copies.
+    InstallingSlots,
+    /// Downloading the changes made since.
+    Reading,
+    /// Applying those changes.
+    Applying,
+}
+
+/// How far loading a library has come: its step, and how many of the step's
+/// units are done out of its total, which can grow while the step runs.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLoadProgress {
+    pub step: BridgeLoadStep,
+    pub done: u64,
+    pub total: u64,
+}
+
 /// Localization key for a setup step, the line over its progress bar. The
 /// UI resolves it against the `Core` table.
 #[uniffi::export]
@@ -185,6 +224,44 @@ pub fn bridge_setup_step_key(step: BridgeSetupStep) -> String {
         BridgeSetupStep::CreatingLibrary => "core.library.setup_step.creating_library",
         BridgeSetupStep::SettingUpLibrary => "core.library.setup_step.setting_up_library",
         BridgeSetupStep::ConnectingStorage => "core.library.setup_step.connecting_storage",
+    }
+    .to_string()
+}
+
+impl BridgeLoadProgress {
+    pub(crate) fn from_core(value: coven::Progress<coven::LoadStep>) -> Self {
+        Self {
+            step: match value.step {
+                coven::LoadStep::FindingKeys => BridgeLoadStep::FindingKeys,
+                coven::LoadStep::Streaming(coven::Audience::Store) => {
+                    BridgeLoadStep::StreamingLibrary
+                }
+                coven::LoadStep::Streaming(coven::Audience::Circle(_)) => {
+                    BridgeLoadStep::StreamingCircle
+                }
+                coven::LoadStep::Installing => BridgeLoadStep::Installing,
+                coven::LoadStep::InstallingSlots => BridgeLoadStep::InstallingSlots,
+                coven::LoadStep::Reading => BridgeLoadStep::Reading,
+                coven::LoadStep::Applying => BridgeLoadStep::Applying,
+            },
+            done: value.done,
+            total: value.total,
+        }
+    }
+}
+
+/// Localization key for a load's step, the line over its progress bar. The
+/// UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_load_step_key(step: BridgeLoadStep) -> String {
+    match step {
+        BridgeLoadStep::FindingKeys => "core.library.load_step.finding_keys",
+        BridgeLoadStep::StreamingLibrary => "core.library.load_step.streaming_library",
+        BridgeLoadStep::StreamingCircle => "core.library.load_step.streaming_circle",
+        BridgeLoadStep::Installing => "core.library.load_step.installing",
+        BridgeLoadStep::InstallingSlots => "core.library.load_step.installing_slots",
+        BridgeLoadStep::Reading => "core.library.load_step.reading",
+        BridgeLoadStep::Applying => "core.library.load_step.applying",
     }
     .to_string()
 }

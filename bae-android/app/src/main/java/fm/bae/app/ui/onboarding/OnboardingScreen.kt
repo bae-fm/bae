@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.ui.BaeTheme
@@ -224,8 +223,13 @@ internal fun OnboardingStartColumn(
  */
 internal fun OnboardingStep.Running.cancellable(): Boolean =
     when (from) {
-        is OnboardingStep.Restore, is OnboardingStep.RestoreSaved -> true
-        is OnboardingStep.Invite -> status == null || status is BridgeBootstrapStatus.Connecting
+        is OnboardingStep.Restore, is OnboardingStep.RestoreSaved -> {
+            true
+        }
+
+        is OnboardingStep.Invite -> {
+            status == null || status is BridgeBootstrapStatus.Opening || status is BridgeBootstrapStatus.Connecting
+        }
     }
 
 /**
@@ -255,7 +259,10 @@ internal fun OnboardingProgress(
                 steps = step.openSteps,
                 modifier = Modifier.widthIn(max = 360.dp),
                 onStepping = { stepping = it },
-            ) { CircularProgressIndicator() }
+            ) {
+                // A step's own bar stands in for the spinner.
+                if (!status.hasStepBar()) CircularProgressIndicator()
+            }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
         Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
@@ -274,38 +281,6 @@ internal fun OnboardingProgress(
             Spacer(modifier = Modifier.height(ThemeSpace.section))
             OutlinedButton(onClick = it) { Text(stringResource(R.string.cancel)) }
         }
-    }
-}
-
-/** What a running restore or join waits on now, a line each; none while it waits for approval. */
-@Composable
-private fun StatusLines(status: BridgeBootstrapStatus?) {
-    val context = LocalContext.current
-    val lines =
-        when (status) {
-            null, BridgeBootstrapStatus.Connecting -> {
-                listOf(stringResource(R.string.onboarding_status_connecting))
-            }
-
-            BridgeBootstrapStatus.Loading -> {
-                listOf(stringResource(R.string.onboarding_status_loading))
-            }
-
-            is BridgeBootstrapStatus.Pending -> {
-                status.records.map { context.coreString(it.reason.key) }
-            }
-
-            is BridgeBootstrapStatus.WaitingForApproval -> {
-                emptyList()
-            }
-        }
-    lines.forEach { line ->
-        Text(
-            text = line,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 

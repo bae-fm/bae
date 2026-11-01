@@ -781,24 +781,57 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     );
 }
 
-/// A new installation's database opens before it connects, so its open
-/// crosses as connecting; loading the store crosses as loading at every
-/// step.
+/// A new installation's open crosses with its step, and loading the store
+/// with each step, a snapshot's step naming whom it holds data for.
 #[test]
-fn a_bootstrap_open_crosses_as_connecting_and_each_load_step_as_loading() {
-    use crate::types::BridgeBootstrapStatus;
+fn a_bootstrap_open_and_each_load_step_cross_with_their_progress() {
+    use crate::types::{BridgeBootstrapStatus, BridgeLoadStep, BridgeOpenStep};
     let opening =
         BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Opening(coven::Progress {
-            step: coven::OpenStep::Rebuilding,
-            done: 0,
-            total: 1,
+            step: coven::OpenStep::Migrating,
+            done: 1,
+            total: 4,
         }));
-    assert!(matches!(opening, BridgeBootstrapStatus::Connecting));
-    let loading =
-        BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Loading(coven::Progress {
-            step: coven::LoadStep::Reading,
+    assert!(matches!(
+        opening,
+        BridgeBootstrapStatus::Opening { progress }
+            if progress.step == BridgeOpenStep::Migrating && progress.done == 1 && progress.total == 4
+    ));
+    let load = |step| match BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Loading(
+        coven::Progress {
+            step,
             done: 3,
             total: 9,
-        }));
-    assert!(matches!(loading, BridgeBootstrapStatus::Loading));
+        },
+    )) {
+        BridgeBootstrapStatus::Loading { progress } => {
+            assert_eq!((progress.done, progress.total), (3, 9));
+            progress.step
+        }
+        _ => panic!("loading crosses as loading"),
+    };
+    assert_eq!(
+        load(coven::LoadStep::FindingKeys),
+        BridgeLoadStep::FindingKeys
+    );
+    assert_eq!(
+        load(coven::LoadStep::Streaming(coven::Audience::Store)),
+        BridgeLoadStep::StreamingLibrary
+    );
+    assert_eq!(
+        load(coven::LoadStep::Streaming(coven::Audience::Circle(
+            coven::CircleId(coven::IdSource::new_id(&coven::UuidIds))
+        ))),
+        BridgeLoadStep::StreamingCircle
+    );
+    assert_eq!(
+        load(coven::LoadStep::Installing),
+        BridgeLoadStep::Installing
+    );
+    assert_eq!(
+        load(coven::LoadStep::InstallingSlots),
+        BridgeLoadStep::InstallingSlots
+    );
+    assert_eq!(load(coven::LoadStep::Reading), BridgeLoadStep::Reading);
+    assert_eq!(load(coven::LoadStep::Applying), BridgeLoadStep::Applying);
 }

@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">A adicionar este dispositivo</string>
     <string name="onboarding_joining_library">A aderir a %1$s</string>
     <string name="onboarding_status_connecting">A ligar…</string>
-    <string name="onboarding_status_loading">A carregar a biblioteca…</string>
     <string name="onboarding_invite_declined">O convite foi recusado, cancelado ou expirou.</string>
     <string name="onboarding_checking">A verificar…</string>
     <string name="onboarding_next_check">Próxima verificação dentro de %1$s</string>

@@ -273,7 +273,6 @@
     <!-- %1$s = the library's name, from the invite -->
     <string name="onboarding_joining_library">Joining %1$s</string>
     <string name="onboarding_status_connecting">Connecting…</string>
-    <string name="onboarding_status_loading">Loading the library…</string>
     <string name="onboarding_invite_declined">The invite was declined, cancelled or has expired.</string>
     <string name="onboarding_checking">Checking…</string>
     <!-- %1$s = the time left until the next check, as minutes and seconds -->

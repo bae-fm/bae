@@ -153,7 +153,7 @@ public final class BootstrapCodeForm {
         guard isRunning else { return false }
         if attempt?.invite == nil { return true }
         switch status {
-        case nil, .connecting: return true
+        case nil, .opening, .connecting: return true
         case .waitingForApproval, .loading, .pending: return false
         }
     }

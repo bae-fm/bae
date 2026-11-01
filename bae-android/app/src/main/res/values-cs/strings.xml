@@ -227,7 +227,6 @@
     <string name="onboarding_adding_device">Přidávání tohoto zařízení</string>
     <string name="onboarding_joining_library">Připojování k %1$s</string>
     <string name="onboarding_status_connecting">Připojování…</string>
-    <string name="onboarding_status_loading">Načítání knihovny…</string>
     <string name="onboarding_invite_declined">Pozvánka byla odmítnuta, zrušena nebo vypršela.</string>
     <string name="onboarding_checking">Probíhá kontrola…</string>
     <string name="onboarding_next_check">Další kontrola za %1$s</string>

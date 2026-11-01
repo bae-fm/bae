@@ -48,6 +48,7 @@ import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
+import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
@@ -165,6 +166,10 @@ private fun AppScreenRouter(
 
         is AppScreen.Opening -> {
             LoadingScreen(steps = current.steps)
+        }
+
+        is AppScreen.Resetting -> {
+            ResettingScreen(status = current.status)
         }
 
         AppScreen.Onboarding -> {

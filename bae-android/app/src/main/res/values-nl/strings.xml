@@ -223,7 +223,6 @@
     <string name="onboarding_adding_device">Dit apparaat wordt toegevoegd</string>
     <string name="onboarding_joining_library">Deelnemen aan %1$s</string>
     <string name="onboarding_status_connecting">Verbinden…</string>
-    <string name="onboarding_status_loading">Bibliotheek laden…</string>
     <string name="onboarding_invite_declined">De uitnodiging is geweigerd, ingetrokken of verlopen.</string>
     <string name="onboarding_checking">Bezig met controleren…</string>
     <string name="onboarding_next_check">Volgende controle over %1$s</string>

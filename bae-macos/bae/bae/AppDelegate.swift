@@ -72,6 +72,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The setup call in flight before any library opens, such as a dev
     /// reset, whose steps the loading screen shows; nil while none runs.
     var setupSteps: LibrarySetupSteps?
+    /// A device reset in flight, whose loading of the library the loading
+    /// screen shows; nil while no reset runs.
+    var resetSteps: DeviceResetSteps?
     var loadError: LoadError?
     /// What launch found wrong. Set once, at launch, and kept for the run
     /// whatever opens or fails after.
@@ -414,6 +417,7 @@ extension AppDelegate {
     func resetDevice(libraryId: String) {
         let host = requiredApplicationServices.host
         let deviceName = requiredApplicationServices.deviceName
+        let diagnostics = requiredApplicationServices.diagnostics
         let startedFrom = screen
         let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
         if open != nil {
@@ -427,9 +431,16 @@ extension AppDelegate {
                     try await self.close(open)
                     self.screen = .loading
                 }
+                let steps = DeviceResetSteps(diagnostics: diagnostics)
+                self.resetSteps = steps
+                defer {
+                    steps.stop()
+                    self.resetSteps = nil
+                }
                 let reset = try await host.resetDevice(
                     libraryId: libraryId,
-                    deviceName: deviceName
+                    deviceName: deviceName,
+                    setup: steps.setup
                 )
                 self.openOpenedLibrary(reset.library, warning: reset.warning)
             }

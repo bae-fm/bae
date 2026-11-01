@@ -8,6 +8,7 @@ import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryOpenProgress
+import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
@@ -17,18 +18,22 @@ import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.changes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -99,6 +104,14 @@ sealed interface AppScreen {
     ) : AppScreen
 
     data object Onboarding : AppScreen
+
+    /**
+     * A device reset loading its library from storage again; [status] is how
+     * far it has come, null before its first report.
+     */
+    data class Resetting(
+        val status: BridgeBootstrapStatus?,
+    ) : AppScreen
 
     data class LibraryOpen(
         val session: OpenLibrary,
@@ -480,14 +493,29 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
         failed: (ScreenFailure?) -> AppScreen,
     ) {
-        onScreen(AppScreen.Loading)
+        onScreen(AppScreen.Resetting(status = null))
+        val app = context.applicationContext as BaeApp
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
             current = null
             open.dispose()
         }
         val result =
             try {
-                reset.confirm()
+                LibrarySetupStatus.of(app.diagnostics).use { setup ->
+                    coroutineScope {
+                        val following =
+                            launch {
+                                setup.statuses.changes().collect { status ->
+                                    if (status != null) onScreen(AppScreen.Resetting(status))
+                                }
+                            }
+                        try {
+                            reset.confirm(setup.setup)
+                        } finally {
+                            following.cancel()
+                        }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {

@@ -83,7 +83,12 @@ struct MainWindowRoot: View {
         switch appDelegate.screen {
         case .loading:
             StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                ProgressView("Switching libraries...")
+                if let status = appDelegate.resetSteps?.status {
+                    BootstrapStatusView(status: status)
+                }
+                else {
+                    ProgressView("Switching libraries...")
+                }
             }
             .frame(maxWidth: StepProgressLayout.width)
         case .welcome:
@@ -183,7 +188,12 @@ struct MainWindowRoot: View {
             Spacer()
             StepProgressLine(steps: appDelegate.setupSteps?.steps) {
                 StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                    ProgressView("Loading...")
+                    if let status = appDelegate.resetSteps?.status {
+                        BootstrapStatusView(status: status)
+                    }
+                    else {
+                        ProgressView("Loading...")
+                    }
                 }
             }
             .frame(maxWidth: StepProgressLayout.width)

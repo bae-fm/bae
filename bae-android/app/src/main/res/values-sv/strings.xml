@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">Lägger till den här enheten</string>
     <string name="onboarding_joining_library">Går med i %1$s</string>
     <string name="onboarding_status_connecting">Ansluter …</string>
-    <string name="onboarding_status_loading">Läser in biblioteket …</string>
     <string name="onboarding_invite_declined">Inbjudan avböjdes, återkallades eller har gått ut.</string>
     <string name="onboarding_checking">Kontrollerar…</string>
     <string name="onboarding_next_check">Nästa kontroll om %1$s</string>

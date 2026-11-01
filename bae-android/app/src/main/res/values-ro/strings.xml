@@ -224,7 +224,6 @@
     <string name="onboarding_adding_device">Se adaugă acest dispozitiv</string>
     <string name="onboarding_joining_library">Te alături la %1$s</string>
     <string name="onboarding_status_connecting">Se conectează…</string>
-    <string name="onboarding_status_loading">Se încarcă biblioteca…</string>
     <string name="onboarding_invite_declined">Invitația a fost refuzată, anulată sau a expirat.</string>
     <string name="onboarding_checking">Se verifică…</string>
     <string name="onboarding_next_check">Următoarea verificare în %1$s</string>

@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">Γίνεται προσθήκη αυτής της συσκευής</string>
     <string name="onboarding_joining_library">Γίνεται συμμετοχή στο %1$s</string>
     <string name="onboarding_status_connecting">Γίνεται σύνδεση…</string>
-    <string name="onboarding_status_loading">Γίνεται φόρτωση της βιβλιοθήκης…</string>
     <string name="onboarding_invite_declined">Η πρόσκληση απορρίφθηκε, ακυρώθηκε ή έληξε.</string>
     <string name="onboarding_checking">Γίνεται έλεγχος…</string>
     <string name="onboarding_next_check">Επόμενος έλεγχος σε %1$s</string>

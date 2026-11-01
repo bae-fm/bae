@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">Tilføjer denne enhed</string>
     <string name="onboarding_joining_library">Deltager i %1$s</string>
     <string name="onboarding_status_connecting">Opretter forbindelse…</string>
-    <string name="onboarding_status_loading">Indlæser biblioteket…</string>
     <string name="onboarding_invite_declined">Invitationen blev afvist, annulleret eller er udløbet.</string>
     <string name="onboarding_checking">Kontrollerer…</string>
     <string name="onboarding_next_check">Næste kontrol om %1$s</string>

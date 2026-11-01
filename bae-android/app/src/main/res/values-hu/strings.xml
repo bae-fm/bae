@@ -222,7 +222,6 @@
     <string name="onboarding_adding_device">Az eszköz hozzáadása folyamatban</string>
     <string name="onboarding_joining_library">Csatlakozás folyamatban: %1$s</string>
     <string name="onboarding_status_connecting">Csatlakozás…</string>
-    <string name="onboarding_status_loading">A könyvtár betöltése…</string>
     <string name="onboarding_invite_declined">A meghívót elutasították, visszavonták, vagy lejárt.</string>
     <string name="onboarding_checking">Ellenőrzés…</string>
     <string name="onboarding_next_check">Következő ellenőrzés: %1$s múlva</string>

@@ -476,6 +476,18 @@ fn produced_keys() -> Vec<String> {
     for step in [BridgeOpenStep::Rebuilding, BridgeOpenStep::Migrating] {
         keys.push(bridge_open_step_key(step));
     }
+    // bridge_load_step_key — each step carries a key.
+    for step in [
+        BridgeLoadStep::FindingKeys,
+        BridgeLoadStep::StreamingLibrary,
+        BridgeLoadStep::StreamingCircle,
+        BridgeLoadStep::Installing,
+        BridgeLoadStep::InstallingSlots,
+        BridgeLoadStep::Reading,
+        BridgeLoadStep::Applying,
+    ] {
+        keys.push(bridge_load_step_key(step));
+    }
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 

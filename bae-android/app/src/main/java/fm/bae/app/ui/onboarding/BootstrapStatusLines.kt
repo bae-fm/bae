@@ -1,0 +1,131 @@
+package fm.bae.app.ui.onboarding
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import fm.bae.app.R
+import fm.bae.app.coreString
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
+import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeLoadStep
+import uniffi.bae_bridge.BridgeOpenStep
+import uniffi.bae_bridge.bridgeLoadStepKey
+import uniffi.bae_bridge.bridgeOpenStepKey
+
+/** Whether [this] status draws its step over a bar of its own. */
+internal fun BridgeBootstrapStatus?.hasStepBar(): Boolean =
+    when (this) {
+        is BridgeBootstrapStatus.Opening, is BridgeBootstrapStatus.Loading -> true
+        else -> false
+    }
+
+/**
+ * What a running restore, join or reset waits on now, a line each, or the
+ * step it is on over a bar of how much of it is done; none while it waits for
+ * approval.
+ */
+@Composable
+internal fun StatusLines(
+    status: BridgeBootstrapStatus?,
+    loadStepKey: (BridgeLoadStep) -> String = ::bridgeLoadStepKey,
+    openStepKey: (BridgeOpenStep) -> String = ::bridgeOpenStepKey,
+) {
+    val context = LocalContext.current
+    val lines =
+        when (status) {
+            null, BridgeBootstrapStatus.Connecting -> {
+                listOf(stringResource(R.string.onboarding_status_connecting))
+            }
+
+            is BridgeBootstrapStatus.Opening -> {
+                StepProgressLine(
+                    title = context.coreString(openStepKey(status.progress.step)),
+                    done = status.progress.done,
+                    total = status.progress.total,
+                )
+                emptyList()
+            }
+
+            is BridgeBootstrapStatus.Loading -> {
+                StepProgressLine(
+                    title = context.coreString(loadStepKey(status.progress.step)),
+                    done = status.progress.done,
+                    total = status.progress.total,
+                )
+                emptyList()
+            }
+
+            is BridgeBootstrapStatus.Pending -> {
+                status.records.map { context.coreString(it.reason.key) }
+            }
+
+            is BridgeBootstrapStatus.WaitingForApproval -> {
+                emptyList()
+            }
+        }
+    lines.forEach { line ->
+        Text(
+            text = line,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** The step a restore, join or reset is on, over a bar of how much of it is done. */
+@Composable
+private fun StepProgressLine(
+    title: String,
+    done: ULong,
+    total: ULong,
+) {
+    Column(
+        modifier = Modifier.widthIn(max = 360.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+    ) {
+        Text(
+            text = title,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        LinearProgressIndicator(
+            progress = { if (total == 0uL) 0f else minOf(done, total).toFloat() / total.toFloat() },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** A device reset loading its library: the step it is on over its bar, or a spinner before its first step. */
+@Composable
+internal fun ResettingScreen(status: BridgeBootstrapStatus?) {
+    Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (!status.hasStepBar()) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(ThemeSpace.related))
+            }
+            StatusLines(status)
+        }
+    }
+}

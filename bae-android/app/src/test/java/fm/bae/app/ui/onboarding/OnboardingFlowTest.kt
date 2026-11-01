@@ -24,6 +24,8 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeLoadProgress
+import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -118,13 +120,14 @@ class OnboardingFlowTest {
         flow.advance(enterCode, CODE, info, CodeSource.SCANNED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        statuses.write("", BridgeBootstrapStatus.Loading)
+        val loading = BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
+        statuses.write("", loading)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(
             OnboardingStep.Running(
                 OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice),
-                status = BridgeBootstrapStatus.Loading,
+                status = loading,
             ),
             flow.step,
         )

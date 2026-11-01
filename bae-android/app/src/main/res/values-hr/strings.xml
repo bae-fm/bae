@@ -225,7 +225,6 @@
     <string name="onboarding_adding_device">Dodavanje ovog uređaja</string>
     <string name="onboarding_joining_library">Pridruživanje: %1$s</string>
     <string name="onboarding_status_connecting">Povezivanje…</string>
-    <string name="onboarding_status_loading">Učitavanje fonoteke…</string>
     <string name="onboarding_invite_declined">Pozivnica je odbijena, otkazana ili je istekla.</string>
     <string name="onboarding_checking">Provjera…</string>
     <string name="onboarding_next_check">Sljedeća provjera za %1$s</string>

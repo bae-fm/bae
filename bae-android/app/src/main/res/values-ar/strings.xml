@@ -231,7 +231,6 @@
     <string name="onboarding_adding_device">جارٍ إضافة هذا الجهاز</string>
     <string name="onboarding_joining_library">جارٍ الانضمام إلى %1$s</string>
     <string name="onboarding_status_connecting">جارٍ الاتصال…</string>
-    <string name="onboarding_status_loading">جارٍ تحميل المكتبة…</string>
     <string name="onboarding_invite_declined">رُفضت الدعوة أو أُلغيت أو انتهت صلاحيتها.</string>
     <string name="onboarding_checking">جارٍ التحقق…</string>
     <string name="onboarding_next_check">التحقق التالي بعد %1$s</string>

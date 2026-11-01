@@ -224,7 +224,6 @@
     <string name="onboarding_adding_device">Añadiendo este dispositivo</string>
     <string name="onboarding_joining_library">Uniéndote a %1$s</string>
     <string name="onboarding_status_connecting">Conectando…</string>
-    <string name="onboarding_status_loading">Cargando la biblioteca…</string>
     <string name="onboarding_invite_declined">La invitación se rechazó, se canceló o ha caducado.</string>
     <string name="onboarding_checking">Comprobando…</string>
     <string name="onboarding_next_check">Próxima comprobación en %1$s</string>

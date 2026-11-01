@@ -16,7 +16,11 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
+import uniffi.bae_bridge.BridgeLoadProgress
+import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeNextCheck
+import uniffi.bae_bridge.BridgeOpenProgress
+import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
 
@@ -77,5 +81,28 @@ class OnboardingProgressTest {
     @Test
     fun aJoinStillConnectingCanBeCancelled() {
         assertTrue(OnboardingStep.Running(invite, BridgeBootstrapStatus.Connecting).cancellable())
+    }
+
+    /** A join still opening its new database, before it connects, can be cancelled too. */
+    @Test
+    fun aJoinStillOpeningCanBeCancelled() {
+        val opening =
+            BridgeBootstrapStatus.Opening(BridgeOpenProgress(BridgeOpenStep.MIGRATING, done = 1uL, total = 3uL))
+        assertTrue(OnboardingStep.Running(invite, opening).cancellable())
+    }
+
+    /**
+     * Loading the library shows its step's line, not a bare spinner. The step's catalog key comes from the bridge, which a
+     * unit test can't load, so the test names it.
+     */
+    @Test
+    fun loadingTheLibraryNamesItsStep() {
+        val status = BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
+        assertFalse(OnboardingStep.Running(invite, status).cancellable())
+        assertTrue(status.hasStepBar())
+        compose.setContent {
+            StatusLines(status, loadStepKey = { "core.library.load_step.reading" })
+        }
+        compose.onNodeWithText("Downloading recent changes", substring = true).assertIsDisplayed()
     }
 }

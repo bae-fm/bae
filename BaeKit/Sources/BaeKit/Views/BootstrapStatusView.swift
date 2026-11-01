@@ -10,6 +10,14 @@ public struct BootstrapStatusView: View {
 
     public var body: some View {
         switch status {
+        case .opening(let progress):
+            BootstrapStepLine(
+                title: localizedCoreString(
+                    bridgeOpenStepKey(step: progress.step)
+                ),
+                done: progress.done,
+                total: progress.total
+            )
         case .connecting:
             progress("Connecting...")
         case .waitingForApproval(let confirmation, let nextCheck):
@@ -24,8 +32,14 @@ public struct BootstrapStatusView: View {
                 }
                 NextCheckLine(nextCheck: nextCheck)
             }
-        case .loading:
-            progress("Loading the library...")
+        case .loading(let progress):
+            BootstrapStepLine(
+                title: localizedCoreString(
+                    bridgeLoadStepKey(step: progress.step)
+                ),
+                done: progress.done,
+                total: progress.total
+            )
         case .pending(let records):
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 progress("Waiting...")
@@ -44,6 +58,26 @@ public struct BootstrapStatusView: View {
             Text(title)
                 .themeText(.body)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// The step a restore, join or reset is on, over a bar of how much of it is
+/// done.
+private struct BootstrapStepLine: View {
+    let title: String
+    let done: UInt64
+    let total: UInt64
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            Text(verbatim: title)
+                .themeText(.body)
+                .foregroundStyle(.secondary)
+            ProgressView(
+                value: Double(min(done, total)),
+                total: Double(max(total, 1))
+            )
         }
     }
 }
