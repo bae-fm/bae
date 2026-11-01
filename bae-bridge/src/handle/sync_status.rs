@@ -5,19 +5,9 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    pub fn subscribe_sync_status(
-        &self,
-        callback: Box<dyn crate::types::SyncStatusCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services| async move {
-            let mut status = services.subscribe_sync_status();
-            while let Some(result) = status.next().await {
-                match result {
-                    Ok(value) => callback.on_value(BridgeSyncStatusSnapshot::from_core(value)),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        })
+    /// What sync is doing and what it waits on, now and after each change.
+    pub fn subscribe_sync_status(&self) -> std::sync::Arc<crate::SyncStatusSubscription> {
+        crate::screens::sync_status(self.services.subscribe_sync_status(), self.runtime.clone())
     }
 
     /// Everything sync is doing, for the activity indicator and its list:

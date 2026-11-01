@@ -66,6 +66,39 @@ struct QueueAdditionTests {
     }
 }
 
+@MainActor
+@Suite("Sync status", .serialized)
+struct SyncStatusSubscriptionTests {
+    @Test(
+        "each pulled sync status reaches its store, and a failed read shows as unreadable until the next value"
+    )
+    func pulledSyncStatusReachesTheStore() async throws {
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
+        let store = appService.syncStatusStoreForTesting
+        appService.startCommonSubscriptions()
+        #expect(store.indicator == .loading)
+
+        let synced = BridgeSyncStatusSnapshot(
+            error: nil,
+            connected: true,
+            pending: .ready(records: []),
+            indicator: .synced
+        )
+        handle.deliverSyncStatus(synced)
+        try await Wait.until { store.indicator == .synced }
+        #expect(store.syncReady)
+
+        handle.failSyncStatusRead(
+            .Diagnostic(category: .database, detail: "the read failed")
+        )
+        try await Wait.until { store.indicator == .unreadable }
+
+        handle.deliverSyncStatus(synced)
+        try await Wait.until { store.indicator == .synced }
+    }
+}
+
 private let playingState = BridgePlaybackValueState.playing(
     track: BridgeNowPlayingTrack(
         track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
@@ -265,6 +298,15 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let playbackValues = FakePlaybackValues()
     private let queueAdditions = FakeQueueAdditions()
     private let timeline = FakePlaybackTimeline()
+    private let syncStatus = FakeSyncStatus()
+
+    func deliverSyncStatus(_ status: BridgeSyncStatusSnapshot) {
+        syncStatus.values.deliver(status)
+    }
+
+    func failSyncStatusRead(_ error: BridgeError) {
+        syncStatus.values.fail(error)
+    }
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -282,10 +324,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentConfig()
     }
 
-    override func subscribeSyncStatus(
-        callback _: any SyncStatusCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeSyncStatus() -> SyncStatusSubscription {
+        syncStatus
     }
 
     override func feedDownloadTransfers(
@@ -414,32 +454,38 @@ private final class NoCastDevices: CastDevicesSubscription, @unchecked Sendable
 }
 
 /// Values a test hands the app one at a time, each answering the app's next
-/// pull; cancelling answers a waiting pull that it was cancelled.
+/// pull, and failed reads in their place; cancelling answers a waiting pull
+/// that it was cancelled.
 private final class PullQueue<Value: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
-    private var waiting: [Value] = []
+    private var waiting: [Result<Value, any Error>] = []
     private var puller: CheckedContinuation<Value, any Error>?
 
-    func deliver(_ value: Value) {
+    func deliver(_ value: Value) { answer(.success(value)) }
+
+    /// The next pull answers that its read failed with `error`.
+    func fail(_ error: any Error) { answer(.failure(error)) }
+
+    private func answer(_ result: Result<Value, any Error>) {
         let puller = lock.withLock {
             let puller = self.puller
             self.puller = nil
-            if puller == nil { waiting.append(value) }
+            if puller == nil { waiting.append(result) }
             return puller
         }
-        puller?.resume(returning: value)
+        puller?.resume(with: result)
     }
 
     func next() async throws -> Value {
         try await withCheckedThrowingContinuation { continuation in
-            let value = lock.withLock {
+            let result = lock.withLock {
                 if waiting.isEmpty {
                     puller = continuation
-                    return Value?.none
+                    return Result<Value, any Error>?.none
                 }
                 return waiting.removeFirst()
             }
-            if let value { continuation.resume(returning: value) }
+            if let result { continuation.resume(with: result) }
         }
     }
 
@@ -451,6 +497,27 @@ private final class PullQueue<Value: Sendable>: @unchecked Sendable {
         }
         puller?.resume(throwing: BridgeError.Cancelled)
     }
+}
+
+/// The sync status a test hands the app one value, or one failed read, at a
+/// time.
+private final class FakeSyncStatus: SyncStatusSubscription, @unchecked Sendable
+{
+    let values = PullQueue<BridgeSyncStatusSnapshot>()
+
+    init() {
+        super.init(noHandle: SyncStatusSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeSyncStatusSnapshot {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
 }
 
 /// Preferences that never change after the ones the service was built with:

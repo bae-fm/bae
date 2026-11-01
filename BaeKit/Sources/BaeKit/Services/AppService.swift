@@ -355,6 +355,10 @@ open class AppService: @unchecked Sendable, Observable {
             testAccess.queueItemsAddedPublisher
         }
 
+        public var syncStatusStoreForTesting: SyncStatusStore {
+            syncStatusStore
+        }
+
     #endif
 }
 

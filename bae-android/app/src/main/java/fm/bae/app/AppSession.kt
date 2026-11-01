@@ -46,7 +46,6 @@ import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.SyncActivityCallback
-import uniffi.bae_bridge.SyncStatusCallback
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -162,21 +161,12 @@ class OpenLibrary internal constructor(
                 onValue = stores.config::setConfig,
                 onError = { error -> messages.show(subscriptionFailed("settings", error)) },
             )
-        valueSubscriptions +=
-            appHandle.subscribeSyncStatus(
-                object : SyncStatusCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeSyncStatusSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            stores.syncStatus.apply(value, LocaleErrorDisplays(appContext))
-                        }
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("sync status", error)?.let(stores.syncStatus::fail)
-                        }
-                    }
-                },
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeSyncStatus().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> stores.syncStatus.apply(value, LocaleErrorDisplays(appContext)) },
+                onError = { error -> subscriptionFailed("sync status", error)?.let(stores.syncStatus::fail) },
             )
         valueSubscriptions +=
             appHandle.subscribeSyncActivity(

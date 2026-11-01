@@ -13,9 +13,9 @@ use crate::types::{
     BridgeGallerySource, BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary,
     BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
     BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus,
-    BridgeStorageSort, BridgeStoreKeyState, BridgeSyncStatusSnapshot, BridgeTrack,
-    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome,
-    BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeStorageSort, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};

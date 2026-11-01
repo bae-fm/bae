@@ -674,10 +674,8 @@ impl AppServices {
         )
     }
 
-    /// Follow the sync status, each value read from its tables in one go.
-    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<crate::library::SyncStatusSnapshot> {
-        self.inner.manager.subscribe_sync_status()
-    }
+    // The sync status, each value read from its tables in one go.
+    delegate_values!(subscribe_sync_status => subscribe_sync_status() -> crate::library::SyncStatusSnapshot);
 
     pub async fn retry_pending_operation(
         &self,

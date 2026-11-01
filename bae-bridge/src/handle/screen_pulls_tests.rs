@@ -86,3 +86,50 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         Err(crate::types::BridgeError::Cancelled)
     ));
 }
+
+/// The sync status answers whether storage is set up at once, and follows a
+/// disconnect from coven's sync status table.
+#[test]
+fn the_sync_status_follows_a_disconnect() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .thread_stack_size(16 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .unwrap();
+    let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
+        root.path(),
+        bae_core::providers::Providers::offline(),
+    ));
+    runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+    let services = runtime
+        .block_on(bae_core::library::AppServices::for_test(manager))
+        .unwrap();
+    let handle = std::sync::Arc::new(
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_core::diagnostics::Diagnostics::noop(),
+        )
+        .unwrap(),
+    );
+
+    let status = handle.subscribe_sync_status();
+    let connected = handle.runtime.block_on(status.clone().next()).unwrap();
+    assert!(connected.connected, "{connected:?}");
+
+    handle
+        .runtime
+        .block_on(handle.clone().disconnect_cloud_provider())
+        .unwrap();
+    let disconnected = pull_until(
+        &handle,
+        || Box::pin(status.clone().next()),
+        |status: &crate::types::BridgeSyncStatusSnapshot| !status.connected,
+    );
+    assert_eq!(
+        disconnected.indicator,
+        crate::types::BridgeSyncIndicator::Unconnected
+    );
+}

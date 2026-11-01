@@ -1,27 +1,5 @@
 import Foundation
 
-private final class SyncStatusValueSink: SyncStatusCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeSyncStatusSnapshot) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeSyncStatusSnapshot) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
-
-    func onValue(value: BridgeSyncStatusSnapshot) {
-        Task { @MainActor in apply(value) }
-    }
-}
-
 private final class SyncActivityValueSink: SyncActivityCallback,
     @unchecked Sendable
 {
@@ -63,6 +41,7 @@ final class CommonSubscriptions {
     private var libraryName: ScreenSubscription<LibraryNameSubscription>?
     private var queue: ScreenSubscription<QueueSubscription>?
     private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
+    private var syncStatus: ScreenSubscription<SyncStatusSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -149,21 +128,17 @@ final class CommonSubscriptions {
             downloadStore.releaseProgress.feed(from: appHandle),
             playbackStore.trackPositions.feed(from: appHandle),
         ]
+        syncStatus = ScreenSubscription(
+            appHandle.subscribeSyncStatus(),
+            onValue: { [syncStatusStore] value in syncStatusStore.apply(value)
+            },
+            onError: { [syncStatusStore] error in syncStatusStore.fail(error) }
+        )
         subscriptions = syncSubscriptions()
     }
 
     private func syncSubscriptions() -> [LiveSubscription] {
         [
-            appHandle.subscribeSyncStatus(
-                callback: SyncStatusValueSink(
-                    apply: { [syncStatusStore] value in
-                        syncStatusStore.apply(value)
-                    },
-                    fail: { [syncStatusStore] error in
-                        syncStatusStore.fail(error)
-                    }
-                )
-            ),
             appHandle.subscribeSyncActivity(
                 callback: SyncActivityValueSink(
                     apply: { [syncActivityStore] value in
@@ -173,7 +148,7 @@ final class CommonSubscriptions {
                         syncActivityStore.fail(error)
                     }
                 )
-            ),
+            )
         ]
     }
 

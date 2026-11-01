@@ -179,23 +179,3 @@ mirror_struct! {
         has_previous,
     },
 }
-
-impl crate::types::BridgeSyncStatusSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
-        let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
-        let error = snapshot.shown_failure();
-        let connected = snapshot.connected();
-        let bae_core::library::SyncStatusSnapshot {
-            status: _,
-            pending,
-            error: _,
-            retry_effect: _,
-        } = snapshot;
-        Self {
-            indicator,
-            connected,
-            error: error.map(crate::types::BridgeError::from_core),
-            pending: crate::types::BridgePendingRecords::from_core(pending),
-        }
-    }
-}

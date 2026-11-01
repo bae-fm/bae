@@ -3483,12 +3483,12 @@ release's or track's id as UTF-8, or a candidate's key.
   closing the library, answers a waiting pull and every later one that it was
   cancelled. Each app reads them through one helper, `ScreenSubscription`,
   with the same name and shape in BaeKit and in Android's data layer. What
-  playback is doing is one (§9.4); so are the settings, the queue, the
-  download counts, whether uploads are paused, the members, the device that
-  joins from Add Device's code, the profiles, ratings, playlists and a
-  playlist's entries, the library's name, the watched folders' scans, and an
+  playback is doing is one (§9.4); so are the settings, the sync status, the
+  queue, the download counts, whether uploads are paused, the members, the
+  device that joins from Add Device's code, the profiles, ratings, playlists
+  and a playlist's entries, the library's name, the watched folders' scans, and an
   import pane's library membership, which moves its checks in place.
-- **Subscriptions** — sync status and activity, and open invites — take a
+- **Subscriptions** — sync activity and open invites — take a
   callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
   as one of the library's tasks, and so does every task core starts to read

@@ -67,6 +67,7 @@ import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
+import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
@@ -97,7 +98,7 @@ import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.StreamFailureCallback
 import uniffi.bae_bridge.SyncActivityCallback
-import uniffi.bae_bridge.SyncStatusCallback
+import uniffi.bae_bridge.SyncStatusSubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
 
@@ -152,7 +153,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeConfig(): ConfigSubscription = FakeConfigSubscription()
 
-    override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
+    /** The sync status the handle answers, which a test delivers to. */
+    val syncStatus = FakeSyncStatusSubscription()
+
+    override fun subscribeSyncStatus(): SyncStatusSubscription = syncStatus
 
     override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
 
@@ -777,6 +781,25 @@ internal class FakeCastDevicesSubscription : CastDevicesSubscription(NoHandle) {
 
     override fun close() {
         devices.close(BridgeException.Cancelled())
+    }
+}
+
+/** A sync status a test hands the app a value at a time: each pull waits for the next. */
+internal class FakeSyncStatusSubscription : SyncStatusSubscription(NoHandle) {
+    private val values = Channel<BridgeSyncStatusSnapshot>(Channel.UNLIMITED)
+
+    fun deliver(status: BridgeSyncStatusSnapshot) {
+        values.trySend(status)
+    }
+
+    override suspend fun next(): BridgeSyncStatusSnapshot = values.receive()
+
+    override suspend fun cancel() {
+        values.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        values.close(BridgeException.Cancelled())
     }
 }
 

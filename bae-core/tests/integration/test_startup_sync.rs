@@ -122,13 +122,13 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         .expect("startup returns while the provider's clock is held")
         .unwrap();
     startup.join().unwrap();
-    let mut status = app.services.subscribe_sync_status();
+    let status = app.services.subscribe_sync_status();
     app.runtime.block_on(async {
         storage.set_online(false);
         storage.set_faults(coven::Faults::none()).await;
         clock.time.set(clock.now() + Duration::from_secs(60));
         // The startup failure reaches its observer, or this panics.
-        bae_core::followed::value_matching(&mut status, |status| {
+        bae_core::followed::pulled_matching(&status, |status| {
             status.error.is_some()
                 || matches!(
                     status.status,

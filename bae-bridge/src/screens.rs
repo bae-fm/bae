@@ -186,6 +186,14 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// What sync is doing, what it waits on, and why a start failed.
+    SyncStatusSubscription:
+        bae_core::library::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
+    converted by crate::types::BridgeSyncStatusSnapshot::from_core,
+    built by sync_status
+}
+
+pulled_values! {
     /// Whether the person paused uploads.
     UploadsPausedSubscription: bool => bool,
     converted by |paused: bool| paused,

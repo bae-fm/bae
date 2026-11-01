@@ -80,6 +80,7 @@ extension ConfigSubscription: PulledSubscription {}
 extension QueueSubscription: PulledSubscription {}
 extension DownloadCountsSubscription: PulledSubscription {}
 extension UploadsPausedSubscription: PulledSubscription {}
+extension SyncStatusSubscription: PulledSubscription {}
 extension MembersSubscription: PulledSubscription {}
 extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
