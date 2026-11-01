@@ -13,6 +13,7 @@ mod lookup_choices;
 mod metadata_application;
 mod metadata_author;
 mod metadata_edits;
+mod offered_covers;
 mod pick_partners;
 mod release_link;
 mod session;

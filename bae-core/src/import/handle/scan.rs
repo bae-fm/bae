@@ -301,9 +301,7 @@ impl ImportServiceHandle {
             .fetch_release_cover(release, &partners)
             .await
             .map_err(|failure| failure.error)?;
-        Ok(external_metadata_with_cover(
-            draft, release, &partners, cover,
-        ))
+        Ok(external_metadata_with_cover(draft, release, cover))
     }
 
     /// The cover a draft read from an external release is written with: the
@@ -579,7 +577,6 @@ impl ImportServiceHandle {
                     draft,
                     provenance: None,
                     cover: None,
-                    cover_options: Vec::new(),
                     assets: crate::import::CandidatePreparedAssets::default(),
                 },
             )
@@ -884,13 +881,11 @@ pub(crate) struct CoverFetchFailure {
     pub(crate) error: bae_catalogs::remote_image::RemoteImageError,
 }
 
-/// The metadata `draft`, read from an external release, makes with the
-/// cover fetched for it, and the covers `release` and the `partners` picked
-/// with it offer the picker.
+/// The metadata `draft`, read from the external `release`, makes with the
+/// cover fetched for it.
 pub(crate) fn external_metadata_with_cover(
     draft: crate::import::CandidateDraft,
     release: &crate::import::source_release::SourceRelease,
-    partners: &[crate::import::source_release::SourceRelease],
     cover: Option<FetchedCover>,
 ) -> crate::import::CandidateMetadataDraft {
     let (cover, remote_cover) = match cover {
@@ -909,7 +904,6 @@ pub(crate) fn external_metadata_with_cover(
             record: release.release().clone(),
         }),
         cover,
-        cover_options: crate::import::source_release::pick_covers(release, partners),
         assets: crate::import::CandidatePreparedAssets { remote_cover },
     }
 }

@@ -284,6 +284,25 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &crate::import::Cand
 pub(super) fn seed_mb_release_with_catalog(
     providers: &crate::providers::Providers,
     release_id: &str, catalog_number: &str) {
+    seed_mb_release(providers, release_id, catalog_number, false);
+}
+
+/// [`seed_mb_release_with_catalog`]'s release, with the Cover Art Archive
+/// stating a front image for it.
+pub(super) fn seed_mb_release_with_front(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    catalog_number: &str,
+) {
+    seed_mb_release(providers, release_id, catalog_number, true);
+}
+
+fn seed_mb_release(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    catalog_number: &str,
+    front: bool,
+) {
     let response = bae_catalogs::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -332,7 +351,7 @@ pub(super) fn seed_mb_release_with_catalog(
         }],
         relations: vec![],
         cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
-            front: false,
+            front,
             darkened: false,
         },
     };

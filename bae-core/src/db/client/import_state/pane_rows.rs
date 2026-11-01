@@ -19,7 +19,7 @@ use crate::import::{
     Credited, ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
-use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::RemoteImageSet;
 use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
@@ -275,7 +275,6 @@ pub(crate) fn load_pane_rows_on(
 ) -> Result<DbCandidatePaneRows, DbError> {
     Ok(DbCandidatePaneRows {
         cover: load_cover_on(sql, content_hash)?,
-        cover_options: load_cover_options_on(sql, content_hash)?,
         draft: load_draft_on(sql, content_hash)?,
         failure: load_failure_on(sql, content_hash)?,
         session: load_session_on(sql, content_hash)?,
@@ -843,87 +842,4 @@ fn insert_track_artist_assignments(
         )?;
     }
     Ok(())
-}
-
-// ── The covers an applied catalog release offers the candidate's picker ──
-
-/// Replace the candidate's offered covers with `options`, in their order.
-pub(super) fn replace_cover_options(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    options: &[RemoteCover],
-) -> Result<(), DbError> {
-    // The copies hang off their option, so this takes them too.
-    sql.execute(
-        "DELETE FROM import_candidate_cover_option WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    for (position, option) in options.iter().enumerate() {
-        let position = i64::try_from(position)
-            .map_err(|error| DbError::Message(format!("too many cover options: {error}")))?;
-        sql.execute(
-            "INSERT INTO import_candidate_cover_option \
-                 (content_hash, position, url, label, source, standing) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position,
-                option.image.url,
-                option.label,
-                option.source.as_str(),
-                option.standing.as_str(),
-            ],
-        )?;
-        for copy in &option.image.downscaled {
-            sql.execute(
-                "INSERT INTO import_candidate_cover_option_copy \
-                     (content_hash, position, max_edge, url) VALUES (?, ?, ?, ?)",
-                params![content_hash, position, copy.max_edge, copy.url],
-            )?;
-        }
-    }
-    Ok(())
-}
-
-/// The candidate's offered covers, in their order, each with its copies.
-pub(super) fn load_cover_options_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    content_hash: &str,
-) -> Result<Vec<RemoteCover>, DbError> {
-    let copies = copies_json_sql(
-        "import_candidate_cover_option_copy",
-        "copy.content_hash = offered.content_hash AND copy.position = offered.position",
-    );
-    sql.query(
-        &format!(
-            "SELECT offered.url, offered.label, offered.source, offered.standing, {copies} \
-             FROM import_candidate_cover_option AS offered \
-             WHERE offered.content_hash = ? ORDER BY offered.position"
-        ),
-        [content_hash],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
-            ))
-        },
-    )?
-    .into_iter()
-    .map(|(url, label, source, standing, copies)| {
-        Ok(RemoteCover {
-            image: RemoteImageSet::with_copies(url, copies_of(&copies)?),
-            label,
-            source: bae_catalogs::catalog::Catalog::from_str(&source).map_err(|error| {
-                DbError::Message(format!(
-                    "a stored cover option's catalog is unreadable: {error}"
-                ))
-            })?,
-            standing: CoverStanding::from_column(&standing)
-                .ok_or_else(|| unreadable("cover option standing", &standing))?,
-        })
-    })
-    .collect()
 }

@@ -119,7 +119,6 @@ async fn prepare_named_candidate(
                 draft,
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,
-                cover_options: Vec::new(),
                 assets: preparation.assets,
             },
         )

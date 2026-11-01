@@ -128,7 +128,6 @@ pub(super) fn load_preparation_on(
             draft: pane_rows::load_draft_on(sql, content_hash)?,
             provenance: state.metadata_provenance,
             cover: pane_rows::load_cover_on(sql, content_hash)?,
-            cover_options: pane_rows::load_cover_options_on(sql, content_hash)?,
             assets,
         },
         link: state.release_link,
@@ -245,9 +244,6 @@ pub(super) fn save_preparation_on(
             Some(cover) => super::candidate_state_rows::save_cover(sql, content_hash, cover)?,
             None => pane_rows::delete_cover(sql, content_hash)?,
         }
-    }
-    if stored.metadata.cover_options != prep.metadata.cover_options {
-        pane_rows::replace_cover_options(sql, content_hash, &prep.metadata.cover_options)?;
     }
     if stored.metadata.assets != prep.metadata.assets {
         prepared_asset_rows::store_asset_rows(sql, content_hash, &prep.metadata.assets)?;

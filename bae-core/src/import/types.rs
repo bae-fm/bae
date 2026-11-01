@@ -316,11 +316,6 @@ pub struct CandidateMetadataDraft {
     pub draft: CandidateDraft,
     pub provenance: Option<MetadataProvenance>,
     pub cover: Option<CoverSelection>,
-    /// The cover images the applied catalog release offers the picker —
-    /// every claimed release's own, then their albums' — in the order it
-    /// shows them (see `source_release::pick_covers`). None for a draft read
-    /// from the files' tags, typed in, or linked to an album.
-    pub cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     pub assets: CandidatePreparedAssets,
 }
 

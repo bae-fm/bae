@@ -1313,9 +1313,9 @@ Ana clicks Import. bae:
    library label it names (§2.3).
    The same transaction deletes what the folder's state holds that nothing
    reads once the release is in: the identify verdict with the releases it
-   found, what the person let the lookups use, where the pane was, the covers
-   offered to the picker, the artist and label decisions it just resolved its
-   credits and labels by, and the album picked for it. The draft, its source, its link and its
+   found, what the person let the lookups use, where the pane was, the
+   artist and label decisions it just resolved its credits and labels by,
+   and the album picked for it. The draft, its source, its link and its
    cover stay, since the Done row draws them (§3.2), and so do the clues,
    since the imported folder's pane marks the files they were read off. An
    import that fails deletes none of it, so a retry reads what the person
@@ -1329,11 +1329,13 @@ import runs.
 
 **The cover.** The cover comes from the folder's own image files, an image
 embedded in a tag, or a catalog's image (the Cover Art Archive for
-MusicBrainz, or Discogs). Applying a catalog's release stores, with the
-draft, the covers it offers the picker: every claimed release's own images,
-then their albums'. The first is the draft's cover until the person picks
-another. A draft read from the tags, typed in, or linked to an album offers no
-catalog's covers. A catalog's cover is fetched with the draft, before the
+MusicBrainz, or Discogs). While the draft is the one read from the pressing
+the candidate is linked to, the picker offers that pressing's covers: every
+claimed release's own images, then their albums', read from the stored
+releases as they stand, so a later fetch that stored more shows it. The
+first is the draft's cover when the release is applied, until the person
+picks another. A draft read from the tags, typed in or cleared, or a
+candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
@@ -3663,7 +3665,6 @@ Keyed by the candidate's content hash.
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes; a catalog's cover is never stored without them |
-| `import_candidate_cover_option`, `import_candidate_cover_option_copy` | the covers the applied release offers the picker, in order |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |

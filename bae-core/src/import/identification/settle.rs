@@ -283,7 +283,6 @@ async fn lead_metadata(
     Ok(Some(crate::import::external_metadata_with_cover(
         source_draft,
         release,
-        &partners,
         cover,
     )))
 }

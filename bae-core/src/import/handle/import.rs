@@ -629,7 +629,6 @@ impl ImportServiceHandle {
                             .metadata_provenance
                             .filter(|_| command.pick.is_some() || command.read_file_tags),
                         cover: rows.cover,
-                        cover_options: rows.cover_options,
                         assets,
                     },
                 )

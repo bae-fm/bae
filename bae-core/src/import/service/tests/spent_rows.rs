@@ -1,8 +1,7 @@
 /// The rows an import spends, seeded under `content_hash` the way the pane
 /// and a run leave them: a found verdict with one release and the ledger
 /// whose barcode lookup found it, the lookups the person let it use, where
-/// the pane was, the covers offered to the picker, an artist decision and a
-/// picked album.
+/// the pane was, an artist decision and a picked album.
 async fn seed_spent_rows(test: &TestService, content_hash: &str) {
     let database = &test.database;
     for statement in [
@@ -34,9 +33,6 @@ async fn seed_spent_rows(test: &TestService, content_hash: &str) {
              (content_hash, presentation, find_online_section, search_tab, search_artist, \
               search_album, search_catalog, search_barcode) \
          VALUES (?1, 'find_online', 'automatic', 'general', '', '', '', '')",
-        "INSERT INTO import_candidate_cover_option \
-             (content_hash, position, url, label, source, standing) \
-         VALUES (?1, 0, 'https://images.example/front.jpg', 'Front', 'musicbrainz', 'stated')",
         "INSERT INTO import_candidate_artist_identity_choice \
              (content_hash, discogs_artist_id, musicbrainz_artist_id, choice, artist_id) \
          VALUES (?1, 'discogs-1', 'musicbrainz-1', 'neither', 'artist-reserved')",
@@ -70,7 +66,6 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_lookup_choices",
         "import_candidate_chosen_catalog",
         "import_candidate_session",
-        "import_candidate_cover_option",
         "import_candidate_artist_identity_choice",
         "import_candidate_album_pick",
     ] {
@@ -101,8 +96,8 @@ async fn spent_rows_candidate(
 
 /// The import's own write deletes what the candidate holds that nothing reads
 /// once its release is in — the verdict, its releases and its ledger, the
-/// lookup choices, where the pane was, the offered covers, the artist decisions and
-/// the picked album — and the folder's Done row still shows the draft it was
+/// lookup choices, where the pane was, the artist decisions and the picked
+/// album — and the folder's Done row still shows the draft it was
 /// imported from.
 #[tokio::test]
 async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {

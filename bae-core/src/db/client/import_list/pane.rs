@@ -26,6 +26,7 @@ pub(super) struct CandidateDetailRows {
     imported: Option<ImportedRelease>,
     current: Option<DbImportCandidateState>,
     pane_rows: DbCandidatePaneRows,
+    cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
     metadata_revision: u64,
     records: Vec<crate::import::ReleaseRecord>,
@@ -128,6 +129,7 @@ pub(super) fn load_candidate_detail_on(
                 .collect::<Vec<_>>(),
         ),
     };
+    let cover_options = offered_covers(current.as_ref(), release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
         Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
             .into_iter()
@@ -152,6 +154,7 @@ pub(super) fn load_candidate_detail_on(
         imported,
         current,
         pane_rows,
+        cover_options,
         artist_resolutions,
         metadata_revision,
         records,
@@ -205,6 +208,7 @@ impl CandidateDetailRows {
             imported,
             current,
             pane_rows,
+            cover_options,
             artist_resolutions,
             metadata_revision,
             records,
@@ -277,7 +281,7 @@ impl CandidateDetailRows {
             artist_resolutions,
             mapping: pane.mapping,
             cover,
-            remote_covers: pane_rows.cover_options,
+            remote_covers: cover_options,
             signals,
             lookup_choices,
             failure: pane_rows.failure,
@@ -316,6 +320,33 @@ fn claimed_releases_on(
             })
         })
         .collect()
+}
+
+/// The covers the picker offers: those the linked pressing's releases offer
+/// (see [`crate::import::source_release::pick_covers`]), read from the stored
+/// releases as they stand, while the draft is the one read from that
+/// pressing. A draft read from the files' tags, typed in or cleared, or a
+/// candidate linked to an album or to nothing, is offered none.
+fn offered_covers(
+    current: Option<&DbImportCandidateState>,
+    link: Option<&ReleaseLink>,
+    claimed: &[crate::import::source_release::SourceRelease],
+) -> Vec<bae_catalogs::remote_image::RemoteCover> {
+    let read_from_link = match (
+        current.and_then(|state| state.metadata_provenance.as_ref()),
+        link.and_then(ReleaseLink::pressing),
+    ) {
+        (Some(crate::import::MetadataProvenance::ExternalRelease { record }), Some(pressing)) => {
+            *record == pressing.record
+        }
+        _ => false,
+    };
+    match claimed.split_first() {
+        Some((primary, partners)) if read_from_link => {
+            crate::import::source_release::pick_covers(primary, partners)
+        }
+        _ => Vec::new(),
+    }
 }
 
 /// The cover the candidate commits with: its stored selection, read as it

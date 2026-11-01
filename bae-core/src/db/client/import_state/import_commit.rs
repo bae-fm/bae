@@ -103,10 +103,9 @@ pub(crate) fn record_import_origin_on(
 
 /// Delete, inside the commit, what the candidate holds that nothing reads once
 /// its release is in: the identify verdict (its releases and ledger go with it), what
-/// the person let the lookups use, where the pane was, the covers the applied
-/// release offered the picker, the artist and label decisions this commit
-/// just resolved its credits and labels by, and the library album picked for
-/// it. The Done row and the
+/// the person let the lookups use, where the pane was, the artist and label
+/// decisions this commit just resolved its credits and labels by, and the
+/// library album picked for it. The Done row and the
 /// imported folder's pane read the rest: the draft, its source, the link and
 /// the cover draw the row, and the clues mark the files they were read off. A
 /// commit that does not land deletes none of it, so a retry finds the
@@ -122,7 +121,6 @@ pub(crate) fn delete_what_the_import_spent_on(
                 "import_candidate_verdict",
                 "import_candidate_lookup_choices",
                 "import_candidate_session",
-                "import_candidate_cover_option",
                 "import_candidate_artist_identity_choice",
                 "import_candidate_label_identity_choice",
                 "import_candidate_album_pick",
