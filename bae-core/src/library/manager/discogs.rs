@@ -13,6 +13,7 @@ use bae_catalogs::discogs::client::{
 };
 #[cfg(desktop)]
 use bae_catalogs::rate_limiter::CallPriority;
+use std::collections::HashMap;
 
 /// One operation's view of Discogs: the client for the stored key, when there
 /// is one Discogs may be asked with, and the other providers a release fetch

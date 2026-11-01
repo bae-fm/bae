@@ -733,7 +733,8 @@ impl LibraryManager {
     #[cfg(test)]
     pub(crate) async fn load_import_candidate_states(
         &self,
-    ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
+    ) -> Result<std::collections::HashMap<String, crate::db::DbImportCandidateState>, LibraryError>
+    {
         Ok(self.database.load_import_candidate_states().await?)
     }
 

@@ -7,6 +7,7 @@ use super::*;
 use crate::library::SaveTrackPlan;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::track_sources::SourceStream;
+use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
 impl LibraryManager {

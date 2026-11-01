@@ -16,7 +16,6 @@
 //! `crate::album_detail` (or a sibling like `crate::queue`) with its `from_raw`
 //! constructor, and the I/O method in the matching entity module here.
 
-use std::collections::HashMap;
 use std::future::Future;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::path::Path;
