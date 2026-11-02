@@ -315,8 +315,6 @@ internal open class FakeAppHandle(
         unfaked("clearUpNext")
     }
 
-    override suspend fun cloudOnlyReleaseCount(): ULong = unfaked("cloudOnlyReleaseCount")
-
     override suspend fun deleteRelease(releaseId: String) {
         unfaked("deleteRelease")
     }
@@ -330,10 +328,6 @@ internal open class FakeAppHandle(
         newPath: ByteArray,
     ) {
         unfaked("detachReleaseAudio")
-    }
-
-    override suspend fun disconnectCloudProvider() {
-        unfaked("disconnectCloudProvider")
     }
 
     override suspend fun filePath(fileId: String): ByteArray? = unfaked("filePath")

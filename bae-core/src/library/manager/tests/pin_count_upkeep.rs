@@ -64,24 +64,6 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .collect()
 }
 
-/// The uploaded releases with a file `coven_pins` doesn't list, probed
-/// file by file.
-#[cfg(feature = "test-utils")]
-async fn probed_cloud_only_count(manager: &LibraryManager) -> u64 {
-    manager
-        .database
-        .query_texts_for_test(
-            "SELECT CAST(COUNT(*) AS TEXT) FROM release_listing l WHERE l.stored = 1 \
-               AND EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = l.release_id \
-                   AND NOT EXISTS (SELECT 1 FROM coven_pins p \
-                                   WHERE p.file = f.file))",
-        )
-        .await
-        .unwrap()[0]
-        .parse()
-        .unwrap()
-}
-
 /// The pinned marker each release shows in the Storage Manager list.
 #[cfg(feature = "test-utils")]
 async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
@@ -105,8 +87,8 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
 }
 
 /// Random writes against the probe: after each, every release's listed pinned
-/// and file counts are the probed ones, and so are the cloud-only count and
-/// the list's pinned markers read from them.
+/// and file counts are the probed ones, and so are the list's pinned markers
+/// read from them.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
@@ -265,11 +247,6 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
             listed_pinned_releases(&manager).await,
             probed_pinned,
             "pinned markers after step {step}, {op}"
-        );
-        assert_eq!(
-            manager.cloud_only_release_count().await.unwrap(),
-            probed_cloud_only_count(&manager).await,
-            "cloud-only count after step {step}, {op}"
         );
     }
     for op in [

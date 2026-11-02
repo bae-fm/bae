@@ -451,7 +451,6 @@ impl AppServices {
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
-    delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_sync!(manager, network_changed => network_changed() -> ());
@@ -504,7 +503,6 @@ impl AppServices {
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData, device_name: &str, steps: crate::library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, crate::library::LibraryError>);
-    delegate_async!(manager, cloud_only_release_count => cloud_only_release_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<crate::sync::restore_code::RestoreCodeShare, crate::library::LibraryError>);
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);

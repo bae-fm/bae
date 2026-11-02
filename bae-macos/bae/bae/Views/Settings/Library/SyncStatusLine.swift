@@ -29,8 +29,6 @@ struct SyncStatusLine: View {
     /// The pending record whose action needs more than one step.
     @State
     private var sheet: PendingActionSheet?
-    @State
-    private var reconnectTask: Task<Void, Never>?
     /// The steps of the reconnect a sign-in runs; nil while none runs.
     @State
     private var signInSteps: StorageSetupSteps?
@@ -42,13 +40,8 @@ struct SyncStatusLine: View {
                 PendingRecordsView(records: pending, perform: perform)
             }
         } label: {
-            HStack {
-                Text(status.statusText)
-                Spacer()
-                if !status.syncReady {
-                    Button("Reconnect") { reconnect() }
-                        .disabled(reconnectTask != nil)
-                }
+            if let statusText = status.statusText {
+                Text(statusText)
             }
         }
         .sheet(item: $sheet) { sheet in
@@ -70,17 +63,6 @@ struct SyncStatusLine: View {
                 role: .destructive,
                 action: onResetDevice
             )
-        }
-    }
-
-    private func reconnect() {
-        reconnectTask = Task {
-            defer { reconnectTask = nil }
-            do { try await sync.reconnectSync() }
-            catch {
-                // The failure reaches the status line as its error.
-                logger.error("Reconnect failed: \(String(reflecting: error))")
-            }
         }
     }
 
@@ -254,8 +236,9 @@ private struct PendingReviewSheet: View {
 }
 
 /// A new S3 access key for this library's bucket, after the old one stopped
-/// working. Setup checks it against the recorded location before keeping it.
-private struct S3KeySheet: View {
+/// working or this Mac lost it. Setup checks it against the recorded location
+/// before keeping it.
+struct S3KeySheet: View {
     let location: BridgeStorageLocation
     let onDismiss: () -> Void
 

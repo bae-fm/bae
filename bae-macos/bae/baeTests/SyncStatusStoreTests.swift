@@ -4,8 +4,8 @@ import Testing
 @Suite("SyncStatusStore")
 struct SyncStatusStoreTests {
     @MainActor
-    @Test("config values cannot overwrite readiness transitions")
-    func configValuesDoNotPublishReadiness() {
+    @Test("config values cannot overwrite the status line")
+    func configValuesDoNotPublishTheLine() {
         let config = ConfigStore(
             config: Config(bridge: bridgeConfig()),
             libraryName: "Test Library",
@@ -13,12 +13,23 @@ struct SyncStatusStoreTests {
         )
         let sync = SyncStatusStore()
 
-        sync.apply(status(syncReady: true))
+        sync.apply(status(indicator: .synced))
         config.applyConfigSnapshot(bridgeConfig())
-        #expect(sync.syncReady)
+        #expect(sync.line == .read(.synced))
 
-        sync.apply(status(syncReady: false))
-        #expect(!sync.syncReady)
+        sync.apply(status(indicator: nil))
+        #expect(sync.line == .noStorage)
+    }
+
+    /// With no storage set up on this device there is no sync to describe:
+    /// no line, where Settings offers signing in to the recorded storage.
+    @MainActor
+    @Test("no storage on this device has no line")
+    func noStorageHasNoLine() {
+        let sync = SyncStatusStore()
+        sync.apply(status(indicator: nil))
+        #expect(sync.line == .noStorage)
+        #expect(sync.statusText == nil)
     }
 
     /// The hour-losing case: a cycle fails, core records the fault, and every
@@ -35,9 +46,8 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
-                connected: false,
                 pending: [],
-                indicator: .unconnected
+                indicator: nil
             )
         )
 
@@ -74,7 +84,6 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: nil,
-                connected: true,
                 pending: [record],
                 indicator: .waiting(items: 1)
             )
@@ -93,7 +102,7 @@ struct SyncStatusStoreTests {
         let sync = SyncStatusStore()
         #expect(sync.line == .checking)
         #expect(sync.pending == nil)
-        sync.apply(status(syncReady: true))
+        sync.apply(status(indicator: .synced))
         #expect(sync.line == .read(.synced))
         #expect(sync.pending == [])
     }
@@ -102,7 +111,7 @@ struct SyncStatusStoreTests {
     @Test("a healthy sync has no error to render")
     func healthySyncHasNoError() {
         let sync = SyncStatusStore()
-        sync.apply(status(syncReady: true))
+        sync.apply(status(indicator: .synced))
         #expect(sync.error == nil)
     }
 
@@ -116,7 +125,6 @@ struct SyncStatusStoreTests {
                     category: .syncUpdateRequired,
                     detail: "schema 17 required"
                 ),
-                connected: true,
                 pending: [],
                 indicator: .synced
             )
@@ -127,12 +135,13 @@ struct SyncStatusStoreTests {
         )
     }
 
-    private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
+    private func status(
+        indicator: BridgeSyncIndicator?
+    ) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,
-            connected: syncReady,
             pending: [],
-            indicator: syncReady ? .synced : .unconnected
+            indicator: indicator
         )
     }
 

@@ -103,10 +103,8 @@
     <string name="settings_library">Biblioteca</string>
     <string name="settings_sync">Sincronização</string>
     <string name="settings_local_only">Apenas local</string>
-    <string name="settings_sync_unconnected">Desligado</string>
     <string name="settings_sync_checking">A verificar a sincronização…</string>
     <string name="settings_sync_unreadable">Não foi possível ler o estado da sincronização</string>
-    <string name="settings_reconnect">Voltar a ligar</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
     <string name="settings_side_pause_countdown">Contagem decrescente</string>
     <string name="settings_side_pause_countdown_off">Desligado</string>
@@ -129,11 +127,6 @@
     <string name="settings_bucket">Contentor</string>
     <string name="settings_region">Região</string>
     <string name="settings_endpoint">Ponto final</string>
-    <string name="settings_disconnect">Desligar</string>
-    <string name="settings_disconnect_confirm_title">Desligar a sincronização?</string>
-    <string name="settings_disconnect_body">Este dispositivo deixa de sincronizar e remove as credenciais de armazenamento. Inicie sessão novamente para retomar a sincronização.</string>
-    <string name="settings_disconnect_failed">Não foi possível desligar: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Não foi possível verificar o que perderia: %1$s</string>
     <string name="settings_pause_uploads">Suspender envios</string>
     <string name="settings_pause_uploads_footer">Enquanto estiverem suspensos, as alterações ficam à espera neste dispositivo e são enviadas quando retomar.</string>
     <string name="members_title">Pessoas e dispositivos</string>

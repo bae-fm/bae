@@ -17,10 +17,10 @@ struct LibrarySettingsTab: View {
     /// Asks Sparkle for a newer version of the app.
     let onCheckForUpdates: () -> Void
 
-    @Environment(Sync.self)
-    var sync
     @Environment(ConfigStore.self)
     var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatus
 
     @State
     private var showSyncSetup = false
@@ -59,18 +59,19 @@ struct LibrarySettingsTab: View {
 
             Section("Sync") {
                 if let location = configStore.storage {
-                    ConnectedProviderControls(
-                        location: location,
-                        sync: sync,
-                        configStore: configStore
-                    )
-                    SyncStatusLine(
-                        location: location,
-                        onResetDevice: onResetDevice,
-                        onRestoreFromCode: onRestoreFromCode,
-                        onCheckForUpdates: onCheckForUpdates
-                    )
-                    UploadPauseToggle()
+                    CloudProviderConnectedSection(location: location)
+                    if syncStatus.line == .noStorage {
+                        StorageSignIn(location: location)
+                    }
+                    else {
+                        SyncStatusLine(
+                            location: location,
+                            onResetDevice: onResetDevice,
+                            onRestoreFromCode: onRestoreFromCode,
+                            onCheckForUpdates: onCheckForUpdates
+                        )
+                        UploadPauseToggle()
+                    }
                 }
                 else {
                     Button("Set up sync...") {
@@ -161,81 +162,6 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// The connected provider's details and disconnect flow.
-private struct ConnectedProviderControls: View {
-    let location: BridgeStorageLocation
-
-    @State
-    private var flow: DisconnectSyncFlow
-
-    init(
-        location: BridgeStorageLocation,
-        sync: Sync,
-        configStore: ConfigStore
-    ) {
-        self.location = location
-        _flow = State(
-            initialValue: DisconnectSyncFlow(
-                cloudOnlyReleaseCount: sync.cloudOnlyReleaseCount,
-                atRiskMessage: { count in
-                    String.localizedStringWithFormat(
-                        NSLocalizedString(
-                            "core.sync.cloud_only_releases",
-                            tableName: "Core",
-                            bundle: .main,
-                            comment: ""
-                        ),
-                        count
-                    )
-                },
-                disconnect: { [sync, configStore] in
-                    try await sync.disconnectCloudProvider()
-                    configStore.applyStorage(try await sync.storageLocation())
-                },
-                baseMessage: {
-                    String(
-                        localized:
-                            "This Mac stops syncing and removes its storage credentials. Sign in again to resume syncing."
-                    )
-                },
-                warningCheckFailedMessage: {
-                    String(
-                        localized:
-                            "Couldn't check for cloud-only releases: \($0)"
-                    )
-                },
-                disconnectFailedMessage: {
-                    String(localized: "Failed to disconnect: \($0)")
-                }
-            )
-        )
-    }
-
-    var body: some View {
-        @Bindable
-        var flow = flow
-        Group {
-            CloudProviderConnectedSection(
-                location: location,
-                onDisconnect: { flow.promptDisconnect() }
-            )
-
-            if let error = flow.error {
-                ErrorDetailDisclosure(error: error)
-            }
-        }
-        .alert("Disconnect sync?", isPresented: $flow.showConfirm) {
-            Button("Disconnect", role: .destructive) {
-                Task { await flow.confirm() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(flow.message)
-        }
-        .onDisappear { flow.cancelWarningTask() }
-    }
-}
-
 /// Pausing keeps every queued upload in its place; metadata keeps syncing.
 private struct UploadPauseToggle: View {
     @Environment(OutboxStore.self)
@@ -271,7 +197,8 @@ private struct UploadPauseToggle: View {
 
     @MainActor
     private func librarySettingsTabPreview(
-        configStore: ConfigStore
+        configStore: ConfigStore,
+        indicator: BridgeSyncIndicator? = .synced
     ) -> some View {
         LibrarySettingsTab(
             unsentBeforeRemoval: { BridgeUnsentWork(writes: 0, files: 0) },
@@ -290,9 +217,8 @@ private struct UploadPauseToggle: View {
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
                     error: nil,
-                    connected: true,
                     pending: [],
-                    indicator: .synced
+                    indicator: indicator
                 )
             )
         )
@@ -306,13 +232,23 @@ private struct UploadPauseToggle: View {
         .environment(OutboxStore(uploadsPaused: false))
     }
 
-    #Preview("Not connected") {
-        librarySettingsTabPreview(configStore: PreviewData.configStore())
+    #Preview("No cloud home") {
+        librarySettingsTabPreview(
+            configStore: PreviewData.configStore(),
+            indicator: nil
+        )
     }
 
-    #Preview("Connected") {
+    #Preview("Synced") {
         librarySettingsTabPreview(
             configStore: PreviewData.connectedConfigStore()
+        )
+    }
+
+    #Preview("Credentials gone") {
+        librarySettingsTabPreview(
+            configStore: PreviewData.connectedConfigStore(),
+            indicator: nil
         )
     }
 

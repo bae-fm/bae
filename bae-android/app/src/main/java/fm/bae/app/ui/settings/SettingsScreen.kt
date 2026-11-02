@@ -119,8 +119,8 @@ internal fun SettingsScreen(
             onResetDevice = actions.resetDevice,
             session = session,
             cloudHome = model.cloudHome,
+            oauthProviders = actions.oauthProviders,
             onPush = onPush,
-            onCloudHomeChanged = { scope.launch { model.load() } },
         )
         SelfHistorySharing(
             session = session,

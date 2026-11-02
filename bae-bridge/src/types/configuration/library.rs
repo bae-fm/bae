@@ -334,22 +334,23 @@ pub struct BridgePlaybackContext {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
-    pub connected: bool,
     /// What coven waits on, each with the action the person can take.
     pub pending: Vec<crate::types::BridgePendingRecord>,
-    pub indicator: BridgeSyncIndicator,
+    /// What the status line names, or `None` while this device has no
+    /// storage set up. A library with a recorded location in that state has
+    /// lost this device's credentials for it: the app offers signing in to
+    /// that location again.
+    pub indicator: Option<BridgeSyncIndicator>,
 }
 
 impl BridgeSyncStatusSnapshot {
     pub(crate) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
-        let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
+        let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
-        let connected = snapshot.connected();
         let bae_core::library::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } =
             snapshot;
         Self {
             indicator,
-            connected,
             error: error.map(crate::types::BridgeError::from_core),
             pending: pending
                 .into_iter()
@@ -361,7 +362,6 @@ impl BridgeSyncStatusSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncIndicator {
-    Unconnected,
     Stopped,
     Syncing,
     Synced,
@@ -372,7 +372,6 @@ pub enum BridgeSyncIndicator {
 impl BridgeSyncIndicator {
     pub(crate) fn from_core(value: bae_core::library::SyncIndicator) -> Self {
         match value {
-            bae_core::library::SyncIndicator::Unconnected => Self::Unconnected,
             bae_core::library::SyncIndicator::Stopped => Self::Stopped,
             bae_core::library::SyncIndicator::Syncing => Self::Syncing,
             bae_core::library::SyncIndicator::Synced => Self::Synced,
@@ -387,17 +386,14 @@ impl BridgeSyncIndicator {
 
 /// Waiting uses the indicator's `items` as the catalog's `count` argument.
 #[uniffi::export]
-pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> Option<String> {
-    Some(
-        match indicator {
-            BridgeSyncIndicator::Unconnected => return None,
-            BridgeSyncIndicator::Stopped => "core.sync.stopped",
-            BridgeSyncIndicator::Syncing => "core.sync.syncing",
-            BridgeSyncIndicator::Synced => "core.sync.synced",
-            BridgeSyncIndicator::Offline => "core.sync.offline",
-            BridgeSyncIndicator::Failed => "core.sync.failed",
-            BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
-        }
-        .to_string(),
-    )
+pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> String {
+    match indicator {
+        BridgeSyncIndicator::Stopped => "core.sync.stopped",
+        BridgeSyncIndicator::Syncing => "core.sync.syncing",
+        BridgeSyncIndicator::Synced => "core.sync.synced",
+        BridgeSyncIndicator::Offline => "core.sync.offline",
+        BridgeSyncIndicator::Failed => "core.sync.failed",
+        BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
+    }
+    .to_string()
 }

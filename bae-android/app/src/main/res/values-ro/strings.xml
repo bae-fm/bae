@@ -106,10 +106,8 @@
     <string name="settings_library">Bibliotecă</string>
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_local_only">Doar local</string>
-    <string name="settings_sync_unconnected">Deconectat</string>
     <string name="settings_sync_checking">Se verifică sincronizarea…</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
-    <string name="settings_reconnect">Reconectează</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
     <string name="settings_side_pause_countdown">Numărătoare inversă</string>
     <string name="settings_side_pause_countdown_off">Oprit</string>
@@ -132,11 +130,6 @@
     <string name="settings_bucket">Container</string>
     <string name="settings_region">Regiune</string>
     <string name="settings_endpoint">Punct final</string>
-    <string name="settings_disconnect">Deconectează</string>
-    <string name="settings_disconnect_confirm_title">Deconectezi sincronizarea?</string>
-    <string name="settings_disconnect_body">Acest dispozitiv oprește sincronizarea și elimină datele sale de autentificare pentru stocare. Conectează-te din nou pentru a relua sincronizarea.</string>
-    <string name="settings_disconnect_failed">Deconectarea a eșuat: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nu s-a putut verifica ce ai pierde: %1$s</string>
     <string name="settings_pause_uploads">Suspendă încărcările</string>
     <string name="settings_pause_uploads_footer">Cât timp sunt suspendate, modificările așteaptă pe acest dispozitiv și se încarcă la reluare.</string>
     <string name="members_title">Persoane și dispozitive</string>

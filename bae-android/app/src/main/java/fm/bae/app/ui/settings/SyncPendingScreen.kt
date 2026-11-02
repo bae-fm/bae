@@ -173,20 +173,18 @@ internal fun SyncPendingScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         PendingTopBar(onBack = onBack)
-        Text(
-            text = syncLineText(context, line),
-            style = ThemeText.heading.style,
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        )
+        syncLineText(context, line)?.let { text ->
+            Text(
+                text = text,
+                style = ThemeText.heading.style,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+            )
+        }
         Column(
             modifier = Modifier.padding(horizontal = ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            SyncFailureNotice(
-                line = line,
-                error = failure,
-                onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
-            )
+            SyncFailureNotice(error = failure)
             DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
             runner.signInSteps?.let { StorageSetupLine(it) }
             runner.error?.let { ErrorDetailDisclosure(it) }

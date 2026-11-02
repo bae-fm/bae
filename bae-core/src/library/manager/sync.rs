@@ -161,28 +161,8 @@ impl LibraryManager {
         self.sync.use_cloudkit(device_name, steps).await
     }
 
-    pub async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
-        self.sync.disconnect_cloud_provider().await
-    }
-
     pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
         self.sync.unlock_store_key().await
-    }
-
-    /// How many releases are reachable only through cloud sync — remote and not
-    /// pinned in coven's cache — and would become unplayable if this device
-    /// disconnected. `0` means nothing is at risk.
-    ///
-    /// The count is the domain fact; the sentence is not. Each surface renders it
-    /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
-    /// catalog key.
-    ///
-    /// A release counts as pinned only when every one of its files is pinned
-    /// and whole on this device. Pin state belongs to coven: the count reads
-    /// the pinned count local triggers keep per release from the pins coven's
-    /// `coven_pins` table lists as kept.
-    pub async fn cloud_only_release_count(&self) -> Result<u64, LibraryError> {
-        Ok(self.database.cloud_only_release_count().await?)
     }
 
     /// Start coven's sync loop with the store keys this session unlocked. Its

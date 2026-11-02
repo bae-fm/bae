@@ -101,10 +101,8 @@
     <string name="settings_library">Fonoteka</string>
     <string name="settings_sync">Sinkronizacija</string>
     <string name="settings_local_only">Samo lokalno</string>
-    <string name="settings_sync_unconnected">Veza prekinuta</string>
     <string name="settings_sync_checking">Provjera sinkronizacije…</string>
     <string name="settings_sync_unreadable">Nije moguće pročitati stanje sinkronizacije</string>
-    <string name="settings_reconnect">Ponovno poveži</string>
     <string name="settings_pause_between_sides">Pauza između strana i diskova</string>
     <string name="settings_side_pause_countdown">Odbrojavanje</string>
     <string name="settings_side_pause_countdown_off">Isključeno</string>
@@ -127,11 +125,6 @@
     <string name="settings_bucket">Spremnik</string>
     <string name="settings_region">Regija</string>
     <string name="settings_endpoint">Krajnja točka</string>
-    <string name="settings_disconnect">Prekini vezu</string>
-    <string name="settings_disconnect_confirm_title">Prekinuti sinkronizaciju?</string>
-    <string name="settings_disconnect_body">Ovaj uređaj prestaje sinkronizirati i uklanja svoje vjerodajnice za pohranu. Ponovno se prijavite da biste nastavili sinkronizaciju.</string>
-    <string name="settings_disconnect_failed">Prekid veze nije uspio: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nije moguće provjeriti što biste izgubili: %1$s</string>
     <string name="settings_pause_uploads">Pauziraj prijenose</string>
     <string name="settings_pause_uploads_footer">Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite.</string>
     <string name="members_title">Osobe i uređaji</string>

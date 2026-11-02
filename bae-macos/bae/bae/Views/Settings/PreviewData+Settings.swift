@@ -161,13 +161,12 @@
                             noHandle: BridgeAddedDeviceWatch.NoHandle()
                         )
                     )
-                },
-                cloudOnlyReleaseCount: { 0 }
+                }
             )
         }
 
         /// A `ConfigStore` whose library has a cloud home, so the Library
-        /// settings preview shows the connected controls and the people.
+        /// settings preview shows the storage, its sync and the people.
         @MainActor
         static func connectedConfigStore() -> ConfigStore {
             makeConfigStore(libraryFullWidth: false, storage: previewStorage)

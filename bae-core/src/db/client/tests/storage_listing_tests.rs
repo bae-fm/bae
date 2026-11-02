@@ -108,18 +108,6 @@ async fn plan(db: &Database, statement: String) -> Vec<String> {
     .unwrap()
 }
 
-/// The cloud-only count reads the releases that count from an index of the
-/// listing, and asks nothing of their files or coven's pins.
-#[tokio::test]
-async fn the_cloud_only_count_reads_one_index_of_the_listing() {
-    let (db, _tmp) = super::temp_db().await;
-    assert_eq!(
-        plan(&db, super::super::query::CLOUD_ONLY_RELEASE_COUNT.to_string()).await,
-        vec!["SEARCH listing USING COVERING INDEX idx_release_listing_cloud_only (stored=?)"
-            .to_string()]
-    );
-}
-
 /// The releases uploading are read in queue order from an index of the
 /// listing that holds every column read, not from coven's queue grouped by
 /// release.

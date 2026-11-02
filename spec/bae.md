@@ -1976,10 +1976,6 @@ from wherever they are: the person's own path, the cache, or storage.
   their files. The person's own files are never deleted.
 - **A device with no cloud home** has only local releases; moving to the cloud
   needs one.
-- **What disconnecting would cost.** bae counts the uploaded releases this
-  device hasn't pinned: those it could no longer play without the cloud. The
-  count reads an index of the releases whose pinned count falls short of
-  their file count.
 
 ---
 
@@ -2641,6 +2637,18 @@ takes its text from the sync status, which keeps the error of the pass that
 failed on the connection. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
+**Signing in again to the recorded storage.** A device has no way to drop its
+storage sign-in and stay in the library: removing the library from the device
+is how it leaves. Its credentials can still go missing on their own, such as
+a keychain entry deleted by hand, while coven keeps the location it recorded.
+coven then reports no storage set up on this device
+([coven F.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#f4-opening-closing-and-sync)),
+and core sends no status line for it: there is no sync to describe. In its
+place Settings shows the recorded storage's rows and *Sign In*, which connects
+that location again, never other storage: a new access key for its S3 bucket,
+the provider's sign-in for Dropbox and OneDrive, iCloud's own setup for
+iCloud. A library with no recorded location offers setting up sync instead.
+
 Each record names what it is about in plain words. A file is named by the row
 on this device that references it: a release file by its file name and album, a
 cover by its album, an artist image or a profile picture as such, and a
@@ -2722,8 +2730,8 @@ invite form reading where the library is stored, whose access fields show once
 it has. While Android removes a release's download,
 its control says so in core's words for that transfer.
 
-- **Launching offline.** A failed connect at start-up opens the library
-  unconnected, and the status line says so. *Reconnect* connects again, or
+- **Launching offline.** A failed connect at start-up opens the library with
+  sync not running, and the status line says why. *Reconnect* connects again, or
   runs the next cycle now when already connected. A start that breaks on a
   bug is reported as one and shows on the line the same way. Why the start
   failed is a row of this device's (`sync_start_failure`), kept until a

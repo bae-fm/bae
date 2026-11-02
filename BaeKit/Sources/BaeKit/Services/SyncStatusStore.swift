@@ -1,10 +1,16 @@
 import SwiftUI
 
 /// What the sync status line shows: checking before the sync status is first
-/// read, unreadable after a read failed, or the indicator of the status read.
+/// read, unreadable after a read failed, no storage while this device has none
+/// set up, or the indicator of the status read.
 public enum SyncLine: Equatable, Sendable {
     case checking
     case unreadable
+    /// This device has no storage set up, so there is no sync to describe.
+    /// Under a recorded location it means this device no longer holds its
+    /// credentials for it, and Settings offers signing in to it again in
+    /// place of the line.
+    case noStorage
     case read(BridgeSyncIndicator)
 }
 
@@ -16,14 +22,14 @@ public final class SyncStatusStore {
     public init(snapshot: BridgeSyncStatusSnapshot? = nil) {
         self.snapshot = snapshot
     }
-    public var syncReady: Bool { snapshot?.connected == true }
     /// What the status line shows: checking until the status is first read,
     /// unreadable after a read failed until the next succeeds, otherwise the
-    /// indicator of the status as read.
+    /// indicator of the status as read, or no storage.
     public var line: SyncLine {
         if readError != nil { return .unreadable }
         guard let snapshot else { return .checking }
-        return .read(snapshot.indicator)
+        guard let indicator = snapshot.indicator else { return .noStorage }
+        return .read(indicator)
     }
     /// What coven is waiting on; nil until the status is first read.
     public var pending: [BridgePendingRecord]? { snapshot?.pending }
@@ -40,18 +46,18 @@ public final class SyncStatusStore {
         }
         return false
     }
-    /// The one line sync shows: what sync is doing, "Waiting: 3 items", or
-    /// that the library isn't connected.
-    public var statusText: String {
+    /// The one line sync shows: what sync is doing, or "Waiting: 3 items";
+    /// none with no storage set up on this device, which has no sync to
+    /// describe.
+    public var statusText: String? {
         let indicator: BridgeSyncIndicator
         switch line {
         case .checking: return String(localized: "Checking sync…")
         case .unreadable: return String(localized: "Couldn't read sync status")
+        case .noStorage: return nil
         case .read(let read): indicator = read
         }
-        guard let key = bridgeSyncIndicatorKey(indicator: indicator) else {
-            return String(localized: "Not connected")
-        }
+        let key = bridgeSyncIndicatorKey(indicator: indicator)
         if case .waiting(let items) = indicator {
             return String.localizedStringWithFormat(
                 localizedCoreString(key),

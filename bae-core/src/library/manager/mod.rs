@@ -385,7 +385,6 @@ pub struct SyncStatusSnapshot {
 /// The settings status line. Platforms localize these cases and the item count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
-    Unconnected,
     /// Storage is set up, but the sync loop isn't running.
     Stopped,
     Syncing,

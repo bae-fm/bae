@@ -101,10 +101,8 @@
     <string name="settings_library">Biblioteca</string>
     <string name="settings_sync">Sincronización</string>
     <string name="settings_local_only">Solo local</string>
-    <string name="settings_sync_unconnected">Desconectado</string>
     <string name="settings_sync_checking">Comprobando sincronización…</string>
     <string name="settings_sync_unreadable">No se pudo leer el estado de la sincronización</string>
-    <string name="settings_reconnect">Reconectar</string>
     <string name="settings_pause_between_sides">Pausa entre caras y discos</string>
     <string name="settings_side_pause_countdown">Cuenta atrás</string>
     <string name="settings_side_pause_countdown_off">Desactivado</string>
@@ -127,11 +125,6 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Región</string>
     <string name="settings_endpoint">Endpoint</string>
-    <string name="settings_disconnect">Desconectar</string>
-    <string name="settings_disconnect_confirm_title">¿Desconectar la sincronización?</string>
-    <string name="settings_disconnect_body">Este dispositivo deja de sincronizar y elimina sus credenciales del almacenamiento. Vuelve a iniciar sesión para reanudar la sincronización.</string>
-    <string name="settings_disconnect_failed">No se pudo desconectar: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">No se pudo comprobar qué perderías: %1$s</string>
     <string name="settings_pause_uploads">Pausar subidas</string>
     <string name="settings_pause_uploads_footer">Mientras esté en pausa, los cambios esperan en este dispositivo y se suben cuando reanudes.</string>
     <string name="members_title">Personas y dispositivos</string>

@@ -10,7 +10,6 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fm.bae.app.DisplayError
 import fm.bae.app.data.SyncFailure
-import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -18,7 +17,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeSyncIndicator
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -27,33 +25,20 @@ class SyncFailureNoticeTest {
     val compose = createComposeRule()
 
     @Test
-    fun notConnectedOffersReconnecting() {
-        compose.setContent {
-            BaeTheme { SyncFailureNotice(SyncLine.Read(BridgeSyncIndicator.Unconnected), error = null, onReconnect = {}) }
-        }
-
-        compose.onNodeWithText("Reconnect").assertIsDisplayed()
-    }
-
-    @Test
-    fun aFailureReconnectingCantFixShowsItsReasonAlone() {
+    fun aFailureShowsItsReasonAlone() {
         compose.setContent {
             BaeTheme {
                 SyncFailureNotice(
-                    SyncLine.Read(BridgeSyncIndicator.Synced),
                     error =
                         SyncFailure(
                             DisplayError("Update the app to continue syncing."),
-                            canReconnect = false,
                             offersDeviceReset = false,
                         ),
-                    onReconnect = {},
                 )
             }
         }
 
         compose.onNodeWithText("Update the app to continue syncing.").assertIsDisplayed()
-        compose.onNodeWithText("Reconnect").assertDoesNotExist()
     }
 
     /** A failure core reported shows its fault under the line, and Copy details copies the whole diagnostic. */
@@ -63,14 +48,11 @@ class SyncFailureNoticeTest {
         compose.setContent {
             BaeTheme {
                 SyncFailureNotice(
-                    SyncLine.Read(BridgeSyncIndicator.Synced),
                     error =
                         SyncFailure(
                             DisplayError("Couldn't reach the network.", detail),
-                            canReconnect = false,
                             offersDeviceReset = false,
                         ),
-                    onReconnect = {},
                 )
             }
         }
@@ -91,11 +73,11 @@ class SyncFailureNoticeTest {
     }
 
     @Test
-    fun syncedWithoutAFailureShowsNothing() {
+    fun withoutAFailureShowsNothing() {
         compose.setContent {
-            BaeTheme { SyncFailureNotice(SyncLine.Read(BridgeSyncIndicator.Synced), error = null, onReconnect = {}) }
+            BaeTheme { SyncFailureNotice(error = null) }
         }
 
-        compose.onNodeWithText("Reconnect").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Copy details").assertDoesNotExist()
     }
 }

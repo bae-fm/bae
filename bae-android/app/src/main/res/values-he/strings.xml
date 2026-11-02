@@ -101,10 +101,8 @@
     <string name="settings_library">ספרייה</string>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_local_only">מקומי בלבד</string>
-    <string name="settings_sync_unconnected">מנותק</string>
     <string name="settings_sync_checking">בודק סנכרון…</string>
     <string name="settings_sync_unreadable">לא ניתן לקרוא את מצב הסנכרון</string>
-    <string name="settings_reconnect">התחבר מחדש</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>
     <string name="settings_side_pause_countdown">ספירה לאחור</string>
     <string name="settings_side_pause_countdown_off">כבוי</string>
@@ -127,11 +125,6 @@
     <string name="settings_bucket">דלי</string>
     <string name="settings_region">אזור</string>
     <string name="settings_endpoint">נקודת קצה</string>
-    <string name="settings_disconnect">התנתק</string>
-    <string name="settings_disconnect_confirm_title">לנתק את הסנכרון?</string>
-    <string name="settings_disconnect_body">המכשיר הזה מפסיק לסנכרן ומסיר את פרטי ההתחברות שלו לאחסון. התחברו שוב כדי להמשיך לסנכרן.</string>
-    <string name="settings_disconnect_failed">ההתנתקות נכשלה: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">לא ניתן לבדוק מה תאבדו: %1$s</string>
     <string name="settings_pause_uploads">השהיית העלאות</string>
     <string name="settings_pause_uploads_footer">בזמן ההשהיה, השינויים ממתינים במכשיר הזה ומועלים כשתמשיך.</string>
     <string name="members_title">אנשים ומכשירים</string>

@@ -103,10 +103,8 @@
     <string name="settings_library">Könyvtár</string>
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_local_only">Csak helyi</string>
-    <string name="settings_sync_unconnected">Leválasztva</string>
     <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
-    <string name="settings_reconnect">Újrakapcsolódás</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
     <string name="settings_side_pause_countdown">Visszaszámlálás</string>
     <string name="settings_side_pause_countdown_off">Ki</string>
@@ -129,11 +127,6 @@
     <string name="settings_bucket">Tároló</string>
     <string name="settings_region">Régió</string>
     <string name="settings_endpoint">Végpont</string>
-    <string name="settings_disconnect">Leválasztás</string>
-    <string name="settings_disconnect_confirm_title">Leválasztod a szinkronizálást?</string>
-    <string name="settings_disconnect_body">Ez az eszköz leállítja a szinkronizálást, és eltávolítja a tárhely hitelesítő adatait. A folytatáshoz jelentkezz be újra.</string>
-    <string name="settings_disconnect_failed">A leválasztás nem sikerült: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nem sikerült ellenőrizni, mit veszítenél el: %1$s</string>
     <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>
     <string name="settings_pause_uploads_footer">Szüneteltetés alatt a módosítások ezen az eszközön várakoznak, és a folytatáskor töltődnek fel.</string>
     <string name="members_title">Személyek és eszközök</string>

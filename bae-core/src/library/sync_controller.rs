@@ -13,7 +13,7 @@ use crate::sync::S3ConfigData;
 pub(crate) struct SyncController {
     database: Database,
     /// Typed telemetry sink, shared with the owning manager. The
-    /// provider-connect/disconnect completions emit through it.
+    /// provider-connect completions emit through it.
     diagnostics: Diagnostics,
 }
 
@@ -117,15 +117,6 @@ impl SyncController {
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected { provider: CloudProvider::CloudKit });
         Ok(setup)
-    }
-
-    pub(crate) async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
-        let provider = self.database.storage_config().await?.map(|storage| storage.provider());
-        self.database.disconnect_storage().await?;
-        if let Some(provider) = provider {
-            self.diagnostics.event(TelemetryEvent::CloudProviderDisconnected { provider });
-        }
-        Ok(())
     }
 
     pub(crate) async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {

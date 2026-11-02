@@ -2,8 +2,6 @@ package fm.bae.app.ui.settings
 
 import android.content.Context
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -20,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.OpenLibrary
@@ -30,7 +27,6 @@ import fm.bae.app.data.SyncFailure
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
-import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.StatusTone
@@ -42,7 +38,8 @@ import uniffi.bae_bridge.bridgeSyncIndicatorKey
 
 /**
  * The one line sync shows: what it is doing, or "Waiting: N items". Waiting,
- * and a list that couldn't be read, open the list of what it waits on.
+ * and a list that couldn't be read, open the list of what it waits on. With no
+ * storage set up on this device there is no line.
  */
 @Composable
 internal fun SyncStatusLine(
@@ -50,7 +47,7 @@ internal fun SyncStatusLine(
     onOpenPending: () -> Unit,
 ) {
     val context = LocalContext.current
-    val text = syncLineText(context, line)
+    val text = syncLineText(context, line) ?: return
     val waiting = line == SyncLine.Unreadable || (line as? SyncLine.Read)?.indicator is BridgeSyncIndicator.Waiting
     Row(
         modifier = Modifier.fillMaxWidth().clickable(enabled = waiting, onClick = onOpenPending),
@@ -64,48 +61,38 @@ internal fun SyncStatusLine(
 }
 
 /**
- * The status line's words: core's for each state of the status it names, this app's for checking, for a read that
- * failed and for not being connected.
+ * The status line's words: core's for each state of the status it names, this app's for checking and for a read that
+ * failed; none with no storage set up on this device, which has no sync to describe.
  */
 internal fun syncLineText(
     context: Context,
     line: SyncLine,
-): String =
+): String? =
     when (line) {
         SyncLine.Checking -> context.getString(R.string.settings_sync_checking)
         SyncLine.Unreadable -> context.getString(R.string.settings_sync_unreadable)
+        SyncLine.NoStorage -> null
         is SyncLine.Read -> syncIndicatorText(context, line.indicator)
     }
 
-/** The words for a status as read: core's for each state it names, this app's for not being connected. */
+/** Core's words for a status as read. */
 private fun syncIndicatorText(
     context: Context,
     indicator: BridgeSyncIndicator,
 ): String {
-    val key = bridgeSyncIndicatorKey(indicator) ?: return context.getString(R.string.settings_sync_unconnected)
+    val key = bridgeSyncIndicatorKey(indicator)
     return when (indicator) {
         is BridgeSyncIndicator.Waiting -> context.coreString(key, mapOf("count" to indicator.items.toLong()))
         else -> context.coreString(key)
     }
 }
 
+/** The last sync failure, under the status line, with its details to copy. */
 @Composable
-internal fun SyncFailureNotice(
-    line: SyncLine,
-    error: SyncFailure?,
-    onReconnect: () -> Unit,
-) {
-    val canReconnect = line == SyncLine.Read(BridgeSyncIndicator.Unconnected) || error?.canReconnect == true
-    if (error == null && !canReconnect) return
+internal fun SyncFailureNotice(error: SyncFailure?) {
+    if (error == null) return
     Notice(StatusTone.WARNING) {
-        Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            error?.let { ErrorDetailDisclosure(error = it.error, lineColor = LocalContentColor.current) }
-            if (canReconnect) {
-                OutlinedButton(onClick = onReconnect) {
-                    Text(stringResource(R.string.settings_reconnect))
-                }
-            }
-        }
+        ErrorDetailDisclosure(error = error.error, lineColor = LocalContentColor.current)
     }
 }
 

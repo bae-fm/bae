@@ -385,11 +385,6 @@ telemetry_events! {
         provider: CloudProvider,
     },
 
-    /// A cloud provider was disconnected.
-    CloudProviderDisconnected, "cloud_provider_disconnected", Info {
-        provider: CloudProvider,
-    },
-
     /// A release storage transition (pin/unpin/upload/detach-audio) completed.
     StorageTransferCompleted, "storage_transfer_completed", Info {
         action: ReleaseStorageAction,
@@ -603,17 +598,11 @@ mod tests {
     }
 
     #[test]
-    fn cloud_provider_connected_and_disconnected_record_provider() {
+    fn cloud_provider_connected_records_provider() {
         let connected = TelemetryEvent::CloudProviderConnected { provider: CloudProvider::Dropbox };
         assert_eq!(connected.name(), "cloud_provider_connected");
         assert_eq!(connected.level(), DiagnosticLevel::Info);
         assert_eq!(connected.fields()["provider"], serde_json::json!("dropbox"));
-
-        let disconnected =
-            TelemetryEvent::CloudProviderDisconnected { provider: CloudProvider::OneDrive };
-        assert_eq!(disconnected.name(), "cloud_provider_disconnected");
-        assert_eq!(disconnected.level(), DiagnosticLevel::Info);
-        assert_eq!(disconnected.fields()["provider"], serde_json::json!("onedrive"));
     }
 
     #[test]

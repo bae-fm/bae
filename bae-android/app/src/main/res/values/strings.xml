@@ -134,10 +134,8 @@
     <string name="settings_library">Library</string>
     <string name="settings_sync">Sync</string>
     <string name="settings_local_only">Local only</string>
-    <string name="settings_sync_unconnected">Disconnected</string>
     <string name="settings_sync_checking">Checking sync…</string>
     <string name="settings_sync_unreadable">Couldn\'t read sync status</string>
-    <string name="settings_reconnect">Reconnect</string>
     <string name="settings_pause_between_sides">Pause between sides and discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>
     <string name="settings_side_pause_countdown_off">Off</string>
@@ -160,11 +158,6 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Endpoint</string>
-    <string name="settings_disconnect">Disconnect</string>
-    <string name="settings_disconnect_confirm_title">Disconnect sync?</string>
-    <string name="settings_disconnect_body">This device stops syncing and removes its storage credentials. Sign in again to resume syncing.</string>
-    <string name="settings_disconnect_failed">Failed to disconnect: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Couldn\'t check what you\'d lose: %1$s</string>
     <string name="settings_pause_uploads">Pause uploads</string>
     <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
 

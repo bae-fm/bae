@@ -1,17 +1,11 @@
 import SwiftUI
 
-/// The library's cloud home as coven records it, one row per field, and the
-/// disconnect action.
+/// The library's cloud home as coven records it, one row per field.
 public struct CloudProviderConnectedSection: View {
     public let location: BridgeStorageLocation
-    public let onDisconnect: () -> Void
 
-    public init(
-        location: BridgeStorageLocation,
-        onDisconnect: @escaping () -> Void
-    ) {
+    public init(location: BridgeStorageLocation) {
         self.location = location
-        self.onDisconnect = onDisconnect
     }
 
     public var body: some View {
@@ -34,6 +28,5 @@ public struct CloudProviderConnectedSection: View {
         case .cloudKit(let container, _, _):
             LabeledContent("Container", value: container)
         }
-        Button("Disconnect", role: .destructive, action: onDisconnect)
     }
 }

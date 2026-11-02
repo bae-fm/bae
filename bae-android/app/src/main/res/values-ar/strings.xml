@@ -107,10 +107,8 @@
     <string name="settings_library">المكتبة</string>
     <string name="settings_sync">المزامنة</string>
     <string name="settings_local_only">محلي فقط</string>
-    <string name="settings_sync_unconnected">غير متصل</string>
     <string name="settings_sync_checking">جارٍ التحقق من المزامنة…</string>
     <string name="settings_sync_unreadable">تعذّرت قراءة حالة المزامنة</string>
-    <string name="settings_reconnect">إعادة الاتصال</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
     <string name="settings_side_pause_countdown">العد التنازلي</string>
     <string name="settings_side_pause_countdown_off">إيقاف</string>
@@ -133,11 +131,6 @@
     <string name="settings_bucket">الحاوية</string>
     <string name="settings_region">المنطقة</string>
     <string name="settings_endpoint">نقطة النهاية</string>
-    <string name="settings_disconnect">قطع الاتصال</string>
-    <string name="settings_disconnect_confirm_title">قطع اتصال المزامنة؟</string>
-    <string name="settings_disconnect_body">يتوقف هذا الجهاز عن المزامنة ويزيل بيانات اعتماد التخزين الخاصة به. سجّل الدخول مجددًا لاستئناف المزامنة.</string>
-    <string name="settings_disconnect_failed">فشل قطع الاتصال: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">تعذّر التحقق مما ستفقده: %1$s</string>
     <string name="settings_pause_uploads">إيقاف الرفع مؤقتًا</string>
     <string name="settings_pause_uploads_footer">أثناء الإيقاف المؤقت، تنتظر التغييرات على هذا الجهاز وتُرفع عند الاستئناف.</string>
     <string name="members_title">الأشخاص والأجهزة</string>

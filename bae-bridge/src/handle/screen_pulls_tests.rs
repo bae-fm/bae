@@ -101,10 +101,10 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     ));
 }
 
-/// The sync status answers whether storage is set up at once, and follows a
-/// disconnect from coven's sync status table.
+/// The sync status answers at once that this device has no storage set up,
+/// and follows storage being set up from coven's sync status table.
 #[test]
-fn the_sync_status_follows_a_disconnect() {
+fn the_sync_status_follows_storage_being_set_up() {
     let root = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -117,7 +117,7 @@ fn the_sync_status_follows_a_disconnect() {
             root.path(),
             bae_core::catalog_model::providers::Providers::offline(),
         ));
-    runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+    let setup = manager.clone();
     let services = runtime
         .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let handle = std::sync::Arc::new(
@@ -126,14 +126,13 @@ fn the_sync_status_follows_a_disconnect() {
     );
 
     let status = handle.subscribe_sync_status();
-    let connected = handle.runtime.block_on(status.clone().next()).unwrap();
-    assert!(connected.connected, "{connected:?}");
+    let unset = handle.runtime.block_on(status.clone().next()).unwrap();
+    assert_eq!(unset.indicator, None, "{unset:?}");
 
-    handle.runtime.block_on(handle.clone().disconnect_cloud_provider()).unwrap();
-    let disconnected = pull_until(
+    handle.runtime.block_on(bae_test_support::connect_storage(&setup, &storage));
+    pull_until(
         &handle,
         || Box::pin(status.clone().next()),
-        |status: &crate::types::BridgeSyncStatusSnapshot| !status.connected,
+        |status: &crate::types::BridgeSyncStatusSnapshot| status.indicator.is_some(),
     );
-    assert_eq!(disconnected.indicator, crate::types::BridgeSyncIndicator::Unconnected);
 }

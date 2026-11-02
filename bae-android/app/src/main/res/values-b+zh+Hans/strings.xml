@@ -97,10 +97,8 @@
     <string name="settings_library">库</string>
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">仅本地</string>
-    <string name="settings_sync_unconnected">已断开连接</string>
     <string name="settings_sync_checking">正在检查同步…</string>
     <string name="settings_sync_unreadable">无法读取同步状态</string>
-    <string name="settings_reconnect">重新连接</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>
     <string name="settings_side_pause_countdown">倒计时</string>
     <string name="settings_side_pause_countdown_off">关闭</string>
@@ -123,11 +121,6 @@
     <string name="settings_bucket">存储桶</string>
     <string name="settings_region">区域</string>
     <string name="settings_endpoint">端点</string>
-    <string name="settings_disconnect">断开连接</string>
-    <string name="settings_disconnect_confirm_title">断开同步？</string>
-    <string name="settings_disconnect_body">此设备将停止同步并移除其存储凭据。重新登录即可恢复同步。</string>
-    <string name="settings_disconnect_failed">断开连接失败：%1$s</string>
-    <string name="settings_disconnect_warning_check_failed">无法检查你会失去哪些内容：%1$s</string>
     <string name="settings_pause_uploads">暂停上传</string>
     <string name="settings_pause_uploads_footer">暂停期间，更改会在此设备上等待，恢复后上传。</string>
     <string name="members_title">成员和设备</string>

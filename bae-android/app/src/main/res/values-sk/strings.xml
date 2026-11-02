@@ -109,10 +109,8 @@
     <string name="settings_library">Knižnica</string>
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_local_only">Len lokálne</string>
-    <string name="settings_sync_unconnected">Odpojené</string>
     <string name="settings_sync_checking">Kontrola synchronizácie…</string>
     <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
-    <string name="settings_reconnect">Znova pripojiť</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
     <string name="settings_side_pause_countdown">Odpočítavanie</string>
     <string name="settings_side_pause_countdown_off">Vypnuté</string>
@@ -135,11 +133,6 @@
     <string name="settings_bucket">Kontajner</string>
     <string name="settings_region">Región</string>
     <string name="settings_endpoint">Koncový bod</string>
-    <string name="settings_disconnect">Odpojiť</string>
-    <string name="settings_disconnect_confirm_title">Odpojiť synchronizáciu?</string>
-    <string name="settings_disconnect_body">Toto zariadenie prestane synchronizovať a odstráni svoje prihlasovacie údaje k úložisku. Na obnovenie synchronizácie sa znova prihláste.</string>
-    <string name="settings_disconnect_failed">Odpojenie zlyhalo: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nepodarilo sa overiť, o čo prídete: %1$s</string>
     <string name="settings_pause_uploads">Pozastaviť odosielanie</string>
     <string name="settings_pause_uploads_footer">Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať.</string>
     <string name="members_title">Ľudia a zariadenia</string>

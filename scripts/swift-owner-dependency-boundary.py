@@ -22,7 +22,6 @@ CAPABILITY_TYPES = {
     "CurrentValueSubject",
     "Discogs",
     "DesktopEventHandler",
-    "DisconnectSyncFlow",
     "DownloadStore",
     "Downloads",
     "ImageStore",

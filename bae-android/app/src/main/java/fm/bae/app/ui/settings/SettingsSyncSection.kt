@@ -1,30 +1,21 @@
 package fm.bae.app.ui.settings
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.DisplayError
+import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
-import fm.bae.app.displayError
-import fm.bae.app.reconnectFailedSync
+import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -34,25 +25,24 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDestination
-import fm.bae.app.ui.rememberScreenScope
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeStorageLocation
 
 /**
  * Where the library is stored and how its sync stands: the cloud home's
- * details, the one status line, upload pause and disconnect — or, without a
- * cloud home, the way to set one up.
+ * details, the one status line and upload pause — or, when this device no
+ * longer holds its credentials for that storage, signing in to it again; or,
+ * without a cloud home, the way to set one up.
  */
 @Composable
 internal fun SettingsSyncSection(
     onResetDevice: (BridgeDeviceReset) -> Unit,
     session: OpenLibrary,
     cloudHome: CloudHome,
+    oauthProviders: OAuthProviders?,
     onPush: (LibraryDestination) -> Unit,
-    onCloudHomeChanged: () -> Unit,
 ) {
+    val line by session.syncStatusStore.line.collectAsState()
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -81,22 +71,24 @@ internal fun SettingsSyncSection(
 
             is CloudHome.At -> {
                 CloudHomeRows(cloudHome.location)
-                SyncStatus(
-                    session = session,
-                    onOpenPending = { onPush(LibraryDestination.SyncPending) },
-                    onResetDevice = onResetDevice,
-                )
-                SyncUploadPauseControl(session)
-                DisconnectControl(session = session, onDisconnected = onCloudHomeChanged)
+                if (line == SyncLine.NoStorage) {
+                    StorageSignIn(session = session, location = cloudHome.location, oauthProviders = oauthProviders)
+                } else {
+                    SyncStatus(
+                        session = session,
+                        onOpenPending = { onPush(LibraryDestination.SyncPending) },
+                        onResetDevice = onResetDevice,
+                    )
+                    SyncUploadPauseControl(session)
+                }
             }
         }
     }
 }
 
 /**
- * The status line and, under it, the last failure with Reconnect where
- * reconnecting is the remedy, or Reset Device, after its warning, where sync
- * found another copy of this device.
+ * The status line and, under it, the last failure, with Reset Device, after
+ * its warning, where sync found another copy of this device.
  */
 @Composable
 private fun SyncStatus(
@@ -104,15 +96,10 @@ private fun SyncStatus(
     onOpenPending: () -> Unit,
     onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
-    val scope = rememberScreenScope()
     val line by session.syncStatusStore.line.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
     SyncStatusLine(line = line, onOpenPending = onOpenPending)
-    SyncFailureNotice(
-        line = line,
-        error = error,
-        onReconnect = { scope.launch { reconnectFailedSync(session.appHandle) } },
-    )
+    SyncFailureNotice(error = error)
     DeviceResetOffer(session = session, error = error, onResetDevice = onResetDevice)
 }
 
@@ -146,130 +133,6 @@ private fun CloudHomeRows(location: BridgeStorageLocation) {
         }
     }
 }
-
-/** Disconnect, after a confirmation that names what this device could no longer play. */
-@Composable
-private fun DisconnectControl(
-    session: OpenLibrary,
-    onDisconnected: () -> Unit,
-) {
-    val scope = rememberScreenScope()
-    val flow = rememberDisconnectSyncFlow(session, onDisconnected)
-    val flowState by flow.state.collectAsState()
-
-    flowState.error?.let { error ->
-        ErrorDetailDisclosure(error)
-    }
-
-    OutlinedButton(
-        onClick = { flow.promptDisconnect() },
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-    ) {
-        Text(stringResource(R.string.settings_disconnect))
-    }
-
-    flowState.confirming?.let { risk ->
-        DisconnectConfirmDialog(
-            risk = risk,
-            // Dismiss first so the disconnect, which can wait on a running sync,
-            // fires once.
-            onConfirm = {
-                flow.dismissConfirm()
-                scope.launch { flow.confirm() }
-            },
-            onDismiss = { flow.dismissConfirm() },
-        )
-    }
-}
-
-/** The confirmation, saying what this device would lose — or that the check for it failed. */
-@Composable
-private fun DisconnectConfirmDialog(
-    risk: DisconnectRisk,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_disconnect_confirm_title)) },
-        text = {
-            val base = stringResource(R.string.settings_disconnect_body)
-            when (risk) {
-                DisconnectRisk.NothingCloudOnly -> {
-                    Text(base)
-                }
-
-                is DisconnectRisk.CloudOnly -> {
-                    Text(disconnectConfirmMessage(base, risk))
-                }
-
-                is DisconnectRisk.CheckFailed -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                        Text(base)
-                        ErrorDetailDisclosure(risk.error)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_disconnect)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-}
-
-@Composable
-private fun rememberDisconnectSyncFlow(
-    session: OpenLibrary,
-    onDisconnected: () -> Unit,
-): DisconnectSyncFlow {
-    val context = LocalContext.current
-    val scope = rememberScreenScope()
-    return remember(session) {
-        DisconnectSyncFlow(
-            scope = scope,
-            cloudOnlyReleaseCount = { session.appHandle.cloudOnlyReleaseCount() },
-            disconnect = {
-                session.appHandle.disconnectCloudProvider()
-                onDisconnected()
-            },
-            strings =
-                DisconnectStrings(
-                    atRiskLine = { count ->
-                        context.coreString(
-                            "core.sync.cloud_only_releases",
-                            mapOf("count" to count.toLong()),
-                        )
-                    },
-                    // Nothing to show means a cancellation, so no confirmation opens.
-                    warningFailed = { e ->
-                        disconnectError(context, e, R.string.settings_disconnect_warning_check_failed)
-                    },
-                    disconnectFailed = { e -> disconnectError(context, e, R.string.settings_disconnect_failed) },
-                ),
-        )
-    }
-}
-
-/** [error] under the headline [format] words around its line, with core's diagnostic behind it. */
-private fun disconnectError(
-    context: Context,
-    error: Throwable,
-    format: Int,
-): DisplayError? =
-    when (error) {
-        is BridgeException -> {
-            context.displayError(error)?.let { shown ->
-                DisplayError(context.getString(format, shown.line), shown.detail)
-            }
-        }
-
-        else -> {
-            DisplayError(context.getString(format, error.message ?: error::class.java.simpleName))
-        }
-    }
 
 @Preview(showBackground = true)
 @Composable

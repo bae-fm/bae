@@ -434,9 +434,10 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
     manager.close().await.unwrap();
 }
 
-/// A launch whose connect failed records why in the failure's own category —
+/// A launch whose start failed records why in the failure's own category —
 /// a keychain locked for this session reads as locked, not as an internal
-/// failure —
+/// failure, on a device whose storage credentials are gone, whose start reads
+/// custody for them —
 /// and a retry that gets under way supersedes it: the recorded error clears as
 /// the retry starts, so the status line reflects the attempt in flight instead
 /// of the one that already failed.
@@ -444,7 +445,7 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
 async fn reconnect_sync_clears_the_failure_it_retries() {
     let (manager, _temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.database.disconnect_storage().await.unwrap();
+    manager.database.lose_storage_credentials_for_test().await.unwrap();
     manager.start().unwrap();
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;

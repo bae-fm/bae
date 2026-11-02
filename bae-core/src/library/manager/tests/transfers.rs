@@ -17,13 +17,14 @@ async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease
     (manager, temp_dir, release, file_id)
 }
 
-/// A Remote track whose bytes must come from the cloud, read with no provider
-/// connected, reports `SyncDisconnected` — the reconnect-sync state — not a
-/// generic diagnostic. coven raises `FileReadError::NoStorage` for the cloud
-/// miss, and playback's `playback_error_for_file_read` maps it.
+/// A Remote track whose bytes must come from the cloud, read while sync is
+/// stopped, reports `SyncDisconnected` — the reconnect-sync state — not a
+/// generic diagnostic. Stopping releases coven's storage for transfers, so
+/// coven raises `FileReadError::NoStorage` for the cloud miss, and
+/// `read_error_for_file_read` maps it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
+async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
     use crate::playback::PlaybackErrorReason;
     let (manager, dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
@@ -35,7 +36,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
         false,
     )
     .await;
-    manager.disconnect_cloud_provider().await.unwrap();
+    manager.stop_sync().await.unwrap();
 
     let files = release_files(&manager, &release_id).await;
     let file = files.first().expect("the release has a file");

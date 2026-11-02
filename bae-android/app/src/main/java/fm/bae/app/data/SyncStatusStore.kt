@@ -12,24 +12,28 @@ import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 /**
- * The last sync failure as a person sees it, whether reconnecting is what
- * fixes it, and whether sync found another copy of this device, which only a
- * reset answers.
+ * The last sync failure as a person sees it, and whether sync found another
+ * copy of this device, which only a reset answers.
  */
 data class SyncFailure(
     val error: DisplayError,
-    val canReconnect: Boolean,
     val offersDeviceReset: Boolean,
 )
 
 /**
  * What the sync status line shows: checking, until the sync status's first read; unreadable, after a read that failed,
- * until the next succeeds; or the indicator of the status as read.
+ * until the next succeeds; no storage, while this device has none set up; or the indicator of the status as read.
  */
 sealed interface SyncLine {
     data object Checking : SyncLine
 
     data object Unreadable : SyncLine
+
+    /**
+     * This device has no storage set up, so there is no sync to describe. Under a recorded location it means this
+     * device no longer holds its credentials for it, and Settings offers signing in to it again in place of the line.
+     */
+    data object NoStorage : SyncLine
 
     data class Read(
         val indicator: BridgeSyncIndicator,
@@ -52,25 +56,23 @@ class SyncStatusStore {
         status: BridgeSyncStatusSnapshot,
         errors: ErrorDisplays,
     ) {
-        // Disconnected, reconnecting is the remedy; connected, the failure names its own.
         _error.value =
             status.error?.let { error ->
                 errors.display(error)?.let { shown ->
                     SyncFailure(
                         shown,
-                        canReconnect = !status.connected,
                         offersDeviceReset =
                             (error as? BridgeException.Diagnostic)?.category is BridgeErrorCategory.DeviceResetRequired,
                     )
                 }
             }
-        _line.value = SyncLine.Read(status.indicator)
+        _line.value = status.indicator?.let(SyncLine::Read) ?: SyncLine.NoStorage
         _pending.value = status.pending
     }
 
     /** The sync status couldn't be read: the line shows the read's failure until a read succeeds. */
     fun fail(error: DisplayError) {
-        _error.value = SyncFailure(error, canReconnect = false, offersDeviceReset = false)
+        _error.value = SyncFailure(error, offersDeviceReset = false)
         _line.value = SyncLine.Unreadable
     }
 }

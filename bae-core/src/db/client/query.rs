@@ -626,12 +626,6 @@ pub(crate) const UPLOADING_RELEASES: &str =
      FROM release_listing uploading \
      WHERE uploading.first_queued_position IS NOT NULL";
 
-/// How many uploaded releases this device doesn't keep wholly pinned, read
-/// from the listing's index of them.
-pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
-    "SELECT COUNT(*) FROM release_listing AS listing \
-     WHERE listing.stored = 1 AND listing.pinned_count < listing.file_count";
-
 /// Whether this device keeps every file of the release `listing` lists
 /// pinned and whole here: its pinned count, which local triggers keep from
 /// the pins coven's `coven_pins` lists as kept, has reached its file count.

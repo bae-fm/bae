@@ -106,10 +106,6 @@ impl SyncStatusSnapshot {
         snapshot
     }
 
-    pub fn connected(&self) -> bool {
-        !matches!(self.status, coven::SyncStatus::Disconnected)
-    }
-
     /// A sync pass is in progress (or the first one is queued).
     pub fn syncing(&self) -> bool {
         matches!(self.status, coven::SyncStatus::Syncing)
@@ -278,21 +274,17 @@ impl SyncStatusSnapshot {
         self.failure()
     }
 
+    /// What the status line names, or `None` while coven reports no storage
+    /// set up on this device (`Disconnected`): there is no sync to describe.
+    /// A library with a recorded location in that state has lost this
+    /// device's credentials for it, and signs in to it again.
+    ///
     /// Pending records come first, since the list shows what each waits on.
     /// With none, the line names the status itself; its error, when it has
     /// one, is `failure()`.
-    pub fn indicator(&self) -> SyncIndicator {
-        if !self.connected() {
-            return SyncIndicator::Unconnected;
-        }
-        if !self.pending.is_empty() {
-            return SyncIndicator::Waiting { items: self.pending.len() };
-        }
-        if self.error.is_some() {
-            return SyncIndicator::Failed;
-        }
-        match self.status {
-            coven::SyncStatus::Disconnected => SyncIndicator::Unconnected,
+    pub fn indicator(&self) -> Option<SyncIndicator> {
+        let named = match self.status {
+            coven::SyncStatus::Disconnected => return None,
             coven::SyncStatus::Stopped => SyncIndicator::Stopped,
             coven::SyncStatus::Syncing => SyncIndicator::Syncing,
             coven::SyncStatus::Synced { .. } => SyncIndicator::Synced,
@@ -300,7 +292,14 @@ impl SyncStatusSnapshot {
             coven::SyncStatus::Failed { .. } | coven::SyncStatus::Blocked { .. } => {
                 SyncIndicator::Failed
             }
+        };
+        if !self.pending.is_empty() {
+            return Some(SyncIndicator::Waiting { items: self.pending.len() });
         }
+        if self.error.is_some() {
+            return Some(SyncIndicator::Failed);
+        }
+        Some(named)
     }
 }
 

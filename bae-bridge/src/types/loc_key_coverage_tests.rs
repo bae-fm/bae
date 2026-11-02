@@ -373,7 +373,6 @@ fn produced_keys() -> Vec<String> {
     }
     assert!(BridgePendingAction::Wait.key().is_none());
     for indicator in [
-        BridgeSyncIndicator::Unconnected,
         BridgeSyncIndicator::Stopped,
         BridgeSyncIndicator::Syncing,
         BridgeSyncIndicator::Synced,
@@ -381,7 +380,7 @@ fn produced_keys() -> Vec<String> {
         BridgeSyncIndicator::Failed,
         BridgeSyncIndicator::Waiting { items: 2 },
     ] {
-        keys.extend(bridge_sync_indicator_key(&indicator));
+        keys.push(bridge_sync_indicator_key(&indicator));
     }
     for outcome in [
         BridgeSyncRetryOutcome::Synced,

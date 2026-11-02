@@ -52,18 +52,6 @@ impl Database {
         .await
     }
 
-    /// How many uploaded releases this device doesn't keep pinned: those with
-    /// a file coven's `coven_pins` doesn't list as kept whole here, as the
-    /// listing's pinned count keeps them. Each is reachable only through the
-    /// cloud, so disconnecting would leave it unplayable here.
-    pub async fn cloud_only_release_count(&self) -> Result<u64, DbError> {
-        self.read(|sql| {
-            sql.query_row(CLOUD_ONLY_RELEASE_COUNT, [], |row| row.get::<_, u64>(0))
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
         self.read(move |sql| storage_count_on(&sql, filter)).await

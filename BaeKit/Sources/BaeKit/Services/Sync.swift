@@ -1,7 +1,6 @@
 import Foundation
 
 public final class Sync: Sendable, Observable {
-    public let disconnectCloudProvider: @Sendable () async throws -> Void
     /// Connect an S3 bucket as this library's cloud home, registering this
     /// device under its name, each step written into the setup's stream.
     public let saveSyncConfig:
@@ -35,7 +34,6 @@ public final class Sync: Sendable, Observable {
     public let cancelInvite: @Sendable (String) async throws -> Void
     public let setHistorySharing: @Sendable (BridgeSharing) async throws -> Void
     public let createProfile: @Sendable (String) async throws -> Void
-    public let cloudOnlyReleaseCount: @Sendable () async throws -> UInt64
     public let retryOutbox: @Sendable () async throws -> Void
     public let renameLibrary: @Sendable (String) async throws -> Void
     public let cancelReleaseTransition: @Sendable (String) async throws -> Void
@@ -53,9 +51,6 @@ public final class Sync: Sendable, Observable {
     public let pendingActions: SyncPendingActions
 
     public init(
-        disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
-            throw StubError.notImplemented
-        },
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup)
             async throws -> BridgeStorageSetup = { _, _ in
@@ -108,9 +103,6 @@ public final class Sync: Sendable, Observable {
         createProfile: @escaping @Sendable (String) async throws -> Void = {
             _ in throw StubError.notImplemented
         },
-        cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64 = {
-            throw StubError.notImplemented
-        },
         retryOutbox: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
@@ -143,7 +135,6 @@ public final class Sync: Sendable, Observable {
         nudges: SyncNudges = SyncNudges(),
         pendingActions: SyncPendingActions = SyncPendingActions()
     ) {
-        self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
         self.storageSetupSteps = storageSetupSteps
         self.generateRestoreCode = generateRestoreCode
@@ -158,7 +149,6 @@ public final class Sync: Sendable, Observable {
         self.cancelInvite = cancelInvite
         self.setHistorySharing = setHistorySharing
         self.createProfile = createProfile
-        self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
         self.retryOutbox = retryOutbox
         self.renameLibrary = renameLibrary
         self.cancelReleaseTransition = cancelReleaseTransition
@@ -179,9 +169,6 @@ public final class Sync: Sendable, Observable {
         host: BridgeHost
     ) {
         self.init(
-            disconnectCloudProvider: {
-                try await handle.disconnectCloudProvider()
-            },
             saveSyncConfig: {
                 try await handle.saveSyncConfig(
                     configData: $0,
@@ -219,7 +206,6 @@ public final class Sync: Sendable, Observable {
                 try await handle.setHistorySharing(sharing: $0)
             },
             createProfile: { try await handle.createProfile(name: $0) },
-            cloudOnlyReleaseCount: { try await handle.cloudOnlyReleaseCount() },
             retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: { try await handle.renameLibrary(name: $0) },
             cancelReleaseTransition: {

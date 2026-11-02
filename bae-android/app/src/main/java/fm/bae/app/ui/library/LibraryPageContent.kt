@@ -124,9 +124,10 @@ private fun RetryIndicator(
     val line by session.syncStatusStore.line.collectAsState()
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         PullToRefreshDefaults.Indicator(state = state, isRefreshing = refreshing)
-        if (refreshing) {
+        val text = syncLineText(context, line)
+        if (refreshing && text != null) {
             Text(
-                text = syncLineText(context, line),
+                text = text,
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

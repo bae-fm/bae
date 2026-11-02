@@ -1414,12 +1414,6 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_li
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title COLLATE NOCASE, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title COLLATE NOCASE, release_id);
 
--- The uploaded releases this device doesn't keep wholly pinned (§4.3): those
--- it could no longer play without the cloud. It holds the columns its WHERE
--- names, so counting them reads this index alone.
-CREATE INDEX IF NOT EXISTS idx_release_listing_cloud_only ON release_listing (stored, pinned_count, file_count)
-    WHERE stored = 1 AND pinned_count < file_count;
-
 -- The releases with files waiting in this device's upload queue, in the order
 -- their first files wait: what the import list's Done tab runs first (§3.2).
 CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, release_id)

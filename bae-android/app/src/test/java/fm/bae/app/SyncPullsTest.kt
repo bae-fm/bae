@@ -96,7 +96,6 @@ class SyncPullsTest {
     private fun status(indicator: BridgeSyncIndicator) =
         BridgeSyncStatusSnapshot(
             error = null,
-            connected = true,
             pending = emptyList(),
             indicator = indicator,
         )

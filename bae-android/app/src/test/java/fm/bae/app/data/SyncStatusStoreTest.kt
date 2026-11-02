@@ -25,21 +25,21 @@ class SyncStatusStoreTest {
     private val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
     @Test
-    fun aFailureWhileDisconnectedOffersReconnecting() {
+    fun aFailureNamesItsOwnRemedy() {
         val sync = SyncStatusStore()
 
-        sync.apply(status(connected = false, error = failure), errors)
+        sync.apply(status(error = failure), errors)
 
-        assertEquals(SyncFailure(shown(failure), canReconnect = true, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(shown(failure), offersDeviceReset = false), sync.error.value)
     }
 
     @Test
-    fun aFailureWhileConnectedNamesItsOwnRemedy() {
+    fun noStorageOnThisDeviceHasNoLine() {
         val sync = SyncStatusStore()
 
-        sync.apply(status(connected = true, error = failure), errors)
+        sync.apply(status(error = null, indicator = null), errors)
 
-        assertEquals(SyncFailure(shown(failure), canReconnect = false, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncLine.NoStorage, sync.line.value)
     }
 
     @Test
@@ -47,9 +47,9 @@ class SyncStatusStoreTest {
         val sync = SyncStatusStore()
         val copy = BridgeException.Diagnostic(BridgeErrorCategory.DeviceResetRequired, "DeviceIdInUse(Replaced)")
 
-        sync.apply(status(connected = true, error = copy), errors)
+        sync.apply(status(error = copy), errors)
 
-        assertEquals(SyncFailure(shown(copy), canReconnect = false, offersDeviceReset = true), sync.error.value)
+        assertEquals(SyncFailure(shown(copy), offersDeviceReset = true), sync.error.value)
     }
 
     @Test
@@ -59,7 +59,7 @@ class SyncStatusStoreTest {
         assertEquals(SyncLine.Checking, sync.line.value)
         assertEquals(null, sync.pending.value)
 
-        sync.apply(status(connected = true, error = null, indicator = waiting), errors)
+        sync.apply(status(error = null, indicator = waiting), errors)
 
         assertEquals(SyncLine.Read(waiting), sync.line.value)
         assertEquals(emptyList<BridgePendingRecord>(), sync.pending.value)
@@ -73,9 +73,9 @@ class SyncStatusStoreTest {
 
         sync.fail(read)
         assertEquals(SyncLine.Unreadable, sync.line.value)
-        assertEquals(SyncFailure(read, canReconnect = false, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(read, offersDeviceReset = false), sync.error.value)
 
-        sync.apply(status(connected = true, error = null), errors)
+        sync.apply(status(error = null), errors)
         assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), sync.line.value)
         assertEquals(null, sync.error.value)
     }
@@ -83,12 +83,10 @@ class SyncStatusStoreTest {
     private fun shown(error: BridgeException) = DisplayError("line for $error", "detail of $error")
 
     private fun status(
-        connected: Boolean,
         error: BridgeException?,
-        indicator: BridgeSyncIndicator = BridgeSyncIndicator.Synced,
+        indicator: BridgeSyncIndicator? = BridgeSyncIndicator.Synced,
     ) = BridgeSyncStatusSnapshot(
         error = error,
-        connected = connected,
         pending = emptyList(),
         indicator = indicator,
     )

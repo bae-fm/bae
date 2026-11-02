@@ -524,7 +524,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Unconnected);
+    assert_eq!(bridge.indicator, None);
     let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
         panic!("a recorded sync failure crosses as a diagnostic");
     };
@@ -545,7 +545,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert!(bridge.error.is_none());
-    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Synced);
+    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Synced));
 }
 
 /// The status line shows a failure the connection's pending record shows
@@ -573,7 +573,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert!(bridge.error.is_none());
-    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Waiting { items: 1 });
+    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Waiting { items: 1 }));
 }
 
 /// One candidate's runtime pulled end to end: a claim crosses as its import

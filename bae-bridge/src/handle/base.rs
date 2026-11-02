@@ -203,18 +203,6 @@ forward! { async this => {
             .await.map(crate::types::BridgeStorageSetup::from_core)?)
     }
 
-    fn disconnect_cloud_provider() -> () {
-        Ok(this.services.disconnect_cloud_provider().await?)
-    }
-
-    /// How many releases live only in the cloud and would become unplayable if
-    /// this device disconnected. `0` means nothing is at risk. The UI renders the
-    /// warning sentence itself, from `core.sync.cloud_only_releases` and its own
-    /// locale's plural rules.
-    fn cloud_only_release_count() -> u64 {
-        Ok(this.services.cloud_only_release_count().await?)
-    }
-
     /// This person's restore code to type, and for the QR the code that also
     /// holds the S3 key this device holds.
     fn generate_restore_code() -> crate::types::BridgeRestoreCodeShare {

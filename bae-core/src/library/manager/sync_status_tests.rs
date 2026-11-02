@@ -66,7 +66,7 @@ fn reading_pending_items_does_not_clear_a_start_failure() {
 fn pending_files_remain_waiting_after_the_sequence_is_synced() {
     let status =
         snapshot(synced(), vec![record(coven::PendingReason::NoStorage)], coven::RetryEffect::Pass);
-    assert_eq!(status.indicator(), SyncIndicator::Waiting { items: 1 });
+    assert_eq!(status.indicator(), Some(SyncIndicator::Waiting { items: 1 }));
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
     let status = alone(failed_status(coven::StatusFailure::Storage(
         coven::StorageFailure::PermissionDenied,
     )));
-    assert_eq!(status.indicator(), SyncIndicator::Failed);
+    assert_eq!(status.indicator(), Some(SyncIndicator::Failed));
     assert!(matches!(
         status.failure(),
         Some(UiError::Diagnostic {
@@ -179,8 +179,8 @@ fn only_a_pass_in_progress_is_syncing() {
 fn with_nothing_pending_the_line_names_the_status() {
     let indicator =
         |status, error| read(status, Vec::new(), coven::RetryEffect::Pass, error).indicator();
-    assert_eq!(indicator(coven::SyncStatus::Syncing, None), SyncIndicator::Syncing);
-    assert_eq!(indicator(offline(), None), SyncIndicator::Offline);
+    assert_eq!(indicator(coven::SyncStatus::Syncing, None), Some(SyncIndicator::Syncing));
+    assert_eq!(indicator(offline(), None), Some(SyncIndicator::Offline));
     assert_eq!(
         indicator(
             coven::SyncStatus::Blocked {
@@ -190,10 +190,9 @@ fn with_nothing_pending_the_line_names_the_status() {
             },
             None
         ),
-        SyncIndicator::Failed
+        Some(SyncIndicator::Failed)
     );
-    assert_eq!(indicator(coven::SyncStatus::Stopped, None), SyncIndicator::Stopped);
-    assert_eq!(indicator(coven::SyncStatus::Disconnected, None), SyncIndicator::Unconnected);
+    assert_eq!(indicator(coven::SyncStatus::Stopped, None), Some(SyncIndicator::Stopped));
     assert_eq!(
         indicator(
             synced(),
@@ -202,8 +201,21 @@ fn with_nothing_pending_the_line_names_the_status() {
                 "start failed"
             ))
         ),
-        SyncIndicator::Failed
+        Some(SyncIndicator::Failed)
     );
+}
+
+/// With no storage set up on this device there is no sync to name, whatever
+/// is pending or failed beside it.
+#[test]
+fn with_no_storage_on_this_device_the_line_names_nothing() {
+    let status = read(
+        coven::SyncStatus::Disconnected,
+        vec![record(coven::PendingReason::NoStorage)],
+        coven::RetryEffect::Pass,
+        Some(UiError::internal("connection failed")),
+    );
+    assert_eq!(status.indicator(), None);
 }
 
 fn record(reason: coven::PendingReason) -> coven::PendingRecord {

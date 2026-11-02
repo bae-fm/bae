@@ -103,10 +103,8 @@
     <string name="settings_library">Biblioteka</string>
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_local_only">Tylko lokalnie</string>
-    <string name="settings_sync_unconnected">Rozłączono</string>
     <string name="settings_sync_checking">Sprawdzanie synchronizacji…</string>
     <string name="settings_sync_unreadable">Nie można odczytać stanu synchronizacji</string>
-    <string name="settings_reconnect">Połącz ponownie</string>
     <string name="settings_pause_between_sides">Pauza między stronami i płytami</string>
     <string name="settings_side_pause_countdown">Odliczanie</string>
     <string name="settings_side_pause_countdown_off">Wyłączone</string>
@@ -129,11 +127,6 @@
     <string name="settings_bucket">Zasobnik</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Punkt końcowy</string>
-    <string name="settings_disconnect">Rozłącz</string>
-    <string name="settings_disconnect_confirm_title">Rozłączyć synchronizację?</string>
-    <string name="settings_disconnect_body">To urządzenie przestanie synchronizować i usunie swoje dane logowania do magazynu. Zaloguj się ponownie, aby wznowić synchronizację.</string>
-    <string name="settings_disconnect_failed">Nie udało się rozłączyć: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nie udało się sprawdzić, co utracisz: %1$s</string>
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>
     <string name="settings_pause_uploads_footer">Podczas wstrzymania zmiany czekają na tym urządzeniu i zostaną przesłane po wznowieniu.</string>
     <string name="members_title">Osoby i urządzenia</string>

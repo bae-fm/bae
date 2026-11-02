@@ -213,10 +213,6 @@ impl Database {
         self.inner.handle.unlock_store_key().await
     }
 
-    pub(crate) async fn disconnect_storage(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.disconnect_storage().await
-    }
-
     pub(crate) async fn forget_store_keys(&self) -> Result<(), coven::KeyError> {
         self.inner.handle.forget_store_keys().await
     }

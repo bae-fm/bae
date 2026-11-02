@@ -103,10 +103,8 @@
     <string name="settings_library">Бібліотека</string>
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_local_only">Лише локально</string>
-    <string name="settings_sync_unconnected">Відключено</string>
     <string name="settings_sync_checking">Перевірка синхронізації…</string>
     <string name="settings_sync_unreadable">Не вдалося прочитати стан синхронізації</string>
-    <string name="settings_reconnect">Підключити знову</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
     <string name="settings_side_pause_countdown">Зворотний відлік</string>
     <string name="settings_side_pause_countdown_off">Вимкнено</string>
@@ -129,11 +127,6 @@
     <string name="settings_bucket">Бакет</string>
     <string name="settings_region">Регіон</string>
     <string name="settings_endpoint">Кінцева точка</string>
-    <string name="settings_disconnect">Відключити</string>
-    <string name="settings_disconnect_confirm_title">Відключити синхронізацію?</string>
-    <string name="settings_disconnect_body">Цей пристрій припиняє синхронізацію та вилучає свої облікові дані сховища. Увійдіть знову, щоб продовжити синхронізацію.</string>
-    <string name="settings_disconnect_failed">Не вдалося відключити: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Не вдалося перевірити, що ви втратите: %1$s</string>
     <string name="settings_pause_uploads">Призупинити вивантаження</string>
     <string name="settings_pause_uploads_footer">Під час паузи зміни очікують на цьому пристрої й вивантажуються, коли ви відновите.</string>
     <string name="members_title">Люди та пристрої</string>
