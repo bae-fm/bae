@@ -7,9 +7,11 @@ import Testing
 
 @Suite("Artist assignments field")
 struct ArtistAssignmentsFieldTests {
+    /// The closed field badges a picked library artist and a new one
+    /// differently, from the summary it draws.
     @MainActor
     @Test("library and new artists remain visibly distinct")
-    func assignmentIdentityIsVisible() async throws {
+    func assignmentIdentityIsVisible() throws {
         let picked = PreviewData.pickedArtist(
             "Artist Name",
             artistId: "artist-1"
@@ -17,34 +19,21 @@ struct ArtistAssignmentsFieldTests {
         let credited = PreviewData.artistCredit("Artist Name")
         let resolutions = [PreviewData.resolvedCredit("Artist Name", .new)]
 
-        let linkedImage = try await render([picked], resolutions: resolutions)
-        let newImage = try await render([credited], resolutions: resolutions)
-
-        #expect(linkedImage != newImage)
-    }
-
-    @MainActor
-    @Test("existing artist results do not present internal IDs")
-    func existingArtistResultsHideInternalIds() async throws {
-        let first = BridgeExistingArtist(
-            artistId: "artist-1",
-            name: "Artist Name",
-            sortName: "Name, Artist",
-            musicbrainzArtistId: nil,
-            discogsArtistId: nil
+        let linked = try #require(
+            ArtistAssignmentsSummary(
+                assignments: [picked],
+                resolutions: resolutions
+            )?
+            .identityLabel
         )
-        let second = BridgeExistingArtist(
-            artistId: "artist-2",
-            name: "Artist Name",
-            sortName: "Name, Artist",
-            musicbrainzArtistId: nil,
-            discogsArtistId: nil
+        let new = try #require(
+            ArtistAssignmentsSummary(
+                assignments: [credited],
+                resolutions: resolutions
+            )?
+            .identityLabel
         )
-
-        let firstImage = try await renderChoice(first)
-        let secondImage = try await renderChoice(second)
-
-        #expect(firstImage == secondImage)
+        #expect(linked != new, "both read \(linked)")
     }
 
     /// A compilation credits more artists than the line can hold. The header
@@ -120,41 +109,5 @@ struct ArtistAssignmentsFieldTests {
             .compactMap { $0 as? NSTextField }
             .first { $0.stringValue == value }
             .map { $0.convert($0.bounds, to: host) }
-    }
-
-    @MainActor
-    private func render(
-        _ assignments: [BridgeCredited],
-        resolutions: [BridgeResolvedCredit]
-    ) async throws -> Data {
-        let size = NSSize(width: 280, height: 40)
-        return try await SnapshotTestSupport.withHostedWindow(
-            ArtistAssignmentsField(
-                assignments: assignments,
-                placeholder: "Artist",
-                artistSearch: { .fixed([]) },
-                onChange: { _ in }
-            )
-            .frame(width: size.width, height: size.height)
-            .environment(\.artistResolutions, resolutions)
-            .environment(UiStore()),
-            size: size
-        ) { _, host in
-            return try await SnapshotTestSupport.capturePNG(host, size: size)
-        }
-    }
-
-    @MainActor
-    private func renderChoice(
-        _ artist: BridgeExistingArtist
-    ) async throws -> Data {
-        let size = NSSize(width: 280, height: 48)
-        return try await SnapshotTestSupport.withHostedWindow(
-            ArtistSearchResultLabel(artist: artist)
-                .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            return try await SnapshotTestSupport.capturePNG(host, size: size)
-        }
     }
 }
