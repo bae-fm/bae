@@ -463,3 +463,66 @@ fn unpaired_releases_are_single_source_pressings() {
     ]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]], "one card, two rows");
 }
+
+/// A MusicBrainz record printing the second of the barcodes a Discogs record
+/// lists is the same pressing.
+#[test]
+fn a_barcode_listed_second_pairs_the_records() {
+    let mut musicbrainz = mb("mb-1", Some("group-x"), Some(1992));
+    musicbrainz.barcodes = vec!["5051961234567".to_string()];
+    let mut listing_two = discogs("dg-1", Some("7"), Some(1992));
+    listing_two.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
+    let groups = grouped(vec![musicbrainz, listing_two]);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
+}
+
+/// Records that name no album are two albums, whatever their titles say.
+#[test]
+fn records_naming_no_album_are_two_albums() {
+    let groups = grouped(vec![discogs("11", None, None), discogs("12", None, None)]);
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].id, "11");
+    assert_eq!(groups[1].id, "12");
+}
+
+/// A record of a CD and a vinyl is one object with the other catalog's
+/// record naming the same two media, whichever it lists first, and not with
+/// one naming a cassette.
+#[test]
+fn a_pressing_of_two_media_pairs_only_with_a_record_of_both() {
+    let barcode = "012345678905";
+    let musicbrainz = |media: Vec<Medium>| {
+        let mut record = mb("mb-1", Some("group-x"), Some(1992));
+        record.barcodes = vec![barcode.to_string()];
+        record.media = StatedMedia::PerMedium(media.into_iter().map(Some).collect());
+        record
+    };
+    let discogs_of = |media: &[Medium]| {
+        let mut record = discogs("dg-1", Some("7"), Some(1992));
+        record.barcodes = vec![barcode.to_string()];
+        record.media = StatedMedia::Formats(
+            media
+                .iter()
+                .map(|&medium| StatedFormat { medium: Some(medium), quantity: 1 })
+                .collect(),
+        );
+        record
+    };
+    let cassette = discogs_of(&[Medium::Cassette]);
+    let both = discogs_of(&[Medium::Vinyl, Medium::Cd]);
+    for record in
+        [musicbrainz(vec![Medium::Vinyl, Medium::Cd]), musicbrainz(vec![Medium::Cd, Medium::Vinyl])]
+    {
+        assert_eq!(
+            pressing_count(vec![record.clone(), cassette.clone()]),
+            2,
+            "a cassette is not part of a CD-plus-vinyl object"
+        );
+        assert_eq!(
+            pressing_count(vec![record, both.clone()]),
+            1,
+            "the record naming both media is the same object"
+        );
+    }
+}

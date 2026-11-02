@@ -105,36 +105,21 @@ fn result_with_title(title: &str) -> DiscogsSearchResult {
     }
 }
 
-/// A Discogs search result states every barcode Discogs holds, and a
-/// MusicBrainz record printing the second of them is the same pressing.
+/// A Discogs search result states every barcode Discogs holds, in its
+/// order, under the master it names.
 #[test]
-fn discogs_search_result_keeps_every_barcode_for_pairing() {
+fn discogs_search_result_keeps_every_barcode() {
     let mut result = result_with_title("Artist Name - Album Title");
     result.year = Some("1992".to_string());
     result.master_id = Some(7);
     result.barcode = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
     let discogs = discogs_search_result_to_metadata(result);
 
-    let mut musicbrainz = MetadataResult::for_test(Catalog::MusicBrainz, "mb-1", Some("group-x"));
-    musicbrainz.title = "Album Title".to_string();
-    musicbrainz.artist = Some("Artist Name".to_string());
-    musicbrainz.year = Some(1992);
-    musicbrainz.barcodes = vec!["5051961234567".to_string()];
-
-    let groups = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(vec![musicbrainz, discogs]),
-        None,
-    );
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].pressings().count(), 1);
-    assert_eq!(
-        groups[0].sections[0].pressings[0]
-            .releases
-            .iter()
-            .map(|release| release.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["mb-1", "1"]
-    );
+    assert_eq!(discogs.barcodes, vec!["0 12345 67890 5", "5051961234567"]);
+    assert_eq!(discogs.source_group_id.as_deref(), Some("7"));
+    assert_eq!(discogs.title, "Album Title");
+    assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(discogs.year, Some(1992));
 }
 
 /// Discogs writes zero where a release has no master. That is absence, not a
@@ -149,14 +134,6 @@ fn a_zero_master_id_is_no_group() {
     let converted: Vec<MetadataResult> =
         results.into_iter().map(discogs_search_result_to_metadata).collect();
     assert!(converted.iter().all(|result| result.source_group_id.is_none()));
-
-    let groups = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(converted),
-        None,
-    );
-    assert_eq!(groups.len(), 2);
-    assert_eq!(groups[0].id, "11");
-    assert_eq!(groups[1].id, "12");
 }
 
 /// A release document's URL relations name its counterparts: a Discogs
@@ -197,9 +174,9 @@ fn discid_metadata_links_the_releases_its_document_names() {
 }
 
 /// A disc ID names one medium of a release that has several. The pressing is
-/// made of every medium the response lists: the Discogs record of the same
-/// two media is this object and one naming a cassette is not, whichever
-/// medium the response lists first.
+/// made of every medium the response lists, whichever medium the response
+/// lists first, as a Discogs record's pressing is made of every format it
+/// names.
 #[test]
 fn discid_metadata_carries_every_medium_into_pairing() {
     let barcode = "012345678905";
@@ -257,24 +234,23 @@ fn discid_metadata_carries_every_medium_into_pairing() {
             .collect();
         discogs_search_result_to_metadata(result)
     };
-    let cassette = discogs_of(&[("Cassette", &["Album"])]);
-    let both = discogs_of(&[("Vinyl", &["LP"]), ("CD", &["Album"])]);
-
-    for musicbrainz in [vinyl_then_cd, cd_then_vinyl] {
-        assert_eq!(
-            crate::import::release_group::pressing_count(vec![
-                musicbrainz.clone(),
-                cassette.clone()
-            ]),
-            2,
-            "a cassette is not part of a CD-plus-vinyl object"
-        );
-        assert_eq!(
-            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), both.clone()]),
-            1,
-            "the record naming both media is the same object"
-        );
-    }
+    let media = |result: &MetadataResult| {
+        let mut media = result.facts().media;
+        media.sort_by_key(|counted| counted.medium);
+        media
+    };
+    assert_eq!(
+        media(&discogs_of(&[("Cassette", &["Album"])])),
+        vec![MediaCount { medium: Medium::Cassette, count: 1 }]
+    );
+    assert_eq!(
+        media(&discogs_of(&[("Vinyl", &["LP"]), ("CD", &["Album"])])),
+        vec![
+            MediaCount { medium: Medium::Cd, count: 1 },
+            MediaCount { medium: Medium::Vinyl, count: 1 },
+        ],
+        "a Discogs record naming two formats is a pressing of both media"
+    );
 }
 
 /// A typed query builds one request per provider from the same fields.
