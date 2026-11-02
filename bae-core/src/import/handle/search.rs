@@ -260,7 +260,7 @@ impl ImportServiceHandle {
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
         Ok(RemoteCoverGallery::Linked(
-            self.library_manager.pick_gallery_covers(primary, partners).await?,
+            self.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?,
         ))
     }
 
@@ -293,21 +293,26 @@ impl ImportServiceHandle {
                     ReleaseRecord::Pressing { release, album_key, .. },
                     LookupCatalog::MusicBrainz,
                 ) => {
-                    self.library_manager
+                    self.catalogs
+                        .musicbrainz()
                         .musicbrainz_gallery(&release.key, album_key.as_deref())
                         .await?
                 }
                 (ReleaseRecord::Pressing { release, .. }, LookupCatalog::Discogs) => {
-                    self.library_manager
-                        .fetch_discogs_release_covers(&release.key, CallPriority::Interactive)
+                    self.catalogs
+                        .session()
+                        .await?
+                        .release_covers(&release.key, CallPriority::Interactive)
                         .await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::MusicBrainz) => {
-                    self.library_manager.musicbrainz_group_gallery(&album.key).await?
+                    self.catalogs.musicbrainz().musicbrainz_group_gallery(&album.key).await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::Discogs) => {
-                    self.library_manager
-                        .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
+                    self.catalogs
+                        .session()
+                        .await?
+                        .master_covers(&album.key, CallPriority::Interactive)
                         .await?
                 }
             };

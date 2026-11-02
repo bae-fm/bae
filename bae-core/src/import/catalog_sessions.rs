@@ -195,3 +195,13 @@ async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKe
         warn!("failed to record the Discogs key's validation: {error}");
     }
 }
+
+/// The providers sessions ask, for a test to seed their answers.
+#[cfg(any(test, feature = "test-utils"))]
+mod test_access {
+    impl super::CatalogSessions {
+        pub fn providers(&self) -> &super::Providers {
+            &self.providers
+        }
+    }
+}

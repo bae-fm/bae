@@ -138,7 +138,7 @@ impl LibraryManager {
             preparations: crate::import::CandidatePreparations::new(database.clone()),
             #[cfg(desktop)]
             catalogs: crate::import::CatalogSessions::new(
-                providers.clone(),
+                providers,
                 database.clone(),
                 diagnostics.clone(),
                 runtime_handle.clone(),
@@ -146,8 +146,6 @@ impl LibraryManager {
             database,
             app_dir,
             remote_images,
-            #[cfg(desktop)]
-            providers,
             clock,
             ids,
             diagnostics,
@@ -412,41 +410,6 @@ impl LibraryManager {
         failed: bae_util::task_failure::TaskFailed,
     ) -> bae_util::task_failure::TaskFailed {
         self.diagnostics.bug(failed)
-    }
-
-    /// The Cover Art Archive's images of a MusicBrainz release, then of its
-    /// group.
-    #[cfg(desktop)]
-    pub(crate) async fn musicbrainz_gallery(
-        &self,
-        release_id: &str,
-        group_id: Option<&str>,
-    ) -> Result<
-        Vec<bae_catalogs::remote_image::RemoteCover>,
-        bae_catalogs::remote_image::RemoteImageError,
-    > {
-        self.providers.musicbrainz_gallery(release_id, group_id).await
-    }
-
-    #[cfg(desktop)]
-    pub(crate) async fn musicbrainz_group_gallery(
-        &self,
-        group_id: &str,
-    ) -> Result<
-        Vec<bae_catalogs::remote_image::RemoteCover>,
-        bae_catalogs::remote_image::RemoteImageError,
-    > {
-        self.providers.musicbrainz_group_gallery(group_id).await
-    }
-
-    /// Every image one pick's releases offer, the primary's first.
-    #[cfg(desktop)]
-    pub(crate) async fn pick_gallery_covers(
-        &self,
-        primary: &crate::catalog_model::source_release::SourceRelease,
-        partners: &[crate::catalog_model::source_release::SourceRelease],
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        Ok(self.providers.pick_gallery_covers(primary, partners).await?)
     }
 
     #[cfg(desktop)]
@@ -756,7 +719,7 @@ impl LibraryManager {
 mod test_access {
     impl super::LibraryManager {
         pub fn providers(&self) -> &crate::catalog_model::providers::Providers {
-            &self.providers
+            self.catalogs.providers()
         }
     }
 }

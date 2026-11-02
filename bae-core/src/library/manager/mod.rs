@@ -743,9 +743,6 @@ pub struct LibraryManager {
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
-    /// The services releases are looked up in, built once by the app.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    providers: crate::catalog_model::providers::Providers,
     /// The catalogs as this library may ask them, which import's services
     /// hold too.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -123,32 +123,6 @@ impl Providers {
     ) -> Result<Vec<MetadataResult>, CatalogError> {
         crate::catalog_model::search::search_mb(&self.musicbrainz, params, priority).await
     }
-
-    /// The archive's images of a MusicBrainz release, then of its group.
-    pub(crate) async fn musicbrainz_gallery(
-        &self,
-        release_id: &str,
-        group_id: Option<&str>,
-    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
-        bae_catalogs::remote_image::musicbrainz_gallery(&self.http, release_id, group_id).await
-    }
-
-    pub(crate) async fn musicbrainz_group_gallery(
-        &self,
-        group_id: &str,
-    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
-        bae_catalogs::remote_image::musicbrainz_group_gallery(&self.http, group_id).await
-    }
-
-    /// Every image one pick's releases offer, the primary's first.
-    pub(crate) async fn pick_gallery_covers(
-        &self,
-        primary: &crate::catalog_model::source_release::SourceRelease,
-        partners: &[crate::catalog_model::source_release::SourceRelease],
-    ) -> Result<Vec<RemoteCover>, CatalogError> {
-        crate::catalog_model::source_release::pick_gallery_covers(&self.http, primary, partners)
-            .await
-    }
 }
 
 /// What a test reaches past the operations for: the transport to build an
@@ -296,6 +270,37 @@ impl CatalogSession {
             return Ok(None);
         };
         Ok(client.get_artist_image(artist_id, CallPriority::Interactive).await?)
+    }
+
+    /// The archive's images of a MusicBrainz release, then of its group.
+    pub(crate) async fn musicbrainz_gallery(
+        &self,
+        release_id: &str,
+        group_id: Option<&str>,
+    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
+        bae_catalogs::remote_image::musicbrainz_gallery(&self.providers.http, release_id, group_id)
+            .await
+    }
+
+    pub(crate) async fn musicbrainz_group_gallery(
+        &self,
+        group_id: &str,
+    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
+        bae_catalogs::remote_image::musicbrainz_group_gallery(&self.providers.http, group_id).await
+    }
+
+    /// Every image one pick's releases offer, the primary's first.
+    pub(crate) async fn pick_gallery_covers(
+        &self,
+        primary: &crate::catalog_model::source_release::SourceRelease,
+        partners: &[crate::catalog_model::source_release::SourceRelease],
+    ) -> Result<Vec<RemoteCover>, CatalogError> {
+        crate::catalog_model::source_release::pick_gallery_covers(
+            &self.providers.http,
+            primary,
+            partners,
+        )
+        .await
     }
 
     /// What Discogs says of the stored key, or `None` without one to ask

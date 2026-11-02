@@ -6,8 +6,6 @@ use super::*;
 use crate::config::DiscogsValidation;
 #[cfg(all(test, desktop))]
 use bae_catalogs::discogs::client::DiscogsKeySignal;
-#[cfg(desktop)]
-use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
 
 impl LibraryManager {
@@ -82,24 +80,6 @@ impl LibraryManager {
         &self,
     ) -> Result<Option<DiscogsValidation>, crate::db::DbError> {
         Ok(self.preferences().await?.discogs)
-    }
-
-    #[cfg(desktop)]
-    pub(crate) async fn fetch_discogs_release_covers(
-        &self,
-        release_id: &str,
-        priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        Ok(self.catalogs.session().await?.release_covers(release_id, priority).await?)
-    }
-
-    #[cfg(desktop)]
-    pub(crate) async fn fetch_discogs_master_covers(
-        &self,
-        master_id: &str,
-        priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        Ok(self.catalogs.session().await?.master_covers(master_id, priority).await?)
     }
 
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
