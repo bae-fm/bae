@@ -106,9 +106,9 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            crate::library::views::LibraryViews::new(database.clone()).subscribe_album_detail(None),
-            None,
-            "the album",
+            database.subscribe_playback_track_infos(Vec::new()),
+            Vec::new(),
+            "the tracks' sides",
             &crate::diagnostics::Diagnostics::noop(),
         );
 
@@ -140,16 +140,16 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            crate::library::views::LibraryViews::new(database.clone()).subscribe_album_detail(None),
-            None,
-            "the album",
+            database.subscribe_playback_track_infos(Vec::new()),
+            Vec::new(),
+            "the tracks' sides",
             &crate::diagnostics::Diagnostics::noop(),
         );
         database.close().await.unwrap();
         follow_ends(&mut follow).await;
 
-        follow.follow(Some("another album".to_string()));
+        follow.follow(vec!["another track".to_string()]);
 
-        assert_eq!(follow.request, Some("another album".to_string()));
+        assert_eq!(follow.request, vec!["another track".to_string()]);
     }
 }

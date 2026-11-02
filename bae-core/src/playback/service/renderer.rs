@@ -513,26 +513,31 @@ impl PlaybackService {
             PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
         self.emit_state();
 
-        let resolved = match self.library_manager.resolve_track_audio(track_id).await {
+        let resolved = match ResolvedTrackAudio::resolve(&self.database, track_id).await {
             Ok(resolved) => resolved,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");
-                self.fail_remote(PlaybackError::database(e).ui_reason()).await;
+                self.fail_remote(PlaybackError::from(e).ui_reason()).await;
                 return;
             }
         };
         // What the device shows is read now, as the library holds it at load,
         // so an edit made while an earlier track played reaches this one. A
         // device keeps what it was loaded with until the next load.
-        let display = match self.library_manager.get_track_display(track_id).await {
-            Ok(display) => display,
+        let display = match self.database.track_display(track_id).await {
+            Ok(Some(display)) => display,
+            Ok(None) => {
+                error!("remote: track {track_id} is gone from the library");
+                self.fail_remote(PlaybackError::not_found("Track", track_id).ui_reason()).await;
+                return;
+            }
             Err(e) => {
                 error!("remote: failed to read what track {track_id} shows: {e}");
                 self.fail_remote(PlaybackError::database(e).ui_reason()).await;
                 return;
             }
         };
-        let prefs = match self.library_manager.preferences().await {
+        let prefs = match crate::preferences::preferences(&self.database).await {
             Ok(prefs) => prefs,
             Err(e) => {
                 error!("remote: failed to read the preferences to load track {track_id}: {e}");

@@ -28,7 +28,13 @@ fn handle_over_one_album(
             .expect("read the albums");
         let releases =
             manager.get_releases_for_album(&albums[0].id).await.expect("read the releases");
-        manager.get_track_ids(&releases[0].id).await.expect("read the tracks")
+        manager
+            .get_tracks_for_release(&releases[0].id)
+            .await
+            .expect("read the tracks")
+            .into_iter()
+            .map(|track| track.id)
+            .collect()
     });
     (
         super::super::tests::start_test_handle(runtime, (manager, database, catalogs, closing)),

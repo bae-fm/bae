@@ -12,12 +12,12 @@ async fn served_whole_file_then_window(
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const WHOLE_FILE: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     const IMAGE_WINDOW: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
-    let (_home, mut service, _rx) =
+    let (library, mut service, _rx) =
         seeded_playback_service(&[(RELEASE, &[WHOLE_FILE, IMAGE_WINDOW])]).await;
-    service.library_manager.set_cast_transcode_format(transcode).await.unwrap();
-    seed_playable_track(&service.library_manager, RELEASE, WHOLE_FILE).await;
+    library.set_cast_transcode_format(transcode).await.unwrap();
+    seed_playable_track(&library, RELEASE, WHOLE_FILE).await;
     seed_track_window(
-        &service.library_manager,
+        &library,
         RELEASE,
         IMAGE_WINDOW,
         441_000,
@@ -139,7 +139,7 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
     .await;
     let (mut service, _rx) = playback_service_over(&library_manager);
     // Two seconds of generated silence at 44.1 kHz.
-    seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
+    seed_track_window(&library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
     fill_test_release(&mut service, RELEASE).await;
     service.slot =
         active_slot(test_prepared_track(TRACK, create_sparse_buffer(1_024)), TrackPhase::Playing);

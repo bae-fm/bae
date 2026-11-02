@@ -410,7 +410,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = library_manager.load_playback_state().await.unwrap() {
+        if let Some(row) = database.load_playback_state().await.unwrap() {
             persisted = Some(row);
             break;
         }
@@ -431,7 +431,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if library_manager.load_playback_state().await.unwrap().is_none() {
+        if database.load_playback_state().await.unwrap().is_none() {
             cleared = true;
             break;
         }
@@ -478,7 +478,7 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
             )
         });
         let state = fixture
-            .library_manager
+            .database
             .load_playback_state()
             .await
             .expect("load_playback_state should succeed");

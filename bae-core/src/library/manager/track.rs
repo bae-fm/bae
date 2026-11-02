@@ -3,12 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Ordered track IDs for a release, without pulling full `DbTrack` rows. For
-    /// callers that only need IDs (queue building, repeat-album rebuild).
-    pub async fn get_track_ids(&self, release_id: &str) -> Result<Vec<String>, LibraryError> {
-        Ok(self.database.get_track_ids_for_release(release_id).await?)
-    }
-
     /// Every track id in the library, in a deterministic base order, for a
     /// listing that pages through every song.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, LibraryError> {
@@ -58,17 +52,6 @@ impl LibraryManager {
         self.database.subscribe_queue_addition()
     }
 
-    /// The queue as its screens show it now.
-    pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
-        Ok(self.database.queue_value().await?)
-    }
-
-    /// Every one of the context lane's tracks after the playing one.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_upcoming(&self) -> Result<Vec<crate::queue::QueueItem>, LibraryError> {
-        Ok(self.database.queue_upcoming().await?)
-    }
-
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub(crate) fn subscribe_queue_upcoming(
         &self,
@@ -110,12 +93,9 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
-        let track =
-            self.database.find_track_by_id(track_id).await?.ok_or_else(|| {
-                LibraryError::TrackMapping(format!("Track not found: {}", track_id))
-            })?;
-        let mediums = self.database.get_release_mediums(&track.release_id).await?;
-        Ok(crate::playback::PlaybackTrackInfo::of(&track, &mediums))
+        crate::playback::PlaybackTrackInfo::read(&self.database, track_id)
+            .await?
+            .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
 
     /// What surfaces show of a track, as the library holds it now.
@@ -143,17 +123,5 @@ impl LibraryManager {
         &self,
     ) -> coven::LiveQuery<Option<crate::playback::NowPlayingValues>> {
         self.database.subscribe_now_playing()
-    }
-
-    /// The volume and mute playback resumes at.
-    pub async fn playback_level(&self) -> Result<(f32, bool), LibraryError> {
-        Ok(self.database.playback_level().await?)
-    }
-
-    pub(crate) fn subscribe_playback_track_infos(
-        &self,
-        initial: Vec<String>,
-    ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::playback::PlaybackTrackInfo>> {
-        self.database.subscribe_playback_track_infos(initial)
     }
 }

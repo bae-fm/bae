@@ -72,11 +72,11 @@ async fn seed_track_window(
 /// media.
 async fn remote_service(
     releases: &[(&str, &[&str])],
-) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, service, rx) = seeded_playback_service(releases).await;
     for (release_id, tracks) in releases {
         for track_id in *tracks {
-            seed_playable_track(&service.library_manager, release_id, track_id).await;
+            seed_playable_track(&home, release_id, track_id).await;
         }
     }
     (home, service, rx)
@@ -116,7 +116,7 @@ async fn playing_remote_fixture(
     tracks: &[&str],
     position: StreamPosition,
 ) -> (
-    TempDir,
+    SeededLibrary,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -131,7 +131,7 @@ async fn remote_fixture_from(
     position: StreamPosition,
     phase: TrackPhase,
 ) -> (
-    TempDir,
+    SeededLibrary,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -379,7 +379,7 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
 /// [`playing_remote_fixture`] over one track at position zero, waited until the
 /// device has taken its first load.
 async fn remote_over_fake() -> (
-    TempDir,
+    SeededLibrary,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -543,15 +543,14 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const FIRST: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
-    let (_home, mut service, state, _rx) =
+    let (library, mut service, state, _rx) =
         playing_remote_fixture(&[FIRST, SECOND], StreamPosition::START).await;
     let (load_tx, mut loads) = tokio_mpsc::unbounded_channel();
     state.lock().unwrap().load_events = Some(load_tx);
     let first_url = format!("http://renderer.local/stream?id={FIRST}");
     let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
-    service
-        .library_manager
+    library
         .apply_release_metadata_user_edit(
             RELEASE,
             &crate::import::ReleaseUserEdit {

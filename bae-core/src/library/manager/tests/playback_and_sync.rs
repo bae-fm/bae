@@ -269,10 +269,10 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
     let track_ids = seed_release_tracks(&manager, 151).await;
     play_seeded(&manager, &track_ids[0]).await;
 
-    let value = manager.queue_value().await.unwrap();
+    let value = manager.database().queue_value().await.unwrap();
     assert!(value.context.is_some() && value.has_next);
     let upcoming: Vec<String> =
-        manager.queue_upcoming().await.unwrap().into_iter().map(|item| item.track_id).collect();
+        manager.database().queue_upcoming().await.unwrap().into_iter().map(|item| item.track_id).collect();
     assert_eq!(upcoming, track_ids[1..].to_vec());
 }
 
@@ -289,7 +289,7 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
         .unwrap();
 
     assert_eq!(
-        manager.queue_value().await.unwrap().manual.len(),
+        manager.database().queue_value().await.unwrap().manual.len(),
         manual_count,
         "the manual lane is never windowed"
     );
@@ -306,6 +306,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     queued.push(track_ids[0].clone());
     tables.add_manual(queued, crate::db::ManualPlace::End).await.unwrap();
     let entries: Vec<String> = manager
+        .database()
         .queue_value()
         .await
         .unwrap()
@@ -317,6 +318,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     tables.reorder(id(2), Some(id(0))).await.unwrap();
 
     let shown: Vec<(String, String)> = manager
+        .database()
         .queue_value()
         .await
         .unwrap()

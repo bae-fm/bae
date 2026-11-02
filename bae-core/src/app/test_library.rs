@@ -88,6 +88,11 @@ impl TestLibrary {
         &self.database
     }
 
+    /// Where the library's new rows get their ids.
+    pub(crate) fn ids(&self) -> &IdSourceRef {
+        &self.ids
+    }
+
     /// Where the library reports its failures and telemetry.
     pub(crate) fn diagnostics(&self) -> &Diagnostics {
         &self.diagnostics
@@ -189,7 +194,8 @@ impl TestLibrary {
             .await
             .expect("settle the playback queue");
         crate::playback::PlaybackService::start_with_audio_device(
-            self.manager.clone(),
+            self.database.clone(),
+            self.ids.clone(),
             crate::db::PlaybackQueueTables::new(self.database.clone()),
             crate::db::PlaybackNowRow::new(self.database.clone()),
             crate::db::PlaybackTimelineRow::new(self.database.clone()),

@@ -34,7 +34,6 @@ use crate::diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     ReportedThread, TelemetryEvent, TrackTransition,
 };
-use crate::library::LibraryManager;
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
 };
@@ -421,7 +420,12 @@ struct OutputStream {
 }
 
 pub struct PlaybackService {
-    library_manager: LibraryManager,
+    /// The library's store: the tracks playback reads, the resume row and
+    /// listening history it writes, the preferences it plays by, and the
+    /// files it streams.
+    database: crate::db::Database,
+    /// Mints the id of each play the listening history records.
+    ids: coven::IdSourceRef,
     /// Where the service, its decoders, its fills and its watchers report a
     /// panic as the bug it is.
     diagnostics: Diagnostics,

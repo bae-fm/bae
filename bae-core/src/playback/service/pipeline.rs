@@ -94,7 +94,8 @@ impl PlaybackService {
         self.emit_state();
 
         let prepared = prepare_track_for_playback(
-            &self.library_manager,
+            &self.database,
+            &self.diagnostics,
             track_id,
             &mut self.file_buffers,
             &self.command_tx,

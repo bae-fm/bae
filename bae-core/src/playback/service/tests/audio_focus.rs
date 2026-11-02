@@ -41,7 +41,7 @@ impl crate::playback::AudioFocusSystem for CountingAudioFocus {
 /// A service whose platform shares the speaker through `system`.
 async fn service_sharing_the_speaker(
     system: Arc<CountingAudioFocus>,
-) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, mut service, progress_rx) =
         seeded_playback_service(&[(FOCUS_RELEASE, &[TRACK_T, FOCUS_NEXT])]).await;
     service.audio_focus = crate::playback::AudioFocus::Shared(system);

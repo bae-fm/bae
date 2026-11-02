@@ -86,7 +86,7 @@ impl PlaybackService {
         let position = cur.position;
         let duration = cur.prepared.timeline.duration();
         let now = self.clock.now();
-        match self.library_manager.begin_play(&track, duration, now).await {
+        match self.database.begin_play(self.ids.new_id(), &track, duration, now).await {
             Ok(play) => {
                 let meter = if self.renderer.is_remote() {
                     ListeningMeter::Remote { position, reported_at: now }
@@ -188,7 +188,7 @@ impl PlaybackService {
                 ListeningSave::Due => listening.saved.is_zero(),
             };
             if due {
-                if let Err(error) = persist(&self.library_manager, listening).await {
+                if let Err(error) = persist(&self.database, listening).await {
                     failures.push(error);
                 }
             }
@@ -200,7 +200,7 @@ impl PlaybackService {
                 ListeningSave::Due => buffered.tail.is_none() || buffered.listening.saved.is_zero(),
             };
             if due {
-                if let Err(error) = persist(&self.library_manager, &mut buffered.listening).await {
+                if let Err(error) = persist(&self.database, &mut buffered.listening).await {
                     failures.push(error);
                 }
             }
@@ -285,13 +285,13 @@ impl PlaybackService {
 }
 
 async fn persist(
-    manager: &LibraryManager,
+    database: &crate::db::Database,
     listening: &mut Listening,
 ) -> Result<(), crate::db::DbError> {
     if listening.play.qualifies()
         && listening.play.entry().played.as_millis() != listening.saved.as_millis()
     {
-        manager.record_play(&listening.play).await?;
+        database.record_play(&listening.play).await?;
         listening.saved = listening.play.entry().played;
     }
     Ok(())

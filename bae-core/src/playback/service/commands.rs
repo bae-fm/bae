@@ -170,7 +170,7 @@ impl PlaybackService {
                 self.queue_added(added).await;
             }
             PlaybackCommand::AddReleaseToQueue(release_id) => {
-                match self.library_manager.get_track_ids(&release_id).await {
+                match self.database.get_track_ids_for_release(&release_id).await {
                     Ok(track_ids) if !track_ids.is_empty() => {
                         let added = self.playback_queue.add_to_queue(track_ids).await;
                         self.queue_added(added).await;
@@ -183,7 +183,7 @@ impl PlaybackService {
                 }
             }
             PlaybackCommand::AddReleaseNext(release_id) => {
-                match self.library_manager.get_track_ids(&release_id).await {
+                match self.database.get_track_ids_for_release(&release_id).await {
                     Ok(track_ids) if !track_ids.is_empty() => {
                         let added = self.playback_queue.add_next(track_ids).await;
                         self.queue_added(added).await;
@@ -288,12 +288,10 @@ impl PlaybackService {
             }
             #[cfg(any(test, feature = "test-utils"))]
             PlaybackCommand::GetQueue(reply) => {
-                let value = match self.library_manager.queue_value().await {
-                    Ok(value) => self
-                        .library_manager
-                        .queue_upcoming()
-                        .await
-                        .map(|upcoming| (value, upcoming)),
+                let value = match self.database.queue_value().await {
+                    Ok(value) => {
+                        self.database.queue_upcoming().await.map(|upcoming| (value, upcoming))
+                    }
                     Err(e) => Err(e),
                 }
                 .map_err(|e| e.to_string());

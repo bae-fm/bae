@@ -226,7 +226,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     playback.playback_handle.shutdown().await;
     assert!(
         playback
-            .library_manager
+            .database
             .load_playback_state()
             .await
             .expect("read the resume row")
@@ -264,7 +264,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     );
     assert!(
         playback
-            .library_manager
+            .database
             .load_playback_state()
             .await
             .expect("re-read the resume row")
@@ -314,7 +314,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     .await
     .expect("restore announces the volume and the mute");
     assert_eq!(announced, (Some(0.3), Some(true)));
-    assert_eq!(playback.library_manager.playback_level().await.unwrap(), (0.3, true));
+    assert_eq!(playback.database.playback_level().await.unwrap(), (0.3, true));
     handle.shutdown().await;
 }
 

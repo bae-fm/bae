@@ -14,6 +14,7 @@
 //! task must survive the switch).
 
 use super::*;
+use crate::track_audio::data_source::AudioDataReader;
 
 pub(super) struct FileBuffers {
     /// Full-file buffers keyed by release file id.
@@ -136,13 +137,13 @@ impl FileBuffers {
 /// buffers onward into the slot, and an owner hands its retained state to no
 /// caller. Kept in this module so the only reach into the cache stays here.
 pub(super) async fn prepare_track_for_playback(
-    library_manager: &LibraryManager,
+    database: &crate::db::Database,
+    diagnostics: &Diagnostics,
     track_id: &str,
     file_buffers: &mut FileBuffers,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
-    let resolved =
-        library_manager.resolve_track_audio(track_id).await.map_err(PlaybackError::database)?;
+    let resolved = ResolvedTrackAudio::resolve(database, track_id).await?;
 
     let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
@@ -157,12 +158,14 @@ pub(super) async fn prepare_track_for_playback(
             }
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
-                let reader = library_manager.create_audio_reader(
-                    &segment.file_id,
+                let reader = Box::new(crate::track_audio::data_source::CovenFileReader::new(
+                    database.clone(),
+                    segment.file_id.clone(),
                     file_buffers.arbiter.clone(),
                     segment.span.start_byte,
                     is_ape,
-                );
+                    diagnostics.clone(),
+                ));
                 reader.start_reading(
                     buffer.clone(),
                     playback_fill_error_handler(command_tx.clone(), buffer.id()),
@@ -182,8 +185,7 @@ pub(super) async fn prepare_track_for_playback(
 
     // Read the replay-gain mode once, here, and pass it down — rather than a
     // preferences read buried inside `finalize_playback_track`.
-    let replay_gain_mode =
-        library_manager.preferences().await.map_err(PlaybackError::database)?.replay_gain_mode;
+    let replay_gain_mode = crate::preferences::preferences(database).await?.replay_gain_mode;
 
     Ok(finalize_playback_track(
         track_id.to_string(),

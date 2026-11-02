@@ -257,7 +257,8 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
 
     library_manager.settle_playback_queue(true).await.expect("settle the playback queue");
     let playback_handle = bae_core::playback::PlaybackService::start(
-        library_manager.clone(),
+        database.clone(),
+        std::sync::Arc::new(coven::UuidIds),
         bae_core::db::PlaybackQueueTables::new(database.clone()),
         bae_core::db::PlaybackNowRow::new(database.clone()),
         bae_core::db::PlaybackTimelineRow::new(database.clone()),

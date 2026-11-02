@@ -3,11 +3,11 @@ use super::*;
 /// The service's follow of the sides of the staged crossing's tracks, reading
 /// nothing until a crossing is staged.
 pub(super) fn staged_sides_follow(
-    library_manager: &LibraryManager,
+    database: &crate::db::Database,
     diagnostics: &Diagnostics,
 ) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
     LibraryFollow::new(
-        library_manager.subscribe_playback_track_infos(Vec::new()),
+        database.subscribe_playback_track_infos(Vec::new()),
         Vec::new(),
         "the staged crossing's sides",
         diagnostics,
@@ -86,7 +86,8 @@ impl PlaybackService {
         };
 
         let prepared = prepare_track_for_playback(
-            &self.library_manager,
+            &self.database,
+            &self.diagnostics,
             track_id,
             &mut self.file_buffers,
             &self.command_tx,
@@ -223,7 +224,7 @@ impl PlaybackService {
         &self,
     ) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::db::DbError> {
         let Some(length) =
-            self.library_manager.preferences().await?.side_pause_countdown.duration()
+            crate::preferences::preferences(&self.database).await?.side_pause_countdown.duration()
         else {
             return Ok(None);
         };
@@ -239,17 +240,27 @@ impl PlaybackService {
         &self,
         current_id: &str,
         next_id: &str,
-    ) -> Result<Option<SideBoundary>, crate::library::LibraryError> {
+    ) -> Result<Option<SideBoundary>, PlaybackError> {
         if !self.side_pause_enabled().await? {
             return Ok(None);
         }
-        let current = self.library_manager.get_playback_track_info(current_id).await?;
-        let next = self.library_manager.get_playback_track_info(next_id).await?;
+        let current = self.playback_track_info(current_id).await?;
+        let next = self.playback_track_info(next_id).await?;
         Ok(side_boundary_between(&current, &next))
     }
 
+    /// `track_id`'s release and side as the library holds them now.
+    async fn playback_track_info(
+        &self,
+        track_id: &str,
+    ) -> Result<PlaybackTrackInfo, PlaybackError> {
+        PlaybackTrackInfo::read(&self.database, track_id)
+            .await?
+            .ok_or_else(|| PlaybackError::not_found("Track", track_id))
+    }
+
     pub(super) async fn side_pause_enabled(&self) -> Result<bool, crate::db::DbError> {
-        Ok(self.library_manager.preferences().await?.pause_between_sides
+        Ok(crate::preferences::preferences(&self.database).await?.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }
 

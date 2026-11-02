@@ -504,7 +504,6 @@ where
                     closing,
                     #[cfg(not(any(target_os = "ios", target_os = "android")))]
                     Arc::clone(&clock),
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
                     ids,
                     diagnostics.clone(),
                     runtime.handle().clone(),

@@ -13,6 +13,19 @@ pub struct PlaybackTrackInfo {
 }
 
 impl PlaybackTrackInfo {
+    /// `track_id`'s facts as the library holds them now; `None` when it
+    /// holds no such track.
+    pub(crate) async fn read(
+        database: &crate::db::Database,
+        track_id: &str,
+    ) -> Result<Option<Self>, crate::db::DbError> {
+        let Some(track) = database.find_track_by_id(track_id).await? else {
+            return Ok(None);
+        };
+        let mediums = database.get_release_mediums(&track.release_id).await?;
+        Ok(Some(Self::of(&track, &mediums)))
+    }
+
     /// The facts of `track`, which sits on one of `mediums`, its release's. A
     /// track on a medium with no physical carrier — a download, a disc of
     /// unstated carrier — is on no side playback pauses at.
@@ -341,7 +354,7 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 #[derive(Clone)]
 pub struct PlaybackHandle {
     /// The service thread and its command channel. Teardown joins the thread so
-    /// its `LibraryManager`, and with it the store's exclusive lock, is released
+    /// its `Database`, and with it the store's exclusive lock, is released
     /// before teardown returns; the service holds its own sender, so only
     /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,

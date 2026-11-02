@@ -181,7 +181,7 @@ impl LibraryManager {
             )));
         };
         let row = crate::db::DbPlaybackState { current: Some(current), position_ms };
-        self.save_playback_state(&row).await?;
+        self.database.save_playback_state(&row).await.map_err(LibraryError::from)?;
         Ok(())
     }
 }

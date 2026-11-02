@@ -429,7 +429,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         );
     }
     let queued: Vec<String> =
-        manager.queue_value().await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
+        manager.database().queue_value().await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
     assert_eq!(
         queued,
         std::slice::from_ref(&tracks[2]),

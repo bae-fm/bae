@@ -74,7 +74,6 @@ pub use fixture::{
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod export;
-mod history;
 mod image;
 mod lifecycle;
 mod locality;

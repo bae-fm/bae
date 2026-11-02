@@ -70,7 +70,7 @@ pub async fn start_library_services(
     #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
     #[cfg(desktop)] closing: CancellationToken,
     #[cfg(desktop)] clock: ClockRef,
-    #[cfg(desktop)] ids: IdSourceRef,
+    ids: IdSourceRef,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -87,7 +87,8 @@ pub async fn start_library_services(
     let views = crate::library::views::LibraryViews::new(database.clone());
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => crate::playback::PlaybackService::start(
-            manager.clone(),
+            database.clone(),
+            ids.clone(),
             queue_tables,
             now_row,
             timeline_row,
@@ -102,7 +103,8 @@ pub async fn start_library_services(
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackOutput::Device(device) => {
             crate::playback::PlaybackService::start_with_audio_device(
-                manager.clone(),
+                database.clone(),
+                ids.clone(),
                 queue_tables,
                 now_row,
                 timeline_row,

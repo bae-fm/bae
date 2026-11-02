@@ -194,8 +194,21 @@ async fn seeded_library_manager_with_track_length(
     (home, library)
 }
 
+/// A seeded test library, and the directory holding it, which outlives it.
+struct SeededLibrary {
+    library: TestLibrary,
+    _home: TempDir,
+}
+
+impl std::ops::Deref for SeededLibrary {
+    type Target = TestLibrary;
+    fn deref(&self) -> &TestLibrary {
+        &self.library
+    }
+}
+
 async fn test_playback_service(
-) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     seeded_playback_service(&[]).await
 }
 
@@ -233,10 +246,10 @@ fn recording_diagnostics(
 
 async fn seeded_playback_service(
     releases: &[(&str, &[&str])],
-) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, library) = seeded_library_manager(releases).await;
     let (service, progress_rx) = playback_service_over(&library);
-    (home, service, progress_rx)
+    (SeededLibrary { library, _home: home }, service, progress_rx)
 }
 
 /// Assemble a directly-drivable `PlaybackService` over a given library (with a
@@ -244,7 +257,6 @@ async fn seeded_playback_service(
 fn playback_service_over(
     library: &TestLibrary,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
-    let library_manager = LibraryManager::clone(library);
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let diagnostics = library.diagnostics().clone();
@@ -252,9 +264,10 @@ fn playback_service_over(
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
     let playback_queue =
         PlaybackQueue::new(crate::db::PlaybackQueueTables::new(library.database().clone()));
-    let staged_sides = advance::staged_sides_follow(&library_manager, &diagnostics);
+    let staged_sides = advance::staged_sides_follow(library.database(), &diagnostics);
     let service = PlaybackService {
-        library_manager,
+        database: library.database().clone(),
+        ids: library.ids().clone(),
         diagnostics,
         command_tx,
         command_rx,

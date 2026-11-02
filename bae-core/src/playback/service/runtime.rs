@@ -235,7 +235,7 @@ impl PlaybackService {
     /// resumes nothing, and the library opened with the queue emptied
     /// (`settle_playback_queue`).
     pub(super) async fn restore_from_cache(&mut self) {
-        match self.library_manager.load_playback_state().await {
+        match self.database.load_playback_state().await {
             Ok(Some(state)) => self.restore(state).await,
             Ok(None) => {}
             Err(e) => warn!("couldn't load the saved playback state: {e}; resuming nothing"),
@@ -293,18 +293,16 @@ impl PlaybackService {
                     None
                 }
                 Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
-                    Some(crate::library::LibraryError::TrackMapping(format!(
-                        "Track not found: {track_id}"
-                    )))
+                    Some(PlaybackError::not_found("Track", track_id.clone()))
                 }
-                Err(e) => Some(crate::library::LibraryError::from(e)),
+                Err(e) => Some(PlaybackError::from(e)),
             };
         if let Some(e) = failure {
             error!("Failed to play {track_id} from its release: {e}");
             self.telemetry_playback_failed(PlaybackOperation::LoadContext);
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PlaybackError { reason: PlaybackError::database(e).ui_reason() },
+                PlaybackProgress::PlaybackError { reason: e.ui_reason() },
             );
             return;
         }
@@ -592,6 +590,9 @@ impl PlaybackService {
             self.stop().await;
         }
     }
+    /// Playback reads the library's tracks and preferences and streams their
+    /// files from `database`, and writes its resume row and listening history
+    /// there, each play under an id `ids` mints.
     /// `restore_playback` controls whether startup resumes the saved track and
     /// position over the queue the tables hold; opening the library settled
     /// the tables for it first (`settle_playback_queue`). The crash-safe row
@@ -605,7 +606,8 @@ impl PlaybackService {
     /// track `track_deletions` names. Take `track_deletions` before the
     /// library can delete anything, so no deletion goes unheard.
     pub fn start(
-        library_manager: LibraryManager,
+        database: crate::db::Database,
+        ids: coven::IdSourceRef,
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
@@ -618,7 +620,8 @@ impl PlaybackService {
         audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         Self::start_inner(
-            library_manager,
+            database,
+            ids,
             queue_tables,
             now_row,
             timeline_row,
@@ -638,7 +641,8 @@ impl PlaybackService {
     /// touches no audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn start_with_audio_device(
-        library_manager: LibraryManager,
+        database: crate::db::Database,
+        ids: coven::IdSourceRef,
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
@@ -651,7 +655,8 @@ impl PlaybackService {
         clock: crate::playback::PlaybackClockRef,
     ) -> PlaybackHandle {
         Self::start_inner(
-            library_manager,
+            database,
+            ids,
             queue_tables,
             now_row,
             timeline_row,
@@ -668,7 +673,8 @@ impl PlaybackService {
     }
 
     pub(super) fn start_inner(
-        library_manager: LibraryManager,
+        database: crate::db::Database,
+        ids: coven::IdSourceRef,
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
@@ -729,10 +735,10 @@ impl PlaybackService {
                             position_update_interval_ms,
                             diagnostics.clone(),
                         );
-                        let staged_sides =
-                            advance::staged_sides_follow(&library_manager, &diagnostics);
+                        let staged_sides = advance::staged_sides_follow(&database, &diagnostics);
                         let mut service = PlaybackService {
-                            library_manager,
+                            database,
+                            ids,
                             diagnostics,
                             command_tx: command_tx.clone(),
                             command_rx,

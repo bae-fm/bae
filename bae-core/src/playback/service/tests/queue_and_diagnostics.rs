@@ -7,7 +7,7 @@ async fn context_lane(
     service: &PlaybackService,
     database: &crate::db::Database,
 ) -> (ContextSource, Vec<String>) {
-    let value = service.library_manager.queue_value().await.unwrap();
+    let value = service.database.queue_value().await.unwrap();
     let source = value.context.expect("a context lane").source;
     let order =
         crate::db::PlaybackQueueTables::new(database.clone()).context_order().await.unwrap();
@@ -92,7 +92,7 @@ async fn play_releases_skips_a_release_without_tracks() {
 #[tokio::test]
 async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let queue_before = service.library_manager.queue_value().await.unwrap();
+    let queue_before = service.database.queue_value().await.unwrap();
 
     service.handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string()).await;
 
@@ -109,7 +109,7 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     }
     assert!(saw_error, "a failed context load must surface a PlaybackError");
     assert_eq!(
-        service.library_manager.queue_value().await.unwrap(),
+        service.database.queue_value().await.unwrap(),
         queue_before,
         "a failed context load must not mutate the queue with a fallback single-track entry"
     );
