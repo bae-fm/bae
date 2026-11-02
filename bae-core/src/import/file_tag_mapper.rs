@@ -348,13 +348,13 @@ fn named_credits(names: &[String]) -> Vec<crate::import::SourceCredit> {
 }
 
 /// The values the file-tag and CUE-sheet readers share: one medium per disc
-/// the tracks state ([`crate::mediums::by_disc`]). A track naming the album's
+/// the tracks state ([`bae_types::mediums::by_disc`]). A track naming the album's
 /// artists, or none, takes the album's credits; one naming others has its own.
 /// A compilation is credited to the various-artists artist, and each of its
 /// tracks keeps the artists it names.
 fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseValues {
     let numbering: Vec<_> = tags.iter().map(|track| (track.disc, track.number)).collect();
-    let (mediums, places) = crate::mediums::by_disc(&numbering);
+    let (mediums, places) = bae_types::mediums::by_disc(&numbering);
     let album_artists =
         if album.compilation { vec![VARIOUS_ARTISTS_NAME.to_string()] } else { album.artists };
     let tracks: Vec<TrackValues> = tags

@@ -5,7 +5,7 @@ use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
 use std::sync::Arc;
 
 fn track_detail(
-    position: bae_core::album_detail::TrackPosition,
+    position: bae_types::mediums::TrackPosition,
     duration_ms: u64,
 ) -> bae_core::album_detail::TrackDetail {
     bae_core::album_detail::TrackDetail {
@@ -21,7 +21,7 @@ fn track_detail(
 
 #[test]
 fn track_group_precomputes_header_key_per_side() {
-    use bae_core::album_detail::{TrackPosition, TrackSide};
+    use bae_types::mediums::{TrackPosition, TrackSide};
 
     let cases = [
         (
@@ -53,7 +53,7 @@ fn track_group_precomputes_header_key_per_side() {
 
 #[test]
 fn track_precomputes_duration_clock() {
-    use bae_core::album_detail::TrackPosition;
+    use bae_types::mediums::TrackPosition;
 
     // A track's length renders a clock while the raw number is retained.
     let present = crate::types::BridgeTrack::from_core(track_detail(

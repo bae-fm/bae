@@ -401,7 +401,7 @@ mod conversion_roundtrip {
                 display: bae_core::album_detail::ReleaseEditDisplayContext {
                     source_audio: None,
                     sides: vec![bae_core::album_detail::ReleaseEditTrackSide {
-                        side: bae_core::album_detail::TrackSide::Disc { disc: 2 },
+                        side: bae_types::mediums::TrackSide::Disc { disc: 2 },
                         runs: vec![bae_core::album_detail::ReleaseEditTrackRun::Track(
                             bae_core::album_detail::ReleaseEditTrackContext {
                                 track_id: "track-id".to_string(),

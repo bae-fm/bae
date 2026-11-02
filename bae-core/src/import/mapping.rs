@@ -39,7 +39,7 @@ pub struct MappingTable {
 /// however many runs it holds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingTrackSide {
-    pub side: crate::album_detail::TrackSide,
+    pub side: bae_types::mediums::TrackSide,
     pub runs: Vec<MappingTrackRun>,
 }
 
@@ -408,7 +408,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 struct RowBuilder<'a> {
     durations: &'a SourceDurations,
     /// The draft's mediums, which its tracks' places read against.
-    mediums: &'a [crate::mediums::ReleaseMedium],
+    mediums: &'a [bae_types::mediums::ReleaseMedium],
     tracks: std::slice::Iter<'a, CandidateTrack>,
 }
 
@@ -417,7 +417,7 @@ impl RowBuilder<'_> {
     fn audio_row(
         &mut self,
         entry: &CandidateFile,
-    ) -> Result<(crate::album_detail::TrackSide, TrackMapping), ImportError> {
+    ) -> Result<(bae_types::mediums::TrackSide, TrackMapping), ImportError> {
         let unit = AudioFile::Standalone { file_id: entry.file.relative_path.clone() };
         let duration_ms = self.durations.duration_of(&unit);
         self.row(
@@ -431,7 +431,7 @@ impl RowBuilder<'_> {
     fn sheet_entries(
         &mut self,
         sheet: &BoundTrackSheet<'_>,
-    ) -> Result<Vec<(crate::album_detail::TrackSide, TrackMapping)>, ImportError> {
+    ) -> Result<Vec<(bae_types::mediums::TrackSide, TrackMapping)>, ImportError> {
         sheet
             .sheet
             .playable_tracks()
@@ -484,7 +484,7 @@ impl RowBuilder<'_> {
         unit: &AudioFile,
         source: MappingSource,
         probed_duration_ms: Option<u64>,
-    ) -> Result<(crate::album_detail::TrackSide, TrackMapping), ImportError> {
+    ) -> Result<(bae_types::mediums::TrackSide, TrackMapping), ImportError> {
         let track = match self.tracks.next() {
             Some(track) if track.edit.file == *unit => track,
             Some(track) => {
@@ -502,13 +502,13 @@ impl RowBuilder<'_> {
             }
         };
         let source_length = track.stated_length_ms;
-        let position = crate::mediums::track_position(&track.place, self.mediums);
+        let position = bae_types::mediums::track_position(&track.place, self.mediums);
         Ok((
-            crate::util::format::track_side(&position),
+            position.side(),
             TrackMapping {
                 source,
                 track: track.edit.as_edit(),
-                position: crate::util::format::track_position_text(&position),
+                position: position.text(),
                 duration_ms: source_length.or(probed_duration_ms),
                 lengths_disagree: crate::import::audio_layout::lengths_disagree(
                     probed_duration_ms,
@@ -523,7 +523,7 @@ impl RowBuilder<'_> {
 /// after it: a side is headed once for each stretch of rows it holds.
 fn side_runs(
     sides: &mut Vec<MappingTrackSide>,
-    side: crate::album_detail::TrackSide,
+    side: bae_types::mediums::TrackSide,
 ) -> &mut Vec<MappingTrackRun> {
     if sides.last().is_none_or(|last| last.side != side) {
         sides.push(MappingTrackSide { side, runs: Vec::new() });
@@ -534,7 +534,7 @@ fn side_runs(
 /// Append a loose row to the last run of loose rows on its side, or start one.
 fn push_track_mapping(
     sides: &mut Vec<MappingTrackSide>,
-    side: crate::album_detail::TrackSide,
+    side: bae_types::mediums::TrackSide,
     mapping: TrackMapping,
 ) {
     let runs = side_runs(sides, side);
@@ -550,7 +550,7 @@ fn push_track_mapping(
 fn push_sheet_entry(
     sides: &mut Vec<MappingTrackSide>,
     sheet: &SheetGroup,
-    side: crate::album_detail::TrackSide,
+    side: bae_types::mediums::TrackSide,
     mapping: TrackMapping,
 ) {
     let runs = side_runs(sides, side);

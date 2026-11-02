@@ -195,7 +195,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let second_disc = crate::db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
-        crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
+        bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
         chrono::Utc::now(),
     );
     second.medium_id.clone_from(&second_disc.id);
@@ -228,8 +228,8 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     assert_eq!(
         sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
         [
-            &crate::album_detail::TrackSide::Disc { disc: 1 },
-            &crate::album_detail::TrackSide::Disc { disc: 2 },
+            &bae_types::mediums::TrackSide::Disc { disc: 1 },
+            &bae_types::mediums::TrackSide::Disc { disc: 2 },
         ]
     );
     let crate::album_detail::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {

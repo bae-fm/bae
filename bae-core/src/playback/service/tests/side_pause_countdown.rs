@@ -193,7 +193,7 @@ fn info_on(
     PlaybackTrackInfo::of(&track, mediums)
 }
 
-fn release_of(mediums: &[crate::mediums::ReleaseMedium]) -> crate::db::DbReleaseMediums {
+fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> crate::db::DbReleaseMediums {
     crate::db::DbReleaseMediums(
         mediums
             .iter()
@@ -201,7 +201,7 @@ fn release_of(mediums: &[crate::mediums::ReleaseMedium]) -> crate::db::DbRelease
             .map(|(index, medium)| {
                 crate::db::DbReleaseMedium::new(
                     "release-id",
-                    crate::mediums::medium_position(index),
+                    bae_types::mediums::medium_position(index),
                     *medium,
                     chrono::Utc::now(),
                 )
@@ -214,7 +214,7 @@ fn release_of(mediums: &[crate::mediums::ReleaseMedium]) -> crate::db::DbRelease
 /// named by the disc that ended.
 #[test]
 fn a_cd_release_pauses_at_disc_changes_only() {
-    let cd = crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
+    let cd = bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
     let mediums = release_of(&[cd, cd]);
     let first = info_on("first", &mediums, (1, 1));
     let second = info_on("second", &mediums, (1, 1));
@@ -228,7 +228,7 @@ fn a_cd_release_pauses_at_disc_changes_only() {
 /// A 2×LP rip pauses at each side, named by its letter across both records.
 #[test]
 fn a_two_record_release_pauses_at_each_side() {
-    let record = crate::mediums::ReleaseMedium {
+    let record = bae_types::mediums::ReleaseMedium {
         carrier: Some(bae_types::pressing::Medium::Vinyl),
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
@@ -253,7 +253,7 @@ fn a_two_record_release_pauses_at_each_side() {
 /// A medium of no physical carrier never pauses.
 #[test]
 fn a_medium_of_no_carrier_never_pauses() {
-    let unstated = crate::mediums::ReleaseMedium::one_sided(None);
+    let unstated = bae_types::mediums::ReleaseMedium::one_sided(None);
     let mediums = release_of(&[unstated, unstated]);
     let first = info_on("first", &mediums, (1, 1));
     let second = info_on("second", &mediums, (2, 1));

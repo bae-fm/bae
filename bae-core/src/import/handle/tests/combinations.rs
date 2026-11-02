@@ -76,8 +76,8 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .map(|side| side.side.clone())
             .collect::<Vec<_>>(),
         [
-            crate::album_detail::TrackSide::Disc { disc: 1 },
-            crate::album_detail::TrackSide::Disc { disc: 2 }
+            bae_types::mediums::TrackSide::Disc { disc: 1 },
+            bae_types::mediums::TrackSide::Disc { disc: 2 }
         ],
         "each folder is a disc"
     );
@@ -90,7 +90,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         handle.library_manager.open_release_edit(&release_id).await.unwrap().opened().clone();
     assert_eq!(imported.edit.album_title, "Collected Volumes");
     assert_eq!(imported.edit.tracks.len(), 4);
-    let disc = |disc| crate::album_detail::TrackSide::Disc { disc };
+    let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
     assert_eq!(
         imported
             .display

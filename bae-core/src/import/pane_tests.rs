@@ -1,8 +1,8 @@
 use super::*;
 use crate::import::folder_scanner::{CandidateFile, FileRole, ScannedFile};
 
-fn place(medium: u16, side: u8, number: u32) -> crate::mediums::TrackPlace {
-    crate::mediums::TrackPlace {
+fn place(medium: u16, side: u8, number: u32) -> bae_types::mediums::TrackPlace {
+    bae_types::mediums::TrackPlace {
         medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
         side: std::num::NonZeroU8::new(side).expect("sides count from one"),
         number: std::num::NonZeroU32::new(number).expect("numbers count from one"),
@@ -29,8 +29,8 @@ fn draft(tracks: usize) -> CandidateDraft {
 
 /// A reading of tracks at `places` on `mediums`.
 fn metadata(
-    mediums: Vec<crate::mediums::ReleaseMedium>,
-    places: &[crate::mediums::TrackPlace],
+    mediums: Vec<bae_types::mediums::ReleaseMedium>,
+    places: &[bae_types::mediums::TrackPlace],
 ) -> ReleaseValues {
     ReleaseValues {
         album_title: "Album Title".to_string(),
@@ -58,7 +58,7 @@ fn metadata(
 fn one_disc(count: u32) -> ReleaseValues {
     let places: Vec<_> = (1..=count).map(|number| place(1, 1, number)).collect();
     metadata(
-        vec![crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd))],
+        vec![bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd))],
         &places,
     )
 }
@@ -67,7 +67,7 @@ fn one_disc(count: u32) -> ReleaseValues {
 #[test]
 fn metadata_splits_one_draft_disc_into_sides() {
     let current = draft(4);
-    let record = crate::mediums::ReleaseMedium {
+    let record = bae_types::mediums::ReleaseMedium {
         carrier: Some(bae_types::pressing::Medium::Vinyl),
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
@@ -85,7 +85,7 @@ fn metadata_splits_one_draft_disc_into_sides() {
 #[test]
 fn metadata_merges_two_draft_discs_into_one() {
     let mut current = draft(4);
-    current.mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
+    current.mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
     current.tracks[2].place = place(2, 1, 1);
     current.tracks[3].place = place(2, 1, 2);
     let laid = values_over_audio(one_disc(4), &current).unwrap();

@@ -309,11 +309,8 @@ impl ReleaseEditDisplayContext {
             source_audio: self.source_audio,
             sides: ReleaseEditTrackSide::lay_out(tracks.zip(positions).map(|(track, position)| {
                 (
-                    crate::util::format::track_side(&position),
-                    ReleaseEditTrackContext {
-                        position_text: crate::util::format::track_position_text(&position),
-                        ..track
-                    },
+                    position.side(),
+                    ReleaseEditTrackContext { position_text: position.text(), ..track },
                 )
             })),
         }
@@ -376,12 +373,12 @@ impl ReleaseEditDisplayContext {
             }
             let position = raw.mediums.position(&entry.track);
             contexts.push((
-                crate::util::format::track_side(&position),
+                position.side(),
                 ReleaseEditTrackContext {
                     track_id,
                     sources,
                     duration_ms: entry.track.duration_ms,
-                    position_text: crate::util::format::track_position_text(&position),
+                    position_text: position.text(),
                 },
             ));
         }
@@ -425,7 +422,7 @@ impl ReleaseDetail {
                     crate::credits::library_line(&entry.artists)
                 };
                 let position = raw.mediums.position(&entry.track);
-                let position_text = crate::util::format::track_position_text(&position);
+                let position_text = position.text();
                 // On a compilation each row carries its own artist, because the
                 // album header names no single one; on a single-artist album the
                 // row would only repeat the header, so it shows nothing.
@@ -442,7 +439,7 @@ impl ReleaseDetail {
             })
             .collect();
 
-        let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
+        let track_groups: Vec<TrackGroup> = super::group_tracks_by_side(&tracks);
 
         let remote = raw.remote;
         let playability = release_playability(&raw.unstored_audio);

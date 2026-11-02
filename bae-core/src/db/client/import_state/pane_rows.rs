@@ -157,7 +157,7 @@ pub(super) fn insert_draft_body(
              VALUES (?, ?, ?, ?)",
             params![
                 content_hash,
-                crate::mediums::medium_position(index),
+                bae_types::mediums::medium_position(index),
                 medium.carrier.map(bae_types::pressing::Medium::key),
                 medium.sides,
             ],
@@ -544,7 +544,7 @@ impl StoredDraftRow {
                             .ok_or_else(|| unreadable("draft medium", &key))
                     })
                     .transpose()?;
-                Ok(crate::mediums::ReleaseMedium { carrier, sides: medium.sides })
+                Ok(bae_types::mediums::ReleaseMedium { carrier, sides: medium.sides })
             })
             .collect::<Result<_, DbError>>()?;
         let tracks = decoded::<Vec<StoredTrack>>(&self.tracks, "tracks")?
@@ -643,7 +643,7 @@ impl StoredTrack {
             .map_err(|error| missing(&format!("a readable stated length ({error})")))?;
         Ok(CandidateTrack {
             edit: RawTrackEdit { id: self.track_id, title: self.title, artist_assignments, file },
-            place: crate::mediums::TrackPlace {
+            place: bae_types::mediums::TrackPlace {
                 medium: self.medium,
                 side: self.side,
                 number: self.track_number,

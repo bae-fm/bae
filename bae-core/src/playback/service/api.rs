@@ -30,10 +30,10 @@ impl PlaybackTrackInfo {
                     }
                     PhysicalMedium::Cd => PlaybackPauseBoundary::Disc,
                 };
-                let label = match crate::mediums::track_side(&place, &mediums.mediums()) {
-                    crate::album_detail::TrackSide::Sided { side_letter } => side_letter,
-                    crate::album_detail::TrackSide::Disc { disc } => disc.to_string(),
-                    crate::album_detail::TrackSide::Flat => place.medium.to_string(),
+                let label = match bae_types::mediums::track_side(&place, &mediums.mediums()) {
+                    bae_types::mediums::TrackSide::Sided { side_letter } => side_letter,
+                    bae_types::mediums::TrackSide::Disc { disc } => disc.to_string(),
+                    bae_types::mediums::TrackSide::Flat => place.medium.to_string(),
                 };
                 PlaybackTrackSide { medium: place.medium, side: place.side, boundary, label }
             });

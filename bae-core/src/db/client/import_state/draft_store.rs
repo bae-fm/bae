@@ -87,7 +87,7 @@ pub(super) fn store_draft(
 struct TrackRow<'a> {
     title: &'a str,
     takes_album_artists: bool,
-    place: &'a crate::mediums::TrackPlace,
+    place: &'a bae_types::mediums::TrackPlace,
     stated_length_ms: Option<u64>,
     file: &'a AudioFile,
 }
@@ -168,7 +168,7 @@ fn store_album_artist_assignments(
 /// The import list reads none of them.
 #[derive(PartialEq)]
 struct DraftBody<'a> {
-    mediums: &'a [crate::mediums::ReleaseMedium],
+    mediums: &'a [bae_types::mediums::ReleaseMedium],
     tracks: &'a [CandidateTrack],
     release_roles: &'a [crate::import::CreditedRole],
     works: &'a crate::import::WorkGraph,

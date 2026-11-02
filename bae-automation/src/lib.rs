@@ -5,7 +5,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_core::album_detail::{
     AudioFormat, FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail,
-    ReleaseStorageState, SearchResults, TrackDetail, TrackPosition, TrackSide,
+    ReleaseStorageState, SearchResults, TrackDetail,
 };
 use bae_core::config::McpConfig;
 use bae_core::db::LibraryStatus;
@@ -19,6 +19,7 @@ use bae_core::import::{
     PressingLink, SearchQuery, TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
+use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

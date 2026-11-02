@@ -16,7 +16,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         mediums: crate::db::DbReleaseMediums(vec![crate::db::DbReleaseMedium::new(
             "release-id",
             std::num::NonZeroU16::MIN,
-            crate::mediums::ReleaseMedium {
+            bae_types::mediums::ReleaseMedium {
                 carrier: Some(bae_types::pressing::Medium::Vinyl),
                 sides: std::num::NonZeroU8::new(2).expect("two sides"),
             },

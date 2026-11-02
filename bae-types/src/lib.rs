@@ -5,6 +5,7 @@
 
 #[cfg(desktop)]
 pub mod barcode;
+pub mod mediums;
 pub mod pressing;
 pub mod release_storage;
 pub mod text_match;

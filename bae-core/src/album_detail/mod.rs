@@ -3,7 +3,7 @@
 //!
 //! They carry **formatted labels, resolved paths, derived flags, and pre-computed
 //! totals**. `LibraryManager` produces them by combining raw DB aggregates (from
-//! `crate::db`) with the pure formatters in `crate::util::format`; the bridge is
+//! `crate::db`) with the position formatters of `bae_types::mediums`; the bridge is
 //! then a field-by-field copy to UniFFI types. That split is the invariant: once a
 //! caller holds a resolved type, derivation has already happened, and no consumer
 //! downstream re-computes anything.
@@ -17,7 +17,7 @@
 //! so a consumer holding a detail can treat it as a superset — and a UI reducer can
 //! intern the summary half and the detail half from one event payload.
 //!
-//! Tracks carry a core-rendered position string plus a structured [`TrackPosition`]
+//! Tracks carry a core-rendered position string plus a structured `TrackPosition`
 //! for grouping. A *side* is one contiguous playback unit — a CD disc, a vinyl face,
 //! a cassette face — and which it is depends on the release's format. The side
 //! letter, the disc-vs-side decision, and the position text are domain logic and
@@ -31,6 +31,7 @@
 //! lives with the type it produces.
 
 use crate::db::LibraryImageType;
+use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 
 mod album;
@@ -201,32 +202,6 @@ pub fn release_download_status(
     }
 }
 
-/// How a track's place reads ([`crate::mediums::track_position`]): on a
-/// lettered side of a record or cassette, on a numbered disc of a release of
-/// several mediums, or plain on a release of one. Core renders `position_text`
-/// from this; the UI only resolves the header word.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TrackPosition {
-    /// Header "Side A", position "A1". `side_letter` names the side among the
-    /// release's sided mediums (A, B, … Z, AA, …); `number` is the track's
-    /// number on that side.
-    Sided { side_letter: String, number: u32 },
-    /// Header "Disc 2", position "3" (the header carries the disc).
-    Disc { disc: u32, number: u32 },
-    /// Position "5", no header.
-    Flat { number: u32 },
-}
-
-/// What the UI renders as the "Side A" / "Disc 2" header; `Flat` means no header.
-/// Separate from [`TrackPosition`] because a header carries no per-track number —
-/// every track on a side shares one `TrackSide`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TrackSide {
-    Sided { side_letter: String },
-    Disc { disc: u32 },
-    Flat,
-}
-
 /// Track with resolved artist names and a structured display position.
 #[derive(Debug, Clone)]
 pub struct TrackDetail {
@@ -359,6 +334,29 @@ pub struct GalleryItem {
     /// `"Cover"`, or the file's original filename.
     pub label: String,
     pub source: GallerySource,
+}
+
+/// Group pre-sorted tracks by consecutive side. Two tracks share a group when
+/// their positions resolve to the same [`TrackSide`] (same side letter, same
+/// disc, or both flat).
+pub(crate) fn group_tracks_by_side(tracks: &[TrackDetail]) -> Vec<TrackGroup> {
+    let mut groups: Vec<TrackGroup> = Vec::new();
+    for track in tracks {
+        let side = track.position.side();
+        if let Some(last) = groups.last_mut() {
+            if last.side == side {
+                last.tracks.push(track.clone());
+                last.total_duration_ms += track.duration_ms;
+                continue;
+            }
+        }
+        groups.push(TrackGroup {
+            side,
+            tracks: vec![track.clone()],
+            total_duration_ms: track.duration_ms,
+        });
+    }
+    groups
 }
 
 #[cfg(test)]
@@ -498,5 +496,53 @@ mod tests {
     fn no_pin_on_offer_means_no_control() {
         assert_eq!(release_download_status(false, &[], None), None);
         assert_eq!(release_download_status(false, &[Upload], None,), None,);
+    }
+}
+
+#[cfg(test)]
+mod group_tests {
+    use super::*;
+
+    fn sided(letter: &str, number: u32) -> TrackPosition {
+        TrackPosition::Sided { side_letter: letter.to_string(), number }
+    }
+
+    fn track(id: &str, position: TrackPosition) -> TrackDetail {
+        TrackDetail {
+            id: id.to_string(),
+            title: String::new(),
+            duration_ms: 180_000,
+            artist_names: String::new(),
+            display_artist: None,
+            position_text: position.text(),
+            position,
+        }
+    }
+
+    #[test]
+    fn group_by_side_splits_on_side_letter() {
+        let tracks = vec![
+            track("a1", sided("A", 1)),
+            track("a2", sided("A", 2)),
+            track("b1", sided("B", 1)),
+        ];
+        let groups = group_tracks_by_side(&tracks);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].side, TrackSide::Sided { side_letter: "A".to_string() });
+        assert_eq!(groups[0].tracks.len(), 2);
+        assert_eq!(groups[1].side, TrackSide::Sided { side_letter: "B".to_string() });
+        assert_eq!(groups[1].tracks.len(), 1);
+    }
+
+    #[test]
+    fn group_by_side_single_flat_group() {
+        let tracks = vec![
+            track("1", TrackPosition::Flat { number: 1 }),
+            track("2", TrackPosition::Flat { number: 2 }),
+        ];
+        let groups = group_tracks_by_side(&tracks);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].side, TrackSide::Flat);
+        assert_eq!(groups[0].tracks.len(), 2);
     }
 }

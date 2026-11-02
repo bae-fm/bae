@@ -23,7 +23,7 @@ pub struct ReleaseDraft<Binding> {
     pub pressing: RawPressingEdit,
     /// The mediums the folder's audio is on, in order, as the source read them.
     /// Not edited: only applying a source writes them.
-    pub mediums: Vec<crate::mediums::ReleaseMedium>,
+    pub mediums: Vec<bae_types::mediums::ReleaseMedium>,
     pub tracks: Vec<DraftTrack<Binding>>,
     /// Who the source credits in a role on the release itself rather than on
     /// one track.
@@ -70,7 +70,7 @@ pub struct DraftTrack<Binding> {
     pub edit: RawTrackEdit<Binding>,
     /// Where it sits on the draft's mediums, as the source read it. Not
     /// edited: only applying a source writes it.
-    pub place: crate::mediums::TrackPlace,
+    pub place: bae_types::mediums::TrackPlace,
     /// The length the source the draft was read from lists for this track,
     /// shown beside its audio's own; unstated where the source lists none,
     /// and for a track read from the files or from nothing.
@@ -169,7 +169,7 @@ impl CandidateTrack {
     /// A track read from no source but the folder: what the person types, or
     /// a track the folder gained after a source was applied. The source
     /// states nothing about it but where the folder puts it.
-    pub fn unsourced(edit: RawTrackEdit<AudioFile>, place: crate::mediums::TrackPlace) -> Self {
+    pub fn unsourced(edit: RawTrackEdit<AudioFile>, place: bae_types::mediums::TrackPlace) -> Self {
         Self { edit, place, stated_length_ms: None, roles: Vec::new(), works: Vec::new() }
     }
 }

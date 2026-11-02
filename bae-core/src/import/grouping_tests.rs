@@ -166,7 +166,7 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
         .collect();
     assert_eq!(
         edit.tracks.iter().map(|track| track.place).collect::<Vec<_>>(),
-        crate::mediums::by_disc(&laid_out).1,
+        bae_types::mediums::by_disc(&laid_out).1,
         "the folders' layout places the tracks, whatever their tags say"
     );
     assert_eq!(edit.tracks[2].title, "Tagged Track 2");

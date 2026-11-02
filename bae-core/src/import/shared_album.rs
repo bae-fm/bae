@@ -81,8 +81,8 @@ impl SharedAlbum {
 /// and the mediums and track places it lays the audio on.
 pub(crate) struct OfferedReading {
     pub edit: RawReleaseEdit,
-    pub mediums: Vec<crate::mediums::ReleaseMedium>,
-    pub places: Vec<crate::mediums::TrackPlace>,
+    pub mediums: Vec<bae_types::mediums::ReleaseMedium>,
+    pub places: Vec<bae_types::mediums::TrackPlace>,
 }
 
 impl OfferedReading {

@@ -208,7 +208,7 @@ impl LibraryManager {
             draft
                 .tracks
                 .iter()
-                .map(|track| crate::mediums::track_position(&track.place, &draft.mediums)),
+                .map(|track| bae_types::mediums::track_position(&track.place, &draft.mediums)),
         );
         let work = {
             let mut work = session.work();

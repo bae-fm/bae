@@ -255,7 +255,7 @@ pub(crate) fn medium_sides(
     let mut current = NonZeroU8::MIN;
     for letter in letters {
         if let Some(letter) = letter {
-            current = crate::mediums::side_number(usize::from(letter - base));
+            current = bae_types::mediums::side_number(usize::from(letter - base));
         }
         sides.push(current);
     }
@@ -446,12 +446,13 @@ pub(crate) fn values(
 
     let mut tracks: Vec<TrackValues> = Vec::new();
     let mut mediums = Vec::new();
-    let mut placer = crate::mediums::Placer::default();
+    let mut placer = bae_types::mediums::Placer::default();
     let mut works = WorkGraphBuilder::default();
     for (index, medium) in release.covered_mediums(coverage).enumerate() {
         let sides = medium_sides(release_id, medium)?;
-        mediums.push(crate::mediums::ReleaseMedium { carrier: medium.medium, sides: sides.count });
-        let position = crate::mediums::medium_position(index);
+        mediums
+            .push(bae_types::mediums::ReleaseMedium { carrier: medium.medium, sides: sides.count });
+        let position = bae_types::mediums::medium_position(index);
 
         for (track, &side) in medium.entries.iter().zip(&sides.sides) {
             let credits = crate::import::source_release::stated_credits(&track.credits);

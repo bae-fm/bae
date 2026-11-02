@@ -13,7 +13,7 @@ fn place(medium: u16, side: u8, number: u32) -> TrackPlace {
 }
 
 fn label(place: &TrackPlace, mediums: &[ReleaseMedium]) -> String {
-    crate::util::format::track_position_text(&track_position(place, mediums))
+    track_position(place, mediums).text()
 }
 
 /// Two records read A1 … D5: the second record's sides go on from the first's.
@@ -75,22 +75,9 @@ fn an_unnumbered_track_takes_its_place_on_its_own_side() {
     assert_eq!(placer.place(disc_two, side, None), place(2, 1, 2), "the second track of disc 2");
 }
 
-/// A file or a Subsonic song states its track's medium as its disc, for a
-/// release of several mediums only.
 #[test]
-fn the_disc_a_track_states_is_its_medium_of_several() {
-    let row = |position: u16| {
-        crate::db::DbReleaseMedium::new(
-            "release-id",
-            NonZeroU16::new(position).expect("mediums count from one"),
-            ReleaseMedium::one_sided(Some(Medium::Cd)),
-            chrono::Utc::now(),
-        )
-    };
-    let mut track = crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", 3);
-    let one = crate::db::DbReleaseMediums(vec![row(1)]);
-    assert_eq!(one.disc_number(&track), None);
-    let two = crate::db::DbReleaseMediums(vec![row(1), row(2)]);
-    track.medium_id.clone_from(&two.0[1].id);
-    assert_eq!(two.disc_number(&track), Some(2));
+fn track_position_text_renders_each_variant() {
+    assert_eq!(TrackPosition::Sided { side_letter: "A".to_string(), number: 2 }.text(), "A2");
+    assert_eq!(TrackPosition::Disc { disc: 2, number: 3 }.text(), "3");
+    assert_eq!(TrackPosition::Flat { number: 5 }.text(), "5");
 }

@@ -23,8 +23,8 @@ fn credit(name: &str) -> ArtistCredit {
     }
 }
 
-fn place(medium: u16, number: u32) -> crate::mediums::TrackPlace {
-    crate::mediums::TrackPlace {
+fn place(medium: u16, number: u32) -> bae_types::mediums::TrackPlace {
+    bae_types::mediums::TrackPlace {
         medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
         side: std::num::NonZeroU8::MIN,
         number: std::num::NonZeroU32::new(number).expect("numbers count from one"),
@@ -57,7 +57,7 @@ fn draft() -> CandidateDraft {
             barcodes: Vec::new(),
             facts: Default::default(),
         },
-        mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(
+        mediums: vec![bae_types::mediums::ReleaseMedium::one_sided(Some(
             bae_types::pressing::Medium::Cd,
         ))],
         tracks: vec![track(0, "First Track"), track(1, "Second Track")],
@@ -284,7 +284,7 @@ fn each_track_row_sits_on_the_medium_row_its_place_names() {
     let mut draft = draft();
     draft
         .mediums
-        .push(crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)));
+        .push(bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)));
     draft.tracks[1].place = place(2, 1);
     let parsed = assemble(&draft).parsed;
 

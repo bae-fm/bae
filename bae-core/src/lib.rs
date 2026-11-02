@@ -29,7 +29,6 @@ pub mod logging;
 pub mod followed;
 #[cfg(desktop)]
 pub mod loudness;
-pub mod mediums;
 pub mod migrations;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod open_files_peak;
@@ -56,4 +55,3 @@ pub(crate) mod test_images;
 pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
-pub mod util;

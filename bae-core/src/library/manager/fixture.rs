@@ -139,7 +139,7 @@ impl LibraryManager {
         let medium = crate::db::DbReleaseMedium::new(
             &release_id,
             std::num::NonZeroU16::MIN,
-            crate::mediums::ReleaseMedium::one_sided(None),
+            bae_types::mediums::ReleaseMedium::one_sided(None),
             added,
         );
         let tracks = album

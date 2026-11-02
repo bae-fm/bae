@@ -177,8 +177,8 @@ fn a_cd_rip_of_the_mixed_box_reads_its_two_cds() {
         assert_eq!(
             values.mediums,
             [
-                crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
-                crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+                bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+                bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
             ],
             "the release holds the two CDs the rip covers, and none of the box's records"
         );

@@ -7,8 +7,7 @@
 //! values, written when a source is applied; a track's label ("A1",
 //! "Disc 2 · 3", "5") is a display of them.
 
-use crate::album_detail::{TrackPosition, TrackSide};
-use bae_types::pressing::Medium;
+use crate::pressing::Medium;
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
 
 /// One medium a release holds.
@@ -69,6 +68,57 @@ impl Placer {
             NonZeroU32::new(*before).expect("a side's count is at least one once a track is on it")
         });
         TrackPlace { medium, side, number }
+    }
+}
+
+/// How a track's place reads ([`track_position`]): on a
+/// lettered side of a record or cassette, on a numbered disc of a release of
+/// several mediums, or plain on a release of one. Core renders `position_text`
+/// from this; the UI only resolves the header word.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrackPosition {
+    /// Header "Side A", position "A1". `side_letter` names the side among the
+    /// release's sided mediums (A, B, … Z, AA, …); `number` is the track's
+    /// number on that side.
+    Sided { side_letter: String, number: u32 },
+    /// Header "Disc 2", position "3" (the header carries the disc).
+    Disc { disc: u32, number: u32 },
+    /// Position "5", no header.
+    Flat { number: u32 },
+}
+
+/// What the UI renders as the "Side A" / "Disc 2" header; `Flat` means no header.
+/// Separate from [`TrackPosition`] because a header carries no per-track number —
+/// every track on a side shares one `TrackSide`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrackSide {
+    Sided { side_letter: String },
+    Disc { disc: u32 },
+    Flat,
+}
+
+impl TrackPosition {
+    /// The per-track position label: "A1", or the track's number where the
+    /// disc is the group header or there is none.
+    pub fn text(&self) -> String {
+        match self {
+            Self::Sided { side_letter, number } => format!("{side_letter}{number}"),
+            // The disc is the group header; repeating it on every row is noise.
+            Self::Disc { number, .. } | Self::Flat { number } => number.to_string(),
+        }
+    }
+
+    /// The side the track belongs to — the grouping discriminant. Every track
+    /// on a side yields the same value, so consecutive-equal grouping lands
+    /// one group per side. Carries no per-track number (a header has none).
+    pub fn side(&self) -> TrackSide {
+        match self {
+            Self::Sided { side_letter, .. } => {
+                TrackSide::Sided { side_letter: side_letter.clone() }
+            }
+            Self::Disc { disc, .. } => TrackSide::Disc { disc: *disc },
+            Self::Flat { .. } => TrackSide::Flat,
+        }
     }
 }
 
@@ -155,7 +205,7 @@ pub fn track_position(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackPos
 
 /// The side or disc `place` is on, on a release holding `mediums`.
 pub fn track_side(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackSide {
-    crate::util::format::track_side(&track_position(place, mediums))
+    track_position(place, mediums).side()
 }
 
 #[cfg(test)]

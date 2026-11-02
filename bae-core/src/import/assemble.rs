@@ -134,7 +134,7 @@ pub(crate) fn assemble_rows<Binding: TrackBinding>(
         .map(|(index, medium)| {
             crate::db::DbReleaseMedium::new(
                 &release.id,
-                crate::mediums::medium_position(index),
+                bae_types::mediums::medium_position(index),
                 *medium,
                 now,
             )

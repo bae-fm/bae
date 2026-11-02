@@ -31,7 +31,7 @@ impl FolderCandidate {
             }
             let numbering: Vec<_> =
                 layout.iter().map(|track| (track.disc, Some(track.number))).collect();
-            let (mediums, places) = crate::mediums::by_disc(&numbering);
+            let (mediums, places) = bae_types::mediums::by_disc(&numbering);
             values.mediums = mediums;
             for (track, place) in values.tracks.iter_mut().zip(places) {
                 track.place = place;

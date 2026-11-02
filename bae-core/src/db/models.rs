@@ -324,7 +324,7 @@ pub struct DbReleaseMedium {
     pub id: String,
     pub release_id: String,
     pub position: std::num::NonZeroU16,
-    pub medium: crate::mediums::ReleaseMedium,
+    pub medium: bae_types::mediums::ReleaseMedium,
     pub created_at: DateTime<Utc>,
 }
 
@@ -333,7 +333,7 @@ impl DbReleaseMedium {
     pub fn new(
         release_id: &str,
         position: std::num::NonZeroU16,
-        medium: crate::mediums::ReleaseMedium,
+        medium: bae_types::mediums::ReleaseMedium,
         created_at: DateTime<Utc>,
     ) -> Self {
         Self {
@@ -352,19 +352,19 @@ pub struct DbReleaseMediums(pub Vec<DbReleaseMedium>);
 
 impl DbReleaseMediums {
     /// The mediums alone, in order.
-    pub fn mediums(&self) -> Vec<crate::mediums::ReleaseMedium> {
+    pub fn mediums(&self) -> Vec<bae_types::mediums::ReleaseMedium> {
         self.0.iter().map(|row| row.medium).collect()
     }
 
     /// Where `track`, one of this release's, sits. Its medium is one of these:
     /// the schema refuses a track whose medium row is missing.
-    pub fn place(&self, track: &DbTrack) -> crate::mediums::TrackPlace {
+    pub fn place(&self, track: &DbTrack) -> bae_types::mediums::TrackPlace {
         let medium = self
             .0
             .iter()
             .find(|medium| medium.id == track.medium_id)
             .expect("a track's medium row is its release's");
-        crate::mediums::TrackPlace {
+        bae_types::mediums::TrackPlace {
             medium: medium.position,
             side: track.side,
             number: track.track_number,
@@ -372,8 +372,8 @@ impl DbReleaseMediums {
     }
 
     /// How `track` reads among these mediums.
-    pub fn position(&self, track: &DbTrack) -> crate::album_detail::TrackPosition {
-        crate::mediums::track_position(&self.place(track), &self.mediums())
+    pub fn position(&self, track: &DbTrack) -> bae_types::mediums::TrackPosition {
+        bae_types::mediums::track_position(&self.place(track), &self.mediums())
     }
 
     /// The disc number a surface outside bae states for `track` (a saved
@@ -779,7 +779,7 @@ impl DbReleaseMedium {
         Self::new(
             release_id,
             std::num::NonZeroU16::MIN,
-            crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
+            bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
             chrono::Utc::now(),
         )
     }
@@ -842,3 +842,7 @@ impl DbAudioFormat {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "models_tests.rs"]
+mod tests;

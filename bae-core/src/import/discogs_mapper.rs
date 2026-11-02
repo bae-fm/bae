@@ -331,8 +331,8 @@ pub(crate) fn values(
 /// letter; a track with no letter is on the side of the one before it), and
 /// numbered by its position, else by its place on that side.
 struct CoveredLayout {
-    mediums: Vec<crate::mediums::ReleaseMedium>,
-    places: Vec<crate::mediums::TrackPlace>,
+    mediums: Vec<bae_types::mediums::ReleaseMedium>,
+    places: Vec<bae_types::mediums::TrackPlace>,
 }
 
 fn covered_layout(
@@ -378,21 +378,21 @@ fn covered_layout(
             let mut current = std::num::NonZeroU8::MIN;
             for track in &on_medium {
                 if let Some(letter) = letters[*track] {
-                    current = crate::mediums::side_number(usize::from(letter - base));
+                    current = bae_types::mediums::side_number(usize::from(letter - base));
                 }
                 sides[*track] = current;
                 count = count.max(current);
             }
         }
-        mediums.push(crate::mediums::ReleaseMedium { carrier: medium.medium, sides: count });
+        mediums.push(bae_types::mediums::ReleaseMedium { carrier: medium.medium, sides: count });
     }
-    let mut placer = crate::mediums::Placer::default();
+    let mut placer = bae_types::mediums::Placer::default();
     let places = processed
         .iter()
         .enumerate()
         .map(|(track, pt)| {
             placer.place(
-                crate::mediums::medium_position(track_mediums[track]),
+                bae_types::mediums::medium_position(track_mediums[track]),
                 sides[track],
                 position_number(&pt.position),
             )
@@ -404,7 +404,7 @@ fn covered_layout(
 /// One track's values from a processed Discogs track at `place`. A collapsed
 /// track holds every source row's composers, and its display artists once each
 /// by Discogs artist id, first occurrence (and its join) winning.
-fn discogs_track_values(pt: &ProcessedTrack, place: crate::mediums::TrackPlace) -> TrackValues {
+fn discogs_track_values(pt: &ProcessedTrack, place: bae_types::mediums::TrackPlace) -> TrackValues {
     let mut roles = Vec::new();
     let mut credits: Vec<crate::import::SourceCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();

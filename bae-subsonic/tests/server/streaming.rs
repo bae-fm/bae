@@ -374,7 +374,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     let medium = bae_core::db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::MIN,
-        bae_core::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
+        bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
         now,
     );
     let track = DbTrack {

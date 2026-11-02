@@ -27,7 +27,7 @@ pub(crate) struct ReleaseValues {
     pub album_year: Option<i32>,
     pub pressing: Pressing,
     /// The mediums the audio is on, in order.
-    pub mediums: Vec<crate::mediums::ReleaseMedium>,
+    pub mediums: Vec<bae_types::mediums::ReleaseMedium>,
     /// Who the source credits in a role on the release itself.
     pub release_roles: Vec<CreditedRole>,
     /// Every work a track performs, once.
@@ -41,7 +41,7 @@ pub(crate) struct ReleaseValues {
 pub(crate) struct TrackValues {
     pub title: String,
     /// Where it sits on the reading's mediums.
-    pub place: crate::mediums::TrackPlace,
+    pub place: bae_types::mediums::TrackPlace,
     /// The length the source lists for the track.
     pub stated_length_ms: Option<u64>,
     pub credits: TrackCredits,
@@ -306,13 +306,13 @@ pub(crate) fn committed_artists(
 /// reader's test checks places with.
 #[cfg(test)]
 pub(crate) fn place_labels(
-    mediums: &[crate::mediums::ReleaseMedium],
-    places: impl IntoIterator<Item = crate::mediums::TrackPlace>,
+    mediums: &[bae_types::mediums::ReleaseMedium],
+    places: impl IntoIterator<Item = bae_types::mediums::TrackPlace>,
 ) -> Vec<String> {
-    use crate::album_detail::TrackPosition;
+    use bae_types::mediums::TrackPosition;
     places
         .into_iter()
-        .map(|place| match crate::mediums::track_position(&place, mediums) {
+        .map(|place| match bae_types::mediums::track_position(&place, mediums) {
             TrackPosition::Sided { side_letter, number } => format!("{side_letter}{number}"),
             TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
             TrackPosition::Flat { number } => number.to_string(),
@@ -338,7 +338,7 @@ pub(crate) fn row_labels(rows: &crate::import::ReleaseRows) -> Vec<String> {
                 .iter()
                 .find(|medium| medium.id == track.medium_id)
                 .expect("a track row's medium is one of the release's");
-            crate::mediums::TrackPlace {
+            bae_types::mediums::TrackPlace {
                 medium: medium.position,
                 side: track.side,
                 number: track.track_number,

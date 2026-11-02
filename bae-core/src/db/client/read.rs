@@ -577,7 +577,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
         id: row.get("id")?,
         release_id: row.get("release_id")?,
         position: row.get("position")?,
-        medium: crate::mediums::ReleaseMedium { carrier, sides: row.get("side_count")? },
+        medium: bae_types::mediums::ReleaseMedium { carrier, sides: row.get("side_count")? },
         created_at: rfc3339_column(row, "created_at")?,
     })
 }

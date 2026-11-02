@@ -120,7 +120,7 @@ fn row(title: &str, catalog_number: &str, tracks: &[&str]) -> RawReleaseEdit {
 fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
     rows.into_iter()
         .map(|edit| {
-            let mut placer = crate::mediums::Placer::default();
+            let mut placer = bae_types::mediums::Placer::default();
             let places = edit
                 .tracks
                 .iter()
@@ -128,7 +128,7 @@ fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
                 .collect();
             OfferedReading {
                 edit,
-                mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd))],
+                mediums: vec![bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd))],
                 places,
             }
         })
@@ -165,7 +165,7 @@ fn draft() -> CandidateDraft {
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
                     file: AudioFile::Standalone { file_id: format!("{position}.flac") },
                 },
-                place: crate::mediums::TrackPlace {
+                place: bae_types::mediums::TrackPlace {
                     medium: std::num::NonZeroU16::MIN,
                     side: std::num::NonZeroU8::MIN,
                     number: std::num::NonZeroU32::new(position as u32 + 1).expect("from one"),
@@ -175,7 +175,7 @@ fn draft() -> CandidateDraft {
                 works: Vec::new(),
             })
             .collect(),
-        mediums: vec![crate::mediums::ReleaseMedium::one_sided(None)],
+        mediums: vec![bae_types::mediums::ReleaseMedium::one_sided(None)],
         release_roles: Vec::new(),
         works: Default::default(),
     }

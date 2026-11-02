@@ -407,7 +407,7 @@ pub enum BridgeTrackSide {
 }
 
 mirror_enum! {
-    BridgeTrackSide = bae_core::album_detail::TrackSide,
+    BridgeTrackSide = bae_types::mediums::TrackSide,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,

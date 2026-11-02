@@ -28,7 +28,7 @@ pub(crate) fn candidate_track_id(position: usize) -> String {
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft {
     let layout = crate::import::audio_layout::folder_tracks(files);
     let numbering: Vec<_> = layout.iter().map(|track| (track.disc, Some(track.number))).collect();
-    let (mediums, places) = crate::mediums::by_disc(&numbering);
+    let (mediums, places) = bae_types::mediums::by_disc(&numbering);
     let tracks = layout
         .into_iter()
         .zip(places)
@@ -150,13 +150,13 @@ pub(crate) fn edit_over_audio(
 /// numbered in order.
 #[cfg(test)]
 pub(crate) fn draft_of_edit(edit: RawReleaseEdit) -> CandidateDraft {
-    let mut placer = crate::mediums::Placer::default();
+    let mut placer = bae_types::mediums::Placer::default();
     CandidateDraft {
         album_title: edit.album_title,
         album_artist_assignments: edit.album_artist_assignments,
         album_year: edit.album_year,
         pressing: edit.pressing,
-        mediums: vec![crate::mediums::ReleaseMedium::one_sided(None)],
+        mediums: vec![bae_types::mediums::ReleaseMedium::one_sided(None)],
         tracks: edit
             .tracks
             .into_iter()
@@ -238,9 +238,9 @@ pub(crate) fn redraw_draft_for_files(
     ids: &dyn coven::IdSource,
 ) -> CandidateDraft {
     let mut mediums = draft.mediums.clone();
-    let mut laid_out = |place: crate::mediums::TrackPlace| {
+    let mut laid_out = |place: bae_types::mediums::TrackPlace| {
         while mediums.len() <= place.medium_index() {
-            mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
+            mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
         }
         place
     };
@@ -278,9 +278,9 @@ pub(crate) fn redraw_draft_for_files(
 /// the tracks placed on them: a medium the folder's audio no longer reaches
 /// is not one of the release's.
 fn without_empty_mediums(
-    mediums: Vec<crate::mediums::ReleaseMedium>,
+    mediums: Vec<bae_types::mediums::ReleaseMedium>,
     mut tracks: Vec<CandidateTrack>,
-) -> (Vec<crate::mediums::ReleaseMedium>, Vec<CandidateTrack>) {
+) -> (Vec<bae_types::mediums::ReleaseMedium>, Vec<CandidateTrack>) {
     let used: std::collections::BTreeSet<usize> =
         tracks.iter().map(|track| track.place.medium_index()).collect();
     let kept: Vec<usize> = used.into_iter().collect();
@@ -289,7 +289,7 @@ fn without_empty_mediums(
             .iter()
             .position(|kept| *kept == track.place.medium_index())
             .expect("every track's medium is kept");
-        track.place.medium = crate::mediums::medium_position(index);
+        track.place.medium = bae_types::mediums::medium_position(index);
     }
     (kept.into_iter().map(|index| mediums[index]).collect(), tracks)
 }
