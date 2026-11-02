@@ -232,13 +232,13 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
             &bae_types::mediums::TrackSide::Disc { disc: 2 },
         ]
     );
-    let crate::album_detail::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
+    let crate::import::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
     assert_eq!(first_context.sources[0].layout, crate::db::source_audio::SourceAudioLayout::File);
     // A track playing two files is no sheet's run, though a sheet carves both.
-    let crate::album_detail::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
+    let crate::import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("a track over two files is a run of its own");
     };
     assert_eq!(second_context.track_id, second.id);

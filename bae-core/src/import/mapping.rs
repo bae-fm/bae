@@ -35,7 +35,7 @@ pub struct MappingTable {
 /// One side of the track table — a disc of a multi-disc set, a side of a
 /// record, or the one flat side — and the runs of rows on it, in table order.
 /// The same shape the release editor's table draws
-/// ([`crate::album_detail::ReleaseEditTrackSide`]): one heading per side,
+/// ([`crate::import::ReleaseEditTrackSide`]): one heading per side,
 /// however many runs it holds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingTrackSide {

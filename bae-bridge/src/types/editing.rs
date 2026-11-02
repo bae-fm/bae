@@ -688,7 +688,7 @@ pub struct BridgeReleaseEditTrackContext {
 }
 
 /// Consecutive tracks of one side that the editor's table draws together.
-/// Mirrors `bae_core::album_detail::ReleaseEditTrackRun`.
+/// Mirrors `bae_core::import::ReleaseEditTrackRun`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
@@ -699,7 +699,7 @@ pub enum BridgeReleaseEditTrackRun {
 }
 
 /// One side of the release in the editor's track table and the runs of
-/// tracks on it. Mirrors `bae_core::album_detail::ReleaseEditTrackSide`.
+/// tracks on it. Mirrors `bae_core::import::ReleaseEditTrackSide`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,

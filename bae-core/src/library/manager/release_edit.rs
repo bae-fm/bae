@@ -104,7 +104,7 @@ impl LibraryManager {
             LibraryError::Refused(format!("Album '{}' not found", release.album_id))
         })?;
         let display =
-            crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
+            crate::import::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
         let cover = crate::db::cover_ref(release_id, context.detail.cover_version.clone());
 
         let album_artist_assignments: Vec<crate::import::Credited> =

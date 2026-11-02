@@ -33,8 +33,13 @@ pub use artist_assignment::{
     CreditResolution, Credited, ExistingArtist, ResolvedCredit,
 };
 mod raw_release_edit;
+mod release_edit_display;
 pub use raw_release_edit::{
     EditValidationError, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+};
+pub use release_edit_display::{
+    ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRun,
+    ReleaseEditTrackSide, ReleaseEditTrackSource,
 };
 mod candidate_draft;
 pub use candidate_draft::{
@@ -235,7 +240,7 @@ pub enum DraftAlbum {
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
     pub cover: Option<crate::db::ImageRef>,
-    pub display: crate::album_detail::ReleaseEditDisplayContext,
+    pub display: crate::import::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
 }
 

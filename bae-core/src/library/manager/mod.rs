@@ -161,7 +161,7 @@ pub enum LibraryError {
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
     #[error("Release editor cannot load: {0}")]
-    ReleaseEditLoad(#[from] crate::album_detail::ReleaseEditLoadError),
+    ReleaseEditLoad(#[from] crate::import::ReleaseEditLoadError),
     /// A release edit session's save found the release changed since the
     /// session opened on it, and wrote nothing.
     #[error("Release '{release_id}' changed since its edit session opened")]

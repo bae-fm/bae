@@ -350,8 +350,9 @@ pub use types::{
     CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited, DraftAlbum,
     DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, LibraryDraft, LibraryTrack,
     MetadataProvenance, PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseUserEdit, ResolvedCredit,
-    TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    RawTrackEdit, ReleaseDraft, ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditSeed,
+    ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseUserEdit, ResolvedCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

@@ -30,7 +30,7 @@
 //! (covers, pin state, cloud-home presence) and hands that in, so the derivation
 //! lives with the type it produces.
 
-use crate::db::source_audio::{SourceAudioFile, SourceAudioLayout, SourceAudioSummary};
+use crate::db::source_audio::{SourceAudioFile, SourceAudioSummary};
 use crate::db::{cover_ref, ImageRef};
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;

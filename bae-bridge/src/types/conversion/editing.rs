@@ -153,14 +153,14 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditTrackSource = bae_core::album_detail::ReleaseEditTrackSource,
+    BridgeReleaseEditTrackSource = bae_core::import::ReleaseEditTrackSource,
     from_core: fn,
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
 impl BridgeReleaseEditTrackContext {
-    fn from_core(context: bae_core::album_detail::ReleaseEditTrackContext) -> Self {
-        let bae_core::album_detail::ReleaseEditTrackContext {
+    fn from_core(context: bae_core::import::ReleaseEditTrackContext) -> Self {
+        let bae_core::import::ReleaseEditTrackContext {
             track_id,
             sources,
             duration_ms,
@@ -176,7 +176,7 @@ impl BridgeReleaseEditTrackContext {
 }
 
 mirror_enum! {
-    BridgeReleaseEditTrackRun = bae_core::album_detail::ReleaseEditTrackRun,
+    BridgeReleaseEditTrackRun = bae_core::import::ReleaseEditTrackRun,
     from_core: fn,
     variants: {
         Track(track: (BridgeReleaseEditTrackContext)),
@@ -190,8 +190,8 @@ mirror_enum! {
 /// Not a `mirror_struct`: `header_key` is derived from the side rather than
 /// carried by core, so a side reads a field instead of asking.
 impl BridgeReleaseEditTrackSide {
-    fn from_core(side: bae_core::album_detail::ReleaseEditTrackSide) -> Self {
-        let bae_core::album_detail::ReleaseEditTrackSide { side, runs } = side;
+    fn from_core(side: bae_core::import::ReleaseEditTrackSide) -> Self {
+        let bae_core::import::ReleaseEditTrackSide { side, runs } = side;
         let side = BridgeTrackSide::from_core(side);
         Self {
             header_key: side.header_key().map(str::to_string),
@@ -202,7 +202,7 @@ impl BridgeReleaseEditTrackSide {
 }
 
 mirror_struct! {
-    BridgeReleaseEditDisplayContext = bae_core::album_detail::ReleaseEditDisplayContext,
+    BridgeReleaseEditDisplayContext = bae_core::import::ReleaseEditDisplayContext,
     from_core: fn,
     fields: {
         source_audio: (opt BridgeSourceAudioSummary),

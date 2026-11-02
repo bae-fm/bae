@@ -398,14 +398,14 @@ mod conversion_roundtrip {
             let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
                 edit: edit.clone(),
                 cover: None,
-                display: bae_core::album_detail::ReleaseEditDisplayContext {
+                display: bae_core::import::ReleaseEditDisplayContext {
                     source_audio: None,
-                    sides: vec![bae_core::album_detail::ReleaseEditTrackSide {
+                    sides: vec![bae_core::import::ReleaseEditTrackSide {
                         side: bae_types::mediums::TrackSide::Disc { disc: 2 },
-                        runs: vec![bae_core::album_detail::ReleaseEditTrackRun::Track(
-                            bae_core::album_detail::ReleaseEditTrackContext {
+                        runs: vec![bae_core::import::ReleaseEditTrackRun::Track(
+                            bae_core::import::ReleaseEditTrackContext {
                                 track_id: "track-id".to_string(),
-                                sources: vec![bae_core::album_detail::ReleaseEditTrackSource {
+                                sources: vec![bae_core::import::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
                                     layout: bae_core::db::source_audio::SourceAudioLayout::File,
