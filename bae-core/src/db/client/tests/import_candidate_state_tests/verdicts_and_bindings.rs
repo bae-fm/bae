@@ -34,8 +34,8 @@ fn sample_ledger() -> IdentifyRunView {
                 disc_id: "disc-1".to_string(),
                 lookup: LookupView::Found {
                     count: 1,
-                    groups: crate::import::release_group::group_results(
-                        crate::import::release_group::unranked(vec![sample_match()]),
+                    groups: crate::identify::release_group::group_results(
+                        crate::identify::release_group::unranked(vec![sample_match()]),
                         None,
                     ),
                 },
@@ -195,8 +195,8 @@ fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::So
     .unwrap()
 }
 
-fn release_link(release_id: &str) -> crate::import::PressingLink {
-    crate::import::PressingLink {
+fn release_link(release_id: &str) -> crate::identify::PressingLink {
+    crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),

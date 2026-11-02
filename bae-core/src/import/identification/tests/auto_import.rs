@@ -323,7 +323,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .import
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-typed".to_string(),

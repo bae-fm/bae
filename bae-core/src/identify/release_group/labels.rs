@@ -128,11 +128,11 @@ mod tests {
                 record(LookupCatalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
             ],
         };
-        let paired = crate::import::pressing_evidence::PressingEvidence::between(
-            &crate::import::pressing_evidence::ComparedPressing::of(&pressing.releases[0]),
-            &crate::import::pressing_evidence::ComparedPressing::of(&pressing.releases[1]),
+        let paired = crate::identify::pressing_evidence::PressingEvidence::between(
+            &crate::identify::pressing_evidence::ComparedPressing::of(&pressing.releases[0]),
+            &crate::identify::pressing_evidence::ComparedPressing::of(&pressing.releases[1]),
         );
-        assert_eq!(paired.label, crate::import::pressing_evidence::Comparison::Same);
+        assert_eq!(paired.label, crate::identify::pressing_evidence::Comparison::Same);
         assert_eq!(pressing.labels().len(), 1);
         assert_eq!(pressing.label_lines(), vec![line("Harbor Records", &["AB-100"])]);
     }

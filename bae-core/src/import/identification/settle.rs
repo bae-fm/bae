@@ -43,7 +43,7 @@ pub(super) struct Finished {
 enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
-        link: crate::import::PressingLink,
+        link: crate::identify::PressingLink,
         release: crate::catalog_model::source_release::SourceRelease,
         partners: Vec<crate::catalog_model::source_release::SourceRelease>,
         /// The primary and the partners as their read stores them, which the

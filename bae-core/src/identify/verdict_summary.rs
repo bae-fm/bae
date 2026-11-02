@@ -152,7 +152,7 @@ impl VerdictSummary {
             kind,
             track_count,
             pressing_count: findings.map_or(0, |findings| {
-                crate::import::release_group::row_count(&findings.pressings) as u32
+                crate::identify::release_group::row_count(&findings.pressings) as u32
             }),
             lead: findings.and_then(|findings| findings.matches.first().map(LeadMatch::of)),
             medium_conflict: findings.and_then(|findings| findings.medium_conflict),

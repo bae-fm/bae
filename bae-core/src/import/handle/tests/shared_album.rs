@@ -189,7 +189,7 @@ async fn a_pick_replaces_the_album_link() {
 
     assert_eq!(
         link(&handle, &hash).await,
-        Some(ReleaseLink::Pressing(crate::import::PressingLink {
+        Some(ReleaseLink::Pressing(crate::identify::PressingLink {
             record: LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-pressing-2"),
             partners: Vec::new(),
         }))

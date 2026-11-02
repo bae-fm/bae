@@ -53,7 +53,7 @@ pub struct NewImportCandidateVerdict {
 /// read from it.
 #[derive(Debug, Clone)]
 pub struct VerdictPick {
-    pub link: crate::import::PressingLink,
+    pub link: crate::identify::PressingLink,
     pub metadata: crate::import::CandidateMetadataDraft,
 }
 

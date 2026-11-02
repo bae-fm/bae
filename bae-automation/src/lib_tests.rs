@@ -342,11 +342,11 @@ mod identify_mirrors {
     fn disc_id_ledger(
         found: &[bae_core::catalog_model::search::MetadataResult],
     ) -> bae_core::identify::IdentifyRunView {
+        use bae_core::identify::release_group::{group_results, unranked};
         use bae_core::identify::{
             BarcodeStepView, CatalogStepView, DiscIdRow, DiscIdStepView, IdentifyRunView,
             IsrcStepView, LookupView, SearchStepView,
         };
-        use bae_core::import::release_group::{group_results, unranked};
         IdentifyRunView {
             providers: vec![LookupCatalog::MusicBrainz],
             disc_id: DiscIdStepView::Read {

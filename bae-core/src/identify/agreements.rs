@@ -114,14 +114,14 @@ pub(crate) fn agreements_of(
 }
 
 /// Each match paired with its agreements, for
-/// [`crate::import::release_group::group_results`]. `by_disc_id` holds the
+/// [`crate::identify::release_group::group_results`]. `by_disc_id` holds the
 /// releases the lookups of the folder's disc IDs returned.
 pub(crate) fn judged_results(
     matches: Vec<MetadataResult>,
     by_disc_id: &HashSet<LookupRef>,
     text: &CandidateText,
     facts: &FolderFacts,
-) -> Vec<crate::import::release_group::Judged> {
+) -> Vec<crate::identify::release_group::Judged> {
     matches
         .into_iter()
         .map(|result| {

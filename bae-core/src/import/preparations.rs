@@ -314,7 +314,7 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::import::CandidateKey,
-        link: &crate::import::PressingLink,
+        link: &crate::identify::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
         releases: Vec<crate::catalog_model::source_release::SourceRelease>,

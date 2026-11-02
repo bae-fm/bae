@@ -295,7 +295,7 @@ impl LookupView {
         if results.is_empty() {
             return LookupView::NoMatch;
         }
-        let groups = group_results(crate::import::release_group::unranked(results.clone()), None);
+        let groups = group_results(crate::identify::release_group::unranked(results.clone()), None);
         LookupView::Found {
             count: groups.iter().map(|group| group.pressings().count() as u32).sum(),
             groups,

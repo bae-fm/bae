@@ -246,7 +246,7 @@ mod tests {
     /// read into — the reading names them, it does not derive them.
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
-        let pick = ReleaseLink::Pressing(crate::import::PressingLink {
+        let pick = ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string(),

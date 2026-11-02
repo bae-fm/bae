@@ -17,7 +17,7 @@ async fn linked_cover_gallery_can_be_empty() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),
@@ -66,7 +66,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     discogs_release_id.to_string(),
@@ -86,7 +86,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .expect("the candidate row reads back");
     assert_eq!(
         stored.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 discogs_release_id.to_string()
@@ -136,7 +136,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -186,7 +186,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -265,7 +265,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink { record: release.clone(), partners: vec![] },
+            crate::identify::PressingLink { record: release.clone(), partners: vec![] },
             crate::import::CatalogApplySteps::unread(),
         )
         .await
@@ -445,7 +445,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id,
@@ -518,7 +518,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     primary,
@@ -603,7 +603,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink { record: picked.clone(), partners: vec![] },
+            crate::identify::PressingLink { record: picked.clone(), partners: vec![] },
             crate::import::CatalogApplySteps::unread(),
         )
         .await
@@ -654,7 +654,7 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
     handle
         .select_candidate_release(
             key,
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     discogs_release_id.to_string(),
@@ -699,7 +699,7 @@ async fn a_pick_of_a_held_release_tells_no_read() {
             .await;
     let mb_release_id = "steps-held-mb-rel-1";
     seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-held-mb-group-1");
-    let link = crate::import::PressingLink {
+    let link = crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             mb_release_id.to_string(),

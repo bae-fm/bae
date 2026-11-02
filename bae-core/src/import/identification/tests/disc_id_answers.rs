@@ -113,7 +113,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::import::PressingLink { record: release.clone(), partners: vec![] },
+            crate::identify::PressingLink { record: release.clone(), partners: vec![] },
             crate::import::CatalogApplySteps::unread(),
         )
         .await

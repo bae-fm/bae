@@ -67,8 +67,6 @@ pub mod preparation;
 #[cfg(desktop)]
 pub mod preparations;
 #[cfg(desktop)]
-pub(crate) mod pressing_evidence;
-#[cfg(desktop)]
 pub mod probe;
 /// What one reading of a source says a release is, as plain values.
 #[cfg(desktop)]
@@ -76,8 +74,6 @@ pub(crate) mod reading_draft;
 pub mod relative_folder;
 #[cfg(desktop)]
 pub mod release_candidate;
-#[cfg(desktop)]
-pub mod release_group;
 #[cfg(desktop)]
 pub(crate) mod scrub_points;
 #[cfg(desktop)]
@@ -315,13 +311,15 @@ pub use triage::{
 #[cfg(desktop)]
 pub use types::ImportCommand;
 pub use types::{
-    artists_standing, credited_line, AlbumLink, ArtistAssignment, ArtistStanding, ArtistsStanding,
-    AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited,
-    DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, LibraryDraft,
-    LibraryTrack, MetadataProvenance, PressingFactEdit, PressingLink, RawLabelEdit,
-    RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink,
-    ReleaseUserEdit, ResolvedCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, AudioFile,
+    CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited, DraftAlbum,
+    DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, LibraryDraft, LibraryTrack,
+    MetadataProvenance, PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseUserEdit, ResolvedCredit,
+    TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
+#[cfg(desktop)]
+pub use types::{AlbumLink, ReleaseLink};
 #[cfg(desktop)]
 pub use types::{
     CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,

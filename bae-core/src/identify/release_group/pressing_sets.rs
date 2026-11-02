@@ -2,7 +2,7 @@
 //! evidence the records carry, or read off rows a run already formed.
 
 use crate::catalog_model::search::MetadataResult;
-use crate::import::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
+use crate::identify::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
 
 /// The sets of records each already-formed row holds, in the shape
 /// [`gather_pressings`] names them: indexes into the result list, in list

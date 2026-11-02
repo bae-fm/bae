@@ -393,7 +393,7 @@ impl ImportServiceHandle {
     pub(super) async fn pick_candidate_release_write(
         &self,
         candidate_key: crate::import::CandidateKey,
-        link: crate::import::PressingLink,
+        link: crate::identify::PressingLink,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;

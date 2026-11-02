@@ -47,7 +47,7 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(groups[0].title, "Album Title: Subtitle");
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
@@ -78,7 +78,7 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
@@ -315,7 +315,7 @@ fn a_paired_row_is_picked_with_its_partner() {
     let groups = grouped(vec![one, other]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
@@ -334,7 +334,7 @@ fn a_lone_row_is_picked_with_no_partner() {
     let groups = grouped(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::Discogs,
                 "dg-1".to_string()

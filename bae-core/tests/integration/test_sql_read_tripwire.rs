@@ -82,7 +82,7 @@ async fn pure_reads_use_the_read_connection() {
                 track_titles: Vec::new(),
             },
             pick: Some(bae_core::db::VerdictPick {
-                link: bae_core::import::PressingLink {
+                link: bae_core::identify::PressingLink {
                     record: bae_core::catalog_model::records::LookupRef::new(
                         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                         "unwritten-release",

@@ -169,7 +169,7 @@ impl LibraryManager {
     pub async fn apply_release_edit_catalog(
         &self,
         session: &ReleaseEditSession,
-        link: &crate::import::PressingLink,
+        link: &crate::identify::PressingLink,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         let release_id = session.release_id();

@@ -50,10 +50,10 @@ fn resumed(
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             // Rows formed the way a run forms them.
-            pressings: crate::import::release_group::form_rows(&matches),
+            pressings: crate::identify::release_group::form_rows(&matches),
             matches,
             narrowed_out: NarrowedOut {
-                pressings: crate::import::release_group::form_rows(&narrowed_out),
+                pressings: crate::identify::release_group::form_rows(&narrowed_out),
                 matches: narrowed_out,
             },
             medium_conflict: None,

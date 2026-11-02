@@ -6,7 +6,8 @@
 use super::*;
 use crate::catalog_model::SearchQuery;
 use crate::identify::LookupChoiceEdit;
-use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome, PressingLink};
+use crate::identify::PressingLink;
+use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome};
 
 impl AppServices {
     /// Import the candidate the pane shows.

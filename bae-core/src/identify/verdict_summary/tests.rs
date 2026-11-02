@@ -34,7 +34,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
 }
 
 fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
-    let pressings = crate::import::release_group::form_rows(&matches);
+    let pressings = crate::identify::release_group::form_rows(&matches);
     TerminalVerdict::Found {
         findings: Findings {
             matches,
@@ -153,7 +153,7 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
 fn the_pressing_count_is_the_rows_the_run_recorded() {
     let matches = vec![barcoded(result("mb-1", listing(11)), BARCODE), discogs("d-1", BARCODE)];
     assert_eq!(
-        crate::import::release_group::form_rows(&matches),
+        crate::identify::release_group::form_rows(&matches),
         vec![0, 0],
         "forming rows over this list alone makes the two one row"
     );

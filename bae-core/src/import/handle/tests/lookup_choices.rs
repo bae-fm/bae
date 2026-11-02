@@ -244,7 +244,7 @@ pub(super) async fn pick(
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id.to_string(),

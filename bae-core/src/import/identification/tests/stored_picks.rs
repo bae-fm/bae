@@ -47,7 +47,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         queue_row(&fixture, &key).await.release_link.expect("the row carries the decision");
     assert_eq!(
         picked,
-        crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+        crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-answer-1".to_string()
@@ -138,7 +138,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
             import
                 .select_candidate_release(
                     key,
-                    crate::import::PressingLink {
+                    crate::identify::PressingLink {
                         record: crate::catalog_model::records::LookupRef::new(
                             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             "mb-picked-1".to_string(),
@@ -177,7 +177,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     let row = queue_row(&fixture, &key).await;
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-picked-1".to_string(),
@@ -206,7 +206,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     fixture.archive("mb-answer-1", "rg-answer-1", &[probed, 0]).await;
     fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
 
-    let pick = crate::import::PressingLink {
+    let pick = crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             "mb-answer-1".to_string(),
@@ -536,7 +536,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .import
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-stated-1".to_string(),

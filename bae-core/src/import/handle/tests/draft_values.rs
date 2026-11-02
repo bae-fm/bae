@@ -69,7 +69,7 @@ async fn pick_mb(
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
+            crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id,

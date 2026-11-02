@@ -29,12 +29,38 @@
 //! pressing year ordering the rows and the source name ordering the records
 //! within one.
 
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::{LookupRef, MetadataRef};
 use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::Agreements;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::RemoteCover;
 use pressing_sets::{formed_pressings, gather_pressings};
+
+/// The pressing a candidate is linked to: the row a person picked, or
+/// identification picked unattended, under every catalog's record of it that
+/// the pick claims.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PressingLink {
+    /// The catalog's release the pick names first.
+    pub record: LookupRef,
+    /// The other catalogs' releases the picked pressing paired with. Find
+    /// online pairs a MusicBrainz release and a Discogs release into one
+    /// pressing row when the evidence their records carry says they name one
+    /// physical object; picking the row claims both. Each names a different
+    /// source from the primary and from every other partner.
+    ///
+    /// This is what the person picked, not what one provider says about
+    /// another — a cross-reference an editor linked stays inferred from the
+    /// documents.
+    pub partners: Vec<LookupRef>,
+}
+
+impl PressingLink {
+    /// Every release the link claims, the primary first.
+    pub fn claimed(&self) -> impl Iterator<Item = &LookupRef> {
+        std::iter::once(&self.record).chain(&self.partners)
+    }
+}
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
@@ -203,13 +229,10 @@ impl Pressing {
     /// most about stands for it and the other is the same object already
     /// claimed. Deciding it here rather than on each surface is what keeps
     /// macOS, Windows, Linux and the sweep picking the same thing.
-    pub(crate) fn claims(
-        &self,
-    ) -> (crate::catalog_model::records::LookupRef, Vec<crate::catalog_model::records::LookupRef>)
-    {
+    pub(crate) fn claims(&self) -> (LookupRef, Vec<LookupRef>) {
         let mut releases = self.releases.iter().map(MetadataResult::release);
         let primary = releases.next().expect("a pressing is built from at least one release");
-        let mut partners: Vec<crate::catalog_model::records::LookupRef> = Vec::new();
+        let mut partners: Vec<LookupRef> = Vec::new();
         for release in releases {
             let claimed = release.catalog == primary.catalog
                 || partners.iter().any(|partner| partner.catalog == release.catalog);
@@ -234,9 +257,9 @@ impl Pressing {
 
     /// What picking this row claims — the primary release and each other
     /// catalog's record of the same pressing — as the link a pick stores.
-    pub fn pick(&self) -> crate::import::PressingLink {
+    pub fn pick(&self) -> PressingLink {
         let (primary, partners) = self.claims();
-        crate::import::PressingLink { record: primary, partners }
+        PressingLink { record: primary, partners }
     }
 }
 

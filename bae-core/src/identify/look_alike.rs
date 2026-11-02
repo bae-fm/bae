@@ -24,7 +24,7 @@
 //! would compare that detail too.
 
 use super::agreements::Agreements;
-use crate::import::release_group::{Judgements, Pressing};
+use crate::identify::release_group::{Judgements, Pressing};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_types::pressing::{LabelLine, PressingFacts};
 use std::collections::{HashMap, HashSet};

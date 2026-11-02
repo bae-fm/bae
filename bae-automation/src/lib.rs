@@ -12,13 +12,13 @@ use bae_core::catalog_model::search::MetadataResult;
 use bae_core::catalog_model::SearchQuery;
 use bae_core::config::McpConfig;
 use bae_core::db::LibraryStatus;
+use bae_core::identify::release_group::ReleaseGroup;
+use bae_core::identify::PressingLink;
 use bae_core::import::folder_scanner::InvalidCandidate;
-use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::{
     CandidateEditField, CandidateImportStatus, CandidateKey, CandidateRuntimeSnapshot,
     CoverSelection, GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight,
-    ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, PressingLink,
-    TrackUserEdit, TriageTab,
+    ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
 use bae_types::audio_format::AudioFormat;

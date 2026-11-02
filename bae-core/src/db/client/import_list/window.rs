@@ -24,14 +24,14 @@ use super::super::source_releases::load_release_records_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
+use crate::identify::PressingLink;
 use crate::import::folder_scanner::{FileVersion, ScanItem};
 use crate::import::list::{ImportListItem, ListedRelease};
 use crate::import::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::import::{
-    CandidateKey, CoverSelection, FolderReleaseDecisionKey, PressingLink, RelativeFolder,
-    ReleaseLink,
+    CandidateKey, CoverSelection, FolderReleaseDecisionKey, RelativeFolder, ReleaseLink,
 };
 use crate::library::UploadProgress;
 use std::path::{Path, PathBuf};

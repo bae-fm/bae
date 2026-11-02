@@ -267,14 +267,14 @@ impl BridgeIdentifyRun {
 }
 
 mirror_struct! {
-    BridgeReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
+    BridgeReleaseGroupSource = bae_core::identify::release_group::ReleaseGroupSource,
     from_core: fn,
     fields: { source: (BridgeCatalog), group_url, album_links_unread },
 }
 
 impl BridgeReleaseGroup {
-    pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
-        let bae_core::import::release_group::ReleaseGroup {
+    pub(crate) fn from_core(g: bae_core::identify::release_group::ReleaseGroup) -> Self {
+        let bae_core::identify::release_group::ReleaseGroup {
             id,
             title,
             artist,
@@ -300,8 +300,8 @@ impl BridgeReleaseGroup {
 }
 
 impl BridgePressingSection {
-    fn from_core(section: bae_core::import::release_group::PressingSection) -> Self {
-        let bae_core::import::release_group::PressingSection { album, pressings, narrowed_out } =
+    fn from_core(section: bae_core::identify::release_group::PressingSection) -> Self {
+        let bae_core::identify::release_group::PressingSection { album, pressings, narrowed_out } =
             section;
         BridgePressingSection {
             album: album.map(BridgeAlbumHeading::from_core),
@@ -312,13 +312,13 @@ impl BridgePressingSection {
 }
 
 mirror_struct! {
-    BridgeAlbumHeading = bae_core::import::release_group::AlbumHeading,
+    BridgeAlbumHeading = bae_core::identify::release_group::AlbumHeading,
     from_core: fn,
     fields: { title, source: (BridgeReleaseGroupSource) },
 }
 
 impl BridgePressing {
-    fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
+    fn from_core(pressing: bae_core::identify::release_group::Pressing) -> Self {
         // The row's summary is what a pick applies: its lead record's facts.
         // Each record's own facts stay on it, in `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());

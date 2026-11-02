@@ -273,14 +273,14 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
+    AutomationReleaseGroupSource = bae_core::identify::release_group::ReleaseGroupSource,
     from_core: pub(crate) fn,
     fields: { source: (into), group_url, album_links_unread },
 }
 
 impl AutomationPressing {
     /// `pick` is derived by core from the row's releases, not stored.
-    pub(crate) fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
+    pub(crate) fn from_core(pressing: bae_core::identify::release_group::Pressing) -> Self {
         Self {
             pick: AutomationPressingLink::from_core(pressing.pick()),
             releases: pressing
@@ -309,7 +309,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationPressingSection = bae_core::import::release_group::PressingSection,
+    AutomationPressingSection = bae_core::identify::release_group::PressingSection,
     from_core: pub(crate) fn,
     fields: {
         album: (opt AutomationAlbumHeading),
@@ -319,7 +319,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationAlbumHeading = bae_core::import::release_group::AlbumHeading,
+    AutomationAlbumHeading = bae_core::identify::release_group::AlbumHeading,
     from_core: pub(crate) fn,
     fields: { title, source: (AutomationReleaseGroupSource) },
 }

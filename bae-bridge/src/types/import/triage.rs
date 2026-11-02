@@ -592,7 +592,7 @@ impl BridgeReleaseLink {
 }
 
 /// The pressing a pick links a candidate to. Mirrors
-/// `bae_core::import::PressingLink`.
+/// `bae_core::identify::PressingLink`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePressingLink {
     /// The catalog's release the pick names first.
@@ -603,7 +603,7 @@ pub struct BridgePressingLink {
 
 #[cfg(feature = "desktop")]
 impl BridgePressingLink {
-    pub(crate) fn from_core(link: bae_core::import::PressingLink) -> Self {
+    pub(crate) fn from_core(link: bae_core::identify::PressingLink) -> Self {
         Self {
             record: crate::types::BridgeLookupRef::from_core(link.record),
             partners: link
@@ -614,8 +614,8 @@ impl BridgePressingLink {
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::PressingLink {
-        bae_core::import::PressingLink {
+    pub(crate) fn into_core(self) -> bae_core::identify::PressingLink {
+        bae_core::identify::PressingLink {
             record: self.record.into_core(),
             partners: self
                 .partners

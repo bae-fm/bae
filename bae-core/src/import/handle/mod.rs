@@ -301,7 +301,7 @@ pub enum ImportEvent {
 /// statuses the UI looks up by release id.
 #[derive(Debug, Clone)]
 pub struct GroupedSearchResults {
-    pub groups: Vec<crate::import::release_group::ReleaseGroup>,
+    pub groups: Vec<crate::identify::release_group::ReleaseGroup>,
     pub statuses: Vec<crate::db::LibraryStatus>,
 }
 

@@ -27,7 +27,7 @@ impl AppServices {
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_select_candidate_release => select_candidate_release(candidate_key: crate::import::CandidateKey, link: crate::import::PressingLink, steps: crate::import::CatalogApplySteps) -> Result<u64, crate::import::ImportError>);
+    delegate_async!(import, import_select_candidate_release => select_candidate_release(candidate_key: crate::import::CandidateKey, link: crate::identify::PressingLink, steps: crate::import::CatalogApplySteps) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_file_tags => select_candidate_file_tags(candidate_key: crate::import::CandidateKey) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: crate::import::CandidateKey) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: std::path::PathBuf) -> Result<(), crate::import::ImportError>);

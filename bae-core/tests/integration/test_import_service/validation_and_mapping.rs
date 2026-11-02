@@ -111,7 +111,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     f.handle
         .select_candidate_release(
             candidate_key.clone(),
-            bae_core::import::PressingLink {
+            bae_core::identify::PressingLink {
                 record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
@@ -212,7 +212,7 @@ async fn pick_release_for_folder(
     f.handle
         .select_candidate_release(
             candidate_key.clone(),
-            bae_core::import::PressingLink {
+            bae_core::identify::PressingLink {
                 record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
             },
@@ -264,8 +264,8 @@ async fn pick_release(
         .await
 }
 
-fn pressing_link(mb_id: &str) -> bae_core::import::PressingLink {
-    bae_core::import::PressingLink {
+fn pressing_link(mb_id: &str) -> bae_core::identify::PressingLink {
+    bae_core::identify::PressingLink {
         record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
         partners: vec![],
     }
@@ -506,7 +506,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::PressingLink {
+        support::DraftSource::Pick(bae_core::identify::PressingLink {
             record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),
@@ -546,7 +546,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::PressingLink {
+        support::DraftSource::Pick(bae_core::identify::PressingLink {
             record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),

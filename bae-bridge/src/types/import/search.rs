@@ -79,7 +79,7 @@ pub fn bridge_unusable_barcode_key(reason: BridgeUnusableBarcode) -> String {
 }
 
 /// An album, as one or both sources describe it, with the pressings they
-/// surfaced for it. Mirrors `bae_core::import::release_group::ReleaseGroup` —
+/// surfaced for it. Mirrors `bae_core::identify::release_group::ReleaseGroup` —
 /// the grouping, the cross-source merge and the pressing pairing all happen in
 /// core; the UI iterates and renders.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -108,7 +108,7 @@ pub struct BridgeReleaseGroup {
 }
 
 /// One album's rows on a card. Mirrors
-/// `bae_core::import::release_group::PressingSection`.
+/// `bae_core::identify::release_group::PressingSection`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressingSection {
     /// The album the rows are pressings of, where the card splits its rows by

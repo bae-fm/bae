@@ -63,7 +63,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+            Some(&crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
                 record,
                 partners: vec![],
             })),
@@ -85,7 +85,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     let projection = read.expect("the list read waited on the folder's rip log").unwrap();
     assert_eq!(
         rows(&projection)[0].release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-picked"

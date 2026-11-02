@@ -195,10 +195,9 @@ impl LibraryManager {
                 self.preparations
                     .replace_link(
                         &content_hash,
-                        Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-                            record,
-                            partners: Vec::new(),
-                        })),
+                        Some(&crate::import::ReleaseLink::Pressing(
+                            crate::identify::PressingLink { record, partners: Vec::new() },
+                        )),
                         &[],
                     )
                     .await?;

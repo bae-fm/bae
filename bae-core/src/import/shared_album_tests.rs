@@ -1,7 +1,7 @@
 use super::*;
 use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::search::MetadataResult;
-use crate::import::release_group::{group_results, unranked};
+use crate::identify::release_group::{group_results, unranked};
 use crate::import::{AudioFile, CandidateTrack, RawPressingEdit, RawTrackEdit};
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{MediaCount, Medium, PressingFacts};

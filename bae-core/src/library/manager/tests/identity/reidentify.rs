@@ -20,7 +20,7 @@ async fn stored_for(
 
 /// Apply `link` in an edit session of its own on `release_id` and save it as
 /// applied.
-async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::import::PressingLink) {
+async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::identify::PressingLink) {
     let session = manager.open_release_edit(release_id).await.unwrap();
     let seed = manager
         .apply_release_edit_catalog(&session, &link, &crate::import::CatalogApplySteps::unread())
@@ -59,8 +59,8 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
     }
 }
 
-fn musicbrainz_link(release_id: &str) -> crate::import::PressingLink {
-    crate::import::PressingLink {
+fn musicbrainz_link(release_id: &str) -> crate::identify::PressingLink {
+    crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id),
         partners: vec![],
     }
@@ -320,7 +320,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     reidentify(
         &manager,
         &release.id,
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, discogs_release_id),
             partners: vec![],
         },
@@ -646,7 +646,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     reidentify(
         &manager,
         &release.id,
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: LookupRef::new(LookupCatalog::MusicBrainz, mb_release_id),
             partners: vec![LookupRef::new(LookupCatalog::Discogs, discogs_release_id)],
         },

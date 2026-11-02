@@ -52,7 +52,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+            Some(&crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
                 record: crate::catalog_model::records::LookupRef::new(
                     LookupCatalog::MusicBrainz,
                     "mb-linked",

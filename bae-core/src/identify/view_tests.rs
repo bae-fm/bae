@@ -1,11 +1,11 @@
 use super::*;
 use crate::catalog_model::search::MetadataResult;
+use crate::identify::release_group::unranked;
 use crate::identify::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
     ProviderLookup, SearchProgress, ValueLookup,
 };
 use crate::identify::{Findings, IdentifyFailure, NarrowedOut, TerminalVerdict};
-use crate::import::release_group::unranked;
 use crate::signals::SourcedValue;
 use bae_catalogs::catalog::LookupCatalog;
 
@@ -641,7 +641,7 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         "each album is one card across the disclosure, the offering one first"
     );
     assert_eq!(groups[0].sections.len(), 1);
-    let rows = |pressings: &[crate::import::release_group::Pressing]| -> Vec<String> {
+    let rows = |pressings: &[crate::identify::release_group::Pressing]| -> Vec<String> {
         pressings.iter().map(|pressing| pressing.lead().release_id.clone()).collect()
     };
     assert_eq!(rows(&groups[0].sections[0].pressings), vec!["mb-shared"]);

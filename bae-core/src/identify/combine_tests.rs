@@ -473,9 +473,9 @@ fn rows(
     let judged =
         crate::identify::agreements::judged_results(matches.to_vec(), by_disc_id, text, &facts);
     let judgements = Judgements::of(&judged, None);
-    crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[], None)
+    crate::identify::release_group::group_formed_rows(judged, pressings, Vec::new(), &[], None)
         .into_iter()
-        .flat_map(crate::import::release_group::ReleaseGroup::into_pressings)
+        .flat_map(crate::identify::release_group::ReleaseGroup::into_pressings)
         .map(|pressing| {
             let agreements = pressing.agreements(&judgements);
             (pressing, agreements)
@@ -571,7 +571,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     assert_eq!(badges(&offered[0].1), vec!["Disc ID", "Barcode", "Catalog", "Label", "Country"]);
     assert_eq!(
         offered[0].0.pick(),
-        crate::import::PressingLink {
+        crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-album-two".to_string()
@@ -594,7 +594,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         set_aside.iter().map(|(pressing, _)| ids(&pressing.releases)).collect::<Vec<_>>()
     );
     assert_eq!(
-        crate::import::release_group::form_rows(&narrowed.matches),
+        crate::identify::release_group::form_rows(&narrowed.matches),
         vec![0, 1, 2],
         "three records of one catalog stay three rows"
     );
@@ -656,8 +656,8 @@ fn a_pressing_never_splits_across_the_two_lists() {
         FolderAudio::UNPROVEN,
     );
     let (_, pressings) = found(outcome.clone());
-    assert_eq!(crate::import::release_group::row_count(&pressings), 1);
-    assert_eq!(crate::import::release_group::row_count(&narrowed(outcome).pressings), 1);
+    assert_eq!(crate::identify::release_group::row_count(&pressings), 1);
+    assert_eq!(crate::identify::release_group::row_count(&narrowed(outcome).pressings), 1);
 }
 
 /// A lone pressing the folder describes is one row, even beside a barcode
@@ -675,7 +675,7 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
         FolderAudio::UNPROVEN,
     );
     let (_, pressings) = found(outcome);
-    assert_eq!(crate::import::release_group::row_count(&pressings), 1);
+    assert_eq!(crate::identify::release_group::row_count(&pressings), 1);
 }
 
 /// The title search, asked only when the identifiers found nothing, is

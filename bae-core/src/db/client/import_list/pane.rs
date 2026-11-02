@@ -12,10 +12,11 @@ use super::super::source_releases::load_source_release_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
+use crate::identify::PressingLink;
 use crate::identify::VerdictSummary;
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
-use crate::import::{CoverSelection, PressingLink, ReleaseLink};
+use crate::import::{CoverSelection, ReleaseLink};
 use crate::import::{DraftProjection, ProjectedStage};
 
 #[derive(Clone, PartialEq)]

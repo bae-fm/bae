@@ -23,7 +23,7 @@ use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
 use crate::config::{CatalogAvailability, SourceAvailability};
-use crate::import::release_group::{group_results, ReleaseGroup};
+use crate::identify::release_group::{group_results, ReleaseGroup};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// The run a stored search is on: what each catalog's answer names to land
@@ -278,7 +278,7 @@ impl CandidateSearch {
         }
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
-        self.groups = group_results(crate::import::release_group::unranked(results), None);
+        self.groups = group_results(crate::identify::release_group::unranked(results), None);
     }
 }
 

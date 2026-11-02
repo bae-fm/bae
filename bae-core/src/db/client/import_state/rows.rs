@@ -12,7 +12,8 @@ use super::verdict_rows::{
 };
 use super::*;
 use crate::catalog_model::records::{LookupRef, MetadataRef};
-use crate::import::{AlbumLink, MetadataProvenance, PressingLink, ReleaseLink};
+use crate::identify::PressingLink;
+use crate::import::{AlbumLink, MetadataProvenance, ReleaseLink};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::str::FromStr;
 

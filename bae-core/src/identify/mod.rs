@@ -20,6 +20,8 @@ pub mod lookup_choices;
 pub(crate) mod medium;
 mod not_asked;
 pub(crate) mod notes;
+pub(crate) mod pressing_evidence;
+pub mod release_group;
 pub(crate) mod row_facts;
 pub mod service;
 pub mod state;
@@ -34,6 +36,7 @@ pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
+pub use release_group::PressingLink;
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{
     BarcodeProgress, CatalogProgress, DiscIdAnswer, DiscLookup, DiscidProgress, IdentifyEvent,

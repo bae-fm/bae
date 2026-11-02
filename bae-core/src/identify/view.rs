@@ -17,7 +17,7 @@ use super::state::{
 use super::NotAskedReason;
 use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::LookupFailure;
-use crate::import::release_group::{
+use crate::identify::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
 use crate::import::shared_album::SharedAlbum;

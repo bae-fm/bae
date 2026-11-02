@@ -106,7 +106,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
             record: crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-cover-1",

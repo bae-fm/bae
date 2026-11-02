@@ -13,6 +13,7 @@
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
+#[cfg(desktop)]
 use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
 use crate::catalog_model::works::WorkGraph;
 #[cfg(desktop)]
@@ -21,6 +22,7 @@ use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
 #[cfg(desktop)]
 use bae_audio::ProbeResult;
+#[cfg(desktop)]
 use bae_catalogs::catalog::Catalog;
 use serde::{Deserialize, Serialize};
 #[cfg(desktop)]
@@ -71,15 +73,17 @@ pub enum MetadataProvenance {
 /// folder's own draft over the lookup, unlinking — so editing, clearing, or
 /// re-reading the draft leaves it standing. Importing takes the draft's
 /// values and this link's catalog identities.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseLink {
-    Pressing(PressingLink),
+    Pressing(crate::identify::PressingLink),
     Album(AlbumLink),
 }
 
+#[cfg(desktop)]
 impl ReleaseLink {
     /// The pressing the link names, where it names one.
-    pub fn pressing(&self) -> Option<&PressingLink> {
+    pub fn pressing(&self) -> Option<&crate::identify::PressingLink> {
         match self {
             Self::Pressing(pressing) => Some(pressing),
             Self::Album(_) => None,
@@ -93,11 +97,13 @@ impl ReleaseLink {
 ///
 /// It claims no pressing, not even one of the pressings it was chosen among:
 /// the folder's copy may be one no catalog lists.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlbumLink {
     albums: Vec<MetadataRef>,
 }
 
+#[cfg(desktop)]
 impl AlbumLink {
     /// The link naming `albums`, put in catalog order. `None` for no album,
     /// or for two albums of one catalog: a link names the album once per
@@ -119,32 +125,6 @@ impl AlbumLink {
     /// of a candidate linked to it stores.
     pub fn records(&self) -> Vec<ReleaseRecord> {
         self.albums.iter().map(ReleaseRecord::album).collect()
-    }
-}
-
-/// The pressing a candidate is linked to: the row a person picked, or
-/// identification picked unattended, under every catalog's record of it that
-/// the pick claims.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PressingLink {
-    /// The catalog's release the pick names first.
-    pub record: crate::catalog_model::records::LookupRef,
-    /// The other catalogs' releases the picked pressing paired with. Find
-    /// online pairs a MusicBrainz release and a Discogs release into one
-    /// pressing row when the evidence their records carry says they name one
-    /// physical object; picking the row claims both. Each names a different
-    /// source from the primary and from every other partner.
-    ///
-    /// This is what the person picked, not what one provider says about
-    /// another — a cross-reference an editor linked stays inferred from the
-    /// documents.
-    pub partners: Vec<crate::catalog_model::records::LookupRef>,
-}
-
-impl PressingLink {
-    /// Every release the link claims, the primary first.
-    pub fn claimed(&self) -> impl Iterator<Item = &crate::catalog_model::records::LookupRef> {
-        std::iter::once(&self.record).chain(&self.partners)
     }
 }
 
@@ -448,7 +428,7 @@ pub struct ImportCommand {
     pub destination: ImportDestination,
     /// The release a test import picks for the candidate first.
     #[cfg(any(test, feature = "test-utils"))]
-    pub pick: Option<PressingLink>,
+    pub pick: Option<crate::identify::PressingLink>,
     /// Whether a test import then reads the draft from the files' tags.
     #[cfg(any(test, feature = "test-utils"))]
     pub read_file_tags: bool,

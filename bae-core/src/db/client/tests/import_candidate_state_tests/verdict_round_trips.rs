@@ -161,7 +161,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     let matches = vec![musicbrainz, discogs, undescribed, unread, linked];
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            pressings: crate::import::release_group::form_rows(&matches),
+            pressings: crate::identify::release_group::form_rows(&matches),
             matches: matches.clone(),
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
@@ -181,12 +181,12 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     else {
         panic!("the verdict found releases");
     };
-    let live = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(matches.clone()),
+    let live = crate::identify::release_group::group_results(
+        crate::identify::release_group::unranked(matches.clone()),
         None,
     );
-    let replayed = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(stored_matches.clone()),
+    let replayed = crate::identify::release_group::group_results(
+        crate::identify::release_group::unranked(stored_matches.clone()),
         None,
     );
     assert_eq!(replayed, live);
@@ -200,7 +200,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         vec![2, 1, 1],
         "the linked pair is one row, the others their own"
     );
-    assert_eq!(crate::import::release_group::pressing_count(matches), 4);
+    assert_eq!(crate::identify::release_group::pressing_count(matches), 4);
 }
 
 /// The candidate's text reads back whole, line by line, in order and with the

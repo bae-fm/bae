@@ -18,7 +18,7 @@
 //! as many as the folder has.
 
 use crate::catalog_model::records::MetadataRef;
-use crate::import::release_group::ReleaseGroup;
+use crate::identify::release_group::ReleaseGroup;
 use crate::import::{
     AlbumLink, CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments,
 };
