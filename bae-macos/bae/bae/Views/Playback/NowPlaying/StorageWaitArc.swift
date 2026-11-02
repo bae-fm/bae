@@ -88,9 +88,6 @@ final class StorageWaitArcNSView: NSView {
         show(false)
     }
 
-    /// Whether the arc shows; `true` while the load waits on storage.
-    var isShowing: Bool { !isHidden }
-
     override func layout() {
         super.layout()
         arc.frame = bounds

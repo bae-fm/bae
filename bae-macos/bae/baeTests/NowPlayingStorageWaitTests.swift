@@ -33,7 +33,7 @@ struct NowPlayingStorageWaitTests {
             let arc = try #require(
                 descendants.compactMap { $0 as? StorageWaitArcNSView }.first
             )
-            #expect(arc.isShowing)
+            #expect(!arc.isHidden)
             #expect(arc.accessibilityLabel() == "Downloading the track…")
             let slider = try #require(
                 descendants.compactMap { $0 as? SeekSlider }.first
@@ -57,7 +57,7 @@ struct NowPlayingStorageWaitTests {
             try await SnapshotTestSupport.settle(host)
             let arcs = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? StorageWaitArcNSView }
-            #expect(arcs.allSatisfy { !$0.isShowing }, "drew \(arcs)")
+            #expect(arcs.allSatisfy { $0.isHidden }, "drew \(arcs)")
         }
     }
 
