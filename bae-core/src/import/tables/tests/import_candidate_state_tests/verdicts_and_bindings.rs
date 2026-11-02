@@ -114,7 +114,7 @@ fn sample_signals() -> crate::identify::signals::Signals {
 /// The row with a draft picking `release_id`, as a run that settled on it
 /// writes.
 fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImportCandidateVerdict {
-    row.pick = Some(crate::db::VerdictPick {
+    row.pick = Some(crate::import::tables::VerdictPick {
         link: release_link(release_id),
         metadata: crate::import::CandidateMetadataDraft {
             draft: candidate_draft("", ""),

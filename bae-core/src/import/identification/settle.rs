@@ -180,7 +180,7 @@ async fn settle_verdict(
                     // Read in full, so stored over the run's copies where those
                     // stopped short.
                     releases.extend(stored);
-                    metadata.map(|metadata| crate::db::VerdictPick { link, metadata })
+                    metadata.map(|metadata| crate::import::tables::VerdictPick { link, metadata })
                 }
                 Err(settled) => return settled,
             }
@@ -290,7 +290,7 @@ pub(super) async fn save(
     candidate: &FolderCandidate,
     verdict: &TerminalVerdict,
     signals: crate::identify::signals::Signals,
-    pick: Option<crate::db::VerdictPick>,
+    pick: Option<crate::import::tables::VerdictPick>,
     releases: Vec<crate::catalog_model::source_release::SourceRelease>,
 ) -> Settled {
     if token.is_cancelled() {

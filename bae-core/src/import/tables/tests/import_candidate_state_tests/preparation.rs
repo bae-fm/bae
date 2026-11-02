@@ -9,7 +9,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the scanned candidate is prepared");
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
@@ -56,7 +56,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the scanned candidate is prepared");
     let root = host_root("/music");
     let mut replacement = scanned_candidate(&root, "Album");
@@ -133,7 +133,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the candidate is prepared");
     crate::import::CandidatePreparations::new(db.clone())
         .set_field(&hash, CandidateEditField::PressingYear, "1991")
@@ -460,7 +460,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the candidate has a stored preparation");
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit_prepared(
@@ -728,7 +728,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
             candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            pick: Some(crate::db::VerdictPick {
+            pick: Some(crate::import::tables::VerdictPick {
                 link: release_link("rel-1"),
                 metadata: crate::import::CandidateMetadataDraft {
                     draft: candidate_draft("Different album", "Different Artist"),
@@ -767,7 +767,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
             candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            pick: Some(crate::db::VerdictPick {
+            pick: Some(crate::import::tables::VerdictPick {
                 link: release_link("rel-first"),
                 metadata: crate::import::CandidateMetadataDraft {
                     draft: candidate_draft("First album", "Artist"),
@@ -792,7 +792,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
             candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            pick: Some(crate::db::VerdictPick {
+            pick: Some(crate::import::tables::VerdictPick {
                 link: release_link("rel-second"),
                 metadata: crate::import::CandidateMetadataDraft {
                     draft: candidate_draft("Second album", "Different Artist"),

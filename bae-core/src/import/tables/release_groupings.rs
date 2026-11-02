@@ -116,7 +116,7 @@ pub(super) fn rebuild_groupings(
     touched: &[CandidateKey],
     sidecars: &[PathBuf],
 ) -> Result<GroupingChanges, DbError> {
-    let touched = path_column::key_hex_list(touched.iter());
+    let touched = crate::import::tables::key_hex_list(touched.iter());
     let groupings: Vec<CandidateKey> = sql.query(
         "SELECT grouping_key FROM release_grouping_member \
          WHERE member_key IN (SELECT unhex(value) FROM json_each(?)) \

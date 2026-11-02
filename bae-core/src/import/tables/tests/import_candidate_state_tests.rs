@@ -23,7 +23,7 @@ async fn current_draft(db: &Database, content_hash: &str) -> (u64, crate::import
         .load_import_candidate_preparation(content_hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the candidate has a stored preparation");
     (preparation.metadata_revision, preparation.draft)
 }

@@ -9,7 +9,7 @@ impl ImportTables {
     pub async fn load_import_candidate_preparation(
         &self,
         content_hash: &str,
-    ) -> Result<Option<crate::db::DbPreparationRead>, DbError> {
+    ) -> Result<Option<crate::import::tables::DbPreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
         self.database
             .read(move |sql| {
@@ -27,7 +27,9 @@ impl ImportTables {
                     )
                     .optional()?
                 {
-                    return Ok(Some(crate::db::DbPreparationRead::Imported { release_id }));
+                    return Ok(Some(crate::import::tables::DbPreparationRead::Imported {
+                        release_id,
+                    }));
                 }
                 let rows = load_pane_rows_on(&sql, &content_hash)?;
                 let assets = super::prepared_asset_rows::load_prepared_assets_on(
@@ -35,8 +37,8 @@ impl ImportTables {
                     &content_hash,
                     rows.cover.as_ref(),
                 )?;
-                Ok(Some(crate::db::DbPreparationRead::Prepared(
-                    crate::db::DbCandidateImportPreparation {
+                Ok(Some(crate::import::tables::DbPreparationRead::Prepared(
+                    crate::import::tables::DbCandidateImportPreparation {
                         file_edit_revision: state.file_edits.revision,
                         metadata_revision: state.metadata_revision,
                         metadata_provenance: state.metadata_provenance,

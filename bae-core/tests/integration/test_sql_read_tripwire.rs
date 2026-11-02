@@ -64,7 +64,7 @@ async fn pure_reads_use_the_read_connection() {
         .unwrap()
         .is_none());
     assert!(!bae_core::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&bae_core::db::NewImportCandidateVerdict {
+        .store_verdict(&bae_core::import::tables::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
             file_edit_revision: 7,
             candidate_key: bae_core::import::CandidateKey::folder(
@@ -83,7 +83,7 @@ async fn pure_reads_use_the_read_connection() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            pick: Some(bae_core::db::VerdictPick {
+            pick: Some(bae_core::import::tables::VerdictPick {
                 link: bae_core::identify::PressingLink {
                     record: bae_core::catalog_model::records::LookupRef::new(
                         bae_catalogs::catalog::LookupCatalog::MusicBrainz,

@@ -27,11 +27,11 @@
 
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
-use crate::db::NewImportCandidateVerdict;
 use crate::identify::LookupChoices;
 use crate::identify::{IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::{Admission, CandidateFiles};
 use crate::import::extraction::ExtractionSource;
+use crate::import::tables::NewImportCandidateVerdict;
 use crate::import::IdentifyRunId;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::{Arc, Mutex};

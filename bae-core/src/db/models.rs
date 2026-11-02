@@ -19,10 +19,6 @@ use std::num::NonZeroU32;
 
 mod artist_identity;
 mod images;
-// Every type here describes the import queue's own state, which the mobile
-// builds leave out along with the import pipeline that produces it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import;
 mod label_identity;
 mod query;
 // Only an import and an edit applying a catalog's release write a release
@@ -35,8 +31,6 @@ pub use artist_identity::{
     ArtistIdentityConflict, CreditResolution, ExistingArtist, ResolvedCredit,
 };
 pub use images::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use import::*;
 pub(crate) use label_identity::label_ids_are_compatible;
 pub use label_identity::{ExistingLabel, LabelIdentityConflict};
 pub use query::*;

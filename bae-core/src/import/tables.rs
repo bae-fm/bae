@@ -14,6 +14,7 @@ mod import_content_hash;
 mod import_list;
 pub(crate) mod import_state;
 mod label_identity_choice;
+mod models;
 mod release_groupings;
 mod source_releases;
 
@@ -28,6 +29,7 @@ pub(crate) use import_state::{
     CandidateSaved, ImportClaim, ImportCommitGuard, ImportRows, NewArtistImages, RunVerdictSaved,
     ScannedCandidateKey,
 };
+pub use models::*;
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
 
@@ -44,6 +46,13 @@ use coven::{CovenError, CovenWrite, SqlReadContext};
 use rusqlite::{named_params, params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::str::FromStr;
+
+/// `keys` as a JSON array of their bytes in hex, for a query that matches a
+/// key column with `unhex(value)` over `json_each`.
+fn key_hex_list<'a>(keys: impl Iterator<Item = &'a crate::import::CandidateKey>) -> String {
+    serde_json::to_string(&keys.map(|key| hex::encode(key.as_bytes())).collect::<Vec<_>>())
+        .expect("hex text serializes as JSON")
+}
 
 /// The library's store, as import reads and writes its own tables in it.
 #[derive(Clone, Debug)]

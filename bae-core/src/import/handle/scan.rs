@@ -311,7 +311,10 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<
-        (crate::import::folder_scanner::FolderCandidate, crate::db::DbCandidateImportPreparation),
+        (
+            crate::import::folder_scanner::FolderCandidate,
+            crate::import::tables::DbCandidateImportPreparation,
+        ),
         crate::import::ImportError,
     > {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {

@@ -94,7 +94,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let crate::db::DbCandidateFileTagSnapshot {
+        let crate::import::tables::DbCandidateFileTagSnapshot {
             scan_generation,
             candidate,
             snapshot: stored_snapshot,
@@ -275,7 +275,7 @@ impl ImportServiceHandle {
                     detail: format!("{candidate_key} is not an actionable folder candidate"),
                 });
             };
-            let crate::db::DbCandidateFileTagSnapshot {
+            let crate::import::tables::DbCandidateFileTagSnapshot {
                 scan_generation,
                 candidate: snapshot_candidate,
                 snapshot,

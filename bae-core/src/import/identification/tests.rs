@@ -3,12 +3,13 @@
 
 use super::*;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
-use crate::db::{
-    Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
-};
+use crate::db::Database;
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::{FolderCheck, VerdictSummary};
 use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::import::tables::{
+    DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
+};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
 use std::collections::BTreeMap;
@@ -777,7 +778,7 @@ impl Fixture {
                             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             release_id.to_string(),
                         );
-                        crate::db::VerdictPick {
+                        crate::import::tables::VerdictPick {
                             link: crate::identify::PressingLink {
                                 record: record.clone(),
                                 partners: vec![],
@@ -836,7 +837,9 @@ enum SettledDraft {
 }
 
 /// The identify half of a stored row, which every row identification wrote has.
-fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
+fn identify_result(
+    row: &DbImportCandidateState,
+) -> &crate::import::tables::DbCandidateIdentifyResult {
     row.identify.as_ref().expect("a row identification wrote carries its identify result")
 }
 

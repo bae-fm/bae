@@ -7,9 +7,6 @@
 //! One reader for each way a column reaches Rust: its bytes in a row, or its
 //! `hex()` inside a JSON document. A query matching the column against a
 //! list of paths takes them as JSON text from [`hex_list`] and `unhex`es each.
-//! The import's other byte identities, `CandidateKey` and `RelativeFolder`,
-//! read from a row by their own `FromSql`; a key list is matched the same way
-//! from [`key_hex_list`].
 
 use crate::db::DbError;
 use std::path::PathBuf;
@@ -75,14 +72,4 @@ pub(crate) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> 
         &paths.map(|path| hex::encode(coven::path_bytes(path))).collect::<Vec<_>>(),
     )
     .expect("hex text serializes as JSON")
-}
-
-/// `keys` as a JSON array of their bytes in hex, for a query that matches a
-/// key column with `unhex(value)` over `json_each`.
-#[cfg(desktop)]
-pub(crate) fn key_hex_list<'a>(
-    keys: impl Iterator<Item = &'a crate::import::CandidateKey>,
-) -> String {
-    serde_json::to_string(&keys.map(|key| hex::encode(key.as_bytes())).collect::<Vec<_>>())
-        .expect("hex text serializes as JSON")
 }

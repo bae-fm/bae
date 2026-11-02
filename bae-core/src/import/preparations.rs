@@ -9,13 +9,14 @@
 
 mod pane_edits;
 
-use crate::db::{Database, DbCandidateIdentifyResult, NewImportCandidateVerdict};
+use crate::db::Database;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::tables::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     ScannedCandidateKey,
 };
+use crate::import::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict};
 use crate::import::ImportError;
 use crate::import::MetadataAuthor;
 

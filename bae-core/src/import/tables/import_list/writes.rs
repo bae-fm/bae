@@ -73,7 +73,7 @@ fn select_shown(
          WHERE shown.list_id = :list \
          ON CONFLICT (list_id, key) DO NOTHING",
         named_params! {
-            ":keys": path_column::key_hex_list(keys.iter()),
+            ":keys": crate::import::tables::key_hex_list(keys.iter()),
             ":list": list.0,
         },
     )?;
@@ -251,7 +251,7 @@ impl ImportTables {
                         sql.execute(
                             "DELETE FROM import_list_selection \
                          WHERE list_id = ? AND key NOT IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, path_column::key_hex_list(keys.iter())],
+                            params![list.0, crate::import::tables::key_hex_list(keys.iter())],
                         )?;
                         select_shown(sql, list, &keys)?;
                     }
@@ -259,7 +259,7 @@ impl ImportTables {
                         sql.execute(
                             "DELETE FROM import_list_selection \
                          WHERE list_id = ? AND key IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, path_column::key_hex_list(remove.iter())],
+                            params![list.0, crate::import::tables::key_hex_list(remove.iter())],
                         )?;
                         select_shown(sql, list, &add)?;
                     }

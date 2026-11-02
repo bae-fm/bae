@@ -728,7 +728,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::db::DbPreparationRead::prepared)
+        .and_then(crate::import::tables::DbPreparationRead::prepared)
         .expect("the candidate is prepared");
     assert_eq!(preparation.draft, draft);
 }

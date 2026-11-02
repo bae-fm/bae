@@ -229,7 +229,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryFixtureError> {
         let stored = self
             .preparations
-            .store_verdict(&crate::db::NewImportCandidateVerdict {
+            .store_verdict(&crate::import::tables::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,
                 candidate_key: candidate.key(),

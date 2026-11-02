@@ -8,9 +8,9 @@
 //! what a writer names those revisions with, and it owns every refusal for a
 //! candidate that moved between the read and the write.
 
-use crate::db::DbCandidateIdentifyResult;
 use crate::identify::signals::Signals;
 use crate::import::folder_scanner::CandidateFileEdits;
+use crate::import::tables::DbCandidateIdentifyResult;
 use crate::import::{CandidateMetadataDraft, CoverSelection, MetadataProvenance};
 
 /// One candidate as a caller last read it: which candidate it is, and the two
@@ -206,11 +206,14 @@ pub(crate) fn check_cover_bytes(
 pub(crate) async fn import_preparation(
     tables: &crate::import::tables::ImportTables,
     content_hash: &str,
-) -> Result<Option<crate::db::DbCandidateImportPreparation>, crate::import::ImportError> {
+) -> Result<Option<crate::import::tables::DbCandidateImportPreparation>, crate::import::ImportError>
+{
     match tables.load_import_candidate_preparation(content_hash).await? {
         None => Ok(None),
-        Some(crate::db::DbPreparationRead::Prepared(preparation)) => Ok(Some(preparation)),
-        Some(crate::db::DbPreparationRead::Imported { release_id }) => {
+        Some(crate::import::tables::DbPreparationRead::Prepared(preparation)) => {
+            Ok(Some(preparation))
+        }
+        Some(crate::import::tables::DbPreparationRead::Imported { release_id }) => {
             Err(crate::import::ImportError::FilesAlreadyImported { release_id })
         }
     }

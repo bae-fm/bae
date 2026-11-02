@@ -206,7 +206,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
         .expect("the fixture candidate is prepared");
     let stored = handle
         .preparations
-        .store_verdict(&crate::db::NewImportCandidateVerdict {
+        .store_verdict(&crate::import::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
