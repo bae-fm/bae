@@ -312,7 +312,7 @@ impl Fixture {
     }
 
     async fn with_ids(_name: &str, ids: coven::IdSourceRef) -> Self {
-        crate::test_logs::install();
+        bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
         let database =

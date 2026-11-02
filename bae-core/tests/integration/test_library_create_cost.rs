@@ -9,7 +9,7 @@
 //! Creates the library several times, each in a fresh directory, and prints
 //! each creation's time and the median.
 
-use bae_core::logging::LogSink;
+use bae_util::logging::LogSink;
 use std::time::{Duration, Instant};
 use tracing_subscriber::filter::LevelFilter;
 
@@ -27,7 +27,7 @@ async fn creating_a_library_costs() {
     );
     // The sink discards its lines, so the time is the logging setup's and
     // the library's, not a terminal's.
-    bae_core::logging::install(vec![LogSink::new(
+    bae_util::logging::install(vec![LogSink::new(
         tracing_subscriber::fmt::layer().with_writer(std::io::sink),
         LevelFilter::DEBUG,
     )]);

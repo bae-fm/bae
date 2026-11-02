@@ -32,13 +32,13 @@ struct Capture {
     bytes: Vec<u8>,
 }
 
-/// Install the process's subscriber, once: warnings and bae-core's debug
-/// lines go to the running test's output, and each line a capturing thread
+/// Install the process's subscriber, once: warnings and every bae crate's
+/// debug lines go to the running test's output, and each line a capturing thread
 /// logs at its capture's level or above goes into that capture. Only
 /// dependencies log through the `log` crate, and the test output keeps their
 /// warnings, so their `log` records reach the subscriber at warn and above;
 /// a capture is for bae's own lines.
-pub(crate) fn install() {
+pub fn install() {
     static INSTALL: Once = Once::new();
     INSTALL.call_once(|| {
         let subscriber = tracing_subscriber::registry()
@@ -46,7 +46,7 @@ pub(crate) fn install() {
                 tracing_subscriber::fmt::layer()
                     .with_test_writer()
                     .with_ansi(false)
-                    .with_filter(EnvFilter::new("warn,bae_core=debug")),
+                    .with_filter(EnvFilter::new("warn,bae_=debug")),
             )
             .with(
                 tracing_subscriber::fmt::layer()
@@ -125,19 +125,19 @@ impl Drop for CaptureGuard {
 /// Everything `run` logs on this thread at `level` or above, for a test
 /// asserting that a decision the code makes quietly is at least visible in
 /// the log.
-pub(crate) fn capture_logs_at(level: tracing::Level, run: impl FnOnce()) -> String {
+pub fn capture_logs_at(level: tracing::Level, run: impl FnOnce()) -> String {
     let capture = CaptureGuard::start(level);
     run();
     capture.logs()
 }
 
-pub(crate) fn capture_warn_logs(run: impl FnOnce()) -> String {
+pub fn capture_warn_logs(run: impl FnOnce()) -> String {
     capture_logs_at(tracing::Level::WARN, run)
 }
 
 /// Everything `run` logs at warning or above on this thread, which a
 /// current-thread runtime polls it on.
-pub(crate) async fn capture_warn_logs_async<F, Fut>(run: F) -> String
+pub async fn capture_warn_logs_async<F, Fut>(run: F) -> String
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = ()>,

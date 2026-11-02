@@ -8,6 +8,7 @@ pub mod duration;
 pub mod error_text;
 pub mod fs;
 pub mod http;
+pub mod logging;
 #[cfg(unix)]
 pub mod open_file_limit;
 pub mod retry;
@@ -15,6 +16,8 @@ pub mod server;
 pub mod session_cache;
 pub mod stored_image;
 pub mod task_failure;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_logs;
 #[cfg(desktop)]
 pub mod text_encoding;
 pub mod worker_thread;

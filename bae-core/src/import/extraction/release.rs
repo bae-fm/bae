@@ -226,7 +226,7 @@ fn stage_cover_for_ocr(release_id: &str, bytes: &[u8]) -> Option<(tempfile::Temp
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_logs::capture_warn_logs_async;
+    use bae_util::test_logs::capture_warn_logs_async;
     use std::sync::Arc;
 
     #[tokio::test]

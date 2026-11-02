@@ -173,7 +173,7 @@ fn a_format_name_is_the_same_name_in_any_case() {
 /// read, because what needs fixing is the vocabulary.
 #[test]
 fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         assert_eq!(
             media(per_medium(&["CD"]), formats(&[("CD", &["Album", "Zorblax"])])),
             Comparison::Same
@@ -181,7 +181,7 @@ fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
     });
     assert!(logs.contains("Zorblax"), "the unknown word is logged: {logs}");
 
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         assert_eq!(
             media(per_medium(&["CD", "Zorblax Disc"]), formats(&[("CD", &["Album"])])),
             Comparison::Unknown,

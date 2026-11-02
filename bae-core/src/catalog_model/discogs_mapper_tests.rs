@@ -475,7 +475,7 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
     }]);
 
     let mut parsed = None;
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&release).unwrap());
     });
     let values = parsed.unwrap();

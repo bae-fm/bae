@@ -437,7 +437,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
     }]);
 
     let mut parsed = None;
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&response, vec![]).unwrap());
     });
     let values = parsed.unwrap();
@@ -487,7 +487,7 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
     }]);
 
     let mut parsed = None;
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&response, vec![]).unwrap());
     });
     let values = parsed.unwrap();
@@ -534,7 +534,7 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
     }]);
 
     let mut parsed = None;
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&response, vec![]).unwrap());
     });
     let values = parsed.unwrap();
@@ -568,7 +568,7 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
     }]);
 
     let mut parsed = None;
-    let logs = crate::test_logs::capture_warn_logs(|| {
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&response, vec![]).unwrap());
     });
     let values = parsed.unwrap();

@@ -898,7 +898,6 @@ dependencies = [
  "tokio-util",
  "toml",
  "tracing",
- "tracing-log",
  "tracing-subscriber",
  "unicode-normalization",
  "url",
@@ -1034,6 +1033,8 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]

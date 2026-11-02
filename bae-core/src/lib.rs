@@ -18,7 +18,6 @@ pub mod keys;
 pub mod library;
 pub mod library_name;
 pub mod live_query;
-pub mod logging;
 // Only import measures loudness, and the import pipeline is desktop-only —
 // the same predicate that gates `import`'s pipeline modules and `ebur128`
 // itself. Playback derives its gain from the stored measurements with plain
@@ -41,8 +40,6 @@ pub(crate) mod test_files;
 pub(crate) mod test_gate;
 #[cfg(all(test, desktop))]
 pub(crate) mod test_images;
-#[cfg(test)]
-pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
 pub mod track_audio;

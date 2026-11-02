@@ -69,7 +69,7 @@ mod tests {
     /// Everything logged at `level` and above by one hold of the lock that
     /// lasts `held_for`.
     fn logs_of_a_hold(level: tracing::Level, held_for: Duration) -> String {
-        crate::test_logs::capture_logs_at(level, || {
+        bae_util::test_logs::capture_logs_at(level, || {
             tokio::runtime::Builder::new_current_thread()
                 .enable_time()
                 .start_paused(true)

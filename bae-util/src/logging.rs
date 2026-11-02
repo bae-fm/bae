@@ -263,7 +263,7 @@ mod tests {
         rust_log: Option<&str>,
     ) -> String {
         let mut child = std::process::Command::new(
-            std::env::current_exe().expect("resolve the bae-core test executable"),
+            std::env::current_exe().expect("resolve the bae-util test executable"),
         );
         child.args(["--exact", test, "--nocapture"]).env(LOG_CRATE_CHILD, sink_level.to_string());
         match rust_log {

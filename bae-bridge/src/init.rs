@@ -6,7 +6,7 @@ use bae_core::diagnostics::{
     AppDiagnosticMetadata, AppStartFailureKind, DatadogDiagnosticsConfig, Diagnostics,
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
 };
-use bae_core::logging::LogSink;
+use bae_util::logging::LogSink;
 use bae_util::task_failure::TaskFailed;
 
 use crate::handle::AppHandle;
@@ -441,7 +441,7 @@ fn terminal_log_sink() -> Option<LogSink> {
 /// `log stream --level debug --predicate 'subsystem == "fm.bae.desktop"'`.
 #[cfg(target_os = "macos")]
 fn configure_logging() {
-    bae_core::logging::install(
+    bae_util::logging::install(
         terminal_log_sink()
             .into_iter()
             .chain([LogSink::new(
@@ -466,7 +466,7 @@ fn configure_logging() {
             return;
         }
     };
-    bae_core::logging::install(vec![LogSink::new(android_layer, LevelFilter::INFO)])
+    bae_util::logging::install(vec![LogSink::new(android_layer, LevelFilter::INFO)])
 }
 
 /// The unified log, read back from a Debug build with
@@ -475,7 +475,7 @@ fn configure_logging() {
 /// `log stream --level debug --predicate 'subsystem == "fm.bae.app"'`.
 #[cfg(target_os = "ios")]
 fn configure_logging() {
-    bae_core::logging::install(vec![LogSink::new(
+    bae_util::logging::install(vec![LogSink::new(
         tracing_oslog::OsLogger::new("fm.bae.app", "default"),
         LevelFilter::DEBUG,
     )])
@@ -487,7 +487,7 @@ fn configure_logging() {
     // "bae-core" (GUID derived from the name), captured with
     // `logman start ... -p "*bae-core"` — the `log stream` equivalent.
     match tracing_etw::LayerBuilder::new("bae-core").build() {
-        Ok(etw_layer) => bae_core::logging::install(
+        Ok(etw_layer) => bae_util::logging::install(
             terminal_log_sink()
                 .into_iter()
                 .chain([LogSink::new(etw_layer, LevelFilter::DEBUG)])
@@ -496,7 +496,7 @@ fn configure_logging() {
         Err(error) => {
             // The terminal, when there is one, is the only sink left to report
             // this in; launch must not die over it.
-            bae_core::logging::install(terminal_log_sink().into_iter().collect());
+            bae_util::logging::install(terminal_log_sink().into_iter().collect());
             tracing::error!("ETW tracing layer initialization failed: {error}");
         }
     }
@@ -511,7 +511,7 @@ fn configure_logging() {
 )))]
 fn configure_logging() {
     match tracing_journald::layer() {
-        Ok(journald_layer) => bae_core::logging::install(
+        Ok(journald_layer) => bae_util::logging::install(
             terminal_log_sink()
                 .into_iter()
                 .chain([LogSink::new(
@@ -524,7 +524,7 @@ fn configure_logging() {
             // No journald socket (a system without systemd, or a container):
             // the terminal, when there is one, is the only sink left to report
             // this in; launch must not die over it.
-            bae_core::logging::install(terminal_log_sink().into_iter().collect());
+            bae_util::logging::install(terminal_log_sink().into_iter().collect());
             tracing::error!("journald tracing layer initialization failed: {error}");
         }
     }
