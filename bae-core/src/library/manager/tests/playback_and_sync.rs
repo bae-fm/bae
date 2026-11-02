@@ -443,9 +443,9 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
 /// of the one that already failed.
 #[tokio::test]
 async fn reconnect_sync_clears_the_failure_it_retries() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (manager, temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.database.lose_storage_credentials_for_test().await.unwrap();
+    let manager = reopen_without_credentials(manager, &temp).await;
     manager.start().unwrap();
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;

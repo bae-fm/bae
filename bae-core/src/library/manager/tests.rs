@@ -103,6 +103,40 @@ async fn setup_test_manager_with(
     (TestManager { library: manager, fakes, storage, installation }, temp_dir)
 }
 
+/// Close `manager`, delete this device's storage credentials as a keychain
+/// entry deleted by hand does, and open the library again: its location
+/// stays recorded, with no storage set up on this device.
+async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) -> TestManager {
+    let store = manager.database.store_id();
+    manager.close().await.unwrap();
+    manager.installation.lose_storage_credentials(store).unwrap();
+    let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let handle = crate::db::configure_store(manager.installation.builder(app_dir.store_layout()))
+        .clock(clock.clone())
+        .storage_connector(manager.storage.clone())
+        .open(store, |_| ())
+        .await
+        .unwrap();
+    let database =
+        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let library = TestLibrary::open_with(
+        database,
+        app_dir,
+        manager.fakes.providers(),
+        clock,
+        Arc::new(coven::UuidIds),
+        crate::diagnostics::Diagnostics::noop(),
+    )
+    .await;
+    TestManager {
+        library,
+        fakes: manager.fakes,
+        storage: manager.storage,
+        installation: manager.installation,
+    }
+}
+
 // One-line reads and writes against the manager's database. Spelled out at a
 // call site each is `manager.database.x(..).await.unwrap()`, which rustfmt
 // breaks across five lines.

@@ -8,18 +8,6 @@ impl Database {
         Self::from_handle(self.inner.handle.clone(), clock, self.inner.ids.clone())
     }
 
-    /// Remove this device's storage credentials from custody while coven
-    /// keeps the location it recorded: what a keychain entry deleted by hand
-    /// leaves.
-    // Sentinel: moving bae's coven pin to the coven without
-    // `disconnect_storage` replaces this with coven's own test call for
-    // credentials lost from custody. Only here so this commit keeps testing a
-    // start that fails without credentials.
-    #[cfg(test)]
-    pub(crate) async fn lose_storage_credentials_for_test(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.disconnect_storage().await
-    }
-
     /// Run `statement` with `params` in one write: how a test seeds rows no
     /// one call writes on its own.
     pub async fn execute_for_test(
