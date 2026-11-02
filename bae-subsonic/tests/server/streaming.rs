@@ -146,7 +146,7 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
         assert_eq!(sub["status"], "failed", "{format}: {sub}");
         assert_eq!(
             sub["error"]["message"],
-            bae_core::playback::PlaybackError::OriginalMissing.to_string(),
+            bae_core::playback::TrackReadError::OriginalMissing.to_string(),
             "{format}: {sub}"
         );
     }

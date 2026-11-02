@@ -169,7 +169,7 @@ pub(crate) enum PlaybackCommand {
     /// the buffer serves right now, so it decides what breaks.
     ReadFailed {
         buffer_id: u64,
-        error: Arc<PlaybackError>,
+        error: Arc<crate::playback::TrackReadError>,
     },
     Previous,
     /// Seek to this time in the current track, as the player shows it.

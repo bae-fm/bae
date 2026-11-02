@@ -29,7 +29,7 @@ async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
 
     let error = error_rx.await.expect("the fill's owner hears of it");
     assert!(
-        matches!(*error, PlaybackError::TaskFailed(ref text) if text.contains("window index out of range")),
+        matches!(*error, TrackReadError::TaskFailed(ref text) if text.contains("window index out of range")),
         "{error}"
     );
     assert!(matches!(buffer.new_reader().read(&mut [0u8; 1]), Err(BufferStop::Failed(_))));

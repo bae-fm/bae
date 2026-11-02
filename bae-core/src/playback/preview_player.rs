@@ -78,13 +78,18 @@ impl PreviewTarget {
 
 /// The preview shape of a fill-error handler: the audition has one file and one
 /// buffer, so a failed byte fill can only mean this preview is unplayable — it
-/// goes straight to the UI as a `PlaybackError`. (The fill has already failed
+/// goes straight to the UI as a playback error. (The fill has already failed
 /// the buffer with the same error, unblocking the decoder.)
 fn preview_fill_error_handler(
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
 ) -> crate::playback::data_source::FillErrorHandler {
     Box::new(move |error| {
-        emit_progress(&progress_tx, PlaybackProgress::PlaybackError { reason: error.ui_reason() });
+        emit_progress(
+            &progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: crate::playback::read_failure_reason(&error),
+            },
+        );
     })
 }
 

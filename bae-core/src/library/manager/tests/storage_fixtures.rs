@@ -355,7 +355,7 @@ async fn playback_error_reason_for_file(
         r.read(&mut b)
     });
     let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        error_rx.recv().await.expect("error channel open").ui_reason()
+        crate::playback::read_failure_reason(&error_rx.recv().await.expect("error channel open"))
     })
     .await
     .expect("a playback error must be reported");

@@ -190,7 +190,11 @@ impl PlaybackService {
     ///   failure then if it persists;
     /// - neither: the buffer left the pipeline (released or stopped) before this
     ///   failure surfaced, so there is nothing left to halt.
-    pub(super) async fn handle_read_failed(&mut self, buffer_id: u64, error: Arc<PlaybackError>) {
+    pub(super) async fn handle_read_failed(
+        &mut self,
+        buffer_id: u64,
+        error: Arc<crate::playback::TrackReadError>,
+    ) {
         if let PlaybackSlot::Active(cur) = &self.slot {
             if cur.prepared.reads_buffer(buffer_id) {
                 error!(
@@ -199,7 +203,9 @@ impl PlaybackService {
                 );
                 emit_progress(
                     &self.progress_tx,
-                    PlaybackProgress::PlaybackError { reason: error.ui_reason() },
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::playback::read_failure_reason(&error),
+                    },
                 );
                 return;
             }

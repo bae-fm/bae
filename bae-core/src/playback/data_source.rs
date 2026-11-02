@@ -6,7 +6,7 @@
 
 use crate::diagnostics::Diagnostics;
 use crate::playback::storage_wait::{FetchProgress, StorageWaits};
-use crate::playback::PlaybackError;
+use crate::playback::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_util::task_failure::{caught, joined};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -130,7 +130,7 @@ impl FetchArbiter {
 /// only its command loop knows whether the buffer feeds the playing track or a
 /// preload, which decides whether playback halts. Loudness and save only log
 /// here; their decode error carries the cause.
-pub type FillErrorHandler = Box<dyn FnOnce(Arc<PlaybackError>) + Send>;
+pub type FillErrorHandler = Box<dyn FnOnce(Arc<TrackReadError>) + Send>;
 
 /// Reads audio data into a sparse buffer for streaming decode.
 ///
@@ -178,9 +178,9 @@ impl FillTask {
 /// Why a fill stopped short of its source's end.
 enum FillFailure {
     /// The source would not open, so the buffer is not failed yet.
-    Open(PlaybackError),
+    Open(TrackReadError),
     /// A read failed; the fill already failed the buffer with it.
-    Read(Arc<PlaybackError>),
+    Read(Arc<TrackReadError>),
 }
 
 /// Spawn the task running `fill` into `buffer`. A failure fails the buffer,
@@ -202,7 +202,7 @@ fn spawn_fill(
             Ok(Ok(())) => return,
             Ok(Err(FillFailure::Read(error))) => return report_fill_failure(on_error, error),
             Ok(Err(FillFailure::Open(error))) => error,
-            Err(failed) => PlaybackError::task(fill_diagnostics.bug(failed)),
+            Err(failed) => TrackReadError::task(fill_diagnostics.bug(failed)),
         };
         match buffer.upgrade() {
             Some(buffer) => fail_audio_read(on_error, &buffer, error),
@@ -227,7 +227,7 @@ impl LocalReader {
 
 /// Fail the buffer with a read error raised outside its fill loop (the source
 /// would not open, or the fill panicked), then report it.
-fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, error: PlaybackError) {
+fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, error: TrackReadError) {
     let error = Arc::new(error);
     // A buffer that already stopped means teardown ran before this read
     // returned: the user switched away while the open was in flight. The error
@@ -242,7 +242,7 @@ fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, erro
 
 /// Report a failure the buffer already carries (the fill failed it before
 /// returning the error).
-fn report_fill_failure(on_error: FillErrorHandler, error: Arc<PlaybackError>) {
+fn report_fill_failure(on_error: FillErrorHandler, error: Arc<TrackReadError>) {
     error!("audio read failed: {error}");
     on_error(error);
 }
@@ -260,7 +260,7 @@ impl AudioDataReader for LocalReader {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
             let file = tokio::fs::File::open(&path).await.map_err(|e| {
-                FillFailure::Open(PlaybackError::io(
+                FillFailure::Open(TrackReadError::io(
                     format!("Failed to open {}", path.display()),
                     e,
                 ))
@@ -276,14 +276,14 @@ impl AudioDataReader for LocalReader {
                     async move {
                         let mut f = file.lock().await;
                         f.seek(std::io::SeekFrom::Start(src_off)).await.map_err(|e| {
-                            PlaybackError::io(
+                            TrackReadError::io(
                                 format!("Failed to seek {} to {src_off}", path.display()),
                                 e,
                             )
                         })?;
                         let mut buf = vec![0u8; len as usize];
                         f.read_exact(&mut buf).await.map_err(|e| {
-                            PlaybackError::io(
+                            TrackReadError::io(
                                 format!(
                                     "Failed to read {len} bytes at {src_off} from {}",
                                     path.display()
@@ -301,21 +301,21 @@ impl AudioDataReader for LocalReader {
 }
 
 /// Preserve the actionable storage failure when opening or reading audio.
-fn playback_error_for_file_read(error: crate::db::DbError) -> PlaybackError {
+fn read_error_for_file_read(error: crate::db::DbError) -> TrackReadError {
     match error {
         crate::db::DbError::FileRead(coven::FileReadError::NoStorage) => {
-            PlaybackError::SyncDisconnected
+            TrackReadError::SyncDisconnected
         }
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
         crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
-            PlaybackError::NotUploaded
+            TrackReadError::NotUploaded
         }
         crate::db::DbError::FileRead(
             coven::FileReadError::UserFileMissing { .. }
             | coven::FileReadError::UserFileChanged { .. },
-        ) => PlaybackError::OriginalMissing,
-        error => PlaybackError::internal(error.to_string()),
+        ) => TrackReadError::OriginalMissing,
+        error => TrackReadError::internal(error.to_string()),
     }
 }
 
@@ -381,7 +381,7 @@ impl AudioDataReader for CovenFileReader {
             let buffer = fill_buffer;
             let stream = match db.open_release_file(&file_id).await {
                 Ok(stream) => Arc::new(stream),
-                Err(error) => return Err(FillFailure::Open(playback_error_for_file_read(error))),
+                Err(error) => return Err(FillFailure::Open(read_error_for_file_read(error))),
             };
             // The length coven proved when it opened the stream, not a number the
             // caller tracked: it bounds the prefetch windows below.
@@ -453,7 +453,7 @@ impl AudioDataReader for CovenFileReader {
                                     if foreground { "playing" } else { "preload" },
                                     fetch_started.elapsed().as_millis(),
                                 );
-                                return Err(playback_error_for_file_read(e.into()));
+                                return Err(read_error_for_file_read(e.into()));
                             }
                         };
                         let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)

@@ -9,25 +9,12 @@ pub enum PlaybackError {
     NotFound(&'static str, String),
     #[error("Invalid FLAC: {0}")]
     InvalidFlac(String),
-    /// A source read failed. `context` names the operation (which file, which
-    /// byte range); `source` is the OS error itself, kind intact, so a caller
-    /// can tell a missing file from a full disk from a dropped network volume.
-    #[error("{context}: {source}")]
-    Io {
-        context: String,
-        #[source]
-        source: std::io::Error,
-    },
     /// An async task panicked or was cancelled.
     #[error("Task failed: {0}")]
     TaskFailed(String),
     /// A playback invariant failed.
     #[error("Internal playback error: {0}")]
     Internal(String),
-    /// A remote track has no local copy and sync is disconnected, so the
-    /// audio can't be fetched. The user needs to reconnect cloud sync.
-    #[error("Sync is disconnected — reconnect to play this release")]
-    SyncDisconnected,
     /// Another device attached the track's file and storage doesn't hold it
     /// yet: its upload is still under way. Keyed so the user waits for the
     /// upload instead of getting a missing-file diagnostic.
@@ -35,14 +22,6 @@ pub enum PlaybackError {
         "This release is still uploading to the cloud home — try again when the upload finishes"
     )]
     UploadPending,
-    /// A local release imported on another device: its audio stays there
-    /// until that device uploads it, so this device has nothing to read.
-    #[error("This release's audio is on the device that imported it and isn't uploaded yet")]
-    NotUploaded,
-    /// A local release's original file on this device is gone or changed
-    /// since import.
-    #[error("This release's original files are missing or changed on this device")]
-    OriginalMissing,
     /// The audio output didn't start: the device's, the speaker's, or bae's
     /// own audio path's doing, as the error says.
     #[error("the audio output didn't start: {0}")]
@@ -56,10 +35,7 @@ impl PlaybackError {
     pub fn ui_reason(&self) -> crate::playback::PlaybackErrorReason {
         use crate::playback::PlaybackErrorReason;
         match self {
-            PlaybackError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
             PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
-            PlaybackError::NotUploaded => PlaybackErrorReason::NotUploaded,
-            PlaybackError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
             PlaybackError::AudioOutput(error) => {
                 use crate::playback::AudioError;
                 use crate::playback::AudioOutputProblem;
@@ -100,16 +76,20 @@ impl PlaybackError {
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
-    pub fn io(context: impl Into<String>, source: std::io::Error) -> Self {
-        Self::Io { context: context.into(), source }
-    }
 }
 
-/// A fill whose source came back short is a broken read path: bae's own
-/// failure, not the device's or the network's.
-impl From<bae_audio::sparse_buffer::ShortRead> for PlaybackError {
-    fn from(short: bae_audio::sparse_buffer::ShortRead) -> Self {
-        Self::internal(short.to_string())
+/// What the person is told when a read of a track's audio fails. Where this
+/// device can't reach the audio is theirs to act on and keyed; every other
+/// failure goes to the diagnostic arm with the error as log-only detail.
+pub(crate) fn read_failure_reason(
+    error: &crate::playback::TrackReadError,
+) -> crate::playback::PlaybackErrorReason {
+    use crate::playback::{PlaybackErrorReason, TrackReadError};
+    match error {
+        TrackReadError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
+        TrackReadError::NotUploaded => PlaybackErrorReason::NotUploaded,
+        TrackReadError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
+        other => PlaybackErrorReason::internal(other),
     }
 }
 

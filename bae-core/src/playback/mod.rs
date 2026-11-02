@@ -22,6 +22,7 @@ mod output_rate;
 mod preview_player;
 pub mod progress;
 mod queue;
+mod read_error;
 mod repeat_mode;
 mod resampling_drain;
 pub mod service;
@@ -49,6 +50,7 @@ pub use clock::ManualPlaybackClock;
 pub(crate) use clock::WallPlaybackClock;
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::ContextSource;
+pub(crate) use error::read_failure_reason;
 pub use error::PlaybackError;
 pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 pub use now_playing::{
@@ -61,6 +63,7 @@ pub use progress::{
     RemoteDevice, RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
+pub use read_error::TrackReadError;
 pub use repeat_mode::RepeatMode;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,

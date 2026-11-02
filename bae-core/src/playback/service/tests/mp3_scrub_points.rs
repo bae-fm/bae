@@ -392,7 +392,7 @@ async fn scrub_fetching(
                     let log = log.clone();
                     async move {
                         log.lock().unwrap().push((start, start + len));
-                        Ok::<_, crate::playback::error::PlaybackError>(
+                        Ok::<_, crate::playback::TrackReadError>(
                             bytes[start as usize..(start + len) as usize].to_vec(),
                         )
                     }

@@ -65,8 +65,8 @@ async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
 
 /// A fill-error handler that forwards the error into a channel, plus the
 /// receiving end, so a test can assert on the reported failure.
-fn capturing_error_handler() -> (FillErrorHandler, tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>)
-{
+fn capturing_error_handler(
+) -> (FillErrorHandler, tokio_mpsc::UnboundedReceiver<Arc<TrackReadError>>) {
     let (tx, rx) = tokio_mpsc::unbounded_channel();
     (
         Box::new(move |error| {
@@ -81,7 +81,7 @@ fn capturing_error_handler() -> (FillErrorHandler, tokio_mpsc::UnboundedReceiver
 }
 
 async fn next_fill_error(
-    error_rx: &mut tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>,
+    error_rx: &mut tokio_mpsc::UnboundedReceiver<Arc<TrackReadError>>,
     context: &str,
 ) -> String {
     error_rx.recv().await.expect(context).to_string()
@@ -163,7 +163,7 @@ fn start_recording_fill(
                     if let Some(gate) = &gate {
                         gate.wait_for(start).await;
                     }
-                    Ok::<_, PlaybackError>(contents[start as usize..end as usize].to_vec())
+                    Ok::<_, TrackReadError>(contents[start as usize..end as usize].to_vec())
                 }
             })
             .await
@@ -520,7 +520,7 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     let weak = Arc::downgrade(&buffer);
     let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
         let bytes = contents[start as usize..(start + len) as usize].to_vec();
-        async move { Ok::<_, PlaybackError>(bytes) }
+        async move { Ok::<_, TrackReadError>(bytes) }
     }));
 
     // Let the spawned fill run to its park. With no reader it fetches nothing
@@ -728,7 +728,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
         let result = if start == 0 {
             Ok(contents[..len as usize].to_vec())
         } else {
-            Err(PlaybackError::io(
+            Err(TrackReadError::io(
                 format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
                 std::io::Error::from(std::io::ErrorKind::StorageFull),
             ))
@@ -773,7 +773,7 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
         let gate = fetch_gate.clone();
         async move {
             gate.wait_for(start).await;
-            Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
+            Err::<Vec<u8>, _>(TrackReadError::internal("late read failure"))
         }
     }));
     for _ in 0..20 {
