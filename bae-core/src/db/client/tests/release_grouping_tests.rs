@@ -1,7 +1,7 @@
 //! Releases picked together, as the store keeps them: built from the releases
 //! they take in, in the same write as whatever changes one of them.
 
-use super::{candidate, empty_db};
+use super::{candidate, empty_db, folder_below};
 use crate::import::folder_scanner::{
     AudioDamage, CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidReason,
     ProposedRole, ScanItem, ScannedFile, SidecarFiles, SkippedFile,
@@ -258,10 +258,11 @@ async fn the_schema_holds_one_grouping_model() {
 
 // ── The files of the folder a grouping's releases sit in ────────────────────
 
-/// The sidecar of `folder` under `/music`, holding `names` as artwork.
+/// The sidecar of `folder`, a `/`-separated path under `/music` spelled as
+/// the scanner spells it on this host, holding `names` as artwork.
 fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
     let root = host_root("/music");
-    let folder = std::path::PathBuf::from(&root).join(folder);
+    let folder = folder_below(&root, folder);
     FolderSidecar {
         watched_folder_path: root,
         files: SidecarFiles::Valid(
