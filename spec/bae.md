@@ -204,7 +204,8 @@ slim bar pinned above it, and a scroll that stops part way leaves it at the
 nearer size. On Android, the heading's end holds Search, the sync activity
 indicator (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
-library* and *Settings*.
+library* and *Settings*. A card's title or artists, or a row's name, too long
+for its one line ends in "…".
 
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the

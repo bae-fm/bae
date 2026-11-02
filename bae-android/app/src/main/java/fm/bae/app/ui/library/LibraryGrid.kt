@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -160,12 +161,23 @@ internal fun LibraryGridSceneAlbums(gridState: LazyGridState) {
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
         LibraryGridBacking(
             count = SCENE_ALBUM_COUNT,
-            albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+            albumAt = ::sceneAlbum,
             gridState = gridState,
             onSelectAlbum = {},
         )
     }
 }
+
+/**
+ * A scene's album at [index]: the first title and the third album's artists run
+ * past a card's width, to show them cut short with "…".
+ */
+private fun sceneAlbum(index: Int): BridgeAlbum =
+    PreviewData.album(
+        id = "alb-$index",
+        title = if (index == 0) "A Long Album Title That Runs Past the Card" else "Album ${index + 1}",
+        artistNames = if (index == 2) "Artist Name, Second Artist Name and Third Artist" else "Artist Name",
+    )
 
 @Preview(showBackground = true)
 @Composable
@@ -191,12 +203,14 @@ private fun AlbumGridCard(
             text = album.title,
             style = ThemeText.rowTitle.style,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = album.artistNames,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

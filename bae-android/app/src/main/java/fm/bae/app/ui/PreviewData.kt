@@ -92,13 +92,14 @@ object PreviewData {
         title: String = "Album Title",
         year: Int? = 2020,
         cover: BridgeImageRef? = imageRef(),
+        artistNames: String = "Artist Name",
     ): BridgeAlbum =
         BridgeAlbum(
             id = id,
             title = title,
             year = year,
             isCompilation = false,
-            artistNames = "Artist Name",
+            artistNames = artistNames,
             releaseIds = listOf("rel-$id"),
             primaryReleaseId = "rel-$id",
             cover = cover,
