@@ -185,6 +185,24 @@ struct ShotScene {
                         .environment(ImageStore.stub())
                 )
             },
+            ShotScene(
+                id: "player-waiting-on-storage",
+                size: CGSize(width: 1100, height: 100)
+            ) {
+                AnyView(PreviewScenes.nowPlayingBar(.waitingOnStorage))
+            },
+            ShotScene(
+                id: "player-playing-with-a-gap",
+                size: CGSize(width: 1100, height: 100)
+            ) {
+                AnyView(PreviewScenes.nowPlayingBar(.playingWithAGap))
+            },
+            ShotScene(
+                id: "player-all-here",
+                size: CGSize(width: 1100, height: 100)
+            ) {
+                AnyView(PreviewScenes.nowPlayingBar(.allHere))
+            },
         ] + storageManagerScenes
 }
 

@@ -642,16 +642,15 @@ extension LatestSource where Value == BridgeTrackPosition {
     }
 }
 
-extension LatestStream where Value == BridgeTrackDownload {
-    /// How much of what a load of the playing track waits on from storage
-    /// is here, under its track id; a preview's holds `values` and nothing
-    /// feeds it.
-    public static func trackDownloads(holding values: [String: Value] = [:])
+extension LatestStream where Value == BridgeTrackBuffered {
+    /// The parts of the playing track whose bytes this device holds, under
+    /// its track id; a preview's holds `values` and nothing feeds it.
+    public static func trackBuffered(holding values: [String: Value] = [:])
         -> LatestStream
     {
         LatestStream(holding: keyed(values)) {
-            if case .trackDownload(let download) = $0 {
-                download
+            if case .trackBuffered(let buffered) = $0 {
+                buffered
             }
             else {
                 nil
@@ -661,7 +660,33 @@ extension LatestStream where Value == BridgeTrackDownload {
 
     /// Fill from core.
     public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedTrackDownloads() }
+        fed { appHandle.feedTrackBuffered() }
+    }
+}
+
+extension LatestStream where Value == Bool {
+    /// True under the playing track's id while its load waits on storage;
+    /// a preview's holds true under each of `waiting` and nothing feeds it.
+    public static func trackStorageWaits(waiting: Set<String> = [])
+        -> LatestStream
+    {
+        LatestStream(
+            holding: keyed(
+                Dictionary(uniqueKeysWithValues: waiting.map { ($0, true) })
+            )
+        ) {
+            if case .trackWaitsOnStorage = $0 {
+                true
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill from core.
+    public func feed(from appHandle: AppHandle) -> LatestFeed {
+        fed { appHandle.feedTrackStorageWaits() }
     }
 }
 

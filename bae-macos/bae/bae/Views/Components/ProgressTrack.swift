@@ -8,13 +8,42 @@ enum ProgressTrackDrawing {
     /// Draws the track and, for a positive fraction, an accent fill never
     /// narrower than its height.
     static func draw(in bar: NSRect, fraction: Double?, accent: NSColor) {
-        let radius = bar.height / 2
-        NSColor(Theme.hairline).setFill()
-        NSBezierPath(roundedRect: bar, xRadius: radius, yRadius: radius).fill()
-
+        drawTrack(in: bar)
         guard let fraction else {
             return
         }
+        drawFill(in: bar, fraction: fraction, accent: accent)
+    }
+
+    /// The empty track.
+    static func drawTrack(in bar: NSRect) {
+        let radius = bar.height / 2
+        NSColor(Theme.hairline).setFill()
+        NSBezierPath(roundedRect: bar, xRadius: radius, yRadius: radius).fill()
+    }
+
+    /// Each of `spans`, fractions of the track from its start, in `color`
+    /// over the track.
+    static func drawSpans(
+        _ spans: [BridgeTrackSpan],
+        in bar: NSRect,
+        color: NSColor
+    ) {
+        let radius = bar.height / 2
+        color.setFill()
+        for span in spans {
+            var stretch = bar
+            stretch.origin.x = bar.minX + bar.width * CGFloat(span.start)
+            stretch.size.width = bar.width * CGFloat(span.end - span.start)
+            NSBezierPath(roundedRect: stretch, xRadius: radius, yRadius: radius)
+                .fill()
+        }
+    }
+
+    /// An accent fill to `fraction` of the track, never narrower than its
+    /// height; none at zero.
+    static func drawFill(in bar: NSRect, fraction: Double, accent: NSColor) {
+        let radius = bar.height / 2
         let clamped = CGFloat(min(max(fraction, 0), 1))
         guard clamped > 0 else {
             return

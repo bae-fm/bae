@@ -28,17 +28,6 @@ extension BridgeCatalogApplyStep: ProgressStep {
     var fraction: Double? { nil }
 }
 
-extension BridgeTrackDownload: ProgressStep {
-    var title: String {
-        String(
-            localized: "Downloading the track…",
-            comment:
-                "Now-playing bar, in place of the seek bar while the track about to play is downloaded from the library's storage; the bar under it shows how much of what playback waits on has arrived."
-        )
-    }
-    var fraction: Double? { Double(here) / Double(total) }
-}
-
 extension BridgeStorageSetupProgress: ProgressStep {
     var title: String {
         localizedCoreString(bridgeStorageSetupStepKey(step: step))
@@ -56,10 +45,9 @@ extension BridgeSetupProgress: ProgressStep {
     }
 }
 
-/// The step a library's open, a setup call, a close, an apply of a catalog
-/// release or a track's download runs, over a bar of
-/// how much of it is done, set straight from the call's stream once per display
-/// frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
+/// The step a library's open, a setup call, a close or an apply of a catalog
+/// release runs, over a bar of how much of it is done, set straight from the
+/// call's stream once per display frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
 /// swaps what it shows only as a step starts or ends, never as one moves.
 final class StepProgressNSView<Step: ProgressStep>: NSView {
     private let label = NSTextField(labelWithString: "")

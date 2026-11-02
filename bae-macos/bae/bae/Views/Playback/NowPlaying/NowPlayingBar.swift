@@ -11,9 +11,12 @@ struct NowPlayingBar: View {
     let isPlaying: Bool
     /// Where the playing track is; `nil` while no track plays.
     let position: LatestSource<BridgeTrackPosition>?
-    /// How much of what the loading track waits on from storage is here;
-    /// `nil` while no track loads.
-    let download: LatestSource<BridgeTrackDownload>?
+    /// The parts of the playing track whose bytes are here; `nil` while no
+    /// track plays.
+    let buffered: LatestSource<BridgeTrackBuffered>?
+    /// Whether the loading track's load waits on storage; `nil` while no
+    /// track loads.
+    let storageWait: LatestSource<Bool>?
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
     let volume: Float
@@ -205,22 +208,26 @@ struct NowPlayingBar: View {
         )
         .foregroundStyle(.primary)
         .background(Circle().fill(Theme.tile))
+        .overlay {
+            if let storageWait {
+                StorageWaitArc(source: storageWait)
+            }
+        }
     }
 
-    /// The seek bar, or, while the loading track waits on storage, how much
-    /// of what it waits on is here in its place.
+    /// The seek bar, which draws the parts of the track whose bytes are here
+    /// under the played part.
     private var progressBar: some View {
-        StepProgressLine(steps: download) {
-            PlaybackProgressView(
-                position: position,
-                showRemainingTime: showRemainingTime,
-                onSeek: onSeek,
-                onToggleRemainingTime: onToggleRemainingTime,
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: 20)
-            .accessibilityLabel("Playback position")
-        }
+        PlaybackProgressView(
+            position: position,
+            buffered: buffered,
+            showRemainingTime: showRemainingTime,
+            onSeek: onSeek,
+            onToggleRemainingTime: onToggleRemainingTime,
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: 20)
+        .accessibilityLabel("Playback position")
     }
 
     private var repeatHelp: LocalizedStringKey {
@@ -336,16 +343,19 @@ extension NowPlayingBar {
     // MARK: - Previews
 
     /// Preview host that holds the queue, volume, and mute state.
-    private struct NowPlayingBarPreview: View {
+    struct NowPlayingBarPreview: View {
         let trackTitle: String?
         let artistNames: String?
         let isPlaying: Bool
-        /// What the loading track waits on from storage, or nothing.
-        var download: BridgeTrackDownload?
+        /// The parts of the track whose bytes are here.
+        var held = [BridgeTrackSpan(start: 0, end: 1)]
+        /// Whether the track's load waits on storage.
+        var waitsOnStorage = false
         let repeatMode: BridgeRepeatMode
         let shuffled: Bool?
-        /// The seek bar's position: a quarter through a track, or none.
+        /// The seek bar's position: how far through a track, or none.
         var hasPosition = true
+        var progress = 0.25
 
         @State
         private var showQueue = false
@@ -362,14 +372,23 @@ extension NowPlayingBar {
                 isPlaying: isPlaying,
                 position: hasPosition
                     ? PreviewData.trackPosition(
-                        positionMs: 55_500,
+                        positionMs: Int64(progress * 222_000),
                         durationMs: 222_000
                     )
                     : nil,
-                download: download.map {
-                    LatestStream.trackDownloads(holding: ["track": $0])
-                        .source(for: "track")
-                },
+                buffered: hasPosition
+                    ? LatestStream.trackBuffered(
+                        holding: [
+                            "preview-track": BridgeTrackBuffered(ranges: held)
+                        ]
+                    )
+                    .source(for: "preview-track")
+                    : nil,
+                storageWait:
+                    LatestStream.trackStorageWaits(
+                        waiting: waitsOnStorage ? ["preview-track"] : []
+                    )
+                    .source(for: "preview-track"),
                 showRemainingTime: false,
                 volume: volume,
                 isMuted: isMuted,
@@ -434,18 +453,16 @@ extension NowPlayingBar {
         .environment(Queue.stub())
     }
 
-    #Preview("Downloading") {
-        NowPlayingBarPreview(
-            trackTitle: PreviewData.nowPlayingTitle,
-            artistNames: PreviewData.nowPlayingArtist,
-            isPlaying: true,
-            download: BridgeTrackDownload(here: 1_200_000, total: 4_194_304),
-            repeatMode: .off,
-            shuffled: nil,
-        )
-        .environment(ImageStore.stub())
-        .environment(PreviewData.queueStore(manualCount: 5, context: nil))
-        .environment(Queue.stub())
+    #Preview("Waiting on storage") {
+        PreviewScenes.nowPlayingBar(.waitingOnStorage)
+    }
+
+    #Preview("Playing with a gap") {
+        PreviewScenes.nowPlayingBar(.playingWithAGap)
+    }
+
+    #Preview("All here") {
+        PreviewScenes.nowPlayingBar(.allHere)
     }
 
     #Preview("Empty") {

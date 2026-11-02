@@ -29,6 +29,7 @@ struct PlaybackProgressViewTests {
         try await SnapshotTestSupport.withHostedWindow(
             PlaybackProgressView(
                 position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
                 showRemainingTime: false,
                 onSeek: { _ in },
                 onToggleRemainingTime: {}
@@ -67,6 +68,7 @@ struct PlaybackProgressViewTests {
         try await SnapshotTestSupport.withHostedWindow(
             PlaybackProgressView(
                 position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
                 showRemainingTime: showRemaining,
                 onSeek: { _ in },
                 onToggleRemainingTime: {}
@@ -108,6 +110,7 @@ struct PlaybackProgressViewTests {
         func content(showRemaining: Bool) -> some View {
             PlaybackProgressView(
                 position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
                 showRemainingTime: showRemaining,
                 onSeek: { _ in },
                 onToggleRemainingTime: {}
@@ -162,6 +165,7 @@ struct PlaybackProgressViewTests {
         try await SnapshotTestSupport.withHostedWindow(
             PlaybackProgressView(
                 position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
                 showRemainingTime: false,
                 onSeek: { seeks.append($0) },
                 onToggleRemainingTime: {}
@@ -208,6 +212,7 @@ struct PlaybackProgressViewTests {
         func content(_ track: String) -> some View {
             PlaybackProgressView(
                 position: positions.stream.source(for: track),
+                buffered: LatestStream.trackBuffered().source(for: track),
                 showRemainingTime: false,
                 onSeek: { _ in },
                 onToggleRemainingTime: {}
@@ -283,6 +288,55 @@ struct PlaybackProgressViewTests {
             preview.remove()
             try await Wait.until { labels.map(\.stringValue) == ["", ""] }
             #expect(slider.doubleValue == 0)
+        }
+    }
+}
+
+@Suite("Seek bar held parts")
+@MainActor
+struct SeekBarHeldPartsTests {
+    /// The bar draws the parts of its track whose bytes are here as its
+    /// stream holds them, and each change after.
+    @Test("the bar draws the held parts of its track")
+    func heldParts() async throws {
+        let positions = LatestStream<BridgeTrackPosition>.written()
+        positions.set(
+            position(45_000, of: 180_000, progress: 0.25),
+            for: "track"
+        )
+        let buffered = LatestStream<BridgeTrackBuffered>.written()
+        let start = [BridgeTrackSpan(start: 0, end: 0.4)]
+        buffered.set(BridgeTrackBuffered(ranges: start), for: "track")
+        try await SnapshotTestSupport.withHostedWindow(
+            PlaybackProgressView(
+                position: positions.stream.source(for: "track"),
+                buffered: buffered.stream.source(for: "track"),
+                showRemainingTime: false,
+                onSeek: { _ in },
+                onToggleRemainingTime: {}
+            ),
+            size: NSSize(width: 460, height: 40)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let descendants = SnapshotTestSupport.descendants(of: host)
+            let slider = try #require(
+                descendants.compactMap { $0 as? SeekSlider }.first
+            )
+            let bar = try #require(
+                descendants.compactMap { $0 as? SeekBarNSView }.first
+            )
+            #expect(slider.held == start)
+
+            let gapped = [
+                BridgeTrackSpan(start: 0, end: 0.4),
+                BridgeTrackSpan(start: 0.6, end: 0.8),
+            ]
+            buffered.set(BridgeTrackBuffered(ranges: gapped), for: "track")
+            bar.buffered.frame()
+            #expect(slider.held == gapped)
+
+            buffered.remove("track")
+            try await Wait.until { slider.held.isEmpty }
         }
     }
 }

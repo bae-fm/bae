@@ -9,6 +9,14 @@ class SeekSlider: NSSlider {
         didSet { needsDisplay = true }
     }
 
+    /// The parts of the track whose bytes are here, drawn lighter under the
+    /// played part.
+    var held: [BridgeTrackSpan] = [] {
+        didSet {
+            if held != oldValue { needsDisplay = true }
+        }
+    }
+
     var onSeekComplete: ((Double) -> Void)?
     private(set) var isDragging = false
 
@@ -71,7 +79,15 @@ final class SlimSeekSliderCell: NSSliderCell {
         guard let slider = controlView as? SeekSlider else {
             preconditionFailure("SlimSeekSliderCell belongs to SeekSlider")
         }
-        ProgressTrackDrawing.draw(
+        ProgressTrackDrawing.drawTrack(in: bar)
+        ProgressTrackDrawing.drawSpans(
+            slider.held,
+            in: bar,
+            color: slider.accent.withAlphaComponent(
+                CGFloat(ThemeOpacity.tintStrong)
+            )
+        )
+        ProgressTrackDrawing.drawFill(
             in: bar,
             fraction: fraction,
             accent: slider.accent

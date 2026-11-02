@@ -137500,7 +137500,7 @@
       }
     },
     "Downloading the track…" : {
-      "comment" : "Now-playing bar, in place of the seek bar while the track about to play is downloaded from the library's storage; the bar under it shows how much of what playback waits on has arrived.",
+      "comment" : "Spoken for the arc that turns around Play while the track about to play waits on the library's storage.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {

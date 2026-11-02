@@ -60,10 +60,13 @@ public class PlaybackStore {
     /// that read it each display frame.
     public let trackPositions: LatestStream<BridgeTrackPosition>
 
-    /// How much of what a load of the playing track waits on from storage
-    /// is here, under its track id, for the native views that read it each
-    /// display frame.
-    public let trackDownloads: LatestStream<BridgeTrackDownload>
+    /// The parts of the playing track whose bytes this device holds, under
+    /// its track id, for the seek bar that reads them each display frame.
+    public let trackBuffered: LatestStream<BridgeTrackBuffered>
+
+    /// Whether the playing track's load waits on storage, under its track
+    /// id, for the arc around Play that reads it each display frame.
+    public let trackStorageWaits: LatestStream<Bool>
 
     /// The count of tracks each add puts in the queue; drives the queue
     /// button's "+N" badge.
@@ -74,14 +77,16 @@ public class PlaybackStore {
         queueItemsAddedSubject.eraseToAnyPublisher()
     }
 
-    /// A store whose positions and downloads the subscription fills, or,
-    /// for a preview, fixed ones.
+    /// A store whose positions, held parts and storage waits the
+    /// subscription fills, or, for a preview, fixed ones.
     public init(
         trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions(),
-        trackDownloads: LatestStream<BridgeTrackDownload> = .trackDownloads()
+        trackBuffered: LatestStream<BridgeTrackBuffered> = .trackBuffered(),
+        trackStorageWaits: LatestStream<Bool> = .trackStorageWaits()
     ) {
         self.trackPositions = trackPositions
-        self.trackDownloads = trackDownloads
+        self.trackBuffered = trackBuffered
+        self.trackStorageWaits = trackStorageWaits
     }
 
     /// Where `trackId` is while it plays, for the native view drawing it;
@@ -92,12 +97,20 @@ public class PlaybackStore {
         trackId.map { trackPositions.source(for: $0) }
     }
 
-    /// How much of what the load of `trackId` waits on from storage is here,
-    /// for the native view drawing it; `nil` while no track loads.
-    public func trackDownload(forTrack trackId: String?)
-        -> LatestSource<BridgeTrackDownload>?
+    /// The parts of `trackId` whose bytes this device holds, for the seek
+    /// bar drawing them; `nil` while no track plays.
+    public func trackBuffered(forTrack trackId: String?)
+        -> LatestSource<BridgeTrackBuffered>?
     {
-        trackId.map { trackDownloads.source(for: $0) }
+        trackId.map { trackBuffered.source(for: $0) }
+    }
+
+    /// Whether the load of `trackId` waits on storage, for the arc around
+    /// Play; `nil` while no track loads.
+    public func trackStorageWait(forTrack trackId: String?)
+        -> LatestSource<Bool>?
+    {
+        trackId.map { trackStorageWaits.source(for: $0) }
     }
 
     public var presentedSidePausePrompt: BridgeSidePausePrompt? {

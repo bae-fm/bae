@@ -74,6 +74,60 @@
                 .windowBackground()
         }
 
+        /// Where the now-playing bar's track is, which parts of it are here,
+        /// and whether its load waits on storage.
+        enum NowPlayingLoad {
+            /// The load waits on storage for its first sound, with the start
+            /// of the track here.
+            case waitingOnStorage
+            /// Playing, with a gap a seek ahead left in what is here.
+            case playingWithAGap
+            /// Playing, with every byte of the track here.
+            case allHere
+
+            var progress: Double {
+                switch self {
+                case .waitingOnStorage: 0
+                case .playingWithAGap: 0.3
+                case .allHere: 0.55
+                }
+            }
+
+            var held: [BridgeTrackSpan] {
+                switch self {
+                case .waitingOnStorage:
+                    [BridgeTrackSpan(start: 0, end: 0.08)]
+                case .playingWithAGap:
+                    [
+                        BridgeTrackSpan(start: 0, end: 0.45),
+                        BridgeTrackSpan(start: 0.62, end: 0.85),
+                    ]
+                case .allHere:
+                    [BridgeTrackSpan(start: 0, end: 1)]
+                }
+            }
+
+            var waitsOnStorage: Bool { self == .waitingOnStorage }
+        }
+
+        /// The now-playing bar on a track in `load`.
+        static func nowPlayingBar(_ load: NowPlayingLoad) -> some View {
+            NowPlayingBarPreview(
+                trackTitle: PreviewData.nowPlayingTitle,
+                artistNames: PreviewData.nowPlayingArtist,
+                isPlaying: true,
+                held: load.held,
+                waitsOnStorage: load.waitsOnStorage,
+                repeatMode: .off,
+                shuffled: false,
+                progress: load.progress
+            )
+            .environment(ImageStore.stub())
+            .environment(PreviewData.queueStore(manualCount: 2))
+            .environment(Queue.stub())
+            .windowBackground()
+        }
+
         /// The expanded album detail for a two-sided vinyl fixture, mid-playback.
         static func albumDetail() -> some View {
             PreviewData.albumExpansionScene(

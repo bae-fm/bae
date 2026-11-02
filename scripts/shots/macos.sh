@@ -93,6 +93,9 @@ for scene in \
     import-mapping-cue-narrow \
     queue-pane-standard \
     queue-pane-narrow \
+    player-waiting-on-storage \
+    player-playing-with-a-gap \
+    player-all-here \
     storage-manager-dense \
     storage-manager-empty \
     storage-manager-empty-ish \

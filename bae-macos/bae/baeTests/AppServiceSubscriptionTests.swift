@@ -425,7 +425,11 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
-    override func feedTrackDownloads() -> KeyedValueStream {
+    override func feedTrackBuffered() -> KeyedValueStream {
+        NoopKeyedValueStream()
+    }
+
+    override func feedTrackStorageWaits() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 

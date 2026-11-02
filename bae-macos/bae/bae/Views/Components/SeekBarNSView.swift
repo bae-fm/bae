@@ -1,10 +1,13 @@
 import AppKit
 import BaeKit
 
-/// The stream a seek bar draws: the playing track's position, or the
-/// preview's.
+/// The stream a seek bar draws: the playing track's position over the
+/// parts of it whose bytes are here, or the preview's position.
 enum SeekBarSource {
-    case track(LatestSource<BridgeTrackPosition>)
+    case track(
+        LatestSource<BridgeTrackPosition>,
+        buffered: LatestSource<BridgeTrackBuffered>
+    )
     case preview(LatestSource<BridgePreviewPosition>)
 }
 
@@ -60,6 +63,11 @@ final class SeekBarNSView: NSView {
                     )
                 }
             )
+    }
+    private(set) lazy var buffered = FrameFollowing<BridgeTrackBuffered>(
+        view: self
+    ) { [weak self] held in
+        self?.slider.held = held?.ranges ?? []
     }
     private(set) lazy var previews = FrameFollowing<BridgePreviewPosition>(
         view: self
@@ -155,17 +163,22 @@ final class SeekBarNSView: NSView {
     /// Draw `source` from now on, or nothing.
     func follow(_ source: SeekBarSource?) {
         switch source {
-        case .track(let source):
+        case .track(let source, let held):
             previews.stop()
             track = source
             tracks.follow(source)
+            buffered.follow(held)
         case .preview(let source):
             tracks.stop()
+            buffered.stop()
+            slider.held = []
             track = nil
             previews.follow(source)
         case nil:
             tracks.stop()
+            buffered.stop()
             previews.stop()
+            slider.held = []
             track = nil
             show(nil)
         }
@@ -173,6 +186,7 @@ final class SeekBarNSView: NSView {
 
     func stopFollowing() {
         tracks.stop()
+        buffered.stop()
         previews.stop()
     }
 

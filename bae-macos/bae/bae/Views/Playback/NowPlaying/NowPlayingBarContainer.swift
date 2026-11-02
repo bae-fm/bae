@@ -35,7 +35,12 @@ struct NowPlayingBarContainer: View {
             position: playbackStore.trackPosition(
                 forTrack: track?.track.trackId
             ),
-            download: playbackStore.trackDownload(forTrack: np.loadingTrackId),
+            buffered: playbackStore.trackBuffered(
+                forTrack: track?.track.trackId
+            ),
+            storageWait: playbackStore.trackStorageWait(
+                forTrack: np.loadingTrackId
+            ),
             showRemainingTime: configStore.config.showRemainingTime,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
