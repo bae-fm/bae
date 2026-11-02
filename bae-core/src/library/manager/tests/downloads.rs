@@ -47,7 +47,8 @@ async fn download_queue_skips_already_pinned() {
     connect_test_cloud(&manager).await;
     let release_id =
         uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
-    let summary = manager.find_release_storage_summary(&release_id).await.unwrap().unwrap();
+    let summary =
+        manager.views().find_release_detail(&release_id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Remote);
     assert!(summary.pinned, "the offline-cached file makes it read as pinned");
 
@@ -103,7 +104,8 @@ async fn download_queue_skips_local_release() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let summary = manager.find_release_storage_summary(&release.id).await.unwrap().unwrap();
+    let summary =
+        manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Local);
 
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();

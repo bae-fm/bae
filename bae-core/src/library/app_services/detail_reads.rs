@@ -32,6 +32,7 @@ impl AppServices {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "detail",
@@ -41,12 +42,14 @@ impl AppServices {
                 let mut id = ids.borrow_and_update().clone();
                 let mut query = reconfigurable_live_query_events(
                     &manager,
-                    manager.subscribe_release_detail(id.clone()),
+                    views.subscribe_release_detail(id.clone()),
                     tx.clone(),
                 );
                 let resolve = |id: &Option<String>, projection| {
                     Ok(id.as_ref().and_then(|release_id| {
-                        manager.resolve_release_detail_projection(release_id, projection)
+                        crate::library::views::release::resolve_release_detail_projection(
+                            release_id, projection,
+                        )
                     }))
                 };
                 loop {

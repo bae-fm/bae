@@ -2,9 +2,10 @@
 //! projections that produce them from raw DB aggregates.
 
 use super::*;
-use crate::db::{DbReleaseDetail, DbReleaseSummary};
+use crate::db::DbReleaseDetail;
+use crate::library::views::DbReleaseSummary;
 
-/// The per-release inputs `LibraryManager` reads beside the release's rows and
+/// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: whether a cloud home exists at all
 /// (which gates `storage_actions`), and the release's own cover reference.
 /// Bundled so the constructors take one context rather than a pile of parameters.

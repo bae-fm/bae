@@ -85,9 +85,14 @@ pub async fn remove_uploaded_file(
 
 /// This release's storage state and whether it is pinned on this device.
 pub async fn release_storage(
-    manager: &LibraryManager,
+    database: &bae_core::db::Database,
     release_id: &str,
 ) -> (bae_core::album_detail::ReleaseStorageState, bool) {
-    let summary = manager.find_release_storage_summary(release_id).await.unwrap().unwrap();
+    let summary = bae_core::library::views::LibraryViews::new(database.clone())
+        .find_release_detail(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .summary;
     (summary.storage_state, summary.pinned)
 }

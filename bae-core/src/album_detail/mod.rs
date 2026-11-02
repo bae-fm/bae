@@ -1,8 +1,8 @@
-//! Resolved types for the album path — what `LibraryManager` returns and what
-//! events carry across the bridge.
+//! Resolved types for the album path — what the library's views return and
+//! what events carry across the bridge.
 //!
 //! They carry **formatted labels, resolved paths, derived flags, and pre-computed
-//! totals**. `LibraryManager` produces them by combining raw DB aggregates (from
+//! totals**. The library's views produce them by combining raw DB aggregates (from
 //! `crate::db`) with the position formatters of `bae_types::mediums`; the bridge is
 //! then a field-by-field copy to UniFFI types. That split is the invariant: once a
 //! caller holds a resolved type, derivation has already happened, and no consumer
@@ -26,8 +26,8 @@
 //! ## Projection constructors
 //!
 //! Each resolved type owns its projection from the raw `Db*` aggregate as a
-//! `from_raw`. `LibraryManager` gathers what the DB and coven's cache can tell it
-//! (covers, pin state, cloud-home presence) and hands that in, so the derivation
+//! `from_raw`. The library's views gather what the DB and coven's cache can tell
+//! them (covers, pin state, cloud-home presence) and hand that in, so the derivation
 //! lives with the type it produces.
 
 use crate::db::source_audio::{SourceAudioFile, SourceAudioSummary};

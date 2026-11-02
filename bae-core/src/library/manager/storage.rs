@@ -1,6 +1,5 @@
 //! Storage operations for [`LibraryManager`]: file-path helpers, the
-//! is-unlocked signal, the storage-page DB queries, and the cloud outbox /
-//! delete plumbing.
+//! is-unlocked signal, and the cloud outbox / delete plumbing.
 
 use super::*;
 
@@ -140,81 +139,5 @@ impl LibraryManager {
             coven::DrainOutcome::Drained { uploaded, .. } => Ok(uploaded),
             other => Err(format!("expected a drain that attempted queued uploads, got {other:?}")),
         }
-    }
-
-    /// One page of the Storage Manager list, pre-sorted and pre-filtered.
-    /// `total_count` counts the filtered subset, not the whole library.
-    pub async fn get_storage_page(
-        &self,
-        sort: &crate::db::StorageSortCriterion,
-        filter: crate::db::StorageFilter,
-        offset: u64,
-        limit: u64,
-    ) -> Result<StoragePage, LibraryError> {
-        let raw_rows = self.database.get_storage_page(sort, filter, offset, limit).await?;
-        let total_count = self.database.get_storage_count(filter).await?;
-
-        let has_cloud_home = self.has_cloud_home().await?;
-        let rows =
-            raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, has_cloud_home)).collect();
-        Ok(StoragePage { rows, total_count })
-    }
-
-    pub(crate) fn subscribe_storage_browse(
-        &self,
-        initial: crate::db::StorageBrowseRequest,
-    ) -> coven::ReconfigurableLiveQuery<
-        crate::db::StorageBrowseRequest,
-        crate::db::StorageBrowseProjection,
-    > {
-        self.database.subscribe_storage_browse(initial)
-    }
-
-    /// Resolve a Storage Manager delivery.
-    pub(crate) fn resolve_storage_browse(
-        &self,
-        projection: crate::db::StorageBrowseProjection,
-    ) -> crate::library::StorageBrowseSnapshot {
-        let has_cloud_home = projection.has_cloud_home;
-        let resolve = |raw: crate::db::DbStorageRow| StorageRow::from_raw(raw, has_cloud_home);
-        let windows = projection
-            .windows
-            .into_iter()
-            .map(|window| crate::db::LibraryBrowseWindow {
-                window: window.window,
-                rows: window.rows.into_iter().map(&resolve).collect(),
-            })
-            .collect();
-        let selected: Vec<StorageRow> = projection.selected.into_iter().map(&resolve).collect();
-        crate::library::StorageBrowseSnapshot {
-            sort: projection.sort,
-            filter: projection.filter,
-            search: projection.search,
-            searching: projection.searching,
-            windows,
-            total_count: projection.total_count,
-            total_size: projection.total_size,
-            selection_actions: crate::album_detail::common_storage_actions(&selected),
-            selected,
-            queues: projection.queues,
-        }
-    }
-
-    /// Count storage rows matching `filter`. Matches `get_storage_page`'s
-    /// `total_count` for the same filter.
-    pub async fn get_storage_count(
-        &self,
-        filter: crate::db::StorageFilter,
-    ) -> Result<u64, LibraryError> {
-        Ok(self.database.get_storage_count(filter).await?)
-    }
-
-    /// Sum of `total_size` over every storage row matching `filter` — the
-    /// storage-manager footer's "Total:", independent of how many pages are loaded.
-    pub async fn get_storage_total_size(
-        &self,
-        filter: crate::db::StorageFilter,
-    ) -> Result<u64, LibraryError> {
-        Ok(self.database.get_storage_total_size(filter).await?)
     }
 }

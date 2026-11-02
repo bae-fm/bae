@@ -39,11 +39,11 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     let release_detail = services.subscribe_release_detail();
     release_detail.set(Some(release.id.clone())).unwrap();
     let storage = services.subscribe_storage_browse(crate::library::StorageBrowseView {
-        sort: crate::db::StorageSortCriterion {
-            field: crate::db::StorageSortField::AlbumTitle,
+        sort: crate::library::views::StorageSortCriterion {
+            field: crate::library::views::StorageSortField::AlbumTitle,
             direction: crate::db::SortDirection::Ascending,
         },
-        filter: crate::db::StorageFilter::All,
+        filter: crate::library::views::StorageFilter::All,
         search: String::new(),
         windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),

@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::library::views::*;
 
 const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
 const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
@@ -42,17 +43,19 @@ async fn exec(db: &Database, sql: &'static str) {
 
 /// The Storage Manager list's release ids in `field` order, ascending.
 async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
-    db.get_storage_page(
-        &StorageSortCriterion { field, direction: SortDirection::Ascending },
-        StorageFilter::All,
-        0,
-        50,
-    )
-    .await
-    .unwrap()
-    .into_iter()
-    .map(|row| row.release.id)
-    .collect()
+    crate::library::views::LibraryViews::new(db.clone())
+        .get_storage_page(
+            &StorageSortCriterion { field, direction: SortDirection::Ascending },
+            StorageFilter::All,
+            0,
+            50,
+        )
+        .await
+        .unwrap()
+        .rows
+        .into_iter()
+        .map(|row| row.release.id)
+        .collect()
 }
 
 #[tokio::test]
@@ -68,10 +71,34 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
     }
     let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
 
-    assert_eq!(db.get_storage_count(StorageFilter::All).await.unwrap(), 2);
-    assert_eq!(db.get_storage_count(StorageFilter::Local).await.unwrap(), 2);
-    assert_eq!(db.get_storage_count(StorageFilter::Remote).await.unwrap(), 0);
-    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 30);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_count(StorageFilter::All)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_count(StorageFilter::Local)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_count(StorageFilter::Remote)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        30
+    );
     assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
     exec(&db, "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';").await;
@@ -81,7 +108,13 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
     ] {
         insert_file(&db, tmp.path(), file).await;
     }
-    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 13);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        13
+    );
     assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_EARLY, RELEASE_LATE]));
     assert_eq!(page(&db, StorageSortField::TotalSize).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
@@ -94,8 +127,20 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
     assert_eq!(page(&db, StorageSortField::AlbumTitle).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
     exec(&db, "DELETE FROM releases WHERE id = 'd439555e-9883-4037-a580-48ea33c2c57b';").await;
-    assert_eq!(db.get_storage_count(StorageFilter::All).await.unwrap(), 1);
-    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 3);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_count(StorageFilter::All)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        3
+    );
 }
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -135,13 +180,13 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
     for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
             let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
-            let order = super::super::query::storage_order(&sort);
+            let order = crate::library::views::storage::storage_order(&sort);
             let steps = plan(
                 &db,
-                super::super::storage_window_query(
+                crate::library::views::storage::storage_window_query(
                     &order,
                     filter,
-                    super::super::StorageRows::Listed,
+                    crate::library::views::storage::StorageRows::Listed,
                     &order.everything(),
                 )
                 .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),

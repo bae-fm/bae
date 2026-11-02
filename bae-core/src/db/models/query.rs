@@ -1,48 +1,5 @@
 use super::*;
 
-/// Raw per-release storage summary, assembled in one SQL query (no N+1). No
-/// formatting, no derivation — the resolver in `LibraryManager` produces the
-/// display-ready `crate::album_detail::ReleaseStorageSummary` (deriving
-/// `storage_state` from `remote` and formatting `total_size`).
-#[derive(Debug, Clone)]
-pub struct DbReleaseStorageSummary {
-    pub release_id: String,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_names: String,
-    pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Whether all audio files are attached for sharing.
-    pub remote: bool,
-    /// Whether this device keeps every file of the release pinned, as the
-    /// release's listing counts its pinned files.
-    pub pinned: bool,
-    /// What of the release waits in this device's upload queue.
-    pub upload: Option<DbReleaseUpload>,
-    pub file_count: i64,
-    pub total_size: i64,
-    /// What the library records this device holding for each audio file whose
-    /// row names no stored file.
-    pub unstored_audio: Vec<DbUnstoredAudio>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortDirection {
-    Ascending,
-    Descending,
-}
-
-/// A release detail plus the album context needed to project it: the album's
-/// artists (the per-track artist fallback), this release's index among the
-/// album's releases, and whether the album is a compilation (which decides each
-/// track's display artist). Returned by `find_release_detail_context`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReleaseDetailContext {
-    pub detail: DbReleaseDetail,
-    pub album_artists: Vec<crate::db::credits::LibraryCredit>,
-    pub release_index: usize,
-    pub is_compilation: bool,
-}
-
 /// What the Storage Manager's inspector shows of one release, read at once
 /// so its queue entries, its files' pins and its uploads are of one moment.
 #[cfg(desktop)]
@@ -56,7 +13,7 @@ pub struct DbStorageInspector {
     pub entries: crate::library::ReleaseQueueEntries,
 }
 
-/// Raw release-detail aggregate. The resolver in `LibraryManager` produces
+/// Raw release-detail aggregate, which the release detail view resolves into
 /// the display-ready `crate::album_detail::ReleaseDetail`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseDetail {
@@ -194,33 +151,6 @@ pub struct DbTrackWithArtists {
     pub artists: Vec<crate::db::credits::LibraryCredit>,
 }
 
-/// Raw per-release slim aggregate for summary views (storage rows, release
-/// pickers): `DbReleaseStorageSummary` minus the album-level joins. The resolver
-/// in `LibraryManager` produces the display-ready
-/// `crate::album_detail::ReleaseSummary`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbReleaseSummary {
-    pub id: String,
-    pub album_id: String,
-    pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Whether all audio files are attached for sharing.
-    pub remote: bool,
-    /// Whether this device keeps every file of the release pinned, as the
-    /// release's listing counts its pinned files.
-    pub pinned: bool,
-    /// What of the release waits in this device's upload queue; `None` when
-    /// nothing does.
-    pub upload: Option<DbReleaseUpload>,
-    /// The storage transition this process runs for the release; `None`
-    /// when it runs none.
-    pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
-    pub file_count: i64,
-    pub total_size: i64,
-    /// What the library records this device holding for each audio file whose
-    /// row names no stored file.
-    pub unstored_audio: Vec<DbUnstoredAudio>,
-}
-
 /// A release's files in this device's upload queue, as one read finds them:
 /// how many wait there, how many of those this process is sending now, and
 /// how many are stored.
@@ -232,49 +162,8 @@ pub struct DbReleaseUpload {
     pub stored: i64,
 }
 
-/// Raw storage-page row: a release summary joined with its parent album summary,
-/// both halves from one SQL query, and where the release's files are, as the
-/// list sorts by storage. The resolver in `LibraryManager` turns them into
-/// `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbStorageRow {
-    pub release: DbReleaseSummary,
-    /// When the release was added to the library.
-    pub date_added: DateTime<Utc>,
-    /// The version of the release's own cover; `None` when it has none.
-    pub release_cover_version: Option<String>,
-    pub album: DbAlbumSummary,
-    pub place: crate::album_detail::StoragePlace,
-}
-
-/// The columns the Storage Manager view renders, as sort keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageSortField {
-    AlbumTitle,
-    ArtistNames,
-    Media,
-    FileCount,
-    TotalSize,
-    /// Where the release's files are, ascending: uploading, pinning, local,
-    /// pinned, in the cloud only.
-    Storage,
-    /// When the release was added, oldest first ascending.
-    DateAdded,
-}
-
-/// A single sort criterion for storage-page queries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StorageSortCriterion {
-    pub field: StorageSortField,
-    pub direction: SortDirection,
-}
-
-/// Filter applied to a storage-page query — the three mutually-exclusive
-/// choices the Storage Manager shows: every release, the local ones, or the
-/// uploaded ones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageFilter {
-    All,
-    Remote,
-    Local,
+pub enum SortDirection {
+    Ascending,
+    Descending,
 }

@@ -237,10 +237,12 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     assert!(
         manager
             .library
-            .find_release_storage_summary(&release_id)
+            .views()
+            .find_release_detail(&release_id)
             .await
             .unwrap()
             .expect("the library holds the release")
+            .summary
             .pinned
     );
 }

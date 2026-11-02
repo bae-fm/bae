@@ -2,6 +2,7 @@
 //! what a screen shows.
 
 use crate::db::*;
+use chrono::{DateTime, Utc};
 
 /// Raw combined search-result aggregate. No formatting — resolving it
 /// produces the display-ready `crate::album_detail::SearchResults`.
@@ -207,4 +208,89 @@ pub enum ArtistSortField {
 pub struct ArtistSortCriterion {
     pub field: ArtistSortField,
     pub direction: SortDirection,
+}
+
+/// A release detail plus the album context needed to project it: the album's
+/// artists (the per-track artist fallback), this release's index among the
+/// album's releases, and whether the album is a compilation (which decides each
+/// track's display artist).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseDetailContext {
+    pub detail: DbReleaseDetail,
+    pub album_artists: Vec<crate::db::credits::LibraryCredit>,
+    pub release_index: usize,
+    pub is_compilation: bool,
+}
+
+/// Raw per-release slim aggregate for summary views (storage rows, release
+/// pickers), which resolves into the display-ready
+/// `crate::album_detail::ReleaseSummary`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseSummary {
+    pub id: String,
+    pub album_id: String,
+    pub media: Vec<bae_types::pressing::MediaCount>,
+    /// Whether all audio files are attached for sharing.
+    pub remote: bool,
+    /// Whether this device keeps every file of the release pinned, as the
+    /// release's listing counts its pinned files.
+    pub pinned: bool,
+    /// What of the release waits in this device's upload queue; `None` when
+    /// nothing does.
+    pub upload: Option<DbReleaseUpload>,
+    /// The storage transition this process runs for the release; `None`
+    /// when it runs none.
+    pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
+    pub file_count: i64,
+    pub total_size: i64,
+    /// What the library records this device holding for each audio file whose
+    /// row names no stored file.
+    pub unstored_audio: Vec<DbUnstoredAudio>,
+}
+
+/// Raw storage-page row: a release summary joined with its parent album summary,
+/// both halves from one SQL query, and where the release's files are, as the
+/// list sorts by storage. The storage views resolve them into
+/// `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbStorageRow {
+    pub release: DbReleaseSummary,
+    /// When the release was added to the library.
+    pub date_added: DateTime<Utc>,
+    /// The version of the release's own cover; `None` when it has none.
+    pub release_cover_version: Option<String>,
+    pub album: DbAlbumSummary,
+    pub place: crate::album_detail::StoragePlace,
+}
+
+/// The columns the Storage Manager view renders, as sort keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageSortField {
+    AlbumTitle,
+    ArtistNames,
+    Media,
+    FileCount,
+    TotalSize,
+    /// Where the release's files are, ascending: uploading, pinning, local,
+    /// pinned, in the cloud only.
+    Storage,
+    /// When the release was added, oldest first ascending.
+    DateAdded,
+}
+
+/// A single sort criterion for storage-page queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StorageSortCriterion {
+    pub field: StorageSortField,
+    pub direction: SortDirection,
+}
+
+/// Filter applied to a storage-page query — the three mutually-exclusive
+/// choices the Storage Manager shows: every release, the local ones, or the
+/// uploaded ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageFilter {
+    All,
+    Remote,
+    Local,
 }

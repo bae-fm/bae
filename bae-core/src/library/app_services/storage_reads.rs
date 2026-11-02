@@ -17,24 +17,26 @@ impl AppServices {
         let (view_tx, mut views) = tokio::sync::watch::channel(initial);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
+        let library_views = self.inner.views.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "storage browse",
             task.clone(),
             tx.clone(),
             async move {
-                let request_for =
-                    |view: &crate::library::StorageBrowseView| crate::db::StorageBrowseRequest {
+                let request_for = |view: &crate::library::StorageBrowseView| {
+                    crate::library::views::StorageBrowseRequest {
                         sort: view.sort,
                         filter: view.filter,
                         search: view.search.clone(),
                         windows: view.windows.clone(),
                         selected: view.selected.clone(),
-                    };
+                    }
+                };
                 let mut request = request_for(&views.borrow_and_update());
                 let mut query = reconfigurable_live_query_events(
                     &manager,
-                    manager.subscribe_storage_browse(request.clone()),
+                    library_views.subscribe_storage_browse(request.clone()),
                     tx.clone(),
                 );
                 loop {
@@ -42,7 +44,9 @@ impl AppServices {
                         event = query.recv() => match event {
                             None => return,
                             Some(Ok(projection)) => {
-                                Ok(manager.resolve_storage_browse(projection))
+                                Ok(crate::library::views::storage::resolve_storage_browse(
+                                    projection,
+                                ))
                             }
                             Some(Err(error)) => Err(error),
                         },

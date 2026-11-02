@@ -4,12 +4,12 @@
 //!
 //! **No formatting, no Rust-side derivation, no filesystem access.** Every
 //! `*_label`, sum-of-fields, group-by, path resolution, `has_X` flag, or
-//! `stored.or_else(first)` fallback belongs in the manager, not here.
+//! `stored.or_else(first)` fallback belongs in the library, not here.
 //!
-//! `LibraryManager` in `crate::library::manager` is the resolver: it turns
-//! these into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary`,
-//! `ReleaseStorageSummary`, and `SearchResults` of `crate::album_detail`, which
-//! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
+//! The library resolves them: its views (`crate::library::views`) turn them
+//! into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary` and
+//! `SearchResults` of `crate::album_detail`, which is what the bridge and
+//! event payloads carry. (`crate::queue::QueueItem` is
 //! built directly by the queue catalog read — it has no raw counterpart here.)
 
 use bae_catalogs::catalog::Catalog;
@@ -203,9 +203,8 @@ pub struct DbAlbum {
 }
 
 /// Raw album-summary aggregate: artist names, release IDs and the primary
-/// release joined in SQL to avoid N+1 lookups. The resolver in
-/// `LibraryManager` produces the display-ready
-/// `crate::album_detail::AlbumSummary`.
+/// release joined in SQL to avoid N+1 lookups, which the library's views
+/// resolve into the display-ready `crate::album_detail::AlbumSummary`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSummary {
     pub id: String,

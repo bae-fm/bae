@@ -67,25 +67,17 @@ async fn work_summary_orders_composer_names_inside_the_aggregate() {
 }
 
 #[tokio::test]
-async fn release_storage_summary_orders_artist_names_inside_the_aggregate() {
-    let (db, _tmp) = aggregate_db().await;
-    let summary = db
-        .find_release_storage_summary(RELEASE_Z)
-        .await
-        .unwrap()
-        .expect("release storage summary row");
-
-    assert_eq!(summary.artist_names, "Artist Name Primary, Artist Name First, Artist Name Second");
-}
-
-#[tokio::test]
 async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
     let (db, _tmp) = aggregate_db().await;
     let sort = StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
     };
-    let rows = db.get_storage_page(&sort, StorageFilter::All, 0, 10).await.unwrap();
+    let rows = crate::library::views::LibraryViews::new(db.clone())
+        .get_storage_page(&sort, StorageFilter::All, 0, 10)
+        .await
+        .unwrap()
+        .rows;
     let row = rows.first().expect("storage row");
 
     assert_eq!(
@@ -134,7 +126,11 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
     };
-    let rows = db.get_storage_page(&storage_sort, StorageFilter::All, 0, 10).await.unwrap();
+    let rows = crate::library::views::LibraryViews::new(db.clone())
+        .get_storage_page(&storage_sort, StorageFilter::All, 0, 10)
+        .await
+        .unwrap()
+        .rows;
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].album.artist_names, "");
     assert_eq!(rows[1].album.artist_names, "Artist Name First, Artist Name Second");
@@ -201,7 +197,11 @@ async fn release_detail_db() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() {
     let (db, _tmp) = release_detail_db().await;
-    let detail = db.find_release_detail(RELEASE_A).await.unwrap().expect("release detail");
+    let detail = crate::library::views::LibraryViews::new(db.clone())
+        .find_db_release_detail(RELEASE_A)
+        .await
+        .unwrap()
+        .expect("release detail");
 
     let track_ids: Vec<&str> = detail.tracks.iter().map(|track| track.track.id.as_str()).collect();
     assert_eq!(track_ids, vec![TRACK_A, TRACK_B]);
@@ -255,7 +255,11 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
     assert_eq!(names(&read), expected, "the read");
     let listed = db.get_files_for_release(RELEASE_A).await.unwrap();
     assert_eq!(names(&listed), expected, "the release's file list");
-    let detail = db.find_release_detail(RELEASE_A).await.unwrap().expect("release detail");
+    let detail = crate::library::views::LibraryViews::new(db.clone())
+        .find_db_release_detail(RELEASE_A)
+        .await
+        .unwrap()
+        .expect("release detail");
     assert_eq!(names(&detail.files), expected, "the release's detail");
 
     let plan = db
@@ -519,8 +523,11 @@ async fn a_releases_index_counts_the_releases_before_it() {
         ("0252dedb-ee39-4547-8803-438dbeb57a64", 1),
         ("64e79a1f-404a-4c34-809a-a3cb44bf1942", 2),
     ] {
-        let context =
-            db.find_release_detail_context(release_id).await.unwrap().expect("the release exists");
+        let context = crate::library::views::LibraryViews::new(db.clone())
+            .find_release_detail_context(release_id)
+            .await
+            .unwrap()
+            .expect("the release exists");
         assert_eq!(context.release_index, index, "{release_id}");
     }
 
@@ -529,7 +536,7 @@ async fn a_releases_index_counts_the_releases_before_it() {
             sql.query(
                 &format!(
                     "EXPLAIN QUERY PLAN {}",
-                    super::super::release_projection::RELEASE_INDEX_IN_ALBUM
+                    crate::library::views::release::RELEASE_INDEX_IN_ALBUM
                 ),
                 ["8aa66d48-65a0-42e4-8c1d-e7481e8c1861"],
                 |row| row.get::<_, String>(3),

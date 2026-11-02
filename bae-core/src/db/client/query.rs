@@ -217,28 +217,6 @@ pub(crate) fn artist_is_shown(alias: &str) -> String {
 pub(crate) const ALBUM_A_IS_SHOWN: &str =
     "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
-pub(super) fn row_to_release_summary(
-    sql: &SqlReadContext<'_>,
-    row: &Row<'_>,
-) -> rusqlite::Result<DbReleaseSummary> {
-    let id: String = row.get("release_id")?;
-    Ok(DbReleaseSummary {
-        unstored_audio: super::read::unstored_audio_in_row(sql, &id)?,
-        id,
-        album_id: row.get("album_id")?,
-        media: super::pressing_columns::read_media(row, "release_media")?,
-        remote: row.get("remote")?,
-        pinned: row.get("pinned")?,
-        upload: super::queued_uploads::release_upload_in_row(row)?,
-        transfer_action: super::release_storage_action::transfer_action_column(
-            row,
-            "transfer_action",
-        )?,
-        file_count: row.get("file_count")?,
-        total_size: row.get("total_size")?,
-    })
-}
-
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
 /// type, so `image_type` is supplied by the caller rather than read from a column.
 pub(super) fn row_to_library_image(
@@ -255,52 +233,6 @@ pub(super) fn row_to_library_image(
     })
 }
 
-/// The Storage Manager list's order over `release_listing listing`. Every
-/// order ends with the album title, then `created_at` unless it sorts by
-/// that, and the release id, which tell apart two releases sharing a title
-/// and a timestamp (bulk imports, tests). An index of `release_listing`
-/// serves each, alone and after `stored`.
-pub(super) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
-    let dir = sort.direction;
-    let mut terms = match sort.field {
-        StorageSortField::AlbumTitle => {
-            vec![SortTerm::running("listing.album_title COLLATE NOCASE", dir)]
-        }
-        StorageSortField::ArtistNames => vec![
-            SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir).nullable(),
-            SortTerm::running("listing.credit_artist_ids", dir).nullable(),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-        // A release stating no medium goes last either way.
-        StorageSortField::Media => vec![
-            SortTerm::ascending("listing.media_empty"),
-            SortTerm::running("listing.media_key", dir).nullable(),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-        StorageSortField::FileCount => vec![
-            SortTerm::running("listing.file_count", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-        StorageSortField::TotalSize => vec![
-            SortTerm::running("listing.total_size", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-        StorageSortField::Storage => vec![
-            SortTerm::running("listing.storage_order", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-        StorageSortField::DateAdded => vec![
-            SortTerm::running("listing.created_at", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
-        ],
-    };
-    if sort.field != StorageSortField::DateAdded {
-        terms.push(SortTerm::ascending("listing.created_at"));
-    }
-    terms.push(SortTerm::ascending("listing.release_id"));
-    ListOrder::new(terms)
-}
-
 /// Each release with files in coven's upload queue, and where its first
 /// queued file stands in it, as the listing keeps them. Covers and other
 /// images in the queue are no release uploading.
@@ -312,7 +244,7 @@ pub(crate) const UPLOADING_RELEASES: &str =
 /// Whether this device keeps every file of the release `listing` lists
 /// pinned and whole here: its pinned count, which local triggers keep from
 /// the pins coven's `coven_pins` lists as kept, has reached its file count.
-pub(super) const RELEASE_LISTING_PINNED: &str =
+pub(crate) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
 /// The credits of `owner_expr` in `table` (`album_artists` or

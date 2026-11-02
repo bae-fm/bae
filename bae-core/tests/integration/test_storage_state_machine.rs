@@ -6,10 +6,8 @@
 use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{
-    Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter,
-    StorageSortCriterion, StorageSortField,
-};
+use bae_core::db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
+use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
@@ -143,7 +141,7 @@ async fn create_remote_cloud_only_release(
     mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
-        support::release_storage(mgr, &release_id).await,
+        support::release_storage(db, &release_id).await,
         (ReleaseStorageState::Remote, false),
         "release is Remote (cloud-only) once the transition is accepted"
     );
@@ -190,7 +188,8 @@ async fn test_multiple_releases_independent_completion() {
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_test_support::start_test_services(mgr.clone(), database.clone(), catalogs, closing)
+            .await;
     for release_id in [&release_a, &release_b] {
         let release = services.subscribe_release_detail();
         release.set(Some(release_id.clone())).unwrap();
@@ -207,11 +206,11 @@ async fn test_multiple_releases_independent_completion() {
     }
 
     assert_eq!(
-        support::release_storage(&mgr, &release_a).await,
+        support::release_storage(&database, &release_a).await,
         (ReleaseStorageState::Remote, true)
     );
     assert_eq!(
-        support::release_storage(&mgr, &release_b).await,
+        support::release_storage(&database, &release_b).await,
         (ReleaseStorageState::Remote, true)
     );
 }
@@ -253,7 +252,7 @@ async fn test_manage_refused_without_cloud_storage() {
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 }
@@ -266,7 +265,7 @@ async fn test_manage_refused_without_cloud_storage() {
 #[tokio::test]
 async fn attached_release_turns_remote_once_its_uploads_finish() {
     let tmp = TempDir::new().unwrap();
-    let ((mgr, ..), _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &mgr,
@@ -279,7 +278,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 
     // Queued uploads leave every row without a stored file.
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 
@@ -288,7 +287,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 
     // Each completed upload names its file, and the pin state is unchanged.
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
@@ -297,7 +296,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 #[tokio::test]
 async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
-    let ((mgr, ..), cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
         &mgr,
@@ -315,7 +314,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     assert_eq!(count, 0, "no upload should succeed");
 
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
     assert_ne!(mgr.count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
@@ -359,7 +358,7 @@ async fn truncated_source_fails_its_move_without_sending() {
         assert!(source_dir.join(name).exists());
     }
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 }
@@ -389,7 +388,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 
     // Release is Local, and each file's original path names its new copy.
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
     for (file_id, name, _) in &files {
@@ -425,7 +424,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     assert!(result.is_err(), "missing file must be a hard error");
 
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is left");
@@ -463,7 +462,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
         "{error:?}"
     );
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is made");

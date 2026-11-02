@@ -473,7 +473,7 @@ impl AppServices {
     delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[crate::db::LibraryCheck]) -> Result<Vec<crate::db::LibraryStatus>, crate::library::LibraryError>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[crate::library::views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<crate::album_detail::AlbumSummary>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<crate::album_detail::AlbumDetail>);
-    delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
+    delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<crate::album_detail::ReleaseDetail>);
     delegate_view!(get_albums => get_albums(sort: &[crate::library::views::AlbumSortCriterion]) -> Vec<crate::db::DbAlbum>);
     delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<crate::db::DbRelease>, crate::library::LibraryError>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<crate::db::DbRelease>, crate::library::LibraryError>);

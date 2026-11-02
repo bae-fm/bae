@@ -22,14 +22,14 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     manager.database.insert_release(&release_a).await.unwrap();
     manager.database.insert_release(&release_b).await.unwrap();
 
-    let sort = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::AlbumTitle,
+    let sort = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::AlbumTitle,
         direction: crate::db::SortDirection::Ascending,
     };
     let first_page =
-        manager.get_storage_page(&sort, crate::db::StorageFilter::All, 0, 1).await.unwrap();
+        manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 1).await.unwrap();
     let second_page =
-        manager.get_storage_page(&sort, crate::db::StorageFilter::All, 1, 1).await.unwrap();
+        manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 1, 1).await.unwrap();
 
     assert_eq!(first_page.rows.len(), 1);
     assert_eq!(second_page.rows.len(), 1);

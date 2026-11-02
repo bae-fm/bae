@@ -1,5 +1,4 @@
 use super::*;
-mod storage;
 
 /// A release's metadata as an edit leaves it: album fields, release pressing
 /// fields, the track rows named by `track_updates` (existing track ID → edited
@@ -263,84 +262,6 @@ impl Database {
         .await
     }
 
-    /// The raw release-detail aggregate for a single release. `LibraryManager`
-    /// resolves it into `ReleaseDetail`.
-    pub async fn find_release_detail(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<DbReleaseDetail>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |sql| {
-            let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
-                return Ok(None);
-            };
-            Ok(Some(build_release_detail_on(&sql, release)?))
-        })
-        .process(|rows| Ok(rows.map(ReleaseDetailRows::process)))
-        .await
-    }
-
-    /// The release's detail context, as [`Self::find_release_detail_context`]
-    /// reads it, and its tracks' audio as the release editor reads it, in
-    /// release order: both from one read.
-    #[cfg(desktop)]
-    pub async fn find_release_edit_context(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<(ReleaseDetailContext, Vec<DbReleaseEditTrack>)>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |sql| {
-            let Some(context) = find_release_detail_context_on(&sql, &release_id)? else {
-                return Ok(None);
-            };
-            Ok(Some((context, release_edit_tracks_on(&sql, &release_id)?)))
-        })
-        .process(|rows| {
-            Ok(rows.map(|(context, tracks)| {
-                (super::release_projection::ReleaseContextRows::process(context), tracks)
-            }))
-        })
-        .await
-    }
-
-    /// The raw release-detail aggregate, the release's album artists, and its
-    /// 0-based position among its album's releases — all from one database call.
-    /// `LibraryManager` resolves this into `ReleaseDetail`.
-    pub async fn find_release_detail_context(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<ReleaseDetailContext>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |sql| find_release_detail_context_on(&sql, &release_id))
-            .process(|rows| Ok(rows.map(super::release_projection::ReleaseContextRows::process)))
-            .await
-    }
-
-    /// Follow the release `initial` names, or none. The detail view moves
-    /// to another release through the request handle, not another query.
-    pub(crate) fn subscribe_release_detail(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |release_id, sql| {
-                let has_cloud_home = cloud_home_on(&sql)?;
-                let context = match release_id {
-                    Some(release_id) => find_release_detail_context_on(&sql, release_id)
-                        .map_err(CovenError::from)?,
-                    None => None,
-                };
-                Ok((context, has_cloud_home))
-            })
-            .process(|(context, has_cloud_home)| {
-                Ok(ReleaseDetailProjection {
-                    context: context.map(super::release_projection::ReleaseContextRows::process),
-                    has_cloud_home,
-                })
-            })
-    }
-
     /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
@@ -591,7 +512,7 @@ pub(super) const RELEASE_EDIT_TRACKS: &str = "SELECT t.*, \
      FROM tracks t WHERE t.release_id = ?1 ORDER BY t.position";
 
 #[cfg(desktop)]
-fn release_edit_tracks_on(
+pub(crate) fn release_edit_tracks_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {

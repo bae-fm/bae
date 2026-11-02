@@ -713,7 +713,7 @@ impl BridgeCloudProvider {
 }
 
 mirror_enum! {
-    BridgeStorageSortField = bae_core::db::StorageSortField,
+    BridgeStorageSortField = bae_core::library::views::StorageSortField,
     from_core: fn,
     into_core: fn,
     variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize, Storage, DateAdded },
@@ -727,7 +727,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeStorageSort = bae_core::db::StorageSortCriterion,
+    BridgeStorageSort = bae_core::library::views::StorageSortCriterion,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -737,7 +737,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeStorageFilter = bae_core::db::StorageFilter,
+    BridgeStorageFilter = bae_core::library::views::StorageFilter,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { All, Remote, Local },

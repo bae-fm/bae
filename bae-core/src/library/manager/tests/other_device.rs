@@ -12,8 +12,10 @@ const DELIVERY: std::time::Duration = std::time::Duration::from_secs(20);
 
 /// The next value of a release's live read for which `wanted` holds.
 async fn next_playability(
-    manager: &LibraryManager,
-    live: &mut coven::ReconfigurableLiveQuery<Option<String>, crate::db::ReleaseDetailProjection>,
+    live: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        crate::library::views::ReleaseDetailProjection,
+    >,
     release_id: &str,
     wanted: impl Fn(&ReleasePlayability) -> bool,
 ) -> ReleasePlayability {
@@ -25,10 +27,11 @@ async fn next_playability(
                 .expect("the release's read stays open")
                 .result
                 .expect("the release reads");
-            let playability = manager
-                .resolve_release_detail_projection(release_id, projection)
-                .expect("the release exists")
-                .playability;
+            let playability = crate::library::views::release::resolve_release_detail_projection(
+                release_id, projection,
+            )
+            .expect("the release exists")
+            .playability;
             if wanted(&playability) {
                 return playability;
             }
@@ -47,10 +50,11 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
         let originals = TempDir::new().unwrap();
         let release = release_on_the_first_device(devices, originals.path(), "Album").await;
         let manager = devices.b().manager();
-        let mut live = manager.subscribe_release_detail(Some(release.id.clone()));
+        let mut live = crate::library::views::LibraryViews::new(manager.database.clone())
+            .subscribe_release_detail(Some(release.id.clone()));
 
         assert_eq!(
-            next_playability(manager, &mut live, &release.id, |_| true).await,
+            next_playability(&mut live, &release.id, |_| true).await,
             ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device A".to_string() })
         );
 
@@ -61,7 +65,7 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
                  JOIN coven_files AS c ON c.id = f.file",
             )
             .await;
-        next_playability(manager, &mut live, &release.id, |playability| {
+        next_playability(&mut live, &release.id, |playability| {
             *playability == ReleasePlayability::Playable
         })
         .await;
@@ -74,8 +78,11 @@ async fn offered(
     manager: &LibraryManager,
     release_id: &str,
 ) -> (Vec<ReleaseStorageAction>, Option<crate::album_detail::ReleaseDownloadStatus>) {
-    let detail =
-        manager.find_release_detail(release_id).await.unwrap().expect("the release exists");
+    let detail = crate::library::views::LibraryViews::new(manager.database.clone())
+        .find_release_detail(release_id)
+        .await
+        .unwrap()
+        .expect("the release exists");
     (detail.summary.storage_actions, detail.download_status)
 }
 
@@ -98,12 +105,14 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             .settle("the release in the cloud", |_, database| {
                 let release_id = release.id.clone();
                 async move {
-                    database
-                        .find_release_storage_summary(&release_id)
+                    crate::library::views::LibraryViews::new(database.clone())
+                        .find_release_detail(&release_id)
                         .await
                         .unwrap()
                         .expect("the release exists")
-                        .remote
+                        .summary
+                        .storage_state
+                        == crate::album_detail::ReleaseStorageState::Remote
                 }
             })
             .await;
@@ -138,7 +147,7 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             .await;
         let manager = devices.a().manager();
         let playability = async || {
-            manager
+            crate::library::views::LibraryViews::new(manager.database.clone())
                 .find_release_detail(&release.id)
                 .await
                 .unwrap()

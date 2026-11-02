@@ -7,9 +7,8 @@
 //! operations, reading `&Database` / `&CovenHandle` for the covers, pin state,
 //! and joins a resolved shape needs. The pure projection from a `Db*` aggregate
 //! to its resolved counterpart lives on the produced type, as a `from_raw`
-//! constructor in `crate::album_detail`. Public methods return the resolved
-//! shapes — `ReleaseStorageSummary`, `ReleaseDetail` and the like — never the
-//! raw `Db*` aggregates.
+//! constructor in `crate::album_detail`. Public methods return resolved
+//! shapes, never the raw `Db*` aggregates.
 //!
 //! Rule for additions: a view's reads, and the shapes a screen shows them in,
 //! are `crate::library::views::LibraryViews`'; every other resolved shape is
@@ -28,9 +27,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use crate::album_detail::{
-    GallerySource, ReleaseDetail, ReleaseResolveCtx, ReleaseStorageSummary, StoragePage, StorageRow,
-};
+use crate::album_detail::GallerySource;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
     DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType,

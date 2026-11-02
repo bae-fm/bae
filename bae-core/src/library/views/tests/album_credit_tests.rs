@@ -92,7 +92,7 @@ async fn a_track_search_row_names_its_own_credits_else_its_albums() {
 async fn sorting_by_artist_compares_every_credit_in_order() {
     let (db, _dir) = credited_library().await;
 
-    let storage = db
+    let storage = LibraryViews::new(db.clone())
         .get_storage_page(
             &StorageSortCriterion {
                 field: StorageSortField::ArtistNames,
@@ -117,6 +117,6 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
         .unwrap();
 
     let expected = [ALBUM_A, ALBUM_AB, ALBUM_AC, ALBUM_VARIOUS];
-    assert_eq!(storage.iter().map(|row| row.album.id.as_str()).collect::<Vec<_>>(), expected);
+    assert_eq!(storage.rows.iter().map(|row| row.album.id.as_str()).collect::<Vec<_>>(), expected);
     assert_eq!(grid.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(), expected);
 }

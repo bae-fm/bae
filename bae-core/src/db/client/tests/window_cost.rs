@@ -319,11 +319,27 @@ async fn measure_storage(db: &Database, n: u64) {
         (
             StorageFilter::All,
             (|sql, order, seek, limit, offset| {
-                storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
+                crate::library::views::storage::storage_rows_on(
+                    sql,
+                    order,
+                    StorageFilter::All,
+                    None,
+                    seek,
+                    limit,
+                    offset,
+                )
             }) as Rows<_>,
         ),
         (StorageFilter::Local, |sql, order, seek, limit, offset| {
-            storage_rows_on(sql, order, StorageFilter::Local, None, seek, limit, offset)
+            crate::library::views::storage::storage_rows_on(
+                sql,
+                order,
+                StorageFilter::Local,
+                None,
+                seek,
+                limit,
+                offset,
+            )
         }),
     ] {
         for field in [
@@ -336,7 +352,10 @@ async fn measure_storage(db: &Database, n: u64) {
             StorageSortField::DateAdded,
         ] {
             for (field, direction) in both_ways(field) {
-                let order = query::storage_order(&StorageSortCriterion { field, direction });
+                let order = crate::library::views::storage::storage_order(&StorageSortCriterion {
+                    field,
+                    direction,
+                });
                 let name = format!("{filter:?}_{field:?}_{direction:?}");
                 measure(db, "storage", &name, n, order, rows).await;
             }
@@ -353,7 +372,11 @@ async fn measure_storage_search(db: &Database, n: u64) {
         let query = crate::library::LibrarySearchQuery::parse(text).unwrap();
         let counted = query.clone();
         let timing = median(db, move |sql| {
-            let (count, _, _) = storage_totals_on(sql, StorageFilter::All, Some(&counted))?;
+            let (count, _, _) = crate::library::views::storage::storage_totals_on(
+                sql,
+                StorageFilter::All,
+                Some(&counted),
+            )?;
             Ok(count as usize)
         })
         .await;
@@ -361,8 +384,11 @@ async fn measure_storage_search(db: &Database, n: u64) {
         let counted = query.clone();
         let (found, search) = db
             .read(move |sql| {
-                let (count, _, search) =
-                    storage_totals_on(&sql, StorageFilter::All, Some(&counted))?;
+                let (count, _, search) = crate::library::views::storage::storage_totals_on(
+                    &sql,
+                    StorageFilter::All,
+                    Some(&counted),
+                )?;
                 Ok((count, search.unwrap()))
             })
             .await
@@ -374,7 +400,10 @@ async fn measure_storage_search(db: &Database, n: u64) {
             (StorageSortField::DateAdded, SortDirection::Descending),
             (StorageSortField::Storage, SortDirection::Ascending),
         ] {
-            let order = query::storage_order(&StorageSortCriterion { field, direction });
+            let order = crate::library::views::storage::storage_order(&StorageSortCriterion {
+                field,
+                direction,
+            });
             let search = search.clone();
             measure(
                 db,
@@ -383,7 +412,7 @@ async fn measure_storage_search(db: &Database, n: u64) {
                 found,
                 order,
                 move |sql, order, seek, limit, offset| {
-                    storage_rows_on(
+                    crate::library::views::storage::storage_rows_on(
                         sql,
                         order,
                         StorageFilter::All,

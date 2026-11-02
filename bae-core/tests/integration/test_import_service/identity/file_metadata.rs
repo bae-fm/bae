@@ -135,7 +135,11 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     );
 
     let release_detail =
-        f.db.find_release_detail(&release_id).await.unwrap().expect("release detail");
+        bae_core::library::views::LibraryViews::new(f.db.clone())
+            .find_db_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("release detail");
     let committed_tracks: Vec<(String, TrackArtistAssignments)> = release_detail
         .tracks
         .iter()

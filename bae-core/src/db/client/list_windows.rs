@@ -168,7 +168,7 @@ impl Seek {
 
 /// A window's bound as SQLite's LIMIT and OFFSET take it: a bound past the
 /// largest is no bound at all, since no list holds that many rows.
-pub(super) fn sql_bound(value: u64) -> i64 {
+pub(crate) fn sql_bound(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 

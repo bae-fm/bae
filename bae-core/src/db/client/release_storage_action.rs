@@ -32,7 +32,7 @@ pub(super) fn end_transition_on(
 /// The transition the release `release` (an SQL expression naming its id)
 /// is in, as [`transfer_action_column`] reads it: its row here, else `pin`
 /// while the download queue's active entry names it, else NULL.
-pub(super) fn transfer_action_sql(release: &str) -> String {
+pub(crate) fn transfer_action_sql(release: &str) -> String {
     format!(
         "COALESCE( \
             (SELECT a.action FROM release_storage_action a WHERE a.release_id = {release}), \
@@ -42,7 +42,7 @@ pub(super) fn transfer_action_sql(release: &str) -> String {
 }
 
 /// The transition [`transfer_action_sql`] read into the column `name`.
-pub(super) fn transfer_action_column(
+pub(crate) fn transfer_action_column(
     row: &Row<'_>,
     name: &str,
 ) -> rusqlite::Result<Option<ReleaseStorageAction>> {

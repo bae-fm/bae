@@ -5,23 +5,28 @@
 //! the store and resolves what they read into what a screen shows.
 
 pub(crate) mod album;
+mod album_search;
 pub(crate) mod artist;
 pub(crate) mod artist_search;
 pub(crate) mod composer;
 mod models;
+pub(crate) mod release;
+pub(crate) mod storage;
 
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{ArtistBrowseProjection, ArtistDetailProjection};
 pub use artist_search::{ArtistSearchProjection, DbArtistSearchRow};
 pub use composer::{ComposerBrowseProjection, ComposerDetailProjection, WorkDetailProjection};
 pub use models::*;
+pub use release::ReleaseDetailProjection;
+pub use storage::{StorageBrowseProjection, StorageBrowseRequest};
 
 use artist::{artist_listing_query, row_to_artist_summary};
 use composer::{
     composer_listing_query, row_to_composer_summary, row_to_work_summary, work_summary_query,
 };
+use release::{build_release_detail_on, unstored_audio_in_row, ReleaseDetailRows};
 
-use crate::db::client::album_search::*;
 use crate::db::client::files::{artist_image_version_sql, cover_version_sql};
 use crate::db::client::list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
@@ -30,10 +35,14 @@ use crate::db::client::list_windows::{
 use crate::db::client::pressing_columns::{read_media, release_media_sql};
 use crate::db::client::query::*;
 use crate::db::client::read::*;
+use crate::db::client::release_storage_action::{transfer_action_column, transfer_action_sql};
 use crate::db::client::sync_status::cloud_home_on;
 use crate::db::credits::LibraryCredit;
 use crate::db::schema::search_pattern;
 use crate::db::*;
+use album_search::*;
+use bae_util::content_type::ContentType;
+use chrono::{DateTime, Utc};
 use coven::{CovenError, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::BTreeSet;

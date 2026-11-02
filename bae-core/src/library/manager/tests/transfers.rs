@@ -115,7 +115,7 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     assert_eq!(detail_ids, vec![release.id.clone()]);
 
     // The release-level resolver returns it.
-    assert!(manager.find_release_detail(&release.id).await.unwrap().is_some());
+    assert!(crate::library::views::LibraryViews::new(manager.database.clone()).find_release_detail(&release.id).await.unwrap().is_some());
 }
 
 #[tokio::test]
@@ -557,7 +557,7 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     assert!(download_queue_now(&manager).await.rows.is_empty());
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
-    assert!(manager.find_release_storage_summary(&release.id).await.unwrap().unwrap().pinned);
+    assert!(manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned);
 }
 
 #[tokio::test]
@@ -623,7 +623,7 @@ async fn check_playability(
     )
     .await;
     let playability = |release_id: String| async move {
-        manager
+        crate::library::views::LibraryViews::new(manager.database.clone())
             .find_release_detail(&release_id)
             .await
             .unwrap()

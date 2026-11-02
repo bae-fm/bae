@@ -29,19 +29,19 @@ async fn storage_page_sort_by_artist_names() {
         insert_release(&manager, &release).await;
     }
 
-    let asc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::ArtistNames,
+    let asc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::ArtistNames,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Alpha", "Album by Zulu"]);
 
-    let desc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::ArtistNames,
+    let desc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::ArtistNames,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Zulu", "Album by Alpha"]);
 }
@@ -64,20 +64,20 @@ async fn storage_page_sort_by_media_nulls_last() {
         insert_release(&manager, &release).await;
     }
 
-    let asc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::Media,
+    let asc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::Media,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     // Unknown media sorts last in both directions.
     assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Media"]);
 
-    let desc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::Media,
+    let desc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::Media,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album Vinyl", "Album CD", "Album No Media"]);
 }
@@ -106,11 +106,11 @@ async fn storage_page_sort_by_file_count() {
         }
     }
 
-    let desc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::FileCount,
+    let desc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::FileCount,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album B", "Album C", "Album A"]);
 }
@@ -136,11 +136,11 @@ async fn storage_page_sort_by_total_size() {
         manager.add_file(&file, *file_size).await.unwrap();
     }
 
-    let asc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::TotalSize,
+    let asc = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::TotalSize,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
@@ -169,12 +169,12 @@ async fn storage_page_sort_by_date_added() {
     let page = |direction| {
         let manager = &manager;
         async move {
-            let sort = crate::db::StorageSortCriterion {
-                field: crate::db::StorageSortField::DateAdded,
+            let sort = crate::library::views::StorageSortCriterion {
+                field: crate::library::views::StorageSortField::DateAdded,
                 direction,
             };
             manager
-                .get_storage_page(&sort, crate::db::StorageFilter::All, 0, 10)
+                .views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 10)
                 .await
                 .unwrap()
                 .rows
@@ -208,12 +208,12 @@ async fn storage_page_sort_by_date_added() {
 #[cfg(feature = "test-utils")]
 async fn by_storage(
     manager: &LibraryManager,
-    filter: crate::db::StorageFilter,
+    filter: crate::library::views::StorageFilter,
     direction: crate::db::SortDirection,
 ) -> Vec<String> {
     let sort =
-        crate::db::StorageSortCriterion { field: crate::db::StorageSortField::Storage, direction };
-    manager
+        crate::library::views::StorageSortCriterion { field: crate::library::views::StorageSortField::Storage, direction };
+    crate::library::views::LibraryViews::new(manager.database.clone())
         .get_storage_page(&sort, filter, 0, 10)
         .await
         .unwrap()
@@ -256,18 +256,19 @@ async fn storage_page_sort_by_storage_state() {
     .await
     .id;
 
-    use crate::db::{SortDirection, StorageFilter};
+    use crate::db::SortDirection;
+use crate::library::views::StorageFilter;
     let ascending =
         vec![uploading.clone(), pinning.clone(), local.clone(), pinned.clone(), cloud.clone()];
     assert_eq!(by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await, ascending);
-    let sort = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::Storage,
+    let sort = crate::library::views::StorageSortCriterion {
+        field: crate::library::views::StorageSortField::Storage,
         direction: SortDirection::Ascending,
     };
     use crate::album_detail::StorageRowStatus;
     assert_eq!(
         manager
-            .get_storage_page(&sort, StorageFilter::All, 0, 10)
+            .views().get_storage_page(&sort, StorageFilter::All, 0, 10)
             .await
             .unwrap()
             .rows
@@ -312,7 +313,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
     let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
     let ascending =
-        || by_storage(&manager, crate::db::StorageFilter::All, crate::db::SortDirection::Ascending);
+        || by_storage(&manager, crate::library::views::StorageFilter::All, crate::db::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
@@ -362,12 +363,12 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
 /// finds them.
 #[cfg(feature = "test-utils")]
 async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueues {
-    let mut browse = manager.database.subscribe_storage_browse(crate::db::StorageBrowseRequest {
-        sort: crate::db::StorageSortCriterion {
-            field: crate::db::StorageSortField::Storage,
+    let mut browse = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
+        sort: crate::library::views::StorageSortCriterion {
+            field: crate::library::views::StorageSortField::Storage,
             direction: crate::db::SortDirection::Ascending,
         },
-        filter: crate::db::StorageFilter::All,
+        filter: crate::library::views::StorageFilter::All,
         search: String::new(),
         windows: Default::default(),
         selected: Default::default(),

@@ -21,7 +21,7 @@ pub(super) const RELEASE_FILE_QUEUED: &str = "SELECT EXISTS (SELECT 1 FROM relea
 
 /// Each release with files this process is sending now, and how many. One
 /// row per upload in flight is read, each release file found by its file.
-pub(super) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
+pub(crate) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
      FROM coven_sending AS sending \
      JOIN release_files AS f ON f.file = sending.file \
      GROUP BY f.release_id";
@@ -31,13 +31,13 @@ pub(super) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS file
 /// [`release_upload_in_row`] maps: how many of its files wait, how many are
 /// being sent and how many are stored. How far the files being sent have
 /// got is the release's transfer.
-pub(super) const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
+pub(crate) const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
      COALESCE(sending.files, 0) AS sending_files, \
      listing.file_count - listing.queued_count AS stored_files";
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
 /// none of its files waits.
-pub(super) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
+pub(crate) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
     let queued: i64 = row.get("queued_count")?;
     if queued == 0 {
         return Ok(None);

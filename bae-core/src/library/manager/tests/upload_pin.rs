@@ -30,11 +30,12 @@ async fn upload_pins_as_the_stored_choice_says() {
     let pinned = |release_id: String| {
         let manager = manager.library.clone();
         async move {
-            manager
-                .find_release_storage_summary(&release_id)
+            crate::library::views::LibraryViews::new(manager.database.clone())
+                .find_release_detail(&release_id)
                 .await
                 .unwrap()
                 .expect("the library holds the release")
+                .summary
                 .pinned
         }
     };
@@ -67,10 +68,12 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
     );
     let summary_pinned = || async {
         manager
-            .find_release_storage_summary(&release.id)
+            .views()
+            .find_release_detail(&release.id)
             .await
             .unwrap()
             .expect("the library holds the release")
+            .summary
             .pinned
     };
     assert!(!summary_pinned().await, "the release's summary");
@@ -104,14 +107,13 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     )
     .await;
     let by_storage = || async {
-        manager
-            .database
-            .get_storage_page(
-                &crate::db::StorageSortCriterion {
-                    field: crate::db::StorageSortField::Storage,
+        crate::library::views::LibraryViews::new(manager.database.clone())
+            .get_db_storage_page(
+                &crate::library::views::StorageSortCriterion {
+                    field: crate::library::views::StorageSortField::Storage,
                     direction: crate::db::SortDirection::Ascending,
                 },
-                crate::db::StorageFilter::All,
+                crate::library::views::StorageFilter::All,
                 0,
                 100,
             )

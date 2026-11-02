@@ -280,7 +280,6 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .await
         .unwrap();
     let (stored_before, audio_before) = manager
-        .database
         .find_release_edit_context(&release.id)
         .await
         .unwrap()
@@ -323,7 +322,6 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .unwrap();
 
     let (stored_after, audio_after) = manager
-        .database
         .find_release_edit_context(&release.id)
         .await
         .unwrap()

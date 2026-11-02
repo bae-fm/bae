@@ -30,7 +30,6 @@ macro_rules! release_file_columns {
 }
 
 mod album;
-pub(crate) mod album_search;
 mod artist;
 pub(crate) mod artist_credit_names;
 use artist_credit_names::settle_credit_name;
@@ -53,7 +52,6 @@ pub(crate) mod queued_uploads;
 mod sync_start_failure;
 pub(crate) mod sync_status;
 pub(crate) use pending::PendingRow;
-use sync_status::cloud_home_on;
 mod coven_capabilities;
 mod database_read;
 pub(crate) mod files;
@@ -80,6 +78,8 @@ pub use playback_queue::{
 mod playback_queue_reads;
 pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
+#[cfg(desktop)]
+pub(crate) use release::release_edit_tracks_on;
 pub(crate) use release::ReleaseMetadataRows;
 // Only saving a release edit session writes metadata alongside records.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -94,11 +94,10 @@ mod release_deletion;
 mod release_file;
 mod release_locality;
 pub use release_deletion::ReleaseDeletion;
-mod release_projection;
-mod release_queues;
+pub(crate) mod release_queues;
 pub(crate) use release_queues::QueuedPayload;
 mod cast_devices;
-mod release_storage_action;
+pub(crate) mod release_storage_action;
 pub(crate) use release_storage_action::StoredTransition;
 #[cfg(desktop)]
 mod release_files;
@@ -129,25 +128,12 @@ pub(crate) mod read;
 mod scrub_points_column;
 pub(crate) mod write;
 
-use album_search::*;
 use list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
     WindowsRead,
 };
 use query::*;
 use read::*;
-use release_projection::{
-    find_release_detail_context_on, storage_count_on, storage_rows_on, storage_selected_on,
-    storage_total_size_on, storage_totals_on,
-};
-#[cfg(test)]
-use release_projection::{
-    storage_found_titles, storage_found_totals_query, storage_selected_query,
-    storage_unfound_totals_query, storage_window_query, StorageRows,
-};
-pub use release_projection::{
-    ReleaseDetailProjection, StorageBrowseProjection, StorageBrowseRequest,
-};
 use write::*;
 
 struct DatabaseInner {

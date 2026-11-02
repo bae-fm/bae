@@ -61,7 +61,12 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         "the release's one file uploads"
     );
     f.library_manager.wait_for_kept_release_for_test(&id).await;
-    let storage = f.library_manager.find_release_storage_summary(&id).await.unwrap().unwrap();
+    let storage = bae_core::library::views::LibraryViews::new(f.db.clone())
+        .find_release_detail(&id)
+        .await
+        .unwrap()
+        .unwrap()
+        .summary;
     assert!(storage.pinned, "the import keeps the selected offline pin");
 
     f.library_manager.set_import_to_cloud(false).await.unwrap();

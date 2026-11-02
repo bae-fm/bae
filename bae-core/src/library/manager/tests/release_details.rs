@@ -2,7 +2,7 @@
 async fn release_detail_has_no_cover_without_a_cover_row() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let detail = manager
-        .find_release_detail(&release.id)
+        .views().find_release_detail(&release.id)
         .await
         .unwrap()
         .expect("detail present for known release");
@@ -44,7 +44,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     // The resolver that fires when a synced release surfaces in the UI. The
     // name must resolve to "no cover" / "no local gallery path", not a panic.
     let detail = manager
-        .find_release_detail(&release.id)
+        .views().find_release_detail(&release.id)
         .await
         .expect("resolving a release with a traversal filename must not error")
         .expect("the inserted release must resolve to a detail");
@@ -68,7 +68,7 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
 
     store_test_cover(&manager, &release.id, b"cover").await;
     let before = manager
-        .find_release_detail(&release.id)
+        .views().find_release_detail(&release.id)
         .await
         .unwrap()
         .unwrap()
@@ -80,7 +80,7 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
     // Replace (what change_cover does): same row, new bytes.
     store_test_cover(&manager, &release.id, b"replacement cover").await;
     let after = manager
-        .find_release_detail(&release.id)
+        .views().find_release_detail(&release.id)
         .await
         .unwrap()
         .unwrap()
@@ -110,12 +110,12 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     store_test_cover(&manager, &release2.id, b"cover").await;
 
     let page = manager
-        .get_storage_page(
-            &crate::db::StorageSortCriterion {
-                field: crate::db::StorageSortField::AlbumTitle,
+        .views().get_storage_page(
+            &crate::library::views::StorageSortCriterion {
+                field: crate::library::views::StorageSortField::AlbumTitle,
                 direction: crate::db::SortDirection::Ascending,
             },
-            crate::db::StorageFilter::All,
+            crate::library::views::StorageFilter::All,
             0,
             100,
         )
@@ -204,7 +204,7 @@ async fn find_release_detail_returns_some_for_known_id() {
     insert_release(&manager, &release).await;
 
     let detail = manager
-        .find_release_detail(&release.id)
+        .views().find_release_detail(&release.id)
         .await
         .unwrap()
         .expect("detail present for known release");
@@ -249,7 +249,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
         manager.add_file(&file, 1000).await.unwrap();
     }
 
-    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().expect("detail present");
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
@@ -280,7 +280,7 @@ async fn find_release_detail_surfaces_seeded_tracks() {
     manager.database.insert_track(&t1).await.unwrap();
     manager.database.insert_track(&t2).await.unwrap();
 
-    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().expect("detail present");
     assert_eq!(detail.tracks.len(), 2);
     let opening =
         detail.tracks.iter().find(|t| t.title == "Opening").expect("opening track surfaced");
@@ -316,7 +316,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
         manager.database.insert_track_artist(&track_artist).await.unwrap();
 
         let detail =
-            manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
+            manager.views().find_release_detail(&release.id).await.unwrap().expect("detail present");
         detail.tracks[0].display_artist.clone()
     }
 
@@ -347,7 +347,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     );
     manager.add_file(&image, 1234).await.unwrap();
 
-    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().expect("detail present");
 
     // The lightbox shows every image the release has: the image file is
     // surfaced as a gallery item read by file id (fetched on demand), a
@@ -390,7 +390,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
         }
         all_images.push(file.id);
     }
-    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().unwrap();
     let mut cover_ids: Vec<_> = detail.cover_files.iter().map(|file| file.id.clone()).collect();
     let mut image_ids: Vec<_> = detail.image_files.iter().map(|file| file.id.clone()).collect();
     let mut gallery_ids: Vec<_> = detail.gallery_items.iter().map(|item| item.id.clone()).collect();
@@ -475,7 +475,7 @@ async fn find_release_detail_name_uses_year_and_media() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().unwrap();
     assert_eq!(
         detail.name,
         crate::album_detail::ReleaseName::Described {
@@ -496,7 +496,7 @@ async fn find_release_detail_name_prefers_release_name() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail = manager.views().find_release_detail(&release.id).await.unwrap().unwrap();
     assert_eq!(detail.name, crate::album_detail::ReleaseName::Named("Deluxe Edition".to_string()));
 }
 
@@ -514,14 +514,14 @@ async fn find_release_detail_uses_position_for_second_release() {
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
-    let detail2 = manager.find_release_detail(&release2.id).await.unwrap().unwrap();
+    let detail2 = manager.views().find_release_detail(&release2.id).await.unwrap().unwrap();
     assert_eq!(detail2.name, crate::album_detail::ReleaseName::Numbered(2));
 }
 
 #[tokio::test]
 async fn find_release_detail_returns_none_for_unknown_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let detail = manager.find_release_detail("nonexistent-id").await.unwrap();
+    let detail = manager.views().find_release_detail("nonexistent-id").await.unwrap();
     assert!(detail.is_none());
 }
 

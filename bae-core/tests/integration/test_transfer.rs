@@ -7,10 +7,8 @@ use support::tracing_init;
 
 use bae_core::album_detail::GallerySource;
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{
-    DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter, StorageSortCriterion,
-    StorageSortField,
-};
+use bae_core::db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
+use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
 use bae_core::storage::transfer::{TransferProgress, TransferService};
 use bae_util::content_type::ContentType;
@@ -94,6 +92,7 @@ async fn create_local_release(
 /// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
     mgr: &LibraryManager,
+    db: &bae_core::db::Database,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
@@ -102,7 +101,7 @@ async fn create_remote_release(
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
-        support::release_storage(mgr, &release_id).await,
+        support::release_storage(db, &release_id).await,
         (ReleaseStorageState::Remote, false),
         "Remote (cloud-only) after the drain"
     );
@@ -271,24 +270,25 @@ async fn a_release_detail_says_where_its_download_stands() {
     use bae_core::album_detail::ReleaseDownloadStatus;
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (mgr, ..) = setup_with_cloud(&tmp).await;
+    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id =
-        create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
-    let status = |mgr: LibraryManager, release_id: String| async move {
-        mgr.find_release_detail(&release_id)
+        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
+    let status = |db: bae_core::db::Database, release_id: String| async move {
+        bae_core::library::views::LibraryViews::new(db)
+            .find_release_detail(&release_id)
             .await
             .unwrap()
             .expect("the library holds the release")
             .download_status
     };
     assert_eq!(
-        status(mgr.clone(), release_id.clone()).await,
+        status(db.clone(), release_id.clone()).await,
         Some(ReleaseDownloadStatus::Available)
     );
 
     mgr.set_downloads_paused(true).await.unwrap();
     mgr.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    assert_eq!(status(mgr.clone(), release_id.clone()).await, Some(ReleaseDownloadStatus::Queued));
+    assert_eq!(status(db.clone(), release_id.clone()).await, Some(ReleaseDownloadStatus::Queued));
 }
 
 /// Pin a Remote cloud-only release: coven fetches its files from the cloud into
@@ -300,9 +300,10 @@ async fn a_release_detail_says_where_its_download_stands() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (mgr, ..) = setup_with_cloud(&tmp).await;
+    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &mgr,
+        &db,
         &tmp.path().join("src"),
         &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
     )
@@ -340,7 +341,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
         "the pin reports every byte before it completes"
     );
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, true)
     );
 }
@@ -352,8 +353,13 @@ async fn the_detail_views_follow_a_releases_pin() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
-    let release_id =
-        create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"follow-bytes")]).await;
+    let release_id = create_remote_release(
+        &mgr,
+        &database,
+        &tmp.path().join("src"),
+        &[("a.flac", b"follow-bytes")],
+    )
+    .await;
     let album_id = mgr
         .get_release_by_id(&release_id)
         .await
@@ -410,9 +416,10 @@ async fn the_detail_views_follow_a_releases_pin() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (mgr, ..) = setup_with_cloud(&tmp).await;
+    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id =
-        create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")]).await;
+        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
+            .await;
 
     TransferService::new(mgr.clone())
         .pin_release(
@@ -423,13 +430,13 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
         .await
         .expect("pin task completes");
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, true)
     );
 
     mgr.unpin_release(&release_id).await.unwrap();
     assert_eq!(
-        support::release_storage(&mgr, &release_id).await,
+        support::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
@@ -578,10 +585,20 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
-    let pinned =
-        create_remote_release(&mgr, &tmp.path().join("pinned"), &[("a.flac", b"pinned")]).await;
-    let unpinned =
-        create_remote_release(&mgr, &tmp.path().join("unpinned"), &[("b.flac", b"unpinned")]).await;
+    let pinned = create_remote_release(
+        &mgr,
+        &database,
+        &tmp.path().join("pinned"),
+        &[("a.flac", b"pinned")],
+    )
+    .await;
+    let unpinned = create_remote_release(
+        &mgr,
+        &database,
+        &tmp.path().join("unpinned"),
+        &[("b.flac", b"unpinned")],
+    )
+    .await;
     TransferService::new(mgr.clone())
         .pin_release(pinned.clone(), |progress| async move { Ok(collect_progress(progress).await) })
         .finish()

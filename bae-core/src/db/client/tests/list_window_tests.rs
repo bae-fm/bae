@@ -235,14 +235,25 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
             StorageSortField::DateAdded,
         ] {
             for (field, direction) in both_ways(field) {
-                let order = storage_order(&StorageSortCriterion { field, direction });
+                let order = crate::library::views::storage::storage_order(&StorageSortCriterion {
+                    field,
+                    direction,
+                });
                 // Under Remote no release is listed, so the middle row of
                 // every release stands in for one.
                 let key = key_at(
                     &db,
                     &order,
                     |sql, order, seek, limit, offset| {
-                        storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
+                        crate::library::views::storage::storage_rows_on(
+                            sql,
+                            order,
+                            StorageFilter::All,
+                            None,
+                            seek,
+                            limit,
+                            offset,
+                        )
                     },
                     150,
                 )
@@ -252,7 +263,14 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
                     &format!("storage {filter:?} {field:?} {direction:?}"),
                     &order,
                     key,
-                    |seek| storage_window_query(&order, filter, StorageRows::Listed, seek),
+                    |seek| {
+                        crate::library::views::storage::storage_window_query(
+                            &order,
+                            filter,
+                            crate::library::views::storage::StorageRows::Listed,
+                            seek,
+                        )
+                    },
                     Vec::new(),
                 )
                 .await;
@@ -314,12 +332,23 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
             StorageSortField::DateAdded,
         ] {
             for (field, direction) in both_ways(field) {
-                let order = storage_order(&StorageSortCriterion { field, direction });
+                let order = crate::library::views::storage::storage_order(&StorageSortCriterion {
+                    field,
+                    direction,
+                });
                 let key = key_at(
                     &db,
                     &order,
                     |sql, order, seek, limit, offset| {
-                        storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
+                        crate::library::views::storage::storage_rows_on(
+                            sql,
+                            order,
+                            StorageFilter::All,
+                            None,
+                            seek,
+                            limit,
+                            offset,
+                        )
                     },
                     150,
                 )
@@ -330,19 +359,35 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                     &what,
                     &order,
                     key.clone(),
-                    |seek| storage_window_query(&order, filter, StorageRows::SearchedInOrder, seek),
+                    |seek| {
+                        crate::library::views::storage::storage_window_query(
+                            &order,
+                            filter,
+                            crate::library::views::storage::StorageRows::SearchedInOrder,
+                            seek,
+                        )
+                    },
                     search.clone(),
                 )
                 .await;
                 for seek in order.seeks_beside(&key) {
-                    let statement =
-                        storage_window_query(&order, filter, StorageRows::SearchedInOrder, &seek);
+                    let statement = crate::library::views::storage::storage_window_query(
+                        &order,
+                        filter,
+                        crate::library::views::storage::StorageRows::SearchedInOrder,
+                        &seek,
+                    );
                     let steps = plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
                         reads_search_text_by_entry(&steps),
                         "in order {what} {seek:?}: {steps:?}"
                     );
-                    let statement = storage_window_query(&order, filter, StorageRows::Found, &seek);
+                    let statement = crate::library::views::storage::storage_window_query(
+                        &order,
+                        filter,
+                        crate::library::views::storage::StorageRows::Found,
+                        &seek,
+                    );
                     let steps = plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
                         !scans(&steps, SEARCH_ALIASES)
@@ -374,11 +419,16 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
         };
         let mut counted = search.clone();
         counted.push((":titles", rusqlite::types::Value::Integer(30)));
-        let steps = read(storage_found_totals_query(filter), counted).await;
+        let steps =
+            read(crate::library::views::storage::storage_found_totals_query(filter), counted).await;
         assert!(!scans(&steps, SEARCH_ALIASES), "count {filter:?}: {steps:?}");
         // The pass over the titles reads every title once, and nothing else
         // whole.
-        let steps = read(storage_unfound_totals_query(filter), search.clone()).await;
+        let steps = read(
+            crate::library::views::storage::storage_unfound_totals_query(filter),
+            search.clone(),
+        )
+        .await;
         assert!(
             !scans(&steps, SEARCH_ALIASES)
                 && steps
@@ -389,7 +439,9 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
         );
         let mut selected = search.clone();
         selected.push((":selected", rusqlite::types::Value::Text(r#"["a", "b"]"#.to_string())));
-        let steps = read(storage_selected_query(filter, true), selected).await;
+        let steps =
+            read(crate::library::views::storage::storage_selected_query(filter, true), selected)
+                .await;
         assert!(
             !scans(&steps, SEARCH_ALIASES) && reads_search_text_by_entry(&steps),
             "selection {filter:?}: {steps:?}"
@@ -407,7 +459,7 @@ fn found_totals(
     titles: i64,
 ) -> rusqlite::Result<(bool, i64, i64)> {
     sql.query_row(
-        &storage_found_totals_query(filter),
+        &crate::library::views::storage::storage_found_totals_query(filter),
         rusqlite::named_params! {
             ":search": crate::db::schema::search_pattern(text),
             ":titles": titles,
@@ -440,9 +492,13 @@ async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
         async move {
             db.read(move |sql| {
                 let query = crate::library::LibrarySearchQuery::parse(text).unwrap();
-                let titles = storage_found_titles(300) as i64;
+                let titles = crate::library::views::storage::storage_found_titles(300) as i64;
                 let (counted, _, _) = found_totals(&sql, StorageFilter::All, text, titles)?;
-                let (found, _, search) = storage_totals_on(&sql, StorageFilter::All, Some(&query))?;
+                let (found, _, search) = crate::library::views::storage::storage_totals_on(
+                    &sql,
+                    StorageFilter::All,
+                    Some(&query),
+                )?;
                 Ok((found, counted, search.unwrap().rows(50, 0)))
             })
             .await
@@ -450,16 +506,22 @@ async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
         }
     };
     // The second album's title, "Album 16807", is the only text holding it.
-    assert_eq!(read_at_top("16807").await, (1, true, StorageRows::Found));
-    assert_eq!(read_at_top("album").await, (300, false, StorageRows::SearchedInOrder));
+    assert_eq!(
+        read_at_top("16807").await,
+        (1, true, crate::library::views::storage::StorageRows::Found)
+    );
+    assert_eq!(
+        read_at_top("album").await,
+        (300, false, crate::library::views::storage::StorageRows::SearchedInOrder)
+    );
 }
 
 /// A search is counted through the indexes while its pattern is in fewer
 /// titles than a pass over every title costs, about a fifth of them.
 #[test]
 fn a_search_in_a_fifth_of_the_titles_is_counted_by_a_pass() {
-    assert_eq!(storage_found_titles(100_000), 21_052);
-    assert_eq!(storage_found_titles(0), 0);
+    assert_eq!(crate::library::views::storage::storage_found_titles(100_000), 21_052);
+    assert_eq!(crate::library::views::storage::storage_found_titles(0), 0);
 }
 
 /// Every way a search is counted and read finds the same releases: the
@@ -484,7 +546,7 @@ async fn every_search_read_finds_the_same_releases() {
     })
     .await
     .unwrap();
-    let order = storage_order(&StorageSortCriterion {
+    let order = crate::library::views::storage::storage_order(&StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
     });
@@ -496,17 +558,32 @@ async fn every_search_read_finds_the_same_releases() {
                     let pattern = crate::db::schema::search_pattern(text);
                     let found = found_totals(&sql, filter, text, i64::MAX)
                         .map(|(_, count, size)| (count, size));
-                    let unfound = pass_totals(&sql, storage_unfound_totals_query(filter), text)
-                        .map_err(DbError::from)
-                        .and_then(|(unfound, unfound_size)| {
-                            Ok((
-                                storage_count_on(&sql, filter)? as i64 - unfound,
-                                storage_total_size_on(&sql, filter)? as i64 - unfound_size,
-                            ))
-                        });
-                    let lists = [StorageRows::Found, StorageRows::SearchedInOrder].map(|rows| {
-                        let statement =
-                            storage_window_query(&order, filter, rows, &order.everything());
+                    let unfound = pass_totals(
+                        &sql,
+                        crate::library::views::storage::storage_unfound_totals_query(filter),
+                        text,
+                    )
+                    .map_err(DbError::from)
+                    .and_then(|(unfound, unfound_size)| {
+                        Ok((
+                            crate::library::views::storage::storage_count_on(&sql, filter)? as i64
+                                - unfound,
+                            crate::library::views::storage::storage_total_size_on(&sql, filter)?
+                                as i64
+                                - unfound_size,
+                        ))
+                    });
+                    let lists = [
+                        crate::library::views::storage::StorageRows::Found,
+                        crate::library::views::storage::StorageRows::SearchedInOrder,
+                    ]
+                    .map(|rows| {
+                        let statement = crate::library::views::storage::storage_window_query(
+                            &order,
+                            filter,
+                            rows,
+                            &order.everything(),
+                        );
                         order.everything().bound(u64::MAX, 0, |params| {
                             let mut params = params.to_vec();
                             params.push((":search", &pattern));
@@ -586,11 +663,13 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
     let fresh = |offset| {
         let db = &db;
         async move {
-            let mut query = db.subscribe_storage_browse(request(offset));
+            let mut query = crate::library::views::LibraryViews::new(db.clone())
+                .subscribe_storage_browse(request(offset));
             read_storage(&mut query, request(offset)).await
         }
     };
-    let mut query = db.subscribe_storage_browse(request(0));
+    let mut query =
+        crate::library::views::LibraryViews::new(db.clone()).subscribe_storage_browse(request(0));
     query.next().await.unwrap().result.unwrap();
     let (count, _) = fresh(0).await;
     assert!(count > 20, "the search finds {count} releases");

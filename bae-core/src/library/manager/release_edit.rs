@@ -81,6 +81,35 @@ impl LibraryManager {
         })
     }
 
+    /// The release as its detail view reads it, and its tracks' audio as the
+    /// release editor reads it, in release order: both from one read.
+    pub(crate) async fn find_release_edit_context(
+        &self,
+        release_id: &str,
+    ) -> Result<
+        Option<(crate::library::views::ReleaseDetailContext, Vec<crate::db::DbReleaseEditTrack>)>,
+        crate::db::DbError,
+    > {
+        let release_id = release_id.to_string();
+        self.database
+            .read(move |sql| {
+                let Some(context) = crate::library::views::release::find_release_detail_context_on(
+                    &sql,
+                    &release_id,
+                )?
+                else {
+                    return Ok(None);
+                };
+                Ok(Some((context, crate::db::client::release_edit_tracks_on(&sql, &release_id)?)))
+            })
+            .process(|rows| {
+                Ok(rows.map(|(context, tracks)| {
+                    (crate::library::views::release::ReleaseContextRows::process(context), tracks)
+                }))
+            })
+            .await
+    }
+
     /// The editor's seed for `release_id` as the library holds it, filed under
     /// the album it is in.
     ///
@@ -92,10 +121,10 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
-        let (context, edit_tracks) =
-            self.database.find_release_edit_context(release_id).await?.ok_or_else(|| {
-                LibraryError::Refused(format!("Release '{release_id}' not found"))
-            })?;
+        let (context, edit_tracks) = self
+            .find_release_edit_context(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let release = &context.detail.release;
         let album = self.database.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Album '{}' not found", release.album_id))

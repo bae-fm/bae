@@ -9,8 +9,8 @@ use crate::db::{LibraryBrowseWindow, LibraryPageWindows};
 /// finds (§2.3); text that is no search (blank) narrows nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageBrowseView {
-    pub sort: crate::db::StorageSortCriterion,
-    pub filter: crate::db::StorageFilter,
+    pub sort: crate::library::views::StorageSortCriterion,
+    pub filter: crate::library::views::StorageFilter,
     pub search: String,
     pub windows: LibraryPageWindows,
     pub selected: std::collections::BTreeSet<String>,
@@ -26,8 +26,8 @@ pub struct StorageBrowseView {
 /// queues that hold work.
 #[derive(Debug, Clone)]
 pub struct StorageBrowseSnapshot {
-    pub sort: crate::db::StorageSortCriterion,
-    pub filter: crate::db::StorageFilter,
+    pub sort: crate::library::views::StorageSortCriterion,
+    pub filter: crate::library::views::StorageFilter,
     pub search: String,
     /// Whether the search text narrows the list: it is a library search,
     /// not blank.
