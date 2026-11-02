@@ -272,7 +272,7 @@ impl StoredColumns {
 }
 
 /// Why the last attempt to start sync failed, while that stands.
-pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
+pub(crate) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
     let row = sql
         .query_row(
             "SELECT category, storage_failure, own_bucket_reason, required_access, \

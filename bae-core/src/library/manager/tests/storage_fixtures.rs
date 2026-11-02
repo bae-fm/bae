@@ -10,7 +10,7 @@
 async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_with_sync_loop(manager).await;
     manager.database.stop_sync().await.unwrap();
-    let mut status = manager.database.subscribe_sync_status();
+    let mut status = manager.database.subscribe(crate::library::manager::sync_status_on);
     crate::followed::value_matching(&mut status, |status| {
         matches!(status.status, coven::SyncStatus::Stopped)
     })
@@ -33,7 +33,7 @@ async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryS
         )
         .await
         .unwrap();
-    let mut status = manager.database.subscribe_sync_status();
+    let mut status = manager.database.subscribe(crate::library::manager::sync_status_on);
     crate::followed::value_matching(&mut status, |status| {
         matches!(status.status, coven::SyncStatus::Synced { .. })
     })

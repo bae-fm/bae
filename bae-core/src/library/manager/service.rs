@@ -329,7 +329,7 @@ impl LibraryManager {
     /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.
     pub fn start(&self) -> Result<(), LibraryError> {
-        let mut statuses = self.database.subscribe_sync_status();
+        let mut statuses = self.database.subscribe(super::sync_status_on);
         let lm = self.clone();
         self.spawn_supervised_task(
             "sync status follower",
@@ -393,7 +393,7 @@ impl LibraryManager {
 
     /// Follow the sync status, each value read from its tables in one go.
     pub fn subscribe_sync_status(&self) -> coven::LiveQuery<SyncStatusSnapshot> {
-        self.database.subscribe_sync_status()
+        self.database.subscribe(super::sync_status_on)
     }
 
     /// Tell every reader these tracks are deleted.
@@ -471,12 +471,6 @@ impl LibraryManager {
         &self,
     ) -> Result<crate::library::ReleaseQueueCounts, LibraryError> {
         self.downloads.counts().await
-    }
-
-    /// Follow everything sync is doing: the sync status, the upload queue's
-    /// counts and the offline downloads, read in one go.
-    pub(crate) fn subscribe_sync_activity(&self) -> coven::LiveQuery<crate::library::SyncActivity> {
-        self.database.subscribe_sync_activity()
     }
 
     /// Follow how many downloads are in each phase, and whether the queue is

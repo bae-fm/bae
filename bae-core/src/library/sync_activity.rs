@@ -118,3 +118,31 @@ impl SyncActivity {
 #[cfg(test)]
 #[path = "sync_activity_tests.rs"]
 mod tests;
+
+/// Everything sync is doing, as one read of the sync status's tables, the
+/// upload queue and the download queue sees it: the counts are read first,
+/// since the retry effect's read takes the read whole.
+pub(crate) fn sync_activity_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivity> {
+    let uploads = upload_queue_counts_on(&sql)?;
+    let downloads = crate::library::queued_releases::tables::release_queue_counts_on::<()>(&sql)?;
+    let status = crate::library::manager::sync_status_on(sql)?;
+    Ok(SyncActivity::new(&status, &uploads, &downloads))
+}
+
+/// The upload queue's counts: every queued file, those being sent, and
+/// whether uploads are paused, each read by index or in one row.
+const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
+     (SELECT COUNT(*) FROM coven_upload_queue), \
+     (SELECT COUNT(*) FROM coven_sending), \
+     (SELECT paused FROM coven_upload_pause)";
+
+/// How many files wait in this device's upload queue, how many of them this
+/// process is sending now, and whether uploads are paused. The bytes the
+/// files move are not read, so a confirmed part reruns nothing.
+fn upload_queue_counts_on(
+    sql: &coven::SqlReadContext<'_>,
+) -> Result<UploadQueueCounts, crate::db::DbError> {
+    Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
+        Ok(UploadQueueCounts { queued: row.get(0)?, sending: row.get(1)?, paused: row.get(2)? })
+    })?)
+}

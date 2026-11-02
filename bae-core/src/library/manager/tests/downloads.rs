@@ -271,7 +271,7 @@ async fn download_bytes_send_no_new_sync_activity() {
     let progress = |bytes_done| {
         crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
-    let mut activity = manager.library.subscribe_sync_activity();
+    let mut activity = manager.library.views().subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
 
     // The manager's own worker leaves the entry to this test.

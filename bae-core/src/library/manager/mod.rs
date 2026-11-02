@@ -107,6 +107,7 @@ use crate::diagnostics::{
 mod track;
 
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
+pub(crate) use sync_status::sync_status_on;
 pub use sync_status::{pending_action, PendingAction, SyncRetryOutcome};
 
 /// Outcome of `resolve_records_target_album` — where a release should

@@ -11,9 +11,9 @@ fn failure(category: C) -> UiError {
     UiError::Diagnostic { category, detail: "the start failed".to_string() }
 }
 
-/// The failed start the sync status reads back.
+/// The failed start the store reads back.
 async fn read_back(db: &Database) -> Option<UiError> {
-    db.sync_status().await.unwrap().error
+    db.read(|sql| super::super::sync_start_failure::start_failure_on(&sql)).await.unwrap()
 }
 
 /// Every class a start can fail in, and every storage reason with each

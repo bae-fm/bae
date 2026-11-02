@@ -802,7 +802,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut activity = manager.library.subscribe_sync_activity();
+    let mut activity = manager.library.views().subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
     // Held in flight long enough that its start is read while it runs.
     home.set_faults(coven::Faults {

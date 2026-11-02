@@ -687,7 +687,11 @@ impl AppServices {
 
     // Everything sync is doing, for the activity indicator: each value read
     // in one go.
-    delegate_values!(subscribe_sync_activity => subscribe_sync_activity() -> crate::library::SyncActivity);
+    pub fn subscribe_sync_activity(
+        &self,
+    ) -> crate::live_query::LiveValues<crate::library::SyncActivity> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
+    }
 
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);

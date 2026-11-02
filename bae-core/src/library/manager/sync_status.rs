@@ -86,6 +86,20 @@ fn blocked_failure(
     }
 }
 
+/// The sync status as one read of its tables sees it: coven's status
+/// (`coven_sync_status`), what a retry would do (`coven_retry_effect`), its
+/// pending records (`coven_pending`), and why this device's last attempt to
+/// start sync failed (`sync_start_failure`).
+pub(crate) fn sync_status_on(
+    sql: coven::SqlReadContext<'_>,
+) -> coven::CovenResult<SyncStatusSnapshot> {
+    let status = crate::db::client::sync_status::coven_status_on(&sql)?;
+    let pending = crate::db::client::pending::pending_rows_on(&sql)?;
+    let start_failure = crate::db::client::sync_start_failure::start_failure_on(&sql)?;
+    let retry_effect = coven::RetryEffect::read(sql)?;
+    Ok(SyncStatusSnapshot::read(status, retry_effect, pending, start_failure))
+}
+
 impl SyncStatusSnapshot {
     /// The sync status from one read of its tables: coven's status and
     /// what a retry would do, its pending records each named by its row,

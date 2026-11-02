@@ -406,7 +406,7 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
     let (manager, _temp) = setup_test_manager_with_clock(clock).await;
     connect_test_cloud_with_sync_loop(&manager).await;
-    let mut status = manager.database.subscribe_sync_status();
+    let mut status = manager.subscribe_sync_status();
     manager.storage.set_online(false);
     manager.trigger_sync();
     crate::followed::value_matching(&mut status, |status| {

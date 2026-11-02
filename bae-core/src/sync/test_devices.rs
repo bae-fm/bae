@@ -45,7 +45,7 @@ impl TestDevice {
     /// ends first, and no pass starts until sync starts again.
     pub(crate) async fn stop_sync(&self) {
         self.database().stop_sync().await.unwrap();
-        let mut status = self.database().subscribe_sync_status();
+        let mut status = self.database().subscribe(crate::library::manager::sync_status_on);
         crate::followed::value_matching(&mut status, |status| {
             matches!(status.status, coven::SyncStatus::Stopped)
         })
@@ -383,7 +383,7 @@ fn record_cycles(
     database: &Database,
 ) -> (Arc<std::sync::Mutex<Cycles>>, tokio::task::JoinHandle<()>) {
     let cycles = Arc::new(std::sync::Mutex::new(Cycles::default()));
-    let mut status = database.subscribe_sync_status();
+    let mut status = database.subscribe(crate::library::manager::sync_status_on);
     let recorded = cycles.clone();
     let watcher = tokio::spawn(async move {
         // Cycles from now on: the status as it stands is no cycle.
