@@ -171,3 +171,7 @@ pub(crate) fn row_labels(rows: &crate::import::ReleaseRows) -> Vec<String> {
         }),
     )
 }
+
+#[cfg(test)]
+#[path = "reading_draft_tests.rs"]
+mod tests;

@@ -33,29 +33,32 @@ fn all_discs(release: &SourceRelease) -> MediumCoverage {
     MediumCoverage::all(release.mediums.len())
 }
 
-/// The rows the release's reading commits as.
+/// What the release reads as, every disc of it, laid against
+/// `audio_durations_ms` where a folder is given.
 fn map_with(
     release: &DiscogsRelease,
     audio_durations_ms: Option<&[u64]>,
-) -> Result<crate::import::ReleaseRows, CatalogError> {
+) -> Result<ReleaseValues, CatalogError> {
     let stored = stored(release);
     super::values(&stored, &all_discs(&stored), audio_durations_ms)
-        .map(crate::import::reading_draft::committed_rows)
 }
 
 /// Exercise track and credit mapping with the release's own metadata.
-fn map(release: &DiscogsRelease) -> Result<crate::import::ReleaseRows, CatalogError> {
+fn map(release: &DiscogsRelease) -> Result<ReleaseValues, CatalogError> {
     map_with(release, None)
 }
 
 fn map_for_audio(
     release: &DiscogsRelease,
     audio_durations_ms: &[u64],
-) -> Result<crate::import::ReleaseRows, CatalogError> {
+) -> Result<ReleaseValues, CatalogError> {
     map_with(release, Some(audio_durations_ms))
 }
 
-use crate::import::reading_draft::committed_artists;
+/// Whether any of `roles` credits the Discogs artist `id`.
+fn credits_role_to(roles: &[CreditedRole], id: &str) -> bool {
+    roles.iter().any(|role| role.artist.discogs_artist_id.as_deref() == Some(id))
+}
 
 /// A tracklist's rows as a stored medium holds them.
 fn entries(rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
@@ -140,11 +143,15 @@ fn release_without_artists_derives_release_artist_from_title() {
     release.artists = vec![];
     release.title = "Artist Name A - Album Title".to_string();
 
-    let parsed = map(&release).unwrap();
+    let values = map(&release).unwrap();
 
-    assert_eq!(parsed.artists.len(), 1);
-    assert_eq!(parsed.artists[0].name, "Artist Name A");
-    assert_eq!(parsed.artists[0].discogs_artist_id, None);
+    // The album artist is the one artist the release credits anywhere.
+    assert_eq!(values.album_credits.len(), 1);
+    assert_eq!(values.album_credits[0].credit.name, "Artist Name A");
+    assert_eq!(values.album_credits[0].credit.discogs_artist_id, None);
+    assert_eq!(values.tracks[0].credits, TrackCredits::AlbumArtists);
+    assert!(values.release_roles.is_empty());
+    assert!(values.tracks[0].roles.is_empty());
 }
 
 #[test]
@@ -179,41 +186,30 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
         },
     ]);
 
-    let parsed = map(&release).unwrap();
+    let values = map(&release).unwrap();
 
-    assert!(parsed.work_graph.works.is_empty());
-    assert!(parsed.work_graph.work_artists.is_empty());
-    assert!(parsed.work_graph.work_parts.is_empty());
-    assert!(parsed.work_graph.track_works.is_empty());
+    assert!(values.works.works.is_empty());
+    assert!(values.works.parts.is_empty());
+    assert!(values.tracks[0].works.is_empty());
 
-    let committed = committed_artists(&parsed);
-    let composer = parsed
-        .artists
-        .iter()
-        .find(|artist| artist.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
-        .map(|artist| committed[&artist.id].clone())
-        .expect("composer role artist imported");
-    let release_artist_roles = &parsed.release_artist_roles;
-    let track_artist_roles = &parsed.track_artist_roles;
-    assert!(release_artist_roles.iter().any(|role| {
-        committed[&role.artist_id] == composer
-            && role.source_credit.as_deref() == Some("Composed By")
+    let composer = Some("discogs-composer-a");
+    assert!(values.release_roles.iter().any(|role| {
+        role.artist.discogs_artist_id.as_deref() == composer
+            && role.role.as_deref() == Some("Composed By")
     }));
-    assert!(track_artist_roles.iter().any(|role| {
-        committed[&role.artist_id] == composer
-            && role.source_credit.as_deref() == Some("Written-By")
+    assert!(values.tracks[0].roles.iter().any(|role| {
+        role.artist.discogs_artist_id.as_deref() == composer
+            && role.role.as_deref() == Some("Written-By")
     }));
-    assert!(!parsed
-        .artists
+    for producer_or_engineer in ["discogs-producer-a", "discogs-engineer-a"] {
+        assert!(!credits_role_to(&values.release_roles, producer_or_engineer));
+        assert!(!credits_role_to(&values.tracks[0].roles, producer_or_engineer));
+    }
+    assert!(values
+        .album_credits
         .iter()
-        .any(|artist| artist.discogs_artist_id.as_deref() == Some("discogs-producer-a")));
-    assert!(!parsed
-        .artists
-        .iter()
-        .any(|artist| artist.discogs_artist_id.as_deref() == Some("discogs-engineer-a")));
-    assert!(!parsed.album_artists.iter().any(|link| committed[&link.artist_id] == composer));
-    assert!(committed[&parsed.album_artists[0].artist_id] != composer);
-    assert!(!parsed.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
+        .all(|credit| credit.credit.discogs_artist_id.as_deref() != composer));
+    assert_eq!(values.tracks[0].credits, TrackCredits::AlbumArtists);
 }
 
 #[test]
@@ -229,7 +225,7 @@ fn test_cd_multi_disc() {
     let release = with_formats(release, &[("CD", "2")]);
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::reading_draft::row_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["1-1", "1-2", "1-3", "2-1", "2-2"],
         "each disc numbers its own tracks"
     );
@@ -262,7 +258,7 @@ fn test_vinyl_sides() {
     let release = with_formats(release, &[("Vinyl", "2")]);
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::reading_draft::row_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["A1", "A2", "B1", "B2", "C1", "D1"],
         "the second record's sides letter on from the first's"
     );
@@ -318,7 +314,7 @@ fn test_2lp_vinyl_with_headings() {
 
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
     assert_eq!(
-        crate::import::reading_draft::row_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["A1", "A2", "B1", "B2", "C1", "C2", "C3", "D1", "D2"]
     );
     assert_eq!(tracks[0].title, "Track One");
@@ -344,7 +340,7 @@ fn test_single_disc() {
         text: None,
     }];
     let parsed = map(&release).unwrap();
-    assert_eq!(crate::import::reading_draft::row_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1", "2", "3"]);
 }
 
 #[test]
@@ -379,32 +375,22 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
         },
     ]);
 
-    let parsed = map_for_audio(&release, &[1; 2]).unwrap();
-    let tracks = &parsed.tracks;
-    let artists = &parsed.artists;
-    let track_artists = &parsed.track_artists;
+    let values = map_for_audio(&release, &[1; 2]).unwrap();
+    let tracks = &values.tracks;
 
     // 2 tracks: A1 and collapsed B1
     assert_eq!(tracks.len(), 2);
     assert_eq!(tracks[1].title, "Suite: Movement 1 \u{2013} Movement 2");
+    assert_eq!(tracks[0].credits, TrackCredits::AlbumArtists);
 
-    // Sub artist should be in the artists list
-    assert!(artists.iter().any(|a| a.name == "Sub Artist"), "Sub artist not found in artists list");
-
-    // The collapsed track should have a track-artist link to "Sub Artist"
-    let collapsed_track_id = &tracks[1].id;
-    let linked_artists: Vec<_> =
-        track_artists.iter().filter(|ta| &ta.track_id == collapsed_track_id).collect();
-    assert_eq!(
-        linked_artists.len(),
-        1,
-        "Expected exactly 1 track-artist link for collapsed track (deduped), got {}",
-        linked_artists.len()
-    );
-
-    let linked_artist_id = &linked_artists[0].artist_id;
-    let linked_artist = artists.iter().find(|a| &a.id == linked_artist_id).unwrap();
-    assert_eq!(linked_artist.name, "Sub Artist");
+    // The collapsed track credits the sub-tracks' artist once, however many
+    // sub-tracks credit it.
+    let TrackCredits::Own(credits) = &tracks[1].credits else {
+        panic!("the collapsed track credits its own artist: {:?}", tracks[1].credits);
+    };
+    assert_eq!(credits.len(), 1, "one credit for the collapsed track: {credits:?}");
+    assert_eq!(credits[0].credit.name, "Sub Artist");
+    assert_eq!(credits[0].credit.discogs_artist_id.as_deref(), Some("sub-artist-1"));
 }
 
 #[test]
@@ -492,23 +478,21 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
     let logs = crate::test_logs::capture_warn_logs(|| {
         parsed = Some(map(&release).unwrap());
     });
-    let parsed = parsed.unwrap();
+    let values = parsed.unwrap();
 
-    let composer = parsed
-        .artists
+    let composer = values
+        .release_roles
         .iter()
-        .find(|a| a.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
-        .expect("composer role artist imported");
-    assert_eq!(composer.name, "Composer Canonical Name");
+        .find(|role| role.artist.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
+        .expect("composer role read");
+    assert_eq!(composer.artist.name, "Composer Canonical Name");
     assert!(logs.contains("has no credited name"), "expected a fallback warning, got: {logs}");
 }
 
-/// An id-less composer role credit whose name case-insensitively matches
-/// the release artist (which carries a Discogs id) commits as that artist
-/// rather than a duplicate: a credit with no id is matched by its name,
-/// whether or not the artist it names bears a source id.
+/// An id-less composer role credit reads as the name it states, with no id:
+/// which library artist it is, by that name, is the commit's to decide.
 #[test]
-fn id_less_role_credit_reuses_release_artist_by_name() {
+fn id_less_role_credit_keeps_its_name_and_no_id() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     // Release artist: name "Artist Name A", discogs id "artist-1".
     release.extraartists = Some(vec![DiscogsRoleArtist {
@@ -518,20 +502,17 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
         credited_name: None,
     }]);
 
-    let parsed = map(&release).unwrap();
+    let values = map(&release).unwrap();
 
-    let committed = committed_artists(&parsed);
-    let role = parsed.release_artist_roles.first().expect("composer role imported");
-    assert_eq!(
-        committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id],
-        "id-less role credit must commit as the release artist, not a duplicate"
-    );
+    let role = values.release_roles.first().expect("composer role read");
+    assert_eq!(role.artist.name, "ARTIST NAME A");
+    assert_eq!(role.artist.discogs_artist_id, None);
+    assert_eq!(values.album_credits[0].credit.discogs_artist_id.as_deref(), Some("artist-1"));
 }
 
-/// An id-less credit names the release artist however it is accented or
-/// spaced, as a library artist is found by its name.
+/// An id-less credit keeps its name as printed, accents and spacing and all.
 #[test]
-fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
+fn id_less_role_credit_keeps_its_name_as_printed() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.extraartists = Some(vec![DiscogsRoleArtist {
         id: None,
@@ -540,19 +521,18 @@ fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
         credited_name: None,
     }]);
 
-    let parsed = map(&release).unwrap();
+    let values = map(&release).unwrap();
 
-    let committed = committed_artists(&parsed);
-    let role = parsed.release_artist_roles.first().expect("composer role imported");
-    assert_eq!(committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id]);
+    let role = values.release_roles.first().expect("composer role read");
+    assert_eq!(role.artist.name, "Ärtist  Name A");
+    assert_eq!(role.artist.discogs_artist_id, None);
 }
 
-/// An id-less Discogs role credit is its *credited* name — the name stored on
-/// the artist row. Two id-less composer credits sharing a credited name but
-/// with different canonical names commit as one artist: the name matched and
-/// the name stored are the same field.
+/// An id-less Discogs role credit is its *credited* name: two id-less
+/// composer credits sharing a credited name but with different canonical
+/// names read as that one name, and neither canonical name is read.
 #[test]
-fn id_less_role_credits_dedup_on_credited_name() {
+fn id_less_role_credits_read_as_their_credited_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.extraartists = Some(vec![
         DiscogsRoleArtist {
@@ -569,27 +549,11 @@ fn id_less_role_credits_dedup_on_credited_name() {
         },
     ]);
 
-    let parsed = map(&release).unwrap();
+    let values = map(&release).unwrap();
 
-    // The stored name is the credited name; neither canonical name lands.
-    assert!(!parsed.artists.iter().any(|a| a.name == "Canonical One" || a.name == "Canonical Two"));
-    // Both release roles commit as one artist of the credited name.
-    let committed = committed_artists(&parsed);
-    let roles: Vec<_> = parsed
-        .release_artist_roles
-        .iter()
-        .map(|role| {
-            let row = parsed
-                .artists
-                .iter()
-                .find(|artist| artist.id == role.artist_id)
-                .expect("a role names its artist row");
-            assert_eq!(row.name, "Shared Credited Name");
-            committed[&row.id].clone()
-        })
-        .collect();
-    assert_eq!(roles.len(), 2);
-    assert_eq!(roles[0], roles[1], "both credits commit as one artist");
+    let names: Vec<_> = values.release_roles.iter().map(|role| role.artist.name.as_str()).collect();
+    assert_eq!(names, ["Shared Credited Name", "Shared Credited Name"]);
+    assert!(values.release_roles.iter().all(|role| role.artist.discogs_artist_id.is_none()));
 }
 
 /// A row of disc 2 printing no position is numbered by its place on disc 2,
@@ -608,7 +572,7 @@ fn a_track_with_no_position_is_numbered_by_its_place_on_its_disc() {
     );
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::reading_draft::row_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["1-1", "1-2", "2-1", "2-2", "2-3"]
     );
 }

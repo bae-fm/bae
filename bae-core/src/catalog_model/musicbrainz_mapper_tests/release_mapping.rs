@@ -18,18 +18,23 @@ fn map(
     payloads.extract().unwrap().every_medium_values()
 }
 
-use crate::import::reading_draft::committed_rows as rows;
-
-/// The id of the `works` row the release's rows hold for a MusicBrainz work.
-fn work_row_id(parsed: &crate::import::ReleaseRows, musicbrainz_work_id: &str) -> String {
-    parsed
-        .work_graph
+/// The work `musicbrainz_work_id` names among what the reading's tracks
+/// perform.
+fn work<'a>(values: &'a ReleaseValues, musicbrainz_work_id: &str) -> &'a GraphWork {
+    values
+        .works
         .works
         .iter()
         .find(|work| work.musicbrainz_work_id == musicbrainz_work_id)
-        .unwrap_or_else(|| panic!("no works row for {musicbrainz_work_id}"))
-        .id
-        .clone()
+        .unwrap_or_else(|| panic!("no work {musicbrainz_work_id}"))
+}
+
+/// The track's own credits; a track crediting the album's artists has none.
+fn own_credits(track: &TrackValues) -> &[SourceCredit] {
+    match &track.credits {
+        TrackCredits::Own(credits) => credits,
+        TrackCredits::AlbumArtists => &[],
+    }
 }
 
 fn make_mb_track(number: &str, title: &str) -> MbTrack {
@@ -88,7 +93,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
 fn map_for_audio(
     response: &MbReleaseResponse,
     audio_durations_ms: &[u64],
-) -> Result<ReleaseValues, crate::import::ImportError> {
+) -> Result<ReleaseValues, crate::catalog_model::reading::ReadingRefusal> {
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
             LookupRef::new(LookupCatalog::MusicBrainz, &response.id),
@@ -99,7 +104,6 @@ fn map_for_audio(
         .extract()
         .unwrap()
         .read(&crate::catalog_model::reading::ReadAudio::of_lengths(audio_durations_ms))
-        .map_err(crate::import::ImportError::from)
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
@@ -185,9 +189,9 @@ fn audio_no_mediums_hold_is_refused_with_both_counts() {
     let refused = map_for_audio(&response, &[100_000, 100_000, 100_000])
         .expect_err("no set of mediums holds three tracks");
 
-    assert!(
-        matches!(refused, crate::import::ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 }),
-        "{refused}"
+    assert_eq!(
+        refused,
+        crate::catalog_model::reading::ReadingRefusal::TrackCount { folder: 3, release: 2 }
     );
 }
 
