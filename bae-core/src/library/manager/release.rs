@@ -10,7 +10,7 @@ impl LibraryManager {
     pub async fn get_release_records(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, LibraryError> {
+    ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, LibraryError> {
         Ok(self.database.get_release_records(release_id).await?)
     }
 
@@ -81,7 +81,7 @@ impl LibraryManager {
     pub(super) async fn release_read_audio(
         &self,
         release_id: &str,
-    ) -> Result<crate::catalog_model::reading::ReadAudio, LibraryError> {
+    ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
         use crate::import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
         resolve_release_identity(&self.database, &self.diagnostics, release_id)
             .await

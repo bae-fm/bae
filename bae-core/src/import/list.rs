@@ -369,7 +369,7 @@ pub struct DraftProjection {
     pub metadata_author: crate::import::MetadataAuthor,
     /// Every catalog the linked releases describe the release in, in the
     /// order surfaces list catalogs. Empty with no link.
-    pub records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
     /// Whether the linked release is already in the library.
     pub picked_library_status: Option<LibraryStatus>,
     /// The library album an import of it files under.
@@ -568,11 +568,11 @@ pub enum CandidatePanePlacement {
         folder_check: Option<crate::identify::FolderCheck>,
         /// Every catalog the linked release is described in, in the order
         /// surfaces list catalogs. Empty for a candidate linked to no release.
-        records: Vec<crate::catalog_model::records::ReleaseRecord>,
+        records: Vec<bae_catalogs::records::ReleaseRecord>,
     },
     /// Skipped, with every catalog the linked release is described in, as
     /// for Pending.
-    Skipped { records: Vec<crate::catalog_model::records::ReleaseRecord> },
+    Skipped { records: Vec<bae_catalogs::records::ReleaseRecord> },
     /// In the library.
     Done,
 }

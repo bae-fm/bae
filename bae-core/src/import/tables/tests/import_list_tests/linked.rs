@@ -52,11 +52,10 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
         .await
         .unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let record =
-        crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked");
+    let record = bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked");
     tables
         .save_source_release(
-            &crate::catalog_model::payloads::ReleasePayloads::for_test(
+            &bae_catalogs::payloads::ReleasePayloads::for_test(
                 record.clone(),
                 musicbrainz_release("mb-picked", "Picked Album").to_string(),
                 Vec::new(),
@@ -92,10 +91,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     assert_eq!(
         rows(&projection)[0].release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
-                LookupCatalog::MusicBrainz,
-                "mb-picked"
-            ),
+            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked"),
             partners: vec![],
         },)),
         "the row reads its link from the tables"

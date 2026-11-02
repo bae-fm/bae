@@ -44,11 +44,11 @@ enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
         link: crate::identify::PressingLink,
-        release: crate::catalog_model::source_release::SourceRelease,
-        partners: Vec<crate::catalog_model::source_release::SourceRelease>,
+        release: bae_catalogs::source_release::SourceRelease,
+        partners: Vec<bae_catalogs::source_release::SourceRelease>,
         /// The primary and the partners as their read stores them, which the
         /// verdict's write stores beside the link naming them.
-        stored: Vec<crate::catalog_model::source_release::SourceRelease>,
+        stored: Vec<bae_catalogs::source_release::SourceRelease>,
         /// The year the draft's pressing takes where the release states none.
         pressing_year: Option<i32>,
     },
@@ -200,9 +200,9 @@ async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
     verdict: &mut TerminalVerdict,
-    audio: &crate::catalog_model::reading::ReadAudio,
-    release: &crate::catalog_model::source_release::SourceRelease,
-    partners: Vec<crate::catalog_model::source_release::SourceRelease>,
+    audio: &bae_catalogs::reading::ReadAudio,
+    release: &bae_catalogs::source_release::SourceRelease,
+    partners: Vec<bae_catalogs::source_release::SourceRelease>,
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
     let current = match crate::import::preparation::import_preparation(
@@ -248,8 +248,7 @@ async fn lead_metadata(
     {
         Ok(cover) => cover,
         Err(failure) => {
-            let Some(lookup) = crate::catalog_model::search::remote_image_failure(&failure.error)
-            else {
+            let Some(lookup) = bae_catalogs::search::remote_image_failure(&failure.error) else {
                 return Err(Settled::Unwritable {
                     error: format!(
                         "could not fetch the {} cover of {}: {}",
@@ -266,10 +265,7 @@ async fn lead_metadata(
                 failure.error
             );
             verdict.fail(crate::identify::IdentifyFailure::Cover(
-                crate::catalog_model::search::SourceFailure {
-                    source: failure.source,
-                    failure: lookup,
-                },
+                bae_catalogs::search::SourceFailure { source: failure.source, failure: lookup },
             ));
             return Ok(None);
         }
@@ -291,7 +287,7 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::identify::signals::Signals,
     pick: Option<crate::import::tables::VerdictPick>,
-    releases: Vec<crate::catalog_model::source_release::SourceRelease>,
+    releases: Vec<bae_catalogs::source_release::SourceRelease>,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;

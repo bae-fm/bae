@@ -2,8 +2,8 @@
 //! and how such a credit stands to the library when it is read.
 
 use super::trim_to_option;
-use crate::catalog_model::credits::{ArtistCredit, SourceCredit};
 use crate::db::{CreditResolution, ExistingArtist, ResolvedCredit};
+use bae_catalogs::credits::{ArtistCredit, SourceCredit};
 use serde::{Deserialize, Serialize};
 
 /// One artist credited on an album or track.

@@ -1,12 +1,12 @@
 //! Reading a catalog release for import: from the release stored when
 //! something last read it, or fetched from its catalog.
 
-use crate::catalog_model::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
-use crate::catalog_model::records::LookupRef;
-use crate::catalog_model::source_release::PreparedRelease;
 use crate::db::Database;
 use crate::import::{CatalogApplyStep, CatalogApplySteps, CatalogSessions, ImportError};
+use bae_catalogs::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::records::LookupRef;
+use bae_catalogs::source_release::PreparedRelease;
 
 /// Where import reads a catalog release: the store holding releases already
 /// read, and the catalogs to fetch one from.

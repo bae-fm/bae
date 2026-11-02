@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::app::test_library::TestLibrary;
-use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::db::Database;
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::{FolderCheck, VerdictSummary};
@@ -12,6 +11,7 @@ use crate::import::tables::{
     DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
+use bae_catalogs::search::{MetadataResult, SourceTracks};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -46,7 +46,7 @@ fn copy_fixture(source: &Path, target: &Path) {
 /// Settled signals that found nothing.
 fn settled_signals() -> Signals {
     Signals {
-        origin: crate::catalog_model::AudioOrigin::default(),
+        origin: bae_catalogs::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -330,7 +330,7 @@ impl Fixture {
         // Production request spacing: admission order is part of what these
         // tests measure.
         let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::new(http.clone()));
-        let providers = crate::catalog_model::providers::Providers::for_test(
+        let providers = bae_catalogs::providers::Providers::for_test(
             http.clone(),
             musicbrainz.clone(),
             Arc::new(bae_catalogs::discogs::client::Discogs::new(http.clone())),
@@ -590,10 +590,10 @@ impl Fixture {
     async fn stored_release(
         &self,
         release_id: &str,
-    ) -> Option<crate::catalog_model::source_release::SourceRelease> {
+    ) -> Option<bae_catalogs::source_release::SourceRelease> {
         let tables = self.context.tables.clone();
         tables
-            .load_source_release(&crate::catalog_model::records::LookupRef::new(
+            .load_source_release(&bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id,
             ))
@@ -605,10 +605,10 @@ impl Fixture {
     async fn stored_discogs_release(
         &self,
         release_id: &str,
-    ) -> Option<crate::catalog_model::source_release::SourceRelease> {
+    ) -> Option<bae_catalogs::source_release::SourceRelease> {
         let tables = self.context.tables.clone();
         tables
-            .load_source_release(&crate::catalog_model::records::LookupRef::new(
+            .load_source_release(&bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 release_id,
             ))
@@ -641,10 +641,10 @@ impl Fixture {
         track_lengths: &[u64],
     ) {
         let mut release = stored_pressing(release_id, group_id, track_lengths);
-        release.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
-            document: crate::catalog_model::records::PayloadSource::MusicBrainzReleaseGroup,
+        release.unfetched.push(bae_catalogs::source_release::UnfetchedDocument {
+            document: bae_catalogs::records::PayloadSource::MusicBrainzReleaseGroup,
             key: group_id.to_string(),
-            reason: crate::catalog_model::source_release::UnfetchedReason::Failed,
+            reason: bae_catalogs::source_release::UnfetchedReason::Failed,
         });
         self.context.tables.save_source_release(&release).await.unwrap();
     }
@@ -714,7 +714,7 @@ impl Fixture {
         draft.album_title = "Album".to_string();
         draft.album_artist_assignments =
             vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit {
-                credit: crate::catalog_model::credits::ArtistCredit {
+                credit: bae_catalogs::credits::ArtistCredit {
                     credited_as: None,
                     name: "Artist".to_string(),
                     sort_name: None,
@@ -743,7 +743,7 @@ impl Fixture {
                     links: Vec::new(),
                     cover_art: None,
                     source_group_id: Some(group_id.to_string()),
-                    album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+                    album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
                     source_tracks: Some(source_tracks),
                     document_failure: None,
                     album_first_year: None,
@@ -779,7 +779,7 @@ impl Fixture {
                         ..settled_signals()
                     },
                     pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
-                        let record = crate::catalog_model::records::LookupRef::new(
+                        let record = bae_catalogs::records::LookupRef::new(
                             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             release_id.to_string(),
                         );
@@ -822,9 +822,9 @@ fn stored_pressing(
     release_id: &str,
     group_id: &str,
     track_lengths: &[u64],
-) -> crate::catalog_model::source_release::SourceRelease {
-    crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::LookupRef::new(
+) -> bae_catalogs::source_release::SourceRelease {
+    bae_catalogs::payloads::ReleasePayloads::for_test(
+        bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id,
         ),

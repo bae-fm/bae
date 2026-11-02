@@ -1,9 +1,9 @@
 use super::super::*;
 
 impl BridgeMetadataResult {
-    pub(crate) fn from_core(r: bae_core::catalog_model::search::MetadataResult) -> Self {
+    pub(crate) fn from_core(r: bae_catalogs::search::MetadataResult) -> Self {
         let facts = BridgePressingFacts::from_core(r.facts());
-        let bae_core::catalog_model::search::MetadataResult {
+        let bae_catalogs::search::MetadataResult {
             source,
             release_id,
             year,
@@ -509,7 +509,7 @@ fn identify_failure(
 mod tests {
     use super::*;
     use bae_catalogs::catalog::LookupCatalog;
-    use bae_core::catalog_model::LookupFailure;
+    use bae_catalogs::LookupFailure;
     use bae_core::identify::signals::{DiscIdSignal, SourcedValue};
     use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
@@ -527,7 +527,7 @@ mod tests {
             context: SignalsContext {
                 providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
                 artwork: bae_core::identify::signals::ArtworkScan::Absent,
-                origin: bae_core::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
                 barcode: BarcodeEvidence {
                     codes: vec![SourcedValue::in_file(
@@ -693,7 +693,7 @@ mod tests {
     /// A run bae broke crosses as an error with its text.
     #[test]
     fn a_run_bae_broke_crosses_as_an_error_with_its_text() {
-        let failure = bae_core::catalog_model::InternalFailure {
+        let failure = bae_catalogs::InternalFailure {
             detail: "checking the library: the store is locked".to_string(),
         };
         let IdentifyState::Triangulating { context, .. } = in_flight(BarcodeProgress::Skipped)

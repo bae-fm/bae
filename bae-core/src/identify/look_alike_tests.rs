@@ -1,10 +1,10 @@
 //! Which of the offered rows that would look alike on screen is listed.
 
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, LookupAnswers};
 use crate::identify::medium::FolderAudio;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::MetadataResult;
 use bae_types::pressing::{Packaging, ReleaseLabel};
 
 /// A 1959 pressing on Label One, LBL-100, as `catalog` lists it under `id`.

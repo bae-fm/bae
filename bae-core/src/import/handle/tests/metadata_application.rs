@@ -46,9 +46,9 @@ fn seed_discogs_release(
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    fakes.discogs().seed_release_cache(release_id, raw_release);
-    fakes.discogs().seed_artist_image_response("1", None);
-    fakes.musicbrainz().seed_discogs_page_lookup(&[(
+    fakes.seed_discogs_release(release_id, raw_release);
+    fakes.seed_discogs_artist_image("1", None);
+    fakes.seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()),
         None,
     )]);
@@ -120,7 +120,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),
                 ),
@@ -172,7 +172,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),
                 ),

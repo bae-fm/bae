@@ -261,7 +261,7 @@ impl<'a> ArtistRows<'a> {
     }
 
     /// The row a role or a composer credit links.
-    fn credited(&mut self, credit: &crate::catalog_model::credits::ArtistCredit) -> String {
+    fn credited(&mut self, credit: &bae_catalogs::credits::ArtistCredit) -> String {
         let row = crate::db::DbArtist::of_credit(credit, self.ids, self.now);
         let id = row.id.clone();
         self.rows.push(row);

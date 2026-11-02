@@ -31,8 +31,7 @@ async fn setup_manager(
     ),
     Arc<MemoryStorage>,
 ) {
-    support::storage_library(tmp.path(), bae_core::catalog_model::providers::Providers::offline())
-        .await
+    support::storage_library(tmp.path(), bae_catalogs::providers::Providers::offline()).await
 }
 
 async fn setup_with_cloud(

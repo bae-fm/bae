@@ -1,7 +1,6 @@
 pub mod album_detail;
 pub mod app;
 pub mod app_dir;
-pub mod catalog_model;
 pub mod collections;
 #[doc(hidden)]
 #[cfg(desktop)]

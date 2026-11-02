@@ -96,7 +96,7 @@ async fn linking_the_album_offers_no_catalog_cover() {
 async fn a_release_stored_again_offers_what_it_holds_now() {
     let (handle, _tmp, key, _hash) = picked_with_front("refetched-release").await;
     let tables = handle.tables.clone();
-    let record = crate::catalog_model::records::LookupRef::new(
+    let record = bae_catalogs::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         "refetched-release".to_string(),
     );

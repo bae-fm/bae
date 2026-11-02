@@ -12,7 +12,7 @@
 //! offered row's pressing on the catalog it has no record of — are asked,
 //! until a round brings no new key and every offered row is read. What the
 //! documents state its MusicBrainz albums are on Discogs joins the albums
-//! (see [`crate::catalog_model::album_links`]); the run combines the results into a
+//! (see [`bae_catalogs::album_links`]); the run combines the results into a
 //! terminal state, keeps what it read each album to be, and records the
 //! ledger it showed.
 
@@ -20,11 +20,11 @@ use super::combine::{combine_results, Findings};
 use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
-use crate::catalog_model::search::{MetadataResult, SourceFailure};
-use crate::catalog_model::{InternalFailure, LookupFailure};
 use crate::identify::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use crate::identify::LookupChoices;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::{MetadataResult, SourceFailure};
+use bae_catalogs::{InternalFailure, LookupFailure};
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.
@@ -102,7 +102,7 @@ impl IdentifyState {
 
     /// The audio this state read its offered releases against; `None` for
     /// `Idle` and before the audio is measured.
-    pub(crate) fn read_audio(&self) -> Option<crate::catalog_model::reading::ReadAudio> {
+    pub(crate) fn read_audio(&self) -> Option<bae_catalogs::reading::ReadAudio> {
         self.context().and_then(SignalsContext::read_audio)
     }
 
@@ -114,7 +114,7 @@ impl IdentifyState {
 
     /// The releases this run read the documents of, as their read stores
     /// them: what a write of the rows naming them stores beside those rows.
-    pub(crate) fn read_releases(&self) -> Vec<crate::catalog_model::source_release::SourceRelease> {
+    pub(crate) fn read_releases(&self) -> Vec<bae_catalogs::source_release::SourceRelease> {
         self.context()
             .map(|context| {
                 context
@@ -368,12 +368,12 @@ pub enum Effect {
     /// reading each one against `audio`.
     ReadReleases {
         releases: Vec<super::documents::ReleaseToRead>,
-        audio: crate::catalog_model::reading::ReadAudio,
+        audio: bae_catalogs::reading::ReadAudio,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
     /// answers it.
     KeepAlbumLinks {
-        kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
+        kept: Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>,
     },
 }
 

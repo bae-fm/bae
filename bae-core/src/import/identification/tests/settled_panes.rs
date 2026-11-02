@@ -47,7 +47,7 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
             &dir,
             "mb-settled-2",
             "rg-settled-2",
-            crate::catalog_model::search::SourceTracks::Nothing,
+            bae_catalogs::search::SourceTracks::Nothing,
         )
         .await;
 

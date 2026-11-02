@@ -87,10 +87,10 @@ async fn a_run_reads_the_releases_its_disc_id_returned_from_that_answer() {
         let stored = fixture.stored_release(release_id).await.expect("the run stores what it read");
         assert_eq!(
             stored.unfetched,
-            vec![crate::catalog_model::source_release::UnfetchedDocument {
-                document: crate::catalog_model::records::PayloadSource::MusicBrainz,
+            vec![bae_catalogs::source_release::UnfetchedDocument {
+                document: bae_catalogs::records::PayloadSource::MusicBrainz,
                 key: release_id.to_string(),
-                reason: crate::catalog_model::source_release::UnfetchedReason::StoppedShort,
+                reason: bae_catalogs::source_release::UnfetchedReason::StoppedShort,
             }],
             "its own page is what the read stopped short of"
         );
@@ -107,7 +107,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
     fixture.drain_automatic().await;
     assert_eq!(fixture.count_release_lookups("mb-disc-de"), 0);
     let release =
-        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-disc-de");
+        bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-disc-de");
 
     fixture
         .import
@@ -169,7 +169,7 @@ async fn a_release_only_a_barcode_found_is_read_with_a_release_lookup() {
             !stored
                 .unfetched
                 .iter()
-                .any(|document| document.document == crate::catalog_model::records::PayloadSource::MusicBrainz),
+                .any(|document| document.document == bae_catalogs::records::PayloadSource::MusicBrainz),
             "{:?}",
             stored.unfetched
         );
@@ -206,7 +206,7 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
         matches!(
             failures.as_slice(),
             [crate::identify::IdentifyFailure::ReleaseDetails(
-                crate::catalog_model::LookupFailure::Provider { status: Some(400) }
+                bae_catalogs::LookupFailure::Provider { status: Some(400) }
             )]
         ),
         "{failures:?}"
@@ -228,10 +228,10 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
     );
     let stored = fixture.stored_release("mb-short-1").await.expect("the run's read is stored");
     assert!(
-        stored.unfetched.contains(&crate::catalog_model::source_release::UnfetchedDocument {
-            document: crate::catalog_model::records::PayloadSource::MusicBrainz,
+        stored.unfetched.contains(&bae_catalogs::source_release::UnfetchedDocument {
+            document: bae_catalogs::records::PayloadSource::MusicBrainz,
             key: "mb-short-1".to_string(),
-            reason: crate::catalog_model::source_release::UnfetchedReason::StoppedShort,
+            reason: bae_catalogs::source_release::UnfetchedReason::StoppedShort,
         }),
         "{:?}",
         stored.unfetched

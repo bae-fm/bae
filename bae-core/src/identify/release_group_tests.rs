@@ -1,5 +1,5 @@
 use super::*;
-use crate::catalog_model::album_links::AlbumLinks;
+use bae_catalogs::album_links::AlbumLinks;
 use bae_types::pressing::{Medium, StatedMedia};
 
 /// The tests are about how results bucket, pair and order by year, none of
@@ -25,7 +25,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         links: Vec::new(),
         cover_art: None,
         source_group_id: group_id.map(str::to_string),
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
         document_failure: None,
         album_first_year: None,

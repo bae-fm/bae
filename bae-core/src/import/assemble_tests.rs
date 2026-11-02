@@ -1,8 +1,8 @@
 use super::*;
-use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
-use crate::catalog_model::works::{GraphWork, WorkGraph, WorkPart};
 use crate::db::ExistingArtist;
 use crate::import::{CandidateTrack, RawPressingEdit, RawTrackEdit};
+use bae_catalogs::credits::{ArtistCredit, CreditedRole};
+use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
 
 fn clock() -> coven::FixedClock {
     coven::FixedClock::new(

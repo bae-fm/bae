@@ -1,13 +1,13 @@
 //! The medium a folder was ripped from, against the media a row states.
 //!
 //! What the folder's own files say about where its audio came from (see
-//! [`crate::catalog_model::rip`]) is a fact about the object on the desk, and a row
+//! [`bae_catalogs::rip`]) is a fact about the object on the desk, and a row
 //! whose stated media could not have produced that audio describes some other
 //! object. Such a row is still an answer a lookup gave, so it is set aside
 //! rather than dropped — see [`super::combine`].
 
 use super::row_facts::Fact;
-use crate::catalog_model::AudioOrigin;
+use bae_catalogs::AudioOrigin;
 use bae_types::pressing::{CdAudio, DiscogsDetail, Medium, StatedMedia};
 
 /// What the folder's own files say about its audio, as combine reads it: the
@@ -24,7 +24,7 @@ pub struct FolderAudio<'a> {
     /// [`crate::identify::signals::Signals::track_titles`].
     pub track_titles: &'a [String],
     /// Where most of the tracks' recordings were registered, as their ISRC
-    /// tags say — see [`crate::catalog_model::isrc::registered_in`].
+    /// tags say — see [`bae_catalogs::isrc::registered_in`].
     pub registered_in: Option<bae_types::pressing::ReleaseArea>,
 }
 
@@ -168,7 +168,7 @@ impl RippedFrom {
 mod tests {
     use super::download as download_fact;
     use super::*;
-    use crate::catalog_model::CdProof;
+    use bae_catalogs::CdProof;
     use bae_types::pressing::StatedFormat;
 
     fn per_medium(media: &[Option<Medium>]) -> StatedMedia {
@@ -183,10 +183,7 @@ mod tests {
 
     fn cd_rip() -> AudioOrigin {
         AudioOrigin {
-            source: Some(crate::catalog_model::AudioSource::CdRip {
-                proof: CdProof::RipLog,
-                file: None,
-            }),
+            source: Some(bae_catalogs::AudioSource::CdRip { proof: CdProof::RipLog, file: None }),
             not_cd_rate: None,
         }
     }
@@ -206,9 +203,8 @@ mod tests {
     /// A download proves no carrier, at whatever rate.
     #[test]
     fn a_download_proves_no_carrier() {
-        let download = crate::catalog_model::AudioSource::Download(
-            crate::catalog_model::DownloadProof::DeliverySet,
-        );
+        let download =
+            bae_catalogs::AudioSource::Download(bae_catalogs::DownloadProof::DeliverySet);
         let at_cd_rate = AudioOrigin { source: Some(download.clone()), not_cd_rate: None };
         let at_96k = AudioOrigin { source: Some(download), not_cd_rate: Some(96_000) };
         assert_eq!(RippedFrom::of(&at_cd_rate, false), RippedFrom::Unknown);
@@ -221,8 +217,8 @@ mod tests {
     #[test]
     fn a_download_agrees_with_a_digital_release() {
         let download = AudioOrigin {
-            source: Some(crate::catalog_model::AudioSource::Download(
-                crate::catalog_model::DownloadProof::DeliverySet,
+            source: Some(bae_catalogs::AudioSource::Download(
+                bae_catalogs::DownloadProof::DeliverySet,
             )),
             not_cd_rate: None,
         };

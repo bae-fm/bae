@@ -190,7 +190,7 @@ struct StoredCandidate {
 }
 
 async fn stored_candidate() -> StoredCandidate {
-    stored_candidate_with(crate::catalog_model::providers::Providers::offline()).await
+    stored_candidate_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// A sheet carving the second of [`picked_candidate`]'s two files into two
@@ -226,7 +226,7 @@ async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
 }
 
 async fn stored_candidate_with(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> StoredCandidate {
     let (manager, database, tmp) = setup_test_manager_with(providers).await;
     let tables = crate::import::tables::ImportTables::new(database);
@@ -257,12 +257,12 @@ async fn started(
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
-    pane_fixture_with(crate::catalog_model::providers::Providers::offline()).await
+    pane_fixture_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// [`pane_fixture`] asking `providers`.
 async fn pane_fixture_with(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
     let fixture = picked_stored_candidate_with(providers).await;
     let hash = fixture.candidate.files.content_hash();
@@ -272,12 +272,12 @@ async fn pane_fixture_with(
 /// [`pane_fixture`] with the library it was started from, for a test that
 /// reads what an import wrote through the library's own operations.
 async fn picked_stored_candidate() -> StoredCandidate {
-    picked_stored_candidate_with(crate::catalog_model::providers::Providers::offline()).await
+    picked_stored_candidate_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// [`stored_candidate_with`] with the folder's own tags already picked.
 async fn picked_stored_candidate_with(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> StoredCandidate {
     let fixture = stored_candidate_with(providers).await;
     let revision = fixture.handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
@@ -354,7 +354,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
         .await;
     shut_down(handle).await;
     assert!(matches!(result, Err(crate::import::ImportError::Catalog(
-        crate::catalog_model::CatalogError::DiscogsNotConfigured
+        bae_catalogs::CatalogError::DiscogsNotConfigured
     ))));
 }
 

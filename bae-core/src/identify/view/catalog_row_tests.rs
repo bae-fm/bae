@@ -3,10 +3,10 @@
 
 use super::tests::*;
 use super::*;
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::signals::TextLine;
 use crate::identify::signals::TextOrigin;
 use crate::identify::{Findings, NarrowedOut, TerminalVerdict};
+use bae_catalogs::search::MetadataResult;
 
 fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
     let pool: Vec<TextLine> = lines

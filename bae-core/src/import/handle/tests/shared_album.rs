@@ -1,17 +1,17 @@
 //! Linking a folder to the album its lookup's pressings are of, when the
 //! person cannot tell which of them their copy is.
 
-use crate::catalog_model::records::LookupRef;
+use bae_catalogs::records::LookupRef;
 use super::*;
 use crate::import::{PendingStanding, ReleaseLink};
 use crate::identify::AlbumLink;
-use crate::catalog_model::records::{MetadataRef};
+use bae_catalogs::records::{MetadataRef};
 
 const ALBUM: &str = "album-group-1";
 
 /// One MusicBrainz pressing of the album, as the lookup offered it.
-fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::MetadataResult {
-    crate::catalog_model::search::MetadataResult {
+fn offered(release_id: &str, year: i32) -> bae_catalogs::search::MetadataResult {
+    bae_catalogs::search::MetadataResult {
         source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -27,8 +27,8 @@ fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::Metadat
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some(ALBUM.to_string()),
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
@@ -68,7 +68,7 @@ pub(super) async fn store_two_pressings(
                 ledger: None,
             },
             signals: crate::identify::signals::Signals {
-                origin: crate::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: crate::identify::signals::DiscIdSignal::Absent,
                 barcode: crate::identify::signals::BarcodeSignal::Absent,
                 text: crate::identify::signals::TextSignal::Settled {

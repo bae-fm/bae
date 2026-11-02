@@ -2,7 +2,7 @@
 //! surfaces, and the lines they were read from.
 
 use super::TextOrigin;
-use crate::catalog_model::InternalFailure;
+use bae_catalogs::InternalFailure;
 
 /// The catalog numbers and artist/album free text, each once in first-seen
 /// order; final once `Settled`.

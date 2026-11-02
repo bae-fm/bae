@@ -1,8 +1,8 @@
-use crate::catalog_model::rip::rate_ruling_out_cd;
-use crate::catalog_model::{AudioOrigin, AudioSource, CdProof};
 use crate::cue_flac::CueSheet;
 use crate::identify::signals::{ComputedDiscId, DiscIdSignal};
 use crate::import::folder_scanner::resolve_cue_audio_paths;
+use bae_catalogs::rip::rate_ruling_out_cd;
+use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_types::audio_format::AudioFormat;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -267,10 +267,10 @@ impl RipReading {
     /// Audio of `lengths` whose rip logs and sheets read as this.
     pub(crate) fn read_audio(
         self,
-        lengths: crate::catalog_model::reading::MeasuredLengths,
-    ) -> crate::catalog_model::reading::ReadAudio {
+        lengths: bae_catalogs::reading::MeasuredLengths,
+    ) -> bae_catalogs::reading::ReadAudio {
         let disc_ids = self.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect();
-        crate::catalog_model::reading::ReadAudio::new(lengths, self.origin, disc_ids)
+        bae_catalogs::reading::ReadAudio::new(lengths, self.origin, disc_ids)
     }
 }
 

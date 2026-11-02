@@ -19,7 +19,7 @@ impl FolderCandidate {
     pub(crate) fn file_tag_values(
         &self,
         snapshot: &super::file_tag_snapshot::FileTagSnapshot,
-    ) -> Result<crate::catalog_model::release_values::ReleaseValues, super::ImportError> {
+    ) -> Result<bae_catalogs::release_values::ReleaseValues, super::ImportError> {
         let mut values =
             super::file_tag_mapper::file_metadata_values(&self.files, snapshot, Some(&self.name))?;
         if !self.files.parts.is_empty() {

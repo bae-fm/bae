@@ -10,19 +10,19 @@ fn every_source_on() -> Vec<CatalogAvailability> {
         .collect()
 }
 
-fn search_query() -> crate::catalog_model::search::SearchQuery {
-    crate::catalog_model::search::SearchQuery::General {
+fn search_query() -> bae_catalogs::search::SearchQuery {
+    bae_catalogs::search::SearchQuery::General {
         artist: "Artist Name".to_string(),
         album: "Album Title".to_string(),
     }
 }
 
-fn search_result(source: LookupCatalog, release_id: &str) -> crate::catalog_model::search::MetadataResult {
-    crate::catalog_model::search::MetadataResult {
+fn search_result(source: LookupCatalog, release_id: &str) -> bae_catalogs::search::MetadataResult {
+    bae_catalogs::search::MetadataResult {
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
         year: Some(1992),
-        ..crate::catalog_model::search::MetadataResult::for_test(source, release_id, None)
+        ..bae_catalogs::search::MetadataResult::for_test(source, release_id, None)
     }
 }
 
@@ -50,7 +50,7 @@ async fn land(
     runtime: &CandidateRuntime,
     run: crate::import::candidate_search::SearchRun,
     source: bae_catalogs::catalog::LookupCatalog,
-    outcome: Result<Vec<crate::catalog_model::search::MetadataResult>, crate::catalog_model::Failure>,
+    outcome: Result<Vec<bae_catalogs::search::MetadataResult>, bae_catalogs::Failure>,
 ) -> bool {
     runtime.land_search(run, source, outcome).await.unwrap()
 }
@@ -161,8 +161,8 @@ async fn a_retry_re_asks_only_the_failed_sources() {
         )
         .await
     );
-    let unavailable: crate::catalog_model::Failure =
-        crate::catalog_model::LookupFailure::Provider { status: Some(503) }.into();
+    let unavailable: bae_catalogs::Failure =
+        bae_catalogs::LookupFailure::Provider { status: Some(503) }.into();
     assert!(land(&runtime, run, LookupCatalog::Discogs, Err(unavailable.clone())).await);
     assert_eq!(
         search_of(&runtime, key).await.unwrap().source(LookupCatalog::Discogs),
@@ -210,7 +210,7 @@ async fn a_retry_leaves_a_source_still_searching_to_its_answer() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     scanned_key(&runtime, key).await;
     let run = started_search(&runtime, key).await;
-    let broke: crate::catalog_model::Failure = crate::catalog_model::InternalFailure {
+    let broke: bae_catalogs::Failure = bae_catalogs::InternalFailure {
         detail: "reading the answer: unexpected end of input".to_string(),
     }
     .into();
@@ -358,7 +358,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     scanned_key(&runtime, key).await;
     let run = started_search(&runtime, key).await;
     let grouped =
-        |source: LookupCatalog, release_id: &str, group: &str| crate::catalog_model::search::MetadataResult {
+        |source: LookupCatalog, release_id: &str, group: &str| bae_catalogs::search::MetadataResult {
             source_group_id: Some(group.to_string()),
             ..search_result(source, release_id)
         };
@@ -381,13 +381,13 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         .await
     );
     assert_eq!(search_of(&runtime, key).await.unwrap().groups.len(), 2);
-    let master = crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7");
-    let links = crate::catalog_model::album_links::AlbumLinks::Read(vec![master.clone()]);
+    let master = bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "master-7");
+    let links = bae_catalogs::album_links::AlbumLinks::Read(vec![master.clone()]);
 
     let off_the_list = runtime
         .land_picked(
             key,
-            &crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-partner"),
+            &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-partner"),
             links.clone(),
         )
         .await
@@ -398,7 +398,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let kept = runtime
         .land_picked(
             key,
-            &crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
+            &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
             links.clone(),
         )
         .await

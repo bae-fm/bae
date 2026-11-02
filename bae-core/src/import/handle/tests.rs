@@ -5,9 +5,9 @@ const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 
 use super::*;
 use crate::app::test_library::TestLibrary;
-use crate::catalog_model::fake_catalogs::FakeCatalogs;
 use crate::db::{Database, DbArtist};
 use crate::library::{LibraryError, LibraryManager};
+use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_test_support::HANG_GUARD;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
@@ -15,12 +15,12 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 async fn setup_test_manager() -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_with(crate::catalog_model::providers::Providers::offline()).await
+    setup_test_manager_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// A library asking `providers`.
 async fn setup_test_manager_with(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (TestLibrary, Database, TempDir) {
     setup_test_manager_over(providers, crate::diagnostics::Diagnostics::noop()).await
 }
@@ -29,12 +29,11 @@ async fn setup_test_manager_with(
 async fn setup_test_manager_reporting_to(
     diagnostics: crate::diagnostics::Diagnostics,
 ) -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_over(crate::catalog_model::providers::Providers::offline(), diagnostics)
-        .await
+    setup_test_manager_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
 }
 
 async fn setup_test_manager_over(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
     diagnostics: crate::diagnostics::Diagnostics,
 ) -> (TestLibrary, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();

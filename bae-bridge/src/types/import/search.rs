@@ -37,7 +37,7 @@ pub enum BridgeSearchQuery {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeSearchQuery = bae_core::catalog_model::SearchQuery,
+    BridgeSearchQuery = bae_catalogs::SearchQuery,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -205,10 +205,10 @@ impl BridgeSourceSearch {
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
             SourceSearch::Done { results } => Self::Done { count: results.len() as u32 },
-            SourceSearch::Failed(bae_core::catalog_model::Failure::Lookup(failure)) => {
+            SourceSearch::Failed(bae_catalogs::Failure::Lookup(failure)) => {
                 Self::Failed { failure: BridgeLookupFailure::from_core(failure) }
             }
-            SourceSearch::Failed(bae_core::catalog_model::Failure::Internal(failure)) => {
+            SourceSearch::Failed(bae_catalogs::Failure::Internal(failure)) => {
                 Self::Error { failure: BridgeInternalFailure::from_core(failure) }
             }
         }

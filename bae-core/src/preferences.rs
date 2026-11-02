@@ -66,8 +66,8 @@ pub enum DiscogsValidation {
 impl DiscogsValidation {
     /// The validation a key is stored under once Discogs was asked about it:
     /// a check Discogs could not answer leaves it unvalidated.
-    pub fn of(check: &crate::catalog_model::providers::DiscogsCheck) -> Self {
-        use crate::catalog_model::providers::DiscogsCheck;
+    pub fn of(check: &bae_catalogs::providers::DiscogsCheck) -> Self {
+        use bae_catalogs::providers::DiscogsCheck;
         match check {
             DiscogsCheck::Valid => Self::Valid,
             DiscogsCheck::Rejected => Self::Rejected,

@@ -36,13 +36,13 @@ use super::candidate_search::{CandidateSearch, SearchRun};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::ImportProgress;
-use crate::catalog_model::search::{MetadataResult, SearchQuery};
-use crate::catalog_model::Failure;
 use crate::db::DbError;
 use crate::identify::signals::Signals;
 use crate::identify::{IdentifyState, RunOutcome};
 use crate::import::IdentifyRunId;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::{MetadataResult, SearchQuery};
+use bae_catalogs::Failure;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -306,9 +306,9 @@ impl CandidateRuntime {
     pub(super) async fn land_picked(
         &self,
         key: &CandidateKey,
-        release: &crate::catalog_model::records::LookupRef,
-        links: crate::catalog_model::album_links::AlbumLinks,
-    ) -> Result<Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>, DbError> {
+        release: &bae_catalogs::records::LookupRef,
+        links: bae_catalogs::album_links::AlbumLinks,
+    ) -> Result<Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>, DbError> {
         self.tables.land_candidate_search_pick(key, release, links).await
     }
 

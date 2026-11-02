@@ -197,7 +197,7 @@ async fn the_entry_counts_follow_what_is_running() {
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
 async fn one_row_on_the_page(
-    providers: crate::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     ImportServiceHandle,
     TempDir,
@@ -277,7 +277,7 @@ fn counted(entries: &[crate::import::PendingFilterEntry], filter: PendingFilter)
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_off_the_page_delivers_its_count() {
     let (handle, _tmp, list, on_page, off_page) =
-        one_row_on_the_page(crate::catalog_model::providers::Providers::offline()).await;
+        one_row_on_the_page(bae_catalogs::providers::Providers::offline()).await;
 
     admit(&handle, &off_page).await;
     let moved = delivered(&list).await;

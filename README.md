@@ -27,8 +27,22 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 
 | Crate | Description |
 |-------|-------------|
-| `bae-core` | Library, database, sync engine, encryption, cloud backends, import pipeline |
+| `bae-core` | The library, schema, import, identification, files, playback, outputs, sync integration, settings |
+| `bae-catalogs` | The MusicBrainz, Discogs and Wikidata clients, their rate limits and covers, and what the catalogs say about a release in bae's terms |
+| `bae-audio` | The audio codec over FFmpeg and the streams a decoded track plays from |
+| `bae-types` | The domain values the catalogs, identification and the library share |
+| `bae-util` | What the other crates build on, with no library vocabulary: HTTP, retries, error text, stored images, logging |
 | `bae-bridge` | UniFFI bridge for the macOS and Android native apps, the iOS skeleton, and the Windows/Linux Avalonia skeleton |
+| `bae-desktop` | The desktop services a bridge handle starts: the MCP and Subsonic servers |
+| `bae-subsonic` | The Subsonic server |
+| `bae-mcp` | The MCP server over bae-automation |
+| `bae-automation` | The automation tools and their JSON shapes |
+| `bae-cast` | AirPlay, Google Cast and UPnP, receiver discovery and the session media server |
+| `bae-mirror` | The macros that write field-for-field conversions |
+| `bae-loc` | The string catalog and each platform's resources |
+| `bae-theme` | The shared theme, written as Swift and Kotlin |
+| `bae-test-support` | Helpers for bae-core's integration tests |
+| `bae-uniffi-bindgen` | The bindings generator |
 
 ## Roadmap
 

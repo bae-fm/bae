@@ -51,9 +51,9 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     };
     assert_eq!(
         failures,
-        &vec![crate::identify::IdentifyFailure::Cover(crate::catalog_model::search::SourceFailure {
+        &vec![crate::identify::IdentifyFailure::Cover(bae_catalogs::search::SourceFailure {
             source: bae_catalogs::catalog::Catalog::MusicBrainz,
-            failure: crate::catalog_model::LookupFailure::Provider { status: Some(500) },
+            failure: bae_catalogs::LookupFailure::Provider { status: Some(500) },
         })],
     );
     assert_eq!(
@@ -107,7 +107,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     assert_eq!(
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-cover-1",
             ),

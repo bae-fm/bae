@@ -2,16 +2,16 @@
 //! for exactly one extraction of a release at a time.
 
 use super::empty_db;
-use crate::catalog_model::payloads::ReleasePayloads;
-use crate::catalog_model::records::LookupRef;
-use crate::catalog_model::records::{MetadataRef, PayloadSource, SourcePayload};
-use crate::catalog_model::test_documents::{
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::payloads::ReleasePayloads;
+use bae_catalogs::records::LookupRef;
+use bae_catalogs::records::{MetadataRef, PayloadSource, SourcePayload};
+use bae_catalogs::test_documents::{
     linked_discogs_master, linked_discogs_release, linked_musicbrainz_release,
     linked_release_group, musicbrainz_release_with_relations, wikidata_item,
     wikidata_linked_release_group,
 };
-use bae_catalogs::catalog::Catalog;
-use bae_catalogs::catalog::LookupCatalog;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
 /// medium and a CD medium, a credit that names no artist, composer
@@ -182,13 +182,13 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let mut musicbrainz = musicbrainz_documents().extract().unwrap();
-    musicbrainz.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
+    musicbrainz.unfetched.push(bae_catalogs::source_release::UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "4242".to_string(),
-        reason: crate::catalog_model::source_release::UnfetchedReason::DiscogsNotConfigured,
+        reason: bae_catalogs::source_release::UnfetchedReason::DiscogsNotConfigured,
     });
     let performed = &musicbrainz.mediums[0].entries[0].works[0].work;
-    let crate::catalog_model::source_release::SourceWorkEvent::Part { work: parent, .. } =
+    let bae_catalogs::source_release::SourceWorkEvent::Part { work: parent, .. } =
         &performed.events[1]
     else {
         panic!("the movement names its parent work: {performed:?}");
@@ -247,8 +247,8 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
 /// them: each album named, in order, or that one could not be read.
 #[tokio::test]
 async fn a_stored_release_reads_back_its_album_links() {
-    use crate::catalog_model::album_links::AlbumLinks;
-    use crate::catalog_model::source_release::CatalogFacts;
+    use bae_catalogs::album_links::AlbumLinks;
+    use bae_catalogs::source_release::CatalogFacts;
     let (db, _tmp) = empty_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let extracted = musicbrainz_documents().extract().unwrap();
@@ -433,7 +433,7 @@ async fn an_unfetched_release_reads_as_nothing() {
 /// takes the album away again.
 #[tokio::test]
 async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
-    use crate::catalog_model::records::ReleaseRecord;
+    use bae_catalogs::records::ReleaseRecord;
     use bae_catalogs::remote_image::RemoteCover;
 
     let master = |key: &str| MetadataRef::new(Catalog::Discogs, key);

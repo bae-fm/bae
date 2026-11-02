@@ -41,16 +41,16 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 
 /// Exactly one record of a release reads its draft; these fixtures put that on
 /// MusicBrainz, so a release carrying both records still has one.
-fn mb_identity(group: &str, release: &str) -> crate::catalog_model::records::ReleaseRecord {
-    crate::catalog_model::records::ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release),
+fn mb_identity(group: &str, release: &str) -> bae_catalogs::records::ReleaseRecord {
+    bae_catalogs::records::ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release),
         Some(group.to_string()),
     )
 }
 
-fn discogs_identity(group: &str, release: &str) -> crate::catalog_model::records::ReleaseRecord {
-    crate::catalog_model::records::ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, release),
+fn discogs_identity(group: &str, release: &str) -> bae_catalogs::records::ReleaseRecord {
+    bae_catalogs::records::ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, release),
         Some(group.to_string()),
     )
 }
@@ -469,7 +469,7 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
 #[tokio::test]
 async fn album_records_merge_albums_but_never_match_pressings() {
-    use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
@@ -525,7 +525,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
 
 #[tokio::test]
 async fn ungrouped_pressings_do_not_invent_album_matches() {
-    use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();

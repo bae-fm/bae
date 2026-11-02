@@ -1,9 +1,9 @@
-use crate::catalog_model::providers::DiscogsCheck;
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
+use bae_catalogs::providers::DiscogsCheck;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::path::Path;
@@ -534,19 +534,19 @@ impl ImportServiceHandle {
     /// `partners` on other catalogs, from storage or fetched now.
     pub(crate) async fn read_pick(
         &self,
-        primary: &crate::catalog_model::records::LookupRef,
-        partners: &[crate::catalog_model::records::LookupRef],
+        primary: &bae_catalogs::records::LookupRef,
+        partners: &[bae_catalogs::records::LookupRef],
         priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<
         (
-            crate::catalog_model::source_release::PreparedRelease,
-            Vec<crate::catalog_model::source_release::PreparedRelease>,
+            bae_catalogs::source_release::PreparedRelease,
+            Vec<bae_catalogs::source_release::PreparedRelease>,
         ),
         crate::import::ImportError,
     > {
         let release = self
             .release_reads
-            .release(primary, crate::catalog_model::payloads::ReadDepth::Complete, priority)
+            .release(primary, bae_catalogs::payloads::ReadDepth::Complete, priority)
             .await?;
         let partners = self
             .release_reads

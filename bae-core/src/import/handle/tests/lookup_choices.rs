@@ -214,7 +214,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
             verdict: crate::identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
             signals: crate::identify::signals::Signals {
-                origin: crate::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: crate::identify::signals::DiscIdSignal::Absent,
                 barcode: crate::identify::signals::BarcodeSignal::Absent,
                 text: crate::identify::signals::TextSignal::Settled {
@@ -245,7 +245,7 @@ pub(super) async fn pick(
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id.to_string(),
                 ),
@@ -333,5 +333,5 @@ fn seed_mb_release(
         cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive { front, darkened: false },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    fakes.musicbrainz().seed_release_cache(release_id, raw_json);
+    fakes.seed_musicbrainz_release(release_id, raw_json);
 }

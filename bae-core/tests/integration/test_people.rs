@@ -7,8 +7,7 @@ use bae_test_support::{
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
     let ((manager, database, ..), storage) =
-        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
-            .await;
+        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
     assert!(database.profiles().await.unwrap().is_empty());
     connect_storage(&manager, &storage).await;
@@ -47,8 +46,7 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
     let ((manager, database, ..), storage) =
-        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
-            .await;
+        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     connect_storage(&manager, &storage).await;
     let profile = made_profile(&manager, "Rowan").await;
     assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
@@ -84,8 +82,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
     let ((manager, ..), storage) =
-        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
-            .await;
+        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     connect_storage(&manager, &storage).await;
     let profile = made_profile(&manager, "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
@@ -114,8 +111,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
 async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
     let ((manager, ..), storage) =
-        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
-            .await;
+        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     connect_storage(&manager, &storage).await;
     let profile = made_profile(&manager, "Rowan").await;
 
@@ -289,7 +285,7 @@ impl Household {
         let (manager, ..) = bae_test_support::test_library_from_handle(
             self.owner.clone(),
             dir,
-            bae_core::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         )
         .await;
         manager

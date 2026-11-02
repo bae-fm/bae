@@ -101,7 +101,7 @@ mirror_enum! {
 }
 
 /// One catalog's key for an entity, whose kind is stated by its containing field. Mirrors
-/// `bae_core::catalog_model::records::MetadataRef`.
+/// `bae_catalogs::records::MetadataRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMetadataRef {
     pub catalog: BridgeCatalog,
@@ -109,7 +109,7 @@ pub struct BridgeMetadataRef {
 }
 
 /// A release on a catalog that answers lookups: one bae can fetch and pick.
-/// Mirrors `bae_core::catalog_model::records::LookupRef`.
+/// Mirrors `bae_catalogs::records::LookupRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLookupRef {
     pub catalog: BridgeLookupCatalog,
@@ -118,12 +118,12 @@ pub struct BridgeLookupRef {
 
 #[cfg(feature = "desktop")]
 impl BridgeLookupRef {
-    pub(crate) fn from_core(release: bae_core::catalog_model::records::LookupRef) -> Self {
+    pub(crate) fn from_core(release: bae_catalogs::records::LookupRef) -> Self {
         Self { catalog: BridgeLookupCatalog::from_core(release.catalog), key: release.key }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::catalog_model::records::LookupRef {
-        bae_core::catalog_model::records::LookupRef::new(self.catalog.into_core(), self.key)
+    pub(crate) fn into_core(self) -> bae_catalogs::records::LookupRef {
+        bae_catalogs::records::LookupRef::new(self.catalog.into_core(), self.key)
     }
 }
 
@@ -137,14 +137,14 @@ pub struct BridgeReleaseRecord {
 
 impl BridgeReleaseRecord {
     /// Native surfaces render catalog links; identity matching remains in core.
-    pub(crate) fn from_core(record: bae_core::catalog_model::records::ReleaseRecord) -> Self {
+    pub(crate) fn from_core(record: bae_catalogs::records::ReleaseRecord) -> Self {
         Self { catalog: BridgeCatalog::from_core(record.catalog()), url: record.url() }
     }
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeMetadataRef {
-    pub(crate) fn from_core(release_ref: bae_core::catalog_model::records::MetadataRef) -> Self {
+    pub(crate) fn from_core(release_ref: bae_catalogs::records::MetadataRef) -> Self {
         Self { catalog: BridgeCatalog::from_core(release_ref.catalog), key: release_ref.key }
     }
 }

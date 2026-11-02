@@ -18,13 +18,13 @@ use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written}
 use super::rows::load_search_matches_on;
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::catalog_model::album_links::AlbumLinks;
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::search::{MetadataResult, SearchQuery};
-use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::import::candidates::CandidateFiles;
+use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::MetadataRef;
+use bae_catalogs::search::{MetadataResult, SearchQuery};
+use bae_catalogs::{Failure, InternalFailure};
 use std::str::FromStr;
 
 /// A query as its row's columns: the mode, and the values that mode asks.
@@ -499,7 +499,7 @@ impl ImportTables {
     pub(crate) async fn land_candidate_search_pick(
         &self,
         key: &CandidateKey,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
         links: AlbumLinks,
     ) -> Result<Vec<(String, Vec<MetadataRef>)>, DbError> {
         let key = key.clone();

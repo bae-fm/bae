@@ -3,7 +3,7 @@
 //! `CATALOG` field. What counts as a code is [`bae_types::barcode`]'s to say.
 
 use super::SourcedValue;
-use crate::catalog_model::InternalFailure;
+use bae_catalogs::InternalFailure;
 
 /// The codes found in a candidate's files, in discovery order, each once per
 /// file it was read off.

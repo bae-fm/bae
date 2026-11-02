@@ -229,7 +229,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
-        releases: &[crate::catalog_model::source_release::SourceRelease],
+        releases: &[bae_catalogs::source_release::SourceRelease],
     ) -> Result<u64, ImportError> {
         let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             ImportError::Refused("metadata replacement has no candidate state row".into())
@@ -253,7 +253,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         link: Option<&crate::import::ReleaseLink>,
-        releases: &[crate::catalog_model::source_release::SourceRelease],
+        releases: &[bae_catalogs::source_release::SourceRelease],
     ) -> Result<(), ImportError> {
         let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             ImportError::Refused("link replacement has no candidate state row".into())
@@ -311,7 +311,7 @@ impl CandidatePreparations {
         link: &crate::identify::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
-        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
@@ -349,7 +349,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         link: &crate::identify::AlbumLink,
         draft: crate::import::CandidateDraft,
-        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
@@ -499,7 +499,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
-        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {
         settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {

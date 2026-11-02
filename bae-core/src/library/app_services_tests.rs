@@ -62,7 +62,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     let services = crate::app::test_library::TestLibrary::open(
         database,
         crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
-        crate::catalog_model::providers::Providers::offline(),
+        bae_catalogs::providers::Providers::offline(),
     )
     .await
     .start_services()

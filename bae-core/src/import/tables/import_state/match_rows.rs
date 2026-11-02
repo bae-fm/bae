@@ -4,12 +4,12 @@
 
 use super::verdict_rows::{unreadable, Owner};
 use super::*;
-use crate::catalog_model::album_links::AlbumLinks;
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::import::tables::album_link_rows::AlbumLinkRow;
+use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::records::MetadataRef;
 use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
@@ -313,7 +313,7 @@ fn store_album_link_rows(
 pub(super) fn store_picked(
     sql: &CovenWrite<'_>,
     search_run: i64,
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
     links: &AlbumLinks,
 ) -> Result<(), DbError> {
     let positions = sql.query(

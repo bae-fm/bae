@@ -297,7 +297,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some("rg-1".to_string()),
-                album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+                album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
                 source_tracks: source,
                 document_failure: None,
                 album_first_year: None,
@@ -319,15 +319,15 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 /// it is the count: three tracks, as the folder holds.
 #[test]
 fn the_lengths_a_source_states_do_not_decide() {
-    let payloads: crate::catalog_model::payloads::ReleasePayloads =
-        crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
+    let payloads: bae_catalogs::payloads::ReleasePayloads =
+        bae_catalogs::payloads::ReleasePayloads::for_test(
+            bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
         );
-    let audio = crate::catalog_model::reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
+    let audio = bae_catalogs::reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
     let source =
-        crate::catalog_model::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
+        bae_catalogs::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
         crate::identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
@@ -340,15 +340,15 @@ fn the_lengths_a_source_states_do_not_decide() {
 /// many as it counts.
 #[test]
 fn a_document_lists_its_tracks_titles() {
-    let payloads = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
+    let payloads = bae_catalogs::payloads::ReleasePayloads::for_test(
+        bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
         release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
         Vec::new(),
     );
     let release = payloads.extract().unwrap();
     let document = crate::identify::documents::ReleaseDocument::of(
-        crate::catalog_model::source_release::PreparedRelease { stored: release.clone(), release },
-        &crate::catalog_model::reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
+        bae_catalogs::source_release::PreparedRelease { stored: release.clone(), release },
+        &bae_catalogs::reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
     assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });
     assert_eq!(document.track_titles, vec!["Track 1", "Track 2", "Track 3"]);

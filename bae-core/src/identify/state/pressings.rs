@@ -12,9 +12,9 @@
 //! joins it, and one that is not stands as a row of its own.
 
 use super::{LookupOutcome, LookupState};
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::MetadataRef;
+use bae_catalogs::search::{MetadataResult, SourceFailure};
 use bae_types::text_match::{catalog_key, same_label_name};
 
 /// What an offered row's pressing is asked for by on one catalog.
@@ -22,7 +22,7 @@ use bae_types::text_match::{catalog_key, same_label_name};
 pub enum PressingKey {
     /// The release the row's page names as the same release on that
     /// catalog, read directly.
-    Link { release: crate::catalog_model::records::LookupRef },
+    Link { release: bae_catalogs::records::LookupRef },
     /// A barcode the row prints.
     Barcode { barcode: String },
     /// A catalog number the row prints under `label`; only a release printing

@@ -212,7 +212,7 @@ async fn seed_library() -> Library {
             destination: ImportDestination::Local,
             read_file_tags: false,
             pick: Some(bae_core::identify::PressingLink {
-                record: bae_core::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::Discogs,
             discogs_key,
         ),

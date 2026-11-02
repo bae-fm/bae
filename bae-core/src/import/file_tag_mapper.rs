@@ -19,14 +19,14 @@
 #[cfg(test)]
 use super::file_tag_snapshot::{extract_file_tag_snapshot, LoftyFileTagReader};
 use super::file_tag_snapshot::{non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags};
-use crate::catalog_model::credits::ArtistCredit;
-use crate::catalog_model::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::cue_flac::CueSheet;
 use crate::identify::row_facts::StatedYears;
 use crate::import::folder_scanner::CategorizedFiles;
 #[cfg(test)]
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::ImportError;
+use bae_catalogs::credits::ArtistCredit;
+use bae_catalogs::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use bae_types::pressing::Pressing;
 #[cfg(test)]
 use bae_util::content_type::ContentType;
@@ -344,10 +344,10 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
 /// The credits of artists files or sheets name. The source provides only
 /// display names here, so the sort names and source artist ids stay absent,
 /// and no joining words: the line prints the default separator.
-fn named_credits(names: &[String]) -> Vec<crate::catalog_model::credits::SourceCredit> {
+fn named_credits(names: &[String]) -> Vec<bae_catalogs::credits::SourceCredit> {
     names
         .iter()
-        .map(|name| crate::catalog_model::credits::SourceCredit::plain(ArtistCredit::named(name)))
+        .map(|name| bae_catalogs::credits::SourceCredit::plain(ArtistCredit::named(name)))
         .collect()
 }
 

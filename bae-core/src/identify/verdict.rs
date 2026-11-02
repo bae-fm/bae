@@ -38,9 +38,9 @@ use super::agreements::CandidateText;
 use super::combine::{Findings, NarrowedOut};
 use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
-use crate::catalog_model::search::{MetadataResult, SourceFailure};
-use crate::catalog_model::{InternalFailure, LookupFailure};
 use crate::identify::signals::AudioFacts;
+use bae_catalogs::search::{MetadataResult, SourceFailure};
+use bae_catalogs::{InternalFailure, LookupFailure};
 
 /// Which lookup failed, and — where several providers answer it — which
 /// provider. The disc-ID endpoint is MusicBrainz's alone, and release details

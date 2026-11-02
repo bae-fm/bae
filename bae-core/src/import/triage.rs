@@ -155,10 +155,10 @@ impl TriageRuntimeFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog_model::search::SourceTracks;
     use crate::identify::LeadMatch;
     use bae_catalogs::catalog::Catalog;
     use bae_catalogs::catalog::LookupCatalog;
+    use bae_catalogs::search::SourceTracks;
 
     /// The pane states the found release's failed check while identification's
     /// pick or nobody's draft stands; a person's or the tags' valid draft is
@@ -209,20 +209,14 @@ mod tests {
 
     /// The records a pick's documents describe a release in, as the reader
     /// of those documents hands them over.
-    fn described_in() -> Vec<crate::catalog_model::records::ReleaseRecord> {
+    fn described_in() -> Vec<bae_catalogs::records::ReleaseRecord> {
         vec![
-            crate::catalog_model::records::ReleaseRecord::new(
-                &crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
-                    "mb-1".to_string(),
-                ),
+            bae_catalogs::records::ReleaseRecord::new(
+                &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
                 None,
             ),
-            crate::catalog_model::records::ReleaseRecord::new(
-                &crate::catalog_model::records::MetadataRef::new(
-                    Catalog::Discogs,
-                    "discogs-1".to_string(),
-                ),
+            bae_catalogs::records::ReleaseRecord::new(
+                &bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
                 None,
             ),
         ]
@@ -247,7 +241,7 @@ mod tests {
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
         let pick = ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string(),
             ),
@@ -262,12 +256,11 @@ mod tests {
     /// An album link reads as the album, pressing unknown, in its records.
     #[test]
     fn an_album_link_reads_as_its_album() {
-        let album =
-            crate::identify::AlbumLink::new([crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
-                "group-1",
-            )])
-            .expect("one album");
+        let album = crate::identify::AlbumLink::new([bae_catalogs::records::MetadataRef::new(
+            Catalog::MusicBrainz,
+            "group-1",
+        )])
+        .expect("one album");
         let records = album.records();
         assert_eq!(
             TriageReading::of(Some(&a_draft()), Some(&ReleaseLink::Album(album)), records.clone()),

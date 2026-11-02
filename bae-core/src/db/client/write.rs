@@ -674,15 +674,15 @@ pub(crate) fn upsert_library_image_row(
 pub(crate) fn write_release_records(
     conn: &CovenWrite<'_>,
     release_id: &str,
-    records: &[crate::catalog_model::records::ReleaseRecord],
+    records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<(), DbError> {
     conn.execute("DELETE FROM release_records WHERE release_id = ?", params![release_id])?;
     for record in records {
         let (kind, album_key) = match record {
-            crate::catalog_model::records::ReleaseRecord::Pressing { album_key, .. } => {
+            bae_catalogs::records::ReleaseRecord::Pressing { album_key, .. } => {
                 ("pressing", album_key.as_deref())
             }
-            crate::catalog_model::records::ReleaseRecord::Album { .. } => ("album", None),
+            bae_catalogs::records::ReleaseRecord::Album { .. } => ("album", None),
         };
         conn.execute(
             r#"

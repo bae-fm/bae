@@ -2,12 +2,12 @@
 //! folder's audio units, or a library release's, against its tracks. The
 //! library editor's reset projects the editable ones ([`user_edit`]).
 
-use crate::catalog_model::credits::SourceCredit;
-use crate::catalog_model::release_values::{ReleaseValues, TrackCredits};
 use crate::import::{
     AudioFile, CandidateDraft, Credited, RawPressingEdit, RawTrackEdit, ReleaseUserEdit,
     TrackArtistAssignments, TrackUserEdit,
 };
+use bae_catalogs::credits::SourceCredit;
+use bae_catalogs::release_values::{ReleaseValues, TrackCredits};
 
 /// Who a reading credits a track to, as the draft assigns it.
 fn track_assignments(credits: &TrackCredits) -> TrackArtistAssignments {
@@ -151,11 +151,11 @@ pub(crate) fn committed_artists(
         .collect()
 }
 
-/// [`place_labels`](crate::catalog_model::release_values::place_labels) of an import's track rows.
+/// [`place_labels`](bae_catalogs::release_values::place_labels) of an import's track rows.
 #[cfg(test)]
 pub(crate) fn row_labels(rows: &crate::db::ReleaseRows) -> Vec<String> {
     let mediums: Vec<_> = rows.mediums.iter().map(|medium| medium.medium).collect();
-    crate::catalog_model::release_values::place_labels(
+    bae_catalogs::release_values::place_labels(
         &mediums,
         rows.tracks.iter().map(|track| {
             let medium = rows

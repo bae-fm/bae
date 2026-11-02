@@ -12,14 +12,14 @@
 //!
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
-use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
-use crate::catalog_model::works::WorkGraph;
 #[cfg(desktop)]
 use crate::cue_flac::CueSheet;
 #[cfg(desktop)]
 use crate::db::DbTrack;
 #[cfg(desktop)]
 use bae_audio::ProbeResult;
+use bae_catalogs::credits::{ArtistCredit, CreditedRole};
+use bae_catalogs::works::WorkGraph;
 use serde::{Deserialize, Serialize};
 #[cfg(desktop)]
 mod progress;
@@ -58,7 +58,7 @@ use std::{path::PathBuf, sync::Arc};
 pub enum MetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
-        record: crate::catalog_model::records::LookupRef,
+        record: bae_catalogs::records::LookupRef,
     },
     FileMetadata,
 }

@@ -24,7 +24,7 @@ pub(crate) struct OfferedReading {
 }
 
 impl OfferedReading {
-    pub(crate) fn of(values: &crate::catalog_model::release_values::ReleaseValues) -> Self {
+    pub(crate) fn of(values: &bae_catalogs::release_values::ReleaseValues) -> Self {
         Self {
             edit: RawReleaseEdit::from_user_edit(
                 crate::import::reading_draft::user_edit(values),

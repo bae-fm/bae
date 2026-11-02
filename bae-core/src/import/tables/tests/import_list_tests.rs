@@ -6,13 +6,13 @@ use crate::identify::TerminalVerdict;
 use bae_catalogs::catalog::LookupCatalog;
 
 use super::{candidate, exec, fixed_now, watched_root};
-use crate::catalog_model::records::PayloadSource;
-use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
 use crate::import::list::ImportListItem;
 use crate::import::{MetadataProvenance, TriageTab};
+use bae_catalogs::records::PayloadSource;
+use bae_catalogs::search::{MetadataResult, SourceTracks};
 use std::path::PathBuf;
 
 mod dates;
@@ -58,7 +58,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some("group-1".to_string()),
-                album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+                album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
                 source_tracks: Some(SourceTracks::Listed { count: 1 }),
                 document_failure: None,
                 album_first_year: None,
@@ -98,7 +98,7 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
             candidate_key: candidate.key(),
             verdict,
             signals: crate::identify::signals::Signals {
-                origin: crate::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: crate::identify::signals::DiscIdSignal::Absent,
                 barcode: crate::identify::signals::BarcodeSignal::Absent,
                 text: crate::identify::signals::TextSignal::Settled {
@@ -192,11 +192,8 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
 
     tables
         .save_source_release(
-            &crate::catalog_model::payloads::ReleasePayloads::for_test(
-                crate::catalog_model::records::LookupRef::new(
-                    LookupCatalog::MusicBrainz,
-                    "mb-picked",
-                ),
+            &bae_catalogs::payloads::ReleasePayloads::for_test(
+                bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked"),
                 musicbrainz_release("mb-picked", "Picked Album").to_string(),
                 Vec::new(),
             )
@@ -217,7 +214,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     LookupCatalog::MusicBrainz,
                     "mb-picked".to_string(),
                 ),
@@ -230,7 +227,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     LookupCatalog::MusicBrainz,
                     "mb-picked",
                 ),
@@ -245,8 +242,8 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     assert_eq!(
         rows(&projection)[0].reading,
         crate::import::triage::TriageReading::Identified {
-            records: vec![crate::catalog_model::records::ReleaseRecord::new(
-                &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            records: vec![bae_catalogs::records::ReleaseRecord::new(
+                &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
                 None,
             )],
         }
@@ -272,7 +269,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     LookupCatalog::MusicBrainz,
                     "mb-never-fetched".to_string(),
                 ),
@@ -302,7 +299,7 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     let TerminalVerdict::Found { findings, .. } = &mut unread else {
         unreachable!("verdict builds a found verdict");
     };
-    findings.matches[0].document_failure = Some(crate::catalog_model::LookupFailure::Network);
+    findings.matches[0].document_failure = Some(bae_catalogs::LookupFailure::Network);
     store_verdict(&db, &candidate, unread).await;
 
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
@@ -319,7 +316,7 @@ async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
     let (db, _tmp, root) = watched_root().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let candidate = scanned(&db, &root, "Album").await;
-    let failure = crate::catalog_model::InternalFailure {
+    let failure = bae_catalogs::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
     store_verdict(&db, &candidate, TerminalVerdict::Error { failure: failure.clone() }).await;
@@ -367,10 +364,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             candidate_key: candidate.key(),
             verdict: stored.clone(),
             signals: crate::identify::signals::Signals {
-                origin: crate::catalog_model::AudioOrigin {
-                    source: None,
-                    not_cd_rate: Some(96_000)
-                },
+                origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
                 disc_id: crate::identify::signals::DiscIdSignal::Absent,
                 barcode: crate::identify::signals::BarcodeSignal::Absent,
                 text: crate::identify::signals::TextSignal::Settled {

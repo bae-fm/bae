@@ -474,17 +474,15 @@ impl WindowItemRows {
 /// record first; or an album's records, which the link names itself.
 #[derive(Clone, PartialEq)]
 pub(super) enum LinkedRows {
-    Pressing(Vec<Vec<crate::catalog_model::records::ReleaseRecord>>),
-    Album(Vec<crate::catalog_model::records::ReleaseRecord>),
+    Pressing(Vec<Vec<bae_catalogs::records::ReleaseRecord>>),
+    Album(Vec<bae_catalogs::records::ReleaseRecord>),
 }
 
 impl LinkedRows {
     /// Every catalog that describes what the row is linked to.
-    fn records(self) -> Vec<crate::catalog_model::records::ReleaseRecord> {
+    fn records(self) -> Vec<bae_catalogs::records::ReleaseRecord> {
         match self {
-            Self::Pressing(claimed) => {
-                crate::catalog_model::source_release::claimed_records(&claimed)
-            }
+            Self::Pressing(claimed) => bae_catalogs::source_release::claimed_records(&claimed),
             Self::Album(records) => records,
         }
     }
@@ -638,7 +636,7 @@ pub(super) fn stored_embedded_cover(
 fn claimed_records(
     sql: &SqlReadContext<'_>,
     link: &PressingLink,
-) -> Result<Vec<Vec<crate::catalog_model::records::ReleaseRecord>>, DbError> {
+) -> Result<Vec<Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
     link.claimed()
         .map(|release| {
             load_release_records_on(sql, release)?.ok_or_else(|| {

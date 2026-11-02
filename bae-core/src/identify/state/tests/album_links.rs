@@ -2,7 +2,7 @@
 
 use crate::identify::documents::{ReleaseDocument, ReleaseReading};
 use crate::identify::state::PressingKey;
-use crate::catalog_model::records::MetadataRef;
+use bae_catalogs::records::MetadataRef;
 
 /// A document stating five tracks, `notes`, and nothing else.
 fn plain_document(notes: &[&str]) -> ReleaseDocument {
@@ -10,13 +10,13 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
         labels: Vec::new(),
         barcodes: Vec::new(),
         album_first_year: None,
-        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 5 },
+        source_tracks: bae_catalogs::search::SourceTracks::Listed { count: 5 },
         track_titles: Vec::new(),
         notes: notes.iter().map(|note| note.to_string()).collect(),
         links: Vec::new(),
         album_links: AlbumLinks::NotAsked,
-        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
-            crate::catalog_model::records::LookupRef::new(
+        stored: std::sync::Arc::new(bae_catalogs::source_release::SourceRelease::for_test(
+            bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "release-1",
             ),

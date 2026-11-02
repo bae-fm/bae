@@ -112,7 +112,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         .select_candidate_release(
             candidate_key.clone(),
             bae_core::identify::PressingLink {
-                record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
             bae_core::import::CatalogApplySteps::unread(),
@@ -213,7 +213,7 @@ async fn pick_release_for_folder(
         .select_candidate_release(
             candidate_key.clone(),
             bae_core::identify::PressingLink {
-                record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
+                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
             },
             bae_core::import::CatalogApplySteps::unread(),
@@ -266,7 +266,7 @@ async fn pick_release(
 
 fn pressing_link(mb_id: &str) -> bae_core::identify::PressingLink {
     bae_core::identify::PressingLink {
-        record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
+        record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
         partners: vec![],
     }
 }
@@ -361,7 +361,7 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
     assert_eq!(
         pane.draft().unwrap().metadata_provenance,
         Some(bae_core::import::MetadataProvenance::ExternalRelease {
-            record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, fitting.clone()),
+            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, fitting.clone()),
         })
     );
     let titles: Vec<_> = pane
@@ -398,7 +398,7 @@ async fn a_release_listing_no_tracks_applies() {
     assert_eq!(
         after.draft().unwrap().metadata_provenance,
         Some(bae_core::import::MetadataProvenance::ExternalRelease {
-            record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, lists_nothing.clone()),
+            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, lists_nothing.clone()),
         })
     );
     assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
@@ -507,7 +507,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         None,
         ImportDestination::Local,
         support::DraftSource::Pick(bae_core::identify::PressingLink {
-            record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
+            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),
     )
@@ -547,7 +547,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         None,
         ImportDestination::Local,
         support::DraftSource::Pick(bae_core::identify::PressingLink {
-            record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
+            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),
     )

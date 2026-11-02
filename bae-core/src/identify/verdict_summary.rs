@@ -12,8 +12,8 @@
 use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
-use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use bae_catalogs::remote_image::RemoteCover;
+use bae_catalogs::search::{MetadataResult, SourceTracks};
 
 /// A check of the found release against the folder that did not pass,
 /// carrying what it takes to state the disagreement beside Import.
@@ -38,7 +38,7 @@ pub enum VerdictKind {
     Failed,
     /// bae broke on its own side, and how.
     Error {
-        failure: crate::catalog_model::InternalFailure,
+        failure: bae_catalogs::InternalFailure,
     },
 }
 

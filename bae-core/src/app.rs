@@ -404,7 +404,7 @@ where
     let http = bae_util::http::Http::new()
         .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let providers = crate::catalog_model::providers::Providers::new(http.clone());
+    let providers = bae_catalogs::providers::Providers::new(http.clone());
 
     // The library's store, opened once; each part of the open library is
     // built from it here, once, and handed to what holds it.

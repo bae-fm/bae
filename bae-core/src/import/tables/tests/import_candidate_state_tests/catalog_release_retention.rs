@@ -2,12 +2,12 @@
 //! that writes the first such row, and deleted in the write that drops the
 //! last.
 
-use crate::catalog_model::records::LookupRef;
+use bae_catalogs::records::LookupRef;
 use super::super::{exec, exec_batch};
 use super::*;
 use crate::identify::RunOutcome;
 use crate::import::IdentifyRunId;
-use crate::catalog_model::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
+use bae_catalogs::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
 
 /// Candidate `a` with a draft, and MusicBrainz releases `rel-1` and `rel-2`
 /// stored with a barcode each, which nothing names yet.
@@ -245,7 +245,7 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
     let run = IdentifyRunId::for_test(1);
     let mut partial = release("rel-1");
     partial.unfetched = vec![UnfetchedDocument {
-        document: crate::catalog_model::records::PayloadSource::MusicBrainz,
+        document: bae_catalogs::records::PayloadSource::MusicBrainz,
         key: "rel-1".to_string(),
         reason: UnfetchedReason::StoppedShort,
     }];

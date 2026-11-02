@@ -160,7 +160,7 @@ pub struct ReleaseDetail {
     pub download_status: Option<ReleaseDownloadStatus>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
-    pub records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
 impl ReleaseDetail {

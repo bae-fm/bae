@@ -28,9 +28,8 @@ impl DiscogsPick {
     /// Discogs' artist documents: none for the album artist, and for the
     /// track artist one whose primary image is `picture_url`.
     fn seed_artists(&self, picture_url: String) {
-        let discogs = self.fakes.discogs();
-        discogs.seed_artist_image_response(&self.album_artist_id, None);
-        discogs.seed_artist_image_response(&self.track_artist_id, Some(picture_url));
+        self.fakes.seed_discogs_artist_image(&self.album_artist_id, None);
+        self.fakes.seed_discogs_artist_image(&self.track_artist_id, Some(picture_url));
     }
 
     async fn import(&self) -> Result<(String, String), String> {
@@ -146,8 +145,8 @@ async fn picked_discogs_release() -> DiscogsPick {
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    fakes.discogs().seed_release_cache(&source_release_id, raw_release);
-    fakes.musicbrainz().seed_discogs_page_lookup(&[(
+    fakes.seed_discogs_release(&source_release_id, raw_release);
+    fakes.seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()),
         None,
     )]);
@@ -156,7 +155,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     source_release_id,
                 ),

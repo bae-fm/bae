@@ -290,7 +290,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .import
         .start_candidate_search(
             key.clone(),
-            crate::catalog_model::search::SearchQuery::General {
+            bae_catalogs::search::SearchQuery::General {
                 artist: "Artist".to_string(),
                 album: "Album".to_string(),
             },
@@ -324,7 +324,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-typed".to_string(),
                 ),

@@ -4,10 +4,10 @@
 //! shows what core stored rather than what a surface made of an error.
 
 use super::*;
-use crate::catalog_model::SearchQuery;
 use crate::identify::LookupChoiceEdit;
 use crate::identify::PressingLink;
 use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome};
+use bae_catalogs::SearchQuery;
 
 impl AppServices {
     /// Import the candidate the pane shows.

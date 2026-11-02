@@ -156,7 +156,7 @@ pub struct AutomationImportFailure {
     pub failed_at: String,
 }
 
-/// Mirrors bae-core's `catalog_model::LookupFailure`.
+/// Mirrors bae-catalogs' `LookupFailure`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationLookupFailure {
@@ -165,7 +165,7 @@ pub enum AutomationLookupFailure {
     Timeout,
 }
 
-/// Mirrors bae-core's `catalog_model::InternalFailure`: how bae broke on its own
+/// Mirrors bae-catalogs' `InternalFailure`: how bae broke on its own
 /// side.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationInternalFailure {
@@ -188,7 +188,7 @@ pub enum AutomationDiscIdSignal {
     },
 }
 
-/// Mirrors bae-core's `catalog_model::CdProof`.
+/// Mirrors bae-catalogs' `CdProof`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationCdProof {
@@ -197,7 +197,7 @@ pub enum AutomationCdProof {
     RipperSheet,
 }
 
-/// Mirrors bae-core's `catalog_model::StoreMarker`.
+/// Mirrors bae-catalogs' `StoreMarker`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationStoreMarker {
@@ -205,7 +205,7 @@ pub enum AutomationStoreMarker {
     Bandcamp,
 }
 
-/// Mirrors bae-core's `catalog_model::DownloadProof`.
+/// Mirrors bae-catalogs' `DownloadProof`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDownloadProof {
@@ -213,7 +213,7 @@ pub enum AutomationDownloadProof {
     DeliverySet,
 }
 
-/// Mirrors bae-core's `catalog_model::AudioSource`.
+/// Mirrors bae-catalogs' `AudioSource`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationAudioSource {
@@ -221,7 +221,7 @@ pub enum AutomationAudioSource {
     Download { proof: AutomationDownloadProof },
 }
 
-/// Mirrors bae-core's `catalog_model::AudioOrigin`.
+/// Mirrors bae-catalogs' `AudioOrigin`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationAudioOrigin {
     pub source: Option<AutomationAudioSource>,

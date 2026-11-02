@@ -2,10 +2,10 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
-use crate::catalog_model::search::SourceTracks;
 use crate::identify::{Findings, NarrowedOut};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::SourceTracks;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
     MetadataResult {
@@ -24,7 +24,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("rg-1".to_string()),
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
         source_tracks,
         document_failure: None,
         album_first_year: None,
@@ -56,9 +56,9 @@ fn failed_with_findings(matches: Vec<MetadataResult>, track_count: u32) -> Termi
     };
     TerminalVerdict::Failed {
         failures: vec![crate::identify::IdentifyFailure::Search(
-            crate::catalog_model::search::SourceFailure {
+            bae_catalogs::search::SourceFailure {
                 source: Catalog::MusicBrainz,
-                failure: crate::catalog_model::LookupFailure::Provider { status: Some(503) },
+                failure: bae_catalogs::LookupFailure::Provider { status: Some(503) },
             },
         )],
         findings,
@@ -222,7 +222,7 @@ fn a_lead_the_folder_s_count_rules_out_is_no_match() {
 #[test]
 fn a_pressing_with_an_unread_document_is_not_picked_unattended() {
     let unread = |mut result: MetadataResult| {
-        result.document_failure = Some(crate::catalog_model::LookupFailure::Network);
+        result.document_failure = Some(bae_catalogs::LookupFailure::Network);
         result
     };
     for matches in [
@@ -277,7 +277,7 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
         (
             TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::DiscId(
-                    crate::catalog_model::LookupFailure::Network,
+                    bae_catalogs::LookupFailure::Network,
                 )],
                 findings: Findings::default(),
                 track_count: 11,

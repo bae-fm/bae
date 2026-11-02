@@ -4,7 +4,7 @@ use crate::identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
-use crate::catalog_model::search::MetadataResult;
+use bae_catalogs::search::MetadataResult;
 use crate::db::watched_path::host_root;
 use coven::FixedClock;
 use std::path::PathBuf;
@@ -67,8 +67,8 @@ fn sample_match() -> MetadataResult {
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
         // No catalog release of it is stored, so a stored verdict reads none.
         album_first_year: None,
@@ -92,7 +92,7 @@ fn sample_findings() -> Findings {
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
         named_notes: vec![crate::identify::NamedNote {
-            release: crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"),
+            release: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"),
             note: "Pressed By Plant Name".to_string(),
         }],
     }
@@ -101,7 +101,7 @@ fn sample_findings() -> Findings {
 /// Settled signals with nothing found.
 fn sample_signals() -> crate::identify::signals::Signals {
     crate::identify::signals::Signals {
-        origin: crate::catalog_model::AudioOrigin::default(),
+        origin: bae_catalogs::AudioOrigin::default(),
         disc_id: crate::identify::signals::DiscIdSignal::Absent,
         barcode: crate::identify::signals::BarcodeSignal::Absent,
         text: crate::identify::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -180,9 +180,9 @@ async fn fetched(db: &Database, release_id: &str) {
 }
 
 /// The catalog release [`fetched`] stores.
-fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::SourceRelease {
-    crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, release_id),
+fn fetched_release(release_id: &str) -> bae_catalogs::source_release::SourceRelease {
+    bae_catalogs::payloads::ReleasePayloads::for_test(
+        bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, release_id),
         serde_json::json!({
             "id": release_id,
             "title": "Album",
@@ -199,7 +199,7 @@ fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::So
 
 fn release_link(release_id: &str) -> crate::identify::PressingLink {
     crate::identify::PressingLink {
-        record: crate::catalog_model::records::LookupRef::new(
+        record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),
         ),
@@ -209,7 +209,7 @@ fn release_link(release_id: &str) -> crate::identify::PressingLink {
 
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
-        record: crate::catalog_model::records::LookupRef::new(
+        record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),
         ),
@@ -489,7 +489,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use crate::identify::state::step as identify_step;
     use crate::identify::{IdentifyEvent, IdentifyState};
     use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-    use crate::catalog_model::{LookupFailure};
+    use bae_catalogs::{LookupFailure};
 
     let (db, _tmp) = empty_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
@@ -509,7 +509,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                origin: crate::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
                     discs: vec![crate::identify::signals::ComputedDiscId {
                         disc_id: "disc-hash".to_string(),

@@ -55,7 +55,7 @@ impl ImportFixture {
         let discogs = Arc::new(bae_catalogs::discogs::client::Discogs::for_test(http.clone()));
         let ((library_manager, db, catalogs, closing), storage) = support::storage_library(
             &db_dir,
-            bae_core::catalog_model::providers::Providers::for_test(
+            bae_catalogs::providers::Providers::for_test(
                 http.clone(),
                 musicbrainz.clone(),
                 discogs.clone(),

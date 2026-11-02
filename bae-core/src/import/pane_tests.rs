@@ -42,11 +42,11 @@ fn metadata(
         works: Default::default(),
         tracks: places
             .iter()
-            .map(|place| crate::catalog_model::release_values::TrackValues {
+            .map(|place| bae_catalogs::release_values::TrackValues {
                 title: "Track Title".to_string(),
                 place: *place,
                 stated_length_ms: None,
-                credits: crate::catalog_model::release_values::TrackCredits::AlbumArtists,
+                credits: bae_catalogs::release_values::TrackCredits::AlbumArtists,
                 roles: Vec::new(),
                 works: Vec::new(),
             })

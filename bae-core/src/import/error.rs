@@ -70,7 +70,7 @@ pub enum ImportError {
 
     /// A catalog could not be asked, or what it answered could not be read.
     #[error(transparent)]
-    Catalog(#[from] crate::catalog_model::CatalogError),
+    Catalog(#[from] bae_catalogs::CatalogError),
 
     /// The release lists another number of tracks than the folder holds, so
     /// it cannot describe the folder's audio without adding or losing tracks.
@@ -311,17 +311,17 @@ impl ImportError {
     /// The failure a catalog answered with, which is a lookup that failed, or
     /// `None` for an error bae met on its own side — a request it could not
     /// build, an answer it could not parse, a store read.
-    pub(crate) fn provider_failure(&self) -> Option<crate::catalog_model::LookupFailure> {
+    pub(crate) fn provider_failure(&self) -> Option<bae_catalogs::LookupFailure> {
         match self {
-            Self::Catalog(error) => crate::catalog_model::search::provider_failure(error),
+            Self::Catalog(error) => bae_catalogs::search::provider_failure(error),
             _ => None,
         }
     }
 
     /// Why a step that asked a catalog did not answer: what a provider
     /// answered with, or what bae met on its own side, logged as it is named.
-    pub(crate) fn failure(&self, what: &str) -> crate::catalog_model::Failure {
-        crate::catalog_model::search::lookup_or_internal(self.provider_failure(), what, self)
+    pub(crate) fn failure(&self, what: &str) -> bae_catalogs::Failure {
+        bae_catalogs::search::lookup_or_internal(self.provider_failure(), what, self)
     }
 }
 
@@ -431,10 +431,7 @@ impl ImportError {
 
 /// The class a surface words a catalog's failure in: provider failures apart
 /// from data bae cannot read and its own faults.
-fn catalog_category(
-    error: &crate::catalog_model::CatalogError,
-) -> crate::diagnostics::UiErrorCategory {
-    use crate::catalog_model::CatalogError;
+fn catalog_category(error: &bae_catalogs::CatalogError) -> crate::diagnostics::UiErrorCategory {
     use crate::diagnostics::UiErrorCategory as C;
     #[cfg(desktop)]
     use bae_catalogs::discogs::client::DiscogsError;
@@ -443,6 +440,7 @@ fn catalog_category(
     use bae_catalogs::remote_image::RemoteImageError;
     #[cfg(desktop)]
     use bae_catalogs::wikidata::WikidataError;
+    use bae_catalogs::CatalogError;
     match error {
         #[cfg(desktop)]
         CatalogError::SourceData { .. } => C::ImportData,
@@ -493,16 +491,16 @@ fn catalog_category(
 /// A release that cannot be read onto the audio refuses the import that
 /// would apply it.
 #[cfg(desktop)]
-impl From<crate::catalog_model::reading::ReadingRefusal> for ImportError {
-    fn from(refusal: crate::catalog_model::reading::ReadingRefusal) -> Self {
-        use crate::catalog_model::reading::ReadingRefusal;
+impl From<bae_catalogs::reading::ReadingRefusal> for ImportError {
+    fn from(refusal: bae_catalogs::reading::ReadingRefusal) -> Self {
+        use bae_catalogs::reading::ReadingRefusal;
         match refusal {
             ReadingRefusal::TrackCount { folder, release } => {
                 Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
             }
             ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
             ReadingRefusal::Unreadable { catalog, detail } => {
-                crate::catalog_model::CatalogError::SourceData { catalog, detail }.into()
+                bae_catalogs::CatalogError::SourceData { catalog, detail }.into()
             }
         }
     }
@@ -511,14 +509,14 @@ impl From<crate::catalog_model::reading::ReadingRefusal> for ImportError {
 #[cfg(all(test, desktop))]
 mod tests {
     use super::*;
-    use crate::catalog_model::CatalogError;
     use bae_catalogs::musicbrainz::MusicBrainzError;
+    use bae_catalogs::CatalogError;
 
     /// Each reason a release cannot be read onto the audio is the import's
     /// own refusal, naming what it names.
     #[test]
     fn a_reading_refusal_is_the_import_refusal_it_names() {
-        use crate::catalog_model::reading::ReadingRefusal;
+        use bae_catalogs::reading::ReadingRefusal;
         assert!(matches!(
             ImportError::from(ReadingRefusal::Tied { mediums: vec![1, 3] }),
             ImportError::TiedMediums { mediums } if mediums == vec![1, 3]
@@ -640,8 +638,7 @@ mod tests {
             bae_catalogs::discogs::client::DiscogsError::Transport(request_error),
         );
         assert!(error.to_string().contains("relative URL without a base"), "{error}");
-        let crate::catalog_model::Failure::Internal(failure) = error.failure("asking Discogs")
-        else {
+        let bae_catalogs::Failure::Internal(failure) = error.failure("asking Discogs") else {
             panic!("a request bae could not build is its own failure");
         };
         assert!(failure.detail.contains("relative URL without a base"), "{}", failure.detail);
@@ -678,7 +675,7 @@ mod tests {
     #[test]
     fn only_a_provider_s_error_is_a_failed_lookup() {
         let refused: ImportError = bae_catalogs::musicbrainz::MusicBrainzError::Timeout.into();
-        assert_eq!(refused.provider_failure(), Some(crate::catalog_model::LookupFailure::Timeout));
+        assert_eq!(refused.provider_failure(), Some(bae_catalogs::LookupFailure::Timeout));
         let local = ImportError::Internal {
             detail: "the release was stored and did not read back".to_string(),
         };

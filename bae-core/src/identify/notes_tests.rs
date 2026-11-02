@@ -3,9 +3,9 @@
 //! disambiguation and annotation.
 
 use super::*;
-use crate::catalog_model::search::musicbrainz_release_notes;
 use crate::identify::signals::{TextLine, TextOrigin};
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::musicbrainz_release_notes;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
@@ -22,10 +22,10 @@ fn discogs(document: serde_json::Value) -> MetadataResult {
         serde_json::Value::String(id) => id.clone(),
         id => id.to_string(),
     };
-    let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, id),
+    let release = bae_catalogs::payloads::ReleasePayloads::for_test(
+        bae_catalogs::records::LookupRef::new(LookupCatalog::Discogs, id),
         document.to_string(),
-        Vec::<crate::catalog_model::records::SourcePayload>::new(),
+        Vec::<bae_catalogs::records::SourcePayload>::new(),
     )
     .extract()
     .expect("the release document is read");

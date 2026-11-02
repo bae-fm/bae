@@ -121,7 +121,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-offline-1".to_string(),
                 ),
@@ -192,7 +192,7 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-missing-1".to_string(),
                 ),
@@ -231,7 +231,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     );
 
     let pick = || crate::identify::PressingLink {
-        record: crate::catalog_model::records::LookupRef::new(
+        record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             "mb-manual-1".to_string(),
         ),
@@ -331,11 +331,11 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     assert_eq!(
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-paired-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::LookupRef::new(
+            partners: vec![bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 "70000101"
             )],
@@ -424,11 +424,11 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     assert_eq!(
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-paired-2".to_string()
             ),
-            partners: vec![crate::catalog_model::records::LookupRef::new(
+            partners: vec![bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 "70000102"
             )],
@@ -513,11 +513,11 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     assert_eq!(
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 "70000103".to_string()
             ),
-            partners: vec![crate::catalog_model::records::LookupRef::new(
+            partners: vec![bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-paired-3"
             )],
@@ -609,7 +609,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-two-2".to_string(),
                 ),
@@ -708,7 +708,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     assert_eq!(
         pane.draft().unwrap().release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-catalog-1".to_string()
             ),

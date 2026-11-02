@@ -109,8 +109,9 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 bae-util = { workspace = true, features = ["test-utils"] }
 # The pressing values bae-core's unit tests build their fixtures from.
 bae-types = { workspace = true, features = ["test-utils"] }
-# The catalog clients' and the image cache's test constructors, and the
-# requests the rate limiter queued and admitted, which its unit tests read.
+# The catalog clients' and the image cache's test constructors, the catalog
+# fakes and documents, and the requests the rate limiter queued and admitted,
+# which its unit tests read.
 bae-catalogs = { workspace = true, features = ["test-utils", "test-instrumentation"] }
 # Shared integration-test helpers. A real crate rather than a `tests/support`
 # include so they compile once and `dead_code` stays armed on them; the cycle

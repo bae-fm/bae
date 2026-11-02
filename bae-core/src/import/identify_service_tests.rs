@@ -1,9 +1,9 @@
 use super::*;
-use crate::catalog_model::records::LookupRef;
 use crate::db::Database;
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::IdentifyState;
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::records::LookupRef;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -14,7 +14,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
     let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
+        bae_catalogs::providers::Providers::offline(),
         database.clone(),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
@@ -63,7 +63,7 @@ async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
 /// without touching MB or Discogs.
 fn absent_signals() -> Signals {
     Signals {
-        origin: crate::catalog_model::AudioOrigin::default(),
+        origin: bae_catalogs::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
@@ -307,17 +307,17 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
 /// all the same: a stored release of the album then names the other.
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
-    use crate::catalog_model::album_links::AlbumLinks;
-    use crate::catalog_model::records::{MetadataRef, SourcePayload};
     use crate::identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
     use crate::identify::state::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
     };
+    use bae_catalogs::album_links::AlbumLinks;
+    use bae_catalogs::records::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
     let tables = crate::import::tables::ImportTables::new(inner.database.clone());
-    let discogs = crate::catalog_model::payloads::ReleasePayloads::for_test(
+    let discogs = bae_catalogs::payloads::ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "4242"),
         serde_json::json!({
             "id": 4242,
@@ -333,7 +333,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     .unwrap();
     tables.save_source_release(&discogs).await.unwrap();
 
-    let found = crate::catalog_model::search::MetadataResult::for_test(
+    let found = bae_catalogs::search::MetadataResult::for_test(
         LookupCatalog::MusicBrainz,
         "mb-release",
         Some("mb-group"),
@@ -359,12 +359,12 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         labels: Vec::new(),
         barcodes: Vec::new(),
         album_first_year: None,
-        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 1 },
+        source_tracks: bae_catalogs::search::SourceTracks::Listed { count: 1 },
         track_titles: Vec::new(),
         notes: Vec::new(),
         links: Vec::new(),
         album_links: AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
-        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
+        stored: std::sync::Arc::new(bae_catalogs::source_release::SourceRelease::for_test(
             LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         )),
     };

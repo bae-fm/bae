@@ -1,0 +1,576 @@
+//! One catalog release bae fetched, as bae keeps it.
+//!
+//! Everything an import surface reads about a release — the picker's detail,
+//! the draft a pick projects, the tracklist the auto-import check reads, the records
+//! a commit writes, the covers a picker offers — is extracted from the
+//! release's documents once, when it is fetched, into a [`SourceRelease`].
+//! What depends on the folder's audio is not extracted: which of the release's
+//! mediums the audio is a rip of, and how a Discogs tracklist's index and
+//! heading rows are laid out against it, are chosen when the release is read
+//! against the audio (see `reading`).
+
+use crate::catalog::{Catalog, LookupCatalog};
+use crate::credits::ArtistCredit;
+use crate::medium_coverage::MediumCoverage;
+use crate::records::{LookupRef, MetadataRef, ReleaseRecord};
+use crate::release_metadata::ReleaseMetadata;
+use crate::remote_image::RemoteCover;
+use crate::search::ImportSearchReleaseDetail;
+use crate::CatalogError;
+use bae_types::pressing::Pressing;
+use bae_types::pressing::{Medium, StatedMedia};
+
+/// One fetched release: its facts with every supporting document's
+/// contribution already resolved into them, and its full tracklist.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceRelease {
+    pub release: LookupRef,
+    /// The album the release's own catalog files it under: its MusicBrainz
+    /// release group or its Discogs master.
+    pub source_group_id: Option<String>,
+    /// Album and pressing facts, the release's own first and whatever its
+    /// cross-referenced release and album documents supplied where it stated
+    /// nothing.
+    pub metadata: ReleaseMetadata,
+    /// What the other catalogs say this release, or its album, is — never the
+    /// release's own catalog, whose record [`Self::records`] derives. Its
+    /// documents' statements, and, once stored, what reading its album's
+    /// MusicBrainz release group found the album to be where the documents
+    /// reach no record of that catalog (see [`crate::album_links`]).
+    pub other_records: Vec<ReleaseRecord>,
+    pub covers: ReleaseCovers,
+    /// The MusicBrainz release whose Cover Art Archive gallery a picker asks
+    /// for: this release itself, or the MusicBrainz release a Discogs release
+    /// is cross-referenced to.
+    pub archive_release: Option<ArchiveRelease>,
+    /// The MusicBrainz release groups whose documents named this release's
+    /// album, in the order the album covers were read from them.
+    pub archive_groups: Vec<String>,
+    pub mediums: Vec<SourceMedium>,
+    pub catalog: CatalogFacts,
+    /// What the release's own document writes about which pressing it is, in
+    /// free text and in its order: see
+    /// [`crate::search::musicbrainz_release_notes`] and
+    /// `crate::search::discogs_release_notes`.
+    pub notes: Vec<String>,
+    /// The documents the fetch named and did not get, whose facts are
+    /// missing from the ones above: supporting documents, and the release's
+    /// own where an identify run read it from a Disc ID lookup's answer.
+    pub unfetched: Vec<UnfetchedDocument>,
+}
+
+/// A catalog release read for a write that may name it: as it is stored,
+/// and as import surfaces read it. A release is stored only in the write that
+/// names it, so whoever read it holds it until then.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PreparedRelease {
+    /// What the release's own documents state, which the write that names
+    /// it stores.
+    pub stored: SourceRelease,
+    /// `stored` with the albums kept album statements join to it (see
+    /// [`crate::album_links`]), which is what every surface reads.
+    pub release: SourceRelease,
+}
+
+/// One document a fetch followed a link to, or started from an answer in
+/// place of, and did not get.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnfetchedDocument {
+    pub document: crate::records::PayloadSource,
+    pub key: String,
+    pub reason: UnfetchedReason,
+}
+
+/// Why a linked document is missing from a fetched release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnfetchedReason {
+    /// Its source was asked and failed.
+    Failed,
+    /// It is a Discogs document and this library held no Discogs key.
+    DiscogsNotConfigured,
+    /// The read stopped short of it on purpose: an identification read
+    /// follows only the documents ranking the release reads, and takes a
+    /// release a Disc ID lookup returned from that answer rather than its own
+    /// document.
+    StoppedShort,
+}
+
+/// The images a release's documents offer, in the order a picker shows them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseCovers {
+    /// This pressing's own artwork, whichever catalog printed it.
+    pub release: Vec<RemoteCover>,
+    /// The album's artwork, which is some release of the album's and may not
+    /// be this one.
+    pub album: Vec<RemoteCover>,
+}
+
+/// A MusicBrainz release as the Cover Art Archive addresses it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArchiveRelease {
+    pub release_id: String,
+    pub group_id: Option<String>,
+}
+
+/// What only one catalog's release document states.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CatalogFacts {
+    MusicBrainz {
+        /// The releases on other catalogs the document names as the same
+        /// release, in relation order.
+        links: Vec<MetadataRef>,
+        /// What its documents state its album is on the other lookup
+        /// catalog: see `crate::payloads::ReleasePayloads::album_statements`.
+        album_links: crate::album_links::AlbumLinks,
+    },
+    Discogs {
+        /// What the release's format entries say it is made of, entry by
+        /// entry with each entry's quantity.
+        media: StatedMedia,
+        /// The composer credits the release states for itself rather than for
+        /// one track.
+        release_roles: Vec<RoleCredit>,
+    },
+}
+
+impl CatalogFacts {
+    /// What a release of these facts with `mediums` states about its media:
+    /// a MusicBrainz release each medium's carrier, a Discogs release its
+    /// format entries.
+    pub fn stated_media(&self, mediums: &[SourceMedium]) -> StatedMedia {
+        match self {
+            Self::MusicBrainz { .. } if mediums.is_empty() => StatedMedia::Undescribed,
+            Self::MusicBrainz { .. } => {
+                StatedMedia::PerMedium(mediums.iter().map(|medium| medium.medium).collect())
+            }
+            Self::Discogs { media, .. } => media.clone(),
+        }
+    }
+}
+
+/// One medium: a disc, a side pair of a record, a layer of a hybrid disc.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceMedium {
+    /// The carrier this medium is, `None` where the catalog does not say one
+    /// bae knows: the format MusicBrainz states for the medium, or the one a
+    /// Discogs release's position prefix or format entries give it (see
+    /// `crate::discogs_mediums`).
+    pub medium: Option<Medium>,
+    /// The disc IDs MusicBrainz has registered against this medium, each
+    /// once, in its order; a Discogs medium holds none.
+    pub disc_ids: Vec<String>,
+    pub entries: Vec<TracklistEntry>,
+}
+
+/// One row of a tracklist, as its catalog lists it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TracklistEntry {
+    pub kind: EntryKind,
+    /// The position the catalog prints: `A1`, `1-2`, `3`. Unstated where the
+    /// catalog prints none.
+    pub position: Option<String>,
+    /// The title the catalog gives the row. A MusicBrainz track with no
+    /// usable title keeps none, and reading it fails.
+    pub title: Option<String>,
+    pub duration_ms: Option<u64>,
+    /// Display credits in the catalog's order.
+    pub credits: Vec<DisplayCredit>,
+    /// Composer credits, at their positions among the row's relations.
+    pub roles: Vec<RoleCredit>,
+    /// The works a MusicBrainz recording performs, at their positions among
+    /// its relations.
+    pub works: Vec<PerformedWork>,
+    /// A Discogs index's sub-tracks.
+    pub children: Vec<TracklistEntry>,
+}
+
+/// What kind of row a tracklist entry is. Only Discogs lists anything other
+/// than tracks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryKind {
+    Track,
+    /// A title over the sub-track rows that follow it.
+    Heading,
+    /// A title holding its sub-tracks as children.
+    Index,
+}
+
+impl EntryKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Track => "track",
+            Self::Heading => "heading",
+            Self::Index => "index",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "track" => Some(Self::Track),
+            "heading" => Some(Self::Heading),
+            "index" => Some(Self::Index),
+            _ => None,
+        }
+    }
+}
+
+/// One display credit. `artist` is absent where the catalog printed a name
+/// with no artist behind it; the printed name still heads the picker's row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DisplayCredit {
+    pub position: i32,
+    pub credited_name: String,
+    pub artist: Option<ArtistCredit>,
+    /// What the catalog prints after the credit when another follows.
+    pub join: Option<String>,
+}
+
+/// A track's own credits as its display credits state them, place by place:
+/// a credit naming an artist as that artist, a printed name with no artist
+/// behind it as a credit of that name. The last credit's join is not kept.
+pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::credits::SourceCredit> {
+    let mut stated: Vec<crate::credits::SourceCredit> = credits
+        .iter()
+        .filter_map(|credit| {
+            let artist = match &credit.artist {
+                Some(artist) => artist.clone(),
+                None if credit.credited_name.trim().is_empty() => return None,
+                None => ArtistCredit::named(credit.credited_name.trim()),
+            };
+            Some(crate::credits::SourceCredit { credit: artist, join: credit.join.clone() })
+        })
+        .collect();
+    bae_types::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    stated
+}
+
+/// One composer credit and the words its catalog credits it with.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RoleCredit {
+    pub position: i32,
+    pub artist: ArtistCredit,
+    pub role: Option<String>,
+}
+
+/// One work a recording performs, at its position among the recording's
+/// relations.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PerformedWork {
+    pub position: i32,
+    pub work: SourceWork,
+}
+
+/// A MusicBrainz work as one reference to it states it: every reference
+/// carries its whole sub-graph, and reading the release expands each work
+/// once.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceWork {
+    pub musicbrainz_work_id: String,
+    pub title: String,
+    pub disambiguation: Option<String>,
+    pub work_type: Option<String>,
+    /// Composer credits and part relations, in relation order.
+    pub events: Vec<SourceWorkEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SourceWorkEvent {
+    Composer(ArtistCredit),
+    Part { direction: PartDirection, work: SourceWork },
+}
+
+/// Which way a MusicBrainz "parts" relation points from the work stating it:
+/// `Forward` names a part of the work, `Backward` the work it is part of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PartDirection {
+    Forward,
+    Backward,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl SourceRelease {
+    /// An imaginary release `release` names, titled and credited with
+    /// nothing else stated.
+    pub fn for_test(release: LookupRef) -> Self {
+        let catalog = match release.catalog {
+            LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
+                links: Vec::new(),
+                album_links: crate::album_links::AlbumLinks::Read(Vec::new()),
+            },
+            LookupCatalog::Discogs => {
+                CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
+            }
+        };
+        Self {
+            release,
+            source_group_id: None,
+            metadata: ReleaseMetadata {
+                album: crate::release_metadata::AlbumMetadata {
+                    title: "Album Title".to_string(),
+                    artists: Vec::new(),
+                    year: None,
+                    first_year: None,
+                },
+                pressing: Pressing::blank(),
+            },
+            other_records: Vec::new(),
+            covers: ReleaseCovers { release: Vec::new(), album: Vec::new() },
+            archive_release: None,
+            archive_groups: Vec::new(),
+            mediums: Vec::new(),
+            catalog,
+            notes: Vec::new(),
+            unfetched: Vec::new(),
+        }
+    }
+}
+
+impl SourceRelease {
+    /// The release these facts describe.
+    pub fn release(&self) -> &LookupRef {
+        &self.release
+    }
+
+    /// Whether reading this release again at `depth` could add what its fetch
+    /// missed: a document whose source failed, a Discogs document now that a
+    /// key is held, or — for a complete read — a document an identification
+    /// read stopped short of. Anything else missing is what the catalogs
+    /// answered, and asking again answers the same.
+    pub fn fetch_could_add(
+        &self,
+        depth: crate::payloads::ReadDepth,
+        discogs_configured: bool,
+    ) -> bool {
+        self.unfetched.iter().any(|document| match document.reason {
+            UnfetchedReason::Failed => true,
+            UnfetchedReason::DiscogsNotConfigured => discogs_configured,
+            UnfetchedReason::StoppedShort => match depth {
+                crate::payloads::ReadDepth::Identification => false,
+                crate::payloads::ReadDepth::Complete => true,
+            },
+        })
+    }
+
+    /// Every catalog identity known for this release at pressing or album
+    /// level: its own first, then what the other catalogs say, in catalog
+    /// order.
+    pub fn records(&self) -> Vec<ReleaseRecord> {
+        release_records(&self.release, self.source_group_id.clone(), self.other_records.clone())
+    }
+
+    /// The mediums the coverage names, in release order.
+    pub(crate) fn covered_mediums<'a>(
+        &'a self,
+        coverage: &'a MediumCoverage,
+    ) -> impl Iterator<Item = &'a SourceMedium> + 'a {
+        self.mediums
+            .iter()
+            .enumerate()
+            .filter(move |(position, _)| coverage.covers(*position))
+            .map(|(_, medium)| medium)
+    }
+
+    /// The rows of the covered mediums, in tracklist order.
+    pub(crate) fn covered_entries(&self, coverage: &MediumCoverage) -> Vec<TracklistEntry> {
+        self.covered_mediums(coverage).flat_map(|medium| medium.entries.iter().cloned()).collect()
+    }
+
+    /// Every cover option this one release offers, its pressing's images
+    /// before its album's, each offered once, by
+    /// [`crate::remote_image::offered_covers`].
+    pub(crate) fn covers(&self) -> Vec<RemoteCover> {
+        let mut unique = Vec::new();
+        for cover in self.covers.release.iter().chain(&self.covers.album).cloned() {
+            crate::remote_image::push_unique_cover(&mut unique, cover);
+        }
+        crate::remote_image::offered_covers(unique)
+    }
+
+    /// On-demand picker artwork: the Discogs images the release stored, and
+    /// what the Cover Art Archive holds for the MusicBrainz release and the
+    /// release groups its album was read from.
+    async fn gallery_covers(
+        &self,
+        http: &bae_util::http::Http,
+    ) -> Result<Vec<RemoteCover>, CatalogError> {
+        let mut covers = self.covers();
+        covers.retain(|cover| cover.source != Catalog::MusicBrainz);
+        if let Some(archive) = &self.archive_release {
+            let mut gallery = crate::remote_image::musicbrainz_gallery(
+                http,
+                &archive.release_id,
+                archive.group_id.as_deref(),
+            )
+            .await?;
+            match self.release.catalog {
+                LookupCatalog::MusicBrainz => {
+                    gallery.extend(covers);
+                    covers = gallery;
+                }
+                LookupCatalog::Discogs => covers.extend(gallery),
+            }
+        }
+        let covered_group =
+            self.archive_release.as_ref().and_then(|archive| archive.group_id.as_deref());
+        for group in &self.archive_groups {
+            if covered_group == Some(group.as_str()) {
+                continue;
+            }
+            for cover in crate::remote_image::musicbrainz_group_gallery(http, group).await? {
+                crate::remote_image::push_unique_cover(&mut covers, cover);
+            }
+        }
+        Ok(covers)
+    }
+
+    /// What this release states about its media.
+    pub fn stated_media(&self) -> StatedMedia {
+        self.catalog.stated_media(&self.mediums)
+    }
+
+    /// The releases on other catalogs this release's own document names as
+    /// the same release. Only a MusicBrainz document names any.
+    pub fn links(&self) -> Vec<MetadataRef> {
+        match &self.catalog {
+            CatalogFacts::MusicBrainz { links, .. } => links.clone(),
+            CatalogFacts::Discogs { .. } => Vec::new(),
+        }
+    }
+
+    /// What its documents state its album is on the other lookup catalog:
+    /// `NotAsked` for a Discogs release, whose documents state none.
+    pub fn album_links(&self) -> crate::album_links::AlbumLinks {
+        match &self.catalog {
+            CatalogFacts::MusicBrainz { album_links, .. } => album_links.clone(),
+            CatalogFacts::Discogs { .. } => crate::album_links::AlbumLinks::NotAsked,
+        }
+    }
+
+    /// The album's credits, printed as the catalog prints them.
+    pub(crate) fn artist_line(&self) -> Option<String> {
+        let artists = &self.metadata.album.artists;
+        (!artists.is_empty()).then(|| crate::credits::SourceCredit::line(artists))
+    }
+
+    /// The pressing this release describes.
+    pub fn pressing(&self) -> &Pressing {
+        &self.metadata.pressing
+    }
+
+    /// What the picker shows of this release as the primary of a pick: its
+    /// album and pressing facts and the cover options. It shows no tracklist:
+    /// picking a release applies it, and the draft it writes is what the pane
+    /// shows.
+    ///
+    /// `partners` are the pick's other claimed releases, because the cover
+    /// options the detail carries are the pick's, not this release's alone.
+    pub fn detail(&self, partners: &[SourceRelease]) -> ImportSearchReleaseDetail {
+        let pressing = self.pressing().clone();
+        ImportSearchReleaseDetail {
+            release_id: self.release.key.clone(),
+            source: self.release.catalog,
+            source_group_id: self.source_group_id.clone(),
+            title: self.metadata.album.title.clone(),
+            artist: self.artist_line(),
+            year: pressing.year,
+            labels: pressing.labels,
+            barcodes: pressing.barcodes,
+            facts: pressing.facts,
+            media: self.stated_media(),
+            links: self.links(),
+            cover_art: pick_covers(self, partners),
+        }
+    }
+}
+
+pub fn catalog_rank(catalog: Catalog) -> usize {
+    catalog.rank()
+}
+
+/// The cover options a pick offers, in the order a surface shows them and so
+/// the order the default is the first of.
+///
+/// A pick claims a primary release and, where it names one, that release on
+/// each other catalog, and it is picked whole — so its artwork is every
+/// claimed release's artwork, not the primary's alone. Every claimed
+/// release's own images come first, the primary's first among them, because
+/// a pressing's own cover is the one this import wants; the albums' images
+/// follow in the same order, each of them being some release of the album's
+/// and possibly not this one. An image reachable twice — the release an
+/// editor cross-linked to the primary also claimed as a partner, two
+/// partners under one master — is offered once.
+pub fn pick_covers(primary: &SourceRelease, partners: &[SourceRelease]) -> Vec<RemoteCover> {
+    let claimed = || std::iter::once(primary).chain(partners);
+    let mut covers = Vec::new();
+    for release in claimed() {
+        for cover in &release.covers.release {
+            crate::remote_image::push_unique_cover(&mut covers, cover.clone());
+        }
+    }
+    for release in claimed() {
+        for cover in &release.covers.album {
+            crate::remote_image::push_unique_cover(&mut covers, cover.clone());
+        }
+    }
+    crate::remote_image::offered_covers(covers)
+}
+
+/// The complete galleries behind [`pick_covers`], for the picker: the same
+/// claimed releases, each asked what the Cover Art Archive holds for it.
+pub(crate) async fn pick_gallery_covers(
+    http: &bae_util::http::Http,
+    primary: &SourceRelease,
+    partners: &[SourceRelease],
+) -> Result<Vec<RemoteCover>, CatalogError> {
+    let mut covers = Vec::new();
+    for release in std::iter::once(primary).chain(partners) {
+        for cover in release.gallery_covers(http).await? {
+            crate::remote_image::push_unique_cover(&mut covers, cover);
+        }
+    }
+    Ok(covers)
+}
+
+/// Every catalog identity of `release`, filed under `source_group_id`: its own
+/// record first, then `others`, what the other catalogs say, in catalog
+/// order.
+pub fn release_records(
+    release: &crate::records::LookupRef,
+    source_group_id: Option<String>,
+    mut others: Vec<ReleaseRecord>,
+) -> Vec<ReleaseRecord> {
+    others.sort_by_key(|record| catalog_rank(record.catalog()));
+    let mut records = vec![ReleaseRecord::new(&release.metadata_ref(), source_group_id)];
+    records.extend(others);
+    records
+}
+
+/// The records the releases one pick claims describe together.
+///
+/// `claimed` is each claimed release's [`SourceRelease::records`], its own
+/// record first: the primary's first — the release the draft is read from —
+/// then each partner's.
+///
+/// The primary's facts are read first, so what they say about another catalog
+/// stands unless that catalog is one the person themselves claimed — a
+/// claimed release's own record outranks what an editor cross-linked to it.
+/// The primary's own record is the list's first, the applied one; the rest
+/// follow in the order surfaces list catalogs.
+pub fn claimed_records(claimed: &[Vec<ReleaseRecord>]) -> Vec<ReleaseRecord> {
+    let own_catalog = |release: &Vec<ReleaseRecord>| release.first().map(ReleaseRecord::catalog);
+    let mut records: Vec<ReleaseRecord> = Vec::new();
+    for release in claimed {
+        for record in release.iter().cloned() {
+            let claimed_by_the_person = Some(record.catalog()) == own_catalog(release);
+            match records.iter_mut().find(|existing| existing.catalog() == record.catalog()) {
+                Some(existing) if claimed_by_the_person => *existing = record,
+                Some(_) => {}
+                None => records.push(record),
+            }
+        }
+    }
+    let applied = claimed.first().and_then(own_catalog);
+    records
+        .sort_by_key(|record| (Some(record.catalog()) != applied, catalog_rank(record.catalog())));
+    records
+}

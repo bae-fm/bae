@@ -15,7 +15,7 @@
 //! MusicBrainz's release group is on Discogs, read from the group's page, the
 //! Wikidata item it links, or the Discogs release one of its releases names,
 //! and failing those, from a barcode or a catalog number under one label that
-//! a release of each prints (see [`crate::catalog_model::album_links`]). A statement
+//! a release of each prints (see [`bae_catalogs::album_links`]). A statement
 //! joins albums only: the two releases stay two rows unless the pressing
 //! evidence makes them one. A row is then a pressing under
 //! however many records name it, and picking it claims one record per
@@ -29,11 +29,11 @@
 //! pressing year ordering the rows and the source name ordering the records
 //! within one.
 
-use crate::catalog_model::records::{LookupRef, MetadataRef};
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::Agreements;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::records::{LookupRef, MetadataRef};
 use bae_catalogs::remote_image::RemoteCover;
+use bae_catalogs::search::MetadataResult;
 use pressing_sets::{formed_pressings, gather_pressings};
 
 /// The pressing a candidate is linked to: the row a person picked, or
@@ -627,9 +627,8 @@ fn build_group(
         releases[at].as_ref().expect("a release is read before its card takes it")
     };
     // Whether a release's album links were read, or never needed asking.
-    let links_known = |at: usize| {
-        !matches!(read(at).album_links, crate::catalog_model::album_links::AlbumLinks::Unread)
-    };
+    let links_known =
+        |at: usize| !matches!(read(at).album_links, bae_catalogs::album_links::AlbumLinks::Unread);
     let mut sources: Vec<ReleaseGroupSource> =
         card.iter().map(|bucket| bucket.as_source(links_known)).collect();
     // An album a record's statements name on a catalog the card holds no
@@ -793,7 +792,7 @@ struct Row {
 /// audio against; one nobody has asked yet, and one that answered with
 /// nothing, have neither.
 fn states_tracklist(release: &MetadataResult) -> bool {
-    matches!(release.source_tracks, Some(crate::catalog_model::search::SourceTracks::Listed { .. }))
+    matches!(release.source_tracks, Some(bae_catalogs::search::SourceTracks::Listed { .. }))
 }
 
 /// Order the rows: most agreed with first, and among rows the candidate's text

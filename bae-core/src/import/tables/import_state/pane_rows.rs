@@ -13,12 +13,12 @@ mod writes;
 
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::catalog_model::credits::ArtistCredit;
 use crate::import::tables::downscaled_copies::{copies_json_sql, copies_of};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
+use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::remote_image::RemoteImageSet;
 use std::str::FromStr;
 

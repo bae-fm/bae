@@ -75,7 +75,7 @@ impl LibraryManager {
                     .fetch_required(&url)
                     .await
                     .map_err(|error| {
-                        crate::import::ImportError::from(crate::catalog_model::CatalogError::from(
+                        crate::import::ImportError::from(bae_catalogs::CatalogError::from(
                             error.reporting_cache_task(|failed| self.diagnostics.bug(failed)),
                         ))
                     })?

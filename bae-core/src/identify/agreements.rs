@@ -4,9 +4,9 @@
 //! folder's own code printed on the record.
 
 use super::row_facts::FolderFacts;
-use crate::catalog_model::records::LookupRef;
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::signals::{SourcedValue, TextLine, TextOrigin};
+use bae_catalogs::records::LookupRef;
+use bae_catalogs::search::MetadataResult;
 use bae_types::pressing::{ReleaseArea, ReleaseLabel};
 use bae_types::text_match::{
     bare_album_title, catalog_key, catalog_words, is_stop_word, squash, words, written_words,

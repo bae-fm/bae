@@ -46,7 +46,7 @@ struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<crate::db::ResolvedCredit>,
-    records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
@@ -157,14 +157,12 @@ fn draft_rows_on(
     // pressing's releases describe it, an album names its own.
     let records = match &release_link {
         Some(ReleaseLink::Album(album)) => album.records(),
-        Some(ReleaseLink::Pressing(_)) | None => {
-            crate::catalog_model::source_release::claimed_records(
-                &claimed
-                    .iter()
-                    .map(crate::catalog_model::source_release::SourceRelease::records)
-                    .collect::<Vec<_>>(),
-            )
-        }
+        Some(ReleaseLink::Pressing(_)) | None => bae_catalogs::source_release::claimed_records(
+            &claimed
+                .iter()
+                .map(bae_catalogs::source_release::SourceRelease::records)
+                .collect::<Vec<_>>(),
+        ),
     };
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
@@ -202,7 +200,7 @@ fn draft_rows_on(
 fn candidate_album_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
-    records: &[crate::catalog_model::records::ReleaseRecord],
+    records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<crate::import::DraftAlbum, DbError> {
     use crate::import::DraftAlbum;
     let title = |album_id: &str| -> Result<String, DbError> {
@@ -329,7 +327,7 @@ fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
     link: Option<&PressingLink>,
-) -> Result<Vec<crate::catalog_model::source_release::SourceRelease>, DbError> {
+) -> Result<Vec<bae_catalogs::source_release::SourceRelease>, DbError> {
     let Some(link) = link else {
         return Ok(Vec::new());
     };
@@ -347,14 +345,14 @@ fn claimed_releases_on(
 }
 
 /// The covers the picker offers: those the linked pressing's releases offer
-/// (see [`crate::catalog_model::source_release::pick_covers`]), read from the stored
+/// (see [`bae_catalogs::source_release::pick_covers`]), read from the stored
 /// releases as they stand, while the draft is the one read from that
 /// pressing. A draft read from the files' tags, typed in or cleared, or a
 /// candidate linked to an album or to nothing, is offered none.
 fn offered_covers(
     current: Option<&DbImportCandidateState>,
     link: Option<&ReleaseLink>,
-    claimed: &[crate::catalog_model::source_release::SourceRelease],
+    claimed: &[bae_catalogs::source_release::SourceRelease],
 ) -> Vec<bae_catalogs::remote_image::RemoteCover> {
     let read_from_link = match (
         current.and_then(|state| state.metadata_provenance.as_ref()),
@@ -367,7 +365,7 @@ fn offered_covers(
     };
     match claimed.split_first() {
         Some((primary, partners)) if read_from_link => {
-            crate::catalog_model::source_release::pick_covers(primary, partners)
+            bae_catalogs::source_release::pick_covers(primary, partners)
         }
         _ => Vec::new(),
     }

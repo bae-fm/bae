@@ -4,7 +4,7 @@
 /// own keys, and a run whose documents and pressings add nothing settles on
 /// what those found. The documents' and the pressings' own tests drive
 /// `ReleasesRead` and `PressingLookupAnswered` themselves.
-use crate::catalog_model::records::LookupRef;
+use bae_catalogs::records::LookupRef;
 fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
     let (mut state, mut effects) = super::step(state, event);
     while let Some(at) = effects.iter().position(|effect| {
@@ -39,10 +39,9 @@ fn found_by_disc_id(
     result: &MetadataResult,
 ) -> bool {
     ledger.is_some_and(|ledger| {
-        ledger.disc_id_releases().contains(&crate::catalog_model::records::LookupRef::new(
-            result.source,
-            &result.release_id,
-        ))
+        ledger
+            .disc_id_releases()
+            .contains(&bae_catalogs::records::LookupRef::new(result.source, &result.release_id))
     })
 }
 

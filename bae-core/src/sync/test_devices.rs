@@ -433,7 +433,7 @@ impl RunningLibrary {
         let library = crate::app::test_library::TestLibrary::open(
             database.clone(),
             app_dir,
-            crate::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         )
         .await;
         let manager = LibraryManager::clone(&library);

@@ -11,16 +11,16 @@
 //! a mix.
 
 use super::*;
-use crate::catalog_model::album_links::AlbumLinks;
-use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
-use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
-use crate::catalog_model::source_release::{
+use bae_catalogs::album_links::AlbumLinks;
+use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+use bae_catalogs::release_metadata::{AlbumMetadata, ReleaseMetadata};
+use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
+use bae_catalogs::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
-use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
@@ -358,11 +358,8 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-fn artist_at(
-    row: &Row<'_>,
-    first: usize,
-) -> rusqlite::Result<crate::catalog_model::credits::ArtistCredit> {
-    Ok(crate::catalog_model::credits::ArtistCredit {
+fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<bae_catalogs::credits::ArtistCredit> {
+    Ok(bae_catalogs::credits::ArtistCredit {
         name: row.get(first)?,
         sort_name: row.get(first + 1)?,
         musicbrainz_artist_id: row.get(first + 2)?,
@@ -376,7 +373,7 @@ fn artist_at(
 /// when no row names it.
 fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
     let catalog = release.catalog.as_str();
     let key = release.key.as_str();
@@ -466,8 +463,8 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
          ORDER BY position",
         params![catalog, key],
         |row| {
-            Ok(crate::catalog_model::credits::SourceCredit {
-                credit: crate::catalog_model::credits::ArtistCredit {
+            Ok(bae_catalogs::credits::SourceCredit {
+                credit: bae_catalogs::credits::ArtistCredit {
                     credited_as: row.get(4)?,
                     ..artist_at(row, 0)?
                 },
@@ -612,10 +609,9 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         .into_iter()
         .map(|(document, document_key, reason)| {
             Ok(UnfetchedDocument {
-                document: crate::catalog_model::records::PayloadSource::from_str(&document)
-                    .map_err(|error| {
-                        unreadable(&format!("unfetched document ({error})"), &document)
-                    })?,
+                document: bae_catalogs::records::PayloadSource::from_str(&document).map_err(
+                    |error| unreadable(&format!("unfetched document ({error})"), &document),
+                )?,
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,
@@ -653,7 +649,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
 /// is, as its rows hold it.
 fn own_records_on<S: QueryRows>(
     sql: &S,
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
     sql.query(
         "SELECT record_catalog, kind, key, album_key FROM source_release_record \
@@ -683,7 +679,7 @@ fn own_records_on<S: QueryRows>(
 /// `own` and the `joined` albums, in the order surfaces list catalogs.
 fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> Vec<ReleaseRecord> {
     own.extend(joined.iter().map(ReleaseRecord::album));
-    own.sort_by_key(|record| crate::catalog_model::source_release::catalog_rank(record.catalog()));
+    own.sort_by_key(|record| bae_catalogs::source_release::catalog_rank(record.catalog()));
     own
 }
 
@@ -728,7 +724,7 @@ fn with_joined_albums_on<S: QueryRows>(
 /// `None` when no row names it.
 pub(crate) fn load_source_release_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
     load_source_release_rows_on(sql, release)?
         .map(|stored| with_joined_albums_on(sql, &stored))
@@ -794,7 +790,7 @@ pub(crate) fn store_named_releases_on(
 /// nothing stored it.
 pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<Vec<ReleaseRecord>>, DbError> {
     let Some(source_group_id) = sql
         .query_row(
@@ -813,7 +809,7 @@ pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
         source_group_id.as_deref(),
         &own,
     )?;
-    Ok(Some(crate::catalog_model::source_release::release_records(
+    Ok(Some(bae_catalogs::source_release::release_records(
         release,
         source_group_id,
         with_joined_records(own, &joined),
@@ -825,7 +821,7 @@ impl ImportTables {
     /// `None` when no row names it.
     pub async fn load_source_release(
         &self,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<SourceRelease>, DbError> {
         let release = release.clone();
         self.database.read(move |sql| load_source_release_on(&sql, &release)).await
@@ -835,7 +831,7 @@ impl ImportTables {
     /// import surfaces read it, or `None` when no row names it.
     pub(crate) async fn load_prepared_release(
         &self,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
         self.database

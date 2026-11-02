@@ -11,20 +11,20 @@
 //! show at once, each catalog's albums apart. Picking a MusicBrainz result
 //! reads its release's documents, and what they state its album is on Discogs
 //! joins the cards by the one rule set an identify run's rows are joined by
-//! (see [`crate::catalog_model::album_links`]).
+//! (see [`bae_catalogs::album_links`]).
 //!
 //! The search is stored as rows (`import_candidate_search` and the tables
 //! beside it), each landing a write; this is the value a read of them makes,
 //! its cards derived from the parts that have landed. The driver that runs
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
-use crate::catalog_model::album_links::{self, AlbumLinks, GroupLinks};
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::search::{MetadataResult, SearchQuery};
-use crate::catalog_model::Failure;
 use crate::identify::release_group::{group_results, ReleaseGroup};
 use crate::preferences::{CatalogAvailability, SourceAvailability};
+use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::MetadataRef;
+use bae_catalogs::search::{MetadataResult, SearchQuery};
+use bae_catalogs::Failure;
 
 /// The run a stored search is on: what each catalog's answer names to land
 /// on it. A new search for a key is on a new run, and no run is used twice.
@@ -177,7 +177,7 @@ impl CandidateSearch {
     /// search.
     pub(crate) fn record_picked(
         &mut self,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
         links: AlbumLinks,
     ) -> Option<Vec<(String, Vec<MetadataRef>)>> {
         if release.catalog != LookupCatalog::MusicBrainz {
@@ -326,7 +326,7 @@ mod tests {
         SourceSearch::Done { results }
     }
 
-    fn failed(failure: crate::catalog_model::LookupFailure) -> SourceSearch {
+    fn failed(failure: bae_catalogs::LookupFailure) -> SourceSearch {
         SourceSearch::Failed(failure.into())
     }
 
@@ -345,10 +345,8 @@ mod tests {
         assert!(!started.has_no_matches());
         assert_eq!(started.status(), SearchStatus::Searching);
 
-        let failing = search(
-            failed(crate::catalog_model::LookupFailure::Network),
-            SourceSearch::NotConfigured,
-        );
+        let failing =
+            search(failed(bae_catalogs::LookupFailure::Network), SourceSearch::NotConfigured);
         assert!(!failing.has_no_matches());
         assert_eq!(failing.status(), SearchStatus::Failed);
 
@@ -367,8 +365,7 @@ mod tests {
             SearchStatus::Searching
         );
         assert_eq!(
-            search(done(found.clone()), failed(crate::catalog_model::LookupFailure::Timeout))
-                .status(),
+            search(done(found.clone()), failed(bae_catalogs::LookupFailure::Timeout)).status(),
             SearchStatus::Failed
         );
         assert_eq!(
@@ -378,8 +375,8 @@ mod tests {
         );
     }
 
-    fn musicbrainz(release_id: &str) -> crate::catalog_model::records::LookupRef {
-        crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id)
+    fn musicbrainz(release_id: &str) -> bae_catalogs::records::LookupRef {
+        bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id)
     }
 
     /// A typed search reads nothing up front: its cards show each catalog's
@@ -398,10 +395,10 @@ mod tests {
         );
         assert_eq!(search.groups.len(), 2, "nothing joins before a pick");
 
-        let link = crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7");
+        let link = bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "master-7");
         assert_eq!(
             search.record_picked(
-                &crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, "dg-1"),
+                &bae_catalogs::records::LookupRef::new(LookupCatalog::Discogs, "dg-1"),
                 AlbumLinks::Read(vec![link.clone()]),
             ),
             None,
@@ -443,7 +440,7 @@ mod tests {
             kept,
             Some(vec![(
                 "group-x".to_string(),
-                vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7")]
+                vec![bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "master-7")]
             )])
         );
         assert_eq!(search.groups.len(), 1);
@@ -469,7 +466,7 @@ mod tests {
             ],
             vec![PickedResult {
                 release_id: "mb-1".to_string(),
-                links: AlbumLinks::Read(vec![crate::catalog_model::records::MetadataRef::new(
+                links: AlbumLinks::Read(vec![bae_catalogs::records::MetadataRef::new(
                     Catalog::Discogs,
                     "master-7",
                 )]),
@@ -590,7 +587,7 @@ mod tests {
     fn a_failed_source_keeps_the_other_source_s_groups() {
         let search = search(
             done(vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
-            failed(crate::catalog_model::LookupFailure::Network),
+            failed(bae_catalogs::LookupFailure::Network),
         );
         assert!(search.is_settled());
         assert_eq!(search.failed_sources(), vec![LookupCatalog::Discogs]);

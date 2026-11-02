@@ -45,7 +45,7 @@ fn seed_mb_release_with_works(
             })
         })
         .collect();
-    fakes.musicbrainz().seed_release_cache(
+    fakes.seed_musicbrainz_release(
         release_id,
         serde_json::json!({
             "id": release_id,
@@ -70,7 +70,7 @@ async fn pick_mb(
         .select_candidate_release(
             key.clone(),
             crate::identify::PressingLink {
-                record: crate::catalog_model::records::LookupRef::new(
+                record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id,
                 ),
@@ -244,7 +244,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         &["Changed One", "Changed Two"],
         &[1_000, 1_000],
     );
-    let edited = crate::catalog_model::records::LookupRef::new(
+    let edited = bae_catalogs::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         "edited-release",
     );
@@ -255,7 +255,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         .unwrap()
         .fetch_payloads(
             &edited,
-            crate::catalog_model::payloads::ReadDepth::Complete,
+            bae_catalogs::payloads::ReadDepth::Complete,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
         .await

@@ -4,7 +4,7 @@
 //! credit, and the conflict a person settles.
 
 use super::*;
-use crate::catalog_model::credits::ArtistCredit;
+use bae_catalogs::credits::ArtistCredit;
 use serde::{Deserialize, Serialize};
 
 /// One artist already in the library, with the fields an editor needs to show

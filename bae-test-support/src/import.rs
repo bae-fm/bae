@@ -148,7 +148,7 @@ impl DraftSource {
 /// imported under.
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
     DraftSource::Pick(bae_core::identify::PressingLink {
-        record: bae_core::catalog_model::records::LookupRef::new(
+        record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::Discogs,
             release_id.into(),
         ),

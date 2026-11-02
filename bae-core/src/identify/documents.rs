@@ -24,14 +24,14 @@
 //!
 //! A MusicBrainz document also names the other catalogs' releases that are
 //! the same release, and states what its album is on Discogs (see
-//! [`crate::catalog_model::album_links`]). The release a document names is how the
+//! [`bae_catalogs::album_links`]). The release a document names is how the
 //! run looks an offered row up on the catalog it has no record of — see
 //! `state::pressings`.
 
-use crate::catalog_model::album_links::AlbumLinks;
-use crate::catalog_model::records::{LookupRef, MetadataRef};
-use crate::catalog_model::search::{MetadataResult, SourceTracks};
-use crate::catalog_model::LookupFailure;
+use bae_catalogs::album_links::AlbumLinks;
+use bae_catalogs::records::{LookupRef, MetadataRef};
+use bae_catalogs::search::{MetadataResult, SourceTracks};
+use bae_catalogs::LookupFailure;
 use bae_types::pressing::ReleaseLabel;
 
 /// Where a run is with its offered rows' documents: each record's document,
@@ -55,7 +55,7 @@ pub enum ReleaseToRead {
     ReleaseLookup(LookupRef),
     /// The Disc ID lookup's answer that returned it, unless storage holds
     /// it: a MusicBrainz release's own document is not asked for again.
-    DiscIdAnswer(crate::catalog_model::payloads::DiscIdRelease),
+    DiscIdAnswer(bae_catalogs::payloads::DiscIdRelease),
 }
 
 impl ReleaseToRead {
@@ -99,14 +99,14 @@ pub struct ReleaseDocument {
     pub album_links: AlbumLinks,
     /// The release as its read stores it, which the write of the run's rows
     /// naming it stores.
-    pub(crate) stored: std::sync::Arc<crate::catalog_model::source_release::SourceRelease>,
+    pub(crate) stored: std::sync::Arc<bae_catalogs::source_release::SourceRelease>,
 }
 
 impl ReleaseDocument {
     /// What `prepared` states, read against the audio being identified.
     pub(crate) fn of(
-        prepared: crate::catalog_model::source_release::PreparedRelease,
-        audio: &crate::catalog_model::reading::ReadAudio,
+        prepared: bae_catalogs::source_release::PreparedRelease,
+        audio: &bae_catalogs::reading::ReadAudio,
     ) -> Self {
         let release = &prepared.release;
         let reading = release.read(audio);
@@ -114,7 +114,7 @@ impl ReleaseDocument {
             labels: release.pressing().labels.clone(),
             barcodes: release.pressing().barcodes.clone(),
             album_first_year: release.metadata.album.first_year,
-            source_tracks: crate::catalog_model::reading::listing(&reading, audio),
+            source_tracks: bae_catalogs::reading::listing(&reading, audio),
             track_titles: match reading {
                 Ok(values) => values.tracks.into_iter().map(|track| track.title).collect(),
                 Err(_) => Vec::new(),

@@ -150,7 +150,7 @@ async fn a_pick_ends_identification_in_its_write() {
                 .select_candidate_release(
                     decided_key,
                     crate::identify::PressingLink {
-                        record: crate::catalog_model::records::LookupRef::new(
+                        record: bae_catalogs::records::LookupRef::new(
                             bae_catalogs::catalog::LookupCatalog::Discogs,
                             release_id.to_string(),
                         ),

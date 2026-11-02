@@ -2,10 +2,10 @@
 //! library artist, and the work rows its tracks perform.
 
 use super::*;
-use crate::catalog_model::credits::{ArtistCredit, CreditedRole, SourceCredit};
-use crate::catalog_model::release_values::TrackValues;
-use crate::catalog_model::works::{GraphWork, WorkGraph, WorkPart};
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::credits::{ArtistCredit, CreditedRole, SourceCredit};
+use bae_catalogs::release_values::TrackValues;
+use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
 
 /// A credit to `name`, with the ids given.
 fn artist(name: &str, musicbrainz: Option<&str>, discogs: Option<&str>) -> ArtistCredit {

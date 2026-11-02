@@ -10,8 +10,8 @@
 //! whether the two records are candidates for one pressing and how well
 //! supported that claim is.
 
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::search::MetadataResult;
+use bae_catalogs::records::MetadataRef;
+use bae_catalogs::search::MetadataResult;
 use bae_types::barcode::comparison_key;
 use bae_types::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use bae_types::text_match::{catalog_key, LabelName};

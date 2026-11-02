@@ -40,7 +40,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     let ((manager, database, catalogs, closing), storage) =
         runtime.block_on(bae_test_support::storage_library(
             root.path(),
-            bae_core::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
     let syncing = manager.clone();
@@ -115,7 +115,7 @@ fn the_sync_status_follows_storage_being_set_up() {
     let ((manager, database, catalogs, closing), storage) =
         runtime.block_on(bae_test_support::storage_library(
             root.path(),
-            bae_core::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         ));
     let setup = manager.clone();
     let services = runtime

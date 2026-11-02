@@ -134,7 +134,7 @@ impl LibraryManager {
                     candidate,
                     TerminalVerdict::Failed {
                         failures: vec![crate::identify::IdentifyFailure::DiscId(
-                            crate::catalog_model::LookupFailure::Network,
+                            bae_catalogs::LookupFailure::Network,
                         )],
                         findings: crate::identify::Findings::default(),
                         track_count,
@@ -147,7 +147,7 @@ impl LibraryManager {
                 self.store_fixture_verdict(
                     candidate,
                     TerminalVerdict::Error {
-                        failure: crate::catalog_model::InternalFailure {
+                        failure: bae_catalogs::InternalFailure {
                             detail: FIXTURE_LOOKUP_FAILURE.to_string(),
                         },
                     },
@@ -156,12 +156,12 @@ impl LibraryManager {
             }
             FixtureCandidateState::Identified => {
                 let release_id = self.ids.new_id().to_string();
-                let record = crate::catalog_model::records::LookupRef::new(
+                let record = bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     &release_id,
                 );
                 let document = musicbrainz_release(candidate, &release_id);
-                let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
+                let release = bae_catalogs::payloads::ReleasePayloads::for_test(
                     record.clone(),
                     document.to_string(),
                     Vec::new(),
@@ -234,7 +234,7 @@ impl LibraryManager {
                 candidate_key: candidate.key(),
                 verdict,
                 signals: crate::identify::signals::Signals {
-                    origin: crate::catalog_model::AudioOrigin::default(),
+                    origin: bae_catalogs::AudioOrigin::default(),
                     disc_id: crate::identify::signals::DiscIdSignal::Absent,
                     barcode: crate::identify::signals::BarcodeSignal::Absent,
                     text: crate::identify::signals::TextSignal::Settled {
@@ -309,8 +309,8 @@ fn fixture_candidate(
 fn fixture_release(
     candidate: &FolderCandidate,
     release_id: String,
-) -> crate::catalog_model::search::MetadataResult {
-    crate::catalog_model::search::MetadataResult {
+) -> bae_catalogs::search::MetadataResult {
+    bae_catalogs::search::MetadataResult {
         source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         release_id,
         title: candidate.name.clone(),
@@ -326,8 +326,8 @@ fn fixture_release(
         links: Vec::new(),
         cover_art: None,
         source_group_id: None,
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed {
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed {
             count: candidate.files.files.len() as u32,
         }),
         document_failure: None,

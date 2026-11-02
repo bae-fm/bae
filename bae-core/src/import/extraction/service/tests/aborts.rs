@@ -53,7 +53,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         snapshots: watch::channel(None).0,
     };
 
-    let failure = crate::catalog_model::InternalFailure {
+    let failure = bae_catalogs::InternalFailure {
         detail: "read a folder's signals panicked: the reader broke".to_string(),
     };
     emit_aborted_signals(

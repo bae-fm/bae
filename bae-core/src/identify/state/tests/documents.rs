@@ -35,14 +35,14 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
             .map(|(name, number)| bae_types::pressing::ReleaseLabel::of(Some(name), Some(number)))
             .collect(),
         barcodes: Vec::new(),
-        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: tracks },
+        source_tracks: bae_catalogs::search::SourceTracks::Listed { count: tracks },
         album_first_year: None,
         track_titles: Vec::new(),
         notes: Vec::new(),
         links: Vec::new(),
-        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
-        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
-            crate::catalog_model::records::LookupRef::new(
+        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
+        stored: std::sync::Arc::new(bae_catalogs::source_release::SourceRelease::for_test(
+            bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "release-1",
             ),
@@ -51,7 +51,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
 }
 
 fn read(
-    release: &crate::catalog_model::records::LookupRef,
+    release: &bae_catalogs::records::LookupRef,
     document: Result<crate::identify::documents::ReleaseDocument, LookupFailure>,
 ) -> crate::identify::documents::ReleaseReading {
     crate::identify::documents::ReleaseReading { release: release.clone(), document }
@@ -314,7 +314,7 @@ fn a_document_s_barcode_joins_its_result_s() {
     };
     let mut result = first_label_only("dg-1");
     result.barcodes = vec!["0 12345 67890 5".to_string()];
-    let release = crate::catalog_model::records::LookupRef::new(DG, "dg-1");
+    let release = bae_catalogs::records::LookupRef::new(DG, "dg-1");
     for (barcode, expected) in [
         ("012345678905", vec!["0 12345 67890 5"]),
         ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
@@ -336,7 +336,7 @@ fn a_document_s_barcode_joins_its_result_s() {
 #[test]
 fn tied_rows_rank_on_the_documents_this_run_reads() {
     let mut known = first_label_only("dg-known");
-    known.source_tracks = Some(crate::catalog_model::search::SourceTracks::Listed { count: 5 });
+    known.source_tracks = Some(bae_catalogs::search::SourceTracks::Listed { count: 5 });
     let (state, releases) = reading_documents(vec![
         known,
         packed(first_label_only("dg-other-1"), bae_types::pressing::Packaging::Digipak),

@@ -180,8 +180,8 @@ fn cards_are_ordered_by_their_best_row() {
 
 /// A tracklist as a source states it. What it says does not matter here; that
 /// it was said is the tie-break.
-fn listed() -> crate::catalog_model::search::SourceTracks {
-    crate::catalog_model::search::SourceTracks::Listed { count: 9 }
+fn listed() -> bae_catalogs::search::SourceTracks {
+    bae_catalogs::search::SourceTracks::Listed { count: 9 }
 }
 
 /// One pressing as both sources state it, paired by the barcode they share.
@@ -206,11 +206,11 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::Discogs,
                 "dg-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::LookupRef::new(
+            partners: vec![bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1"
             )],
@@ -225,7 +225,7 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
 #[test]
 fn a_stated_tracklist_leads_records_the_text_says_as_much_about() {
     let (mut mb_release, mut dg_release) = paired();
-    mb_release.source_tracks = Some(crate::catalog_model::search::SourceTracks::Nothing);
+    mb_release.source_tracks = Some(bae_catalogs::search::SourceTracks::Nothing);
     dg_release.source_tracks = Some(listed());
 
     let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))], None);

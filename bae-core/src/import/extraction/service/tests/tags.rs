@@ -52,10 +52,7 @@ fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
 
 /// Read a folder of two FLACs carrying these comments, with `extra` files
 /// beside them.
-fn origin_of(
-    comments: &[(&str, &str)],
-    extra: &[(&str, &[u8])],
-) -> crate::catalog_model::AudioOrigin {
+fn origin_of(comments: &[(&str, &str)], extra: &[(&str, &[u8])]) -> bae_catalogs::AudioOrigin {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -84,7 +81,7 @@ const DELIVERED: &[(&str, &str)] = &[
 /// as a "(P)" one.
 #[test]
 fn a_label_s_delivery_set_on_every_track_proves_a_download() {
-    use crate::catalog_model::{AudioSource, DownloadProof};
+    use bae_catalogs::{AudioSource, DownloadProof};
     assert_eq!(
         origin_of(DELIVERED, &[]).source,
         Some(AudioSource::Download(DownloadProof::DeliverySet))
@@ -128,7 +125,7 @@ fn a_delivery_set_with_a_part_missing_or_beside_a_rip_file_proves_nothing() {
 /// A store's own marker proves a download, and names the track it is on.
 #[test]
 fn a_store_s_marker_proves_a_download() {
-    use crate::catalog_model::{AudioSource, DownloadProof, StoreMarker};
+    use bae_catalogs::{AudioSource, DownloadProof, StoreMarker};
     assert_eq!(
         origin_of(&[("COMMENT", "Visit https://artistname.bandcamp.com")], &[]).source,
         Some(AudioSource::Download(DownloadProof::Store {
@@ -147,10 +144,7 @@ fn a_rip_log_outweighs_a_store_s_marker() {
     assert!(matches!(
         origin_of(&[("COMMENT", "Visit https://artistname.bandcamp.com")], &[("Album.log", &log)])
             .source,
-        Some(crate::catalog_model::AudioSource::CdRip {
-            proof: crate::catalog_model::CdProof::RipLog,
-            ..
-        })
+        Some(bae_catalogs::AudioSource::CdRip { proof: bae_catalogs::CdProof::RipLog, .. })
     ));
 }
 

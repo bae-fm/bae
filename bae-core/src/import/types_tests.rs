@@ -8,7 +8,7 @@ mod metadata_provenance_tests {
     #[test]
     fn a_metadata_provenance_round_trips_without_an_identity_proxy() {
         let provenance = MetadataProvenance::ExternalRelease {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "release-a".to_string(),
             ),

@@ -33,11 +33,8 @@ async fn setup_with_cloud(
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
-    let (library, storage) = support::storage_library(
-        tmp.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    )
-    .await;
+    let (library, storage) =
+        support::storage_library(tmp.path(), bae_catalogs::providers::Providers::offline()).await;
     support::connect_storage(&library.0, &storage).await;
     library
 }

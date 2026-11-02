@@ -5,12 +5,12 @@
 //! change to the folder's files redraws them. The pane renders that draft; it
 //! does not replay edits over a provider tracklist.
 
-use crate::catalog_model::release_values::ReleaseValues;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{mapping_table, MappingTable};
 use crate::import::probe::SourceDurations;
 use crate::import::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
 use crate::import::ImportError;
+use bae_catalogs::release_values::ReleaseValues;
 
 /// Stable identities for the one candidate draft, independent of whichever
 /// source last populated it.

@@ -235,7 +235,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             (
                 "Error".to_string(),
                 Some(PendingStanding::Error {
-                    failure: crate::catalog_model::InternalFailure {
+                    failure: bae_catalogs::InternalFailure {
                         detail: crate::library::FIXTURE_LOOKUP_FAILURE.to_string(),
                     }
                 })

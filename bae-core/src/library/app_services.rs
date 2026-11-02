@@ -478,7 +478,7 @@ impl AppServices {
     delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<crate::db::DbRelease>, crate::library::LibraryError>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<crate::db::DbRelease>, crate::library::LibraryError>);
 
-    delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, crate::library::LibraryError>);
+    delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, crate::library::LibraryError>);
     delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<crate::db::DbTrack>, crate::library::LibraryError>);
     delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<crate::db::DbReleaseMediums, crate::library::LibraryError>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<crate::db::DbFile>, crate::library::LibraryError>);

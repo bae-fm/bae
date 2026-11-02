@@ -223,7 +223,7 @@ pub(crate) struct ReleaseDetailRows {
     mediums: DbReleaseMediums,
     tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
     files: Vec<DbFile>,
-    records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
     remote: bool,

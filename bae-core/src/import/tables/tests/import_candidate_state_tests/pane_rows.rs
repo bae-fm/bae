@@ -4,9 +4,9 @@ mod preparation;
 
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::import::{ArtistAssignment, AudioFile, CandidateEditField, CoverSelection, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
-use crate::catalog_model::credits::{ArtistCredit};
+use bae_catalogs::credits::{ArtistCredit};
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
-use crate::catalog_model::{InternalFailure};
+use bae_catalogs::{InternalFailure};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -26,7 +26,7 @@ fn pane_candidate_key() -> crate::import::CandidateKey {
 
 fn settled_signals() -> Signals {
     Signals {
-        origin: crate::catalog_model::AudioOrigin::default(),
+        origin: bae_catalogs::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -175,7 +175,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
 /// each way a lookup can fail.
 #[tokio::test]
 async fn every_settled_signal_shape_round_trips() {
-    use crate::catalog_model::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
+    use bae_catalogs::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
     let cd_rip = |proof, file: Option<&str>| AudioOrigin {
         source: Some(AudioSource::CdRip { proof, file: file.map(str::to_string) }),
         not_cd_rate: None,
@@ -311,7 +311,7 @@ async fn every_settled_signal_shape_round_trips() {
 async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
-            origin: crate::catalog_model::AudioOrigin::default(),
+            origin: bae_catalogs::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -320,7 +320,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             track_titles: Vec::new(),
         },
         Signals {
-            origin: crate::catalog_model::AudioOrigin::default(),
+            origin: bae_catalogs::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },
@@ -666,7 +666,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     let tables = crate::import::tables::ImportTables::new(db.clone());
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let credit = |name: &str, discogs: Option<&str>| crate::catalog_model::credits::ArtistCredit {
+    let credit = |name: &str, discogs: Option<&str>| bae_catalogs::credits::ArtistCredit {
         credited_as: None,
         name: name.to_string(),
         sort_name: None,
@@ -675,27 +675,27 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     };
     let mut draft = candidate_draft("Release Title", "Artist Name");
     draft.tracks[0].stated_length_ms = Some(181_000);
-    draft.tracks[0].roles = vec![crate::catalog_model::credits::CreditedRole {
+    draft.tracks[0].roles = vec![bae_catalogs::credits::CreditedRole {
         artist: credit("Role Artist", Some("role-artist")),
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: Some("Written-By".to_string()),
     }];
     draft.tracks[0].works = vec!["mb-work-child".to_string()];
-    draft.release_roles = vec![crate::catalog_model::credits::CreditedRole {
+    draft.release_roles = vec![bae_catalogs::credits::CreditedRole {
         artist: credit("Release Composer", None),
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: None,
     }];
-    draft.works = crate::catalog_model::works::WorkGraph {
+    draft.works = bae_catalogs::works::WorkGraph {
         works: vec![
-            crate::catalog_model::works::GraphWork {
+            bae_catalogs::works::GraphWork {
                 musicbrainz_work_id: "mb-work-child".to_string(),
                 title: "Movement".to_string(),
                 disambiguation: None,
                 work_type: Some("Song".to_string()),
                 composers: vec![credit("Composer Name", None)],
             },
-            crate::catalog_model::works::GraphWork {
+            bae_catalogs::works::GraphWork {
                 musicbrainz_work_id: "mb-work-parent".to_string(),
                 title: "Suite".to_string(),
                 disambiguation: Some("whole".to_string()),
@@ -703,7 +703,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
                 composers: Vec::new(),
             },
         ],
-        parts: vec![crate::catalog_model::works::WorkPart {
+        parts: vec![bae_catalogs::works::WorkPart {
             parent: "mb-work-parent".to_string(),
             child: "mb-work-child".to_string(),
         }],

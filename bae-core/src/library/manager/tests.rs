@@ -2,8 +2,8 @@
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
 // for the moniker it replaced, so assertions still read by name.
-use crate::catalog_model::records::LookupRef;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::LookupRef;
 const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
 const REL_2: &str = "dcdebf05-2d41-4dfc-8823-024993c9d00f"; // was "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
@@ -31,7 +31,7 @@ use uuid::Uuid;
 struct TestManager {
     library: TestLibrary,
     /// The catalog fakes the library asks, which a test seeds.
-    fakes: crate::catalog_model::fake_catalogs::FakeCatalogs,
+    fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     storage: Arc<MemoryStorage>,
     installation: coven::TestCoven,
 }
@@ -79,7 +79,7 @@ async fn setup_test_manager_with(
         .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
-    let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::offline();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(
         database,
         app_dir,

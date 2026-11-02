@@ -10,8 +10,8 @@
 //! documents never reach the release group still names it.
 
 use super::*;
-use crate::catalog_model::album_links::GroupAlbum;
-use crate::catalog_model::records::MetadataRef;
+use bae_catalogs::album_links::GroupAlbum;
+use bae_catalogs::records::MetadataRef;
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
@@ -83,12 +83,12 @@ pub(super) fn joined_albums_on<S: QueryRows>(
     sql: &S,
     catalog: Catalog,
     source_group_id: Option<&str>,
-    records: &[crate::catalog_model::records::ReleaseRecord],
+    records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<Vec<MetadataRef>, DbError> {
     let albums: Vec<MetadataRef> = source_group_id
         .map(|group| MetadataRef::new(catalog, group))
         .into_iter()
-        .chain(records.iter().filter_map(crate::catalog_model::records::ReleaseRecord::album_ref))
+        .chain(records.iter().filter_map(bae_catalogs::records::ReleaseRecord::album_ref))
         .collect();
     let mut joined: Vec<MetadataRef> = Vec::new();
     for group_album in group_albums_on(sql, &albums)? {

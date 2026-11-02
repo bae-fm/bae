@@ -117,7 +117,7 @@ async fn restore_cost(library: Library) {
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
     );
-    let providers = bae_core::catalog_model::providers::Providers::offline();
+    let providers = bae_catalogs::providers::Providers::offline();
     let remote_images =
         bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
     let catalogs = bae_core::import::CatalogSessions::new(

@@ -49,14 +49,14 @@ pub async fn open_test_library(
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
-    open_test_library_with(dir, bae_core::catalog_model::providers::Providers::offline()).await
+    open_test_library_with(dir, bae_catalogs::providers::Providers::offline()).await
 }
 
 /// [`open_test_library`] asking `providers` — ones routed to a test's own
 /// fakes — rather than providers that reach nothing.
 pub async fn open_test_library_with(
     dir: &std::path::Path,
-    providers: bae_core::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
     bae_core::db::Database,
@@ -72,7 +72,7 @@ pub async fn open_test_library_with(
 pub async fn test_library_from_handle(
     handle: coven::CovenHandle,
     dir: &std::path::Path,
-    providers: bae_core::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
     bae_core::db::Database,
@@ -97,7 +97,7 @@ pub async fn test_library_from_handle(
 async fn open_library(
     database: bae_core::db::Database,
     app_dir: bae_core::app_dir::AppDir,
-    providers: bae_core::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
     bae_core::db::Database,
@@ -172,13 +172,13 @@ pub async fn setup_test_library() -> (
     ),
     tempfile::TempDir,
 ) {
-    setup_test_library_with(bae_core::catalog_model::providers::Providers::offline()).await
+    setup_test_library_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// [`setup_test_library`] asking `providers`, ones built over the test's own
 /// fakes.
 pub async fn setup_test_library_with(
-    providers: bae_core::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     (
         bae_core::library::LibraryManager,
@@ -198,7 +198,7 @@ pub async fn setup_test_library_with(
 /// for a test that writes audio into a folder and imports that folder. The
 /// `TempDir` owns both directories, so it must outlive the manager.
 pub async fn setup_test_library_with_album_dir(
-    providers: bae_core::catalog_model::providers::Providers,
+    providers: bae_catalogs::providers::Providers,
 ) -> (
     (
         bae_core::library::LibraryManager,
@@ -242,8 +242,7 @@ pub fn setup_fresh_library(
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidIds),
         );
-        open_library(database, app_dir, bae_core::catalog_model::providers::Providers::offline())
-            .await
+        open_library(database, app_dir, bae_catalogs::providers::Providers::offline()).await
     });
     (library, tmp)
 }

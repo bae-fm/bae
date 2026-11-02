@@ -181,18 +181,17 @@ pub(super) const RELEASE_RECORDS_IN_ORDER: &str =
 pub(crate) fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, DbError> {
+) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
     Ok(sql.query(RELEASE_RECORDS_IN_ORDER, params![release_id], |row| {
-        let identity = crate::catalog_model::records::MetadataRef::new(
+        let identity = bae_catalogs::records::MetadataRef::new(
             parsed_column(row, "catalog")?,
             row.get::<_, String>("key")?,
         );
         match row.get::<_, String>("kind")?.as_str() {
-            "pressing" => Ok(crate::catalog_model::records::ReleaseRecord::new(
-                &identity,
-                row.get("album_key")?,
-            )),
-            "album" => Ok(crate::catalog_model::records::ReleaseRecord::album(&identity)),
+            "pressing" => {
+                Ok(bae_catalogs::records::ReleaseRecord::new(&identity, row.get("album_key")?))
+            }
+            "album" => Ok(bae_catalogs::records::ReleaseRecord::album(&identity)),
             kind => Err(rusqlite::Error::FromSqlConversionFailure(
                 row.as_ref().column_index("kind")?,
                 rusqlite::types::Type::Text,

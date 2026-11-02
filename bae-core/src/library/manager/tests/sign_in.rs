@@ -47,7 +47,7 @@ async fn manager_signing_in_with(
     let library = TestLibrary::open_with(
         database,
         app_dir,
-        crate::catalog_model::providers::Providers::offline(),
+        bae_catalogs::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),

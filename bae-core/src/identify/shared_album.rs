@@ -7,9 +7,9 @@
 //! one MusicBrainz release group, one Discogs master. The link names those
 //! albums and no pressing; the copy may be one no catalog lists.
 
-use crate::catalog_model::records::{LookupRef, MetadataRef, ReleaseRecord};
 use crate::identify::release_group::ReleaseGroup;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::records::{LookupRef, MetadataRef, ReleaseRecord};
 
 /// The album a candidate is linked to while its pressing is unknown: one
 /// album per catalog that files it — a MusicBrainz release group, a Discogs

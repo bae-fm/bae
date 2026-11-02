@@ -1,8 +1,8 @@
 //! The sets of records that name one physical pressing: gathered from the
 //! evidence the records carry, or read off rows a run already formed.
 
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
+use bae_catalogs::search::MetadataResult;
 
 /// The sets of records each already-formed row holds, in the shape
 /// [`gather_pressings`] names them: indexes into the result list, in list

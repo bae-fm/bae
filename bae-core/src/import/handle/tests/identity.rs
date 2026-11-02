@@ -249,7 +249,7 @@ async fn test_new_artist_inserts() {
 // ── album_records_name (identity-based dedup) ────────
 
 use crate::db::{DbAlbum, DbRelease, DbTrack};
-use crate::catalog_model::records::ReleaseRecord;
+use bae_catalogs::records::ReleaseRecord;
 use bae_catalogs::catalog::Catalog;
 
 /// Set up a manager with a single test artist that the helpers below
@@ -324,14 +324,14 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
 /// MusicBrainz, so a release carrying both records still has one.
 fn mb_identity(group: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, release),
+        &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, release),
         Some(group.to_string()),
     )
 }
 
 fn discogs_identity(master: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, release),
+        &bae_catalogs::records::MetadataRef::new(Catalog::Discogs, release),
         Some(master.to_string()),
     )
 }
@@ -669,7 +669,7 @@ async fn the_applied_record_decides_between_two_albums() {
     let (_manager, database, _tmp, x, y) = two_albums().await;
     let pressing = |catalog, release: &str, album: &str| {
         ReleaseRecord::new(
-            &crate::catalog_model::records::MetadataRef::new(catalog, release),
+            &bae_catalogs::records::MetadataRef::new(catalog, release),
             Some(album.to_string()),
         )
     };
@@ -692,14 +692,14 @@ async fn an_applied_record_naming_no_album_takes_its_partner_s() {
     let (_manager, database, _tmp, _x, y) = two_albums().await;
     let records = vec![
         ReleaseRecord::new(
-            &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
+            &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
             Some("mb-rg-unknown".to_string()),
         ),
         discogs_identity("d-master-y", "d-rel-new"),
     ];
     assert_eq!(album_for_import(&database, &records).await, Some(y.id));
     let neither = vec![ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
+        &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
         Some("mb-rg-unknown".to_string()),
     )];
     assert_eq!(album_for_import(&database, &neither).await, None);

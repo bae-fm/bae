@@ -469,7 +469,7 @@ fn the_ranking_s_leftovers_and_the_folder_s_are_one_list() {
 /// returned.
 fn rows(
     matches: &[MetadataResult],
-    by_disc_id: &HashSet<crate::catalog_model::records::LookupRef>,
+    by_disc_id: &HashSet<bae_catalogs::records::LookupRef>,
     pressings: &[u32],
     text: &CandidateText,
 ) -> Vec<(Pressing, crate::identify::agreements::Agreements)> {
@@ -560,7 +560,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         &text,
         FolderAudio::UNPROVEN,
     );
-    let disc_id_returned = HashSet::from([crate::catalog_model::records::LookupRef::new(
+    let disc_id_returned = HashSet::from([bae_catalogs::records::LookupRef::new(
         LookupCatalog::MusicBrainz,
         "mb-album-two",
     )]);
@@ -576,11 +576,11 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     assert_eq!(
         offered[0].0.pick(),
         crate::identify::PressingLink {
-            record: crate::catalog_model::records::LookupRef::new(
+            record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-album-two".to_string()
             ),
-            partners: vec![crate::catalog_model::records::LookupRef::new(
+            partners: vec![bae_catalogs::records::LookupRef::new(
                 LookupCatalog::Discogs,
                 "dg-1988"
             )],
@@ -620,7 +620,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
 fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let listing = |mut result: MetadataResult, count: u32| {
-        result.source_tracks = Some(crate::catalog_model::search::SourceTracks::Listed { count });
+        result.source_tracks = Some(bae_catalogs::search::SourceTracks::Listed { count });
         result
     };
     let outcome = combine_results(
@@ -704,8 +704,7 @@ fn a_search_that_answered_alone_is_offered_whole() {
 #[test]
 fn a_pressing_lookup_s_release_sits_on_the_row_it_was_asked_for() {
     let mut named = pair("mb-1", Some("group-1"));
-    named.links =
-        vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-linked")];
+    named.links = vec![bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "dg-linked")];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![named]],

@@ -1,6 +1,6 @@
 use super::*;
 use bae_catalogs::catalog::Catalog;
-use bae_core::catalog_model::CatalogError;
+use bae_catalogs::CatalogError;
 use bae_core::import::ImportError;
 
 #[test]

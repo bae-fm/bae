@@ -12,9 +12,9 @@
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
-use crate::catalog_model::search::MetadataResult;
 use crate::identify::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::search::MetadataResult;
 use std::collections::{HashMap, HashSet};
 
 /// What a run's lookups found once combined: the offered rows and the rows
@@ -44,7 +44,7 @@ pub struct Findings {
 /// A note of an offered release the folder's text names its row by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedNote {
-    pub release: crate::catalog_model::records::LookupRef,
+    pub release: bae_catalogs::records::LookupRef,
     pub note: String,
 }
 

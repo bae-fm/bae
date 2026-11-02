@@ -2,10 +2,10 @@
 //! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
-use crate::catalog_model::{AudioOrigin, AudioSource, DownloadProof};
 use crate::identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
+use bae_catalogs::{AudioOrigin, AudioSource, DownloadProof};
 use bae_types::barcode::Barcode;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -143,7 +143,7 @@ pub(super) fn gather_non_ocr_sources(
             pass.isrcs = files
                 .iter()
                 .flat_map(|file| &file.delivery.isrcs)
-                .filter_map(|isrc| crate::catalog_model::isrc::code(isrc))
+                .filter_map(|isrc| bae_catalogs::isrc::code(isrc))
                 .collect();
             pass.track_titles = track_titles(categorized, &files);
             // A file a ripper made reading a disc outweighs a tag, which can
@@ -338,7 +338,7 @@ fn download_proof(
                     .delivery
                     .copyrights
                     .iter()
-                    .any(|line| crate::catalog_model::rip::states_phonographic_copyright(line))
+                    .any(|line| bae_catalogs::rip::states_phonographic_copyright(line))
         });
     (delivered && !read_off_a_disc).then_some(DownloadProof::DeliverySet)
 }

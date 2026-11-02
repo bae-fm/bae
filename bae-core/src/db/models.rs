@@ -239,7 +239,7 @@ impl DbArtist {
     /// A fresh artist row carrying what `credit` says, which the write that
     /// links it resolves to a library artist when it commits.
     pub(crate) fn of_credit(
-        credit: &crate::catalog_model::credits::ArtistCredit,
+        credit: &bae_catalogs::credits::ArtistCredit,
         ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Self {
@@ -255,8 +255,8 @@ impl DbArtist {
 }
 
 #[cfg(desktop)]
-impl From<&crate::catalog_model::search::MetadataResult> for LibraryCheck {
-    fn from(r: &crate::catalog_model::search::MetadataResult) -> Self {
+impl From<&bae_catalogs::search::MetadataResult> for LibraryCheck {
+    fn from(r: &bae_catalogs::search::MetadataResult) -> Self {
         Self {
             release_id: r.release_id.clone(),
             source: r.source.catalog(),
@@ -268,9 +268,7 @@ impl From<&crate::catalog_model::search::MetadataResult> for LibraryCheck {
 #[cfg(desktop)]
 impl LibraryCheck {
     /// The keys the pane checks `release` against the library by.
-    pub(crate) fn of_release(
-        release: &crate::catalog_model::source_release::SourceRelease,
-    ) -> Self {
+    pub(crate) fn of_release(release: &bae_catalogs::source_release::SourceRelease) -> Self {
         Self {
             source: release.release.catalog.catalog(),
             release_id: release.release.key.clone(),

@@ -6,7 +6,7 @@ use super::*;
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationLookupFailure = bae_core::catalog_model::LookupFailure,
+    AutomationLookupFailure = bae_catalogs::LookupFailure,
     from_core: pub(crate) fn,
     variants: {
         Network,
@@ -17,7 +17,7 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationInternalFailure = bae_core::catalog_model::InternalFailure,
+    AutomationInternalFailure = bae_catalogs::InternalFailure,
     from_core: pub(crate) fn,
     fields: { detail },
 }
@@ -75,21 +75,21 @@ impl AutomationDiscIdSignal {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationCdProof = bae_core::catalog_model::CdProof,
+    AutomationCdProof = bae_catalogs::CdProof,
     from_core: pub(crate) fn,
     variants: { RipLog, AccurateRipReport, RipperSheet },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationStoreMarker = bae_core::catalog_model::StoreMarker,
+    AutomationStoreMarker = bae_catalogs::StoreMarker,
     from_core: pub(crate) fn,
     variants: { ITunesPurchase, Bandcamp },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationDownloadProof = bae_core::catalog_model::DownloadProof,
+    AutomationDownloadProof = bae_catalogs::DownloadProof,
     from_core: pub(crate) fn,
     variants: {
         Store { marker: (AutomationStoreMarker), file },
@@ -99,12 +99,12 @@ mirror_enum! {
 
 impl AutomationAudioSource {
     #[cfg(desktop)]
-    pub(crate) fn from_core(source: bae_core::catalog_model::AudioSource) -> Self {
+    pub(crate) fn from_core(source: bae_catalogs::AudioSource) -> Self {
         match source {
-            bae_core::catalog_model::AudioSource::CdRip { proof, file } => {
+            bae_catalogs::AudioSource::CdRip { proof, file } => {
                 Self::CdRip { proof: AutomationCdProof::from_core(proof), file }
             }
-            bae_core::catalog_model::AudioSource::Download(proof) => {
+            bae_catalogs::AudioSource::Download(proof) => {
                 Self::Download { proof: AutomationDownloadProof::from_core(proof) }
             }
         }
@@ -113,7 +113,7 @@ impl AutomationAudioSource {
 
 impl AutomationAudioOrigin {
     #[cfg(desktop)]
-    pub(crate) fn from_core(origin: bae_core::catalog_model::AudioOrigin) -> Self {
+    pub(crate) fn from_core(origin: bae_catalogs::AudioOrigin) -> Self {
         Self {
             source: origin.source.map(AutomationAudioSource::from_core),
             not_cd_rate: origin.not_cd_rate,

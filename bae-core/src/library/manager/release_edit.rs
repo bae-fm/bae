@@ -44,7 +44,7 @@ struct SessionWork {
 #[derive(Debug, Clone)]
 struct AppliedCatalog {
     draft: crate::import::LibraryDraft,
-    records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
 impl ReleaseEdit {

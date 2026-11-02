@@ -113,11 +113,11 @@ pub enum TriageReading {
     /// A draft of a candidate linked to a catalog pressing, or an imported
     /// release a catalog's record of its pressing describes, with every
     /// catalog that describes it.
-    Identified { records: Vec<crate::catalog_model::records::ReleaseRecord> },
+    Identified { records: Vec<bae_catalogs::records::ReleaseRecord> },
     /// A draft of a candidate linked to an album, or an imported release only
     /// catalogs' records of its album describe, with every catalog's record
     /// of the album: the row says its pressing is unknown.
-    IdentifiedAlbum { records: Vec<crate::catalog_model::records::ReleaseRecord> },
+    IdentifiedAlbum { records: Vec<bae_catalogs::records::ReleaseRecord> },
 }
 
 impl TriageReading {
@@ -126,7 +126,7 @@ impl TriageReading {
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
         link: Option<&ReleaseLink>,
-        records: Vec<crate::catalog_model::records::ReleaseRecord>,
+        records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Self {
         if summary.is_none() {
             return Self::Unidentified;
@@ -140,12 +140,13 @@ impl TriageReading {
 
     /// How the row of a release this device imported reads: from the
     /// catalog records of the library release, as the library holds them.
-    pub fn of_library(records: Vec<crate::catalog_model::records::ReleaseRecord>) -> Self {
+    pub fn of_library(records: Vec<bae_catalogs::records::ReleaseRecord>) -> Self {
         if records.is_empty() {
             Self::Prefilled
-        } else if records.iter().any(|record| {
-            matches!(record, crate::catalog_model::records::ReleaseRecord::Pressing { .. })
-        }) {
+        } else if records
+            .iter()
+            .any(|record| matches!(record, bae_catalogs::records::ReleaseRecord::Pressing { .. }))
+        {
             Self::Identified { records }
         } else {
             Self::IdentifiedAlbum { records }
@@ -153,7 +154,7 @@ impl TriageReading {
     }
 
     /// Every catalog record the row names: none unless it is linked.
-    pub fn records(self) -> Vec<crate::catalog_model::records::ReleaseRecord> {
+    pub fn records(self) -> Vec<bae_catalogs::records::ReleaseRecord> {
         match self {
             Self::Identified { records } | Self::IdentifiedAlbum { records } => records,
             Self::Unidentified | Self::Prefilled => Vec::new(),

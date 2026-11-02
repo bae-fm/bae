@@ -2,8 +2,6 @@
 //! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
 //! candidate runs in its own spawned driver task.
 
-use crate::catalog_model::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
-use crate::catalog_model::{Failure, InternalFailure};
 use crate::identify::documents::ReleaseToRead;
 use crate::identify::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
@@ -14,6 +12,8 @@ use crate::import::extraction::{ExtractionWatch, SignalsSnapshot};
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
+use bae_catalogs::{Failure, InternalFailure};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -46,7 +46,7 @@ async fn run_providers(
 /// Keeping it failing leaves the list's answer standing, and is logged.
 pub(crate) async fn keep_album_links(
     tables: &crate::import::tables::ImportTables,
-    kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
+    kept: Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>,
 ) {
     if let Err(error) = tables.replace_group_album_links(kept).await {
         tracing::error!("What the release groups were read to be was not kept: {error}");
@@ -679,8 +679,7 @@ fn dispatch_effect(
                             &query
                         ))
                     })?;
-                    crate::catalog_model::search::search_source(&session, source, &query, priority)
-                        .await
+                    bae_catalogs::search::search_source(&session, source, &query, priority).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -710,8 +709,7 @@ fn dispatch_effect(
                             &search
                         ))
                     })?;
-                    crate::catalog_model::search::search_source(&session, source, &search, priority)
-                        .await
+                    bae_catalogs::search::search_source(&session, source, &search, priority).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -765,7 +763,7 @@ fn dispatch_effect(
                         // rows the run offers hold what it stores.
                         stored
                             .map(|stored| {
-                                vec![crate::catalog_model::search::MetadataResult::of_release(
+                                vec![bae_catalogs::search::MetadataResult::of_release(
                                     &stored.release,
                                 )]
                             })
@@ -782,10 +780,8 @@ fn dispatch_effect(
                                         &query
                                     ))
                                 })?;
-                            crate::catalog_model::search::search_source(
-                                &session, source, &query, priority,
-                            )
-                            .await
+                            bae_catalogs::search::search_source(&session, source, &query, priority)
+                                .await
                         }
                         .await
                     }
@@ -804,10 +800,8 @@ fn dispatch_effect(
                                         &query
                                     ))
                                 })?;
-                            crate::catalog_model::search::search_source(
-                                &session, source, &query, priority,
-                            )
-                            .await
+                            bae_catalogs::search::search_source(&session, source, &query, priority)
+                                .await
                         }
                         .await
                     }
@@ -858,8 +852,7 @@ fn dispatch_effect(
                             &query
                         ))
                     })?;
-                    crate::catalog_model::search::search_source(&session, source, &query, priority)
-                        .await
+                    bae_catalogs::search::search_source(&session, source, &query, priority).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -882,20 +875,11 @@ async fn read_release(
     read: &ReleaseToRead,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
-) -> Option<
-    Result<
-        crate::catalog_model::source_release::PreparedRelease,
-        crate::catalog_model::LookupFailure,
-    >,
-> {
+) -> Option<Result<bae_catalogs::source_release::PreparedRelease, bae_catalogs::LookupFailure>> {
     let prepared = match read {
         ReleaseToRead::ReleaseLookup(release) => {
             release_reads
-                .release(
-                    release,
-                    crate::catalog_model::payloads::ReadDepth::Identification,
-                    priority,
-                )
+                .release(release, bae_catalogs::payloads::ReadDepth::Identification, priority)
                 .await
         }
         ReleaseToRead::DiscIdAnswer(answered) => {

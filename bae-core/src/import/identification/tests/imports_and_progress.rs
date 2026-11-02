@@ -403,7 +403,7 @@ async fn a_cancelled_candidate_writes_no_row() {
             &candidate,
             &verdict,
             crate::identify::signals::Signals {
-                origin: crate::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: crate::identify::signals::DiscIdSignal::Absent,
                 barcode: crate::identify::signals::BarcodeSignal::Absent,
                 text: crate::identify::signals::TextSignal::Settled {

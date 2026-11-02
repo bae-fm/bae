@@ -361,7 +361,7 @@ mod tests {
         let library = crate::app::test_library::TestLibrary::open_with(
             database,
             crate::app_dir::AppDir::under_home(home.path()).unwrap(),
-            crate::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             diagnostics.clone(),

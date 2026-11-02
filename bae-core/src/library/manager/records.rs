@@ -9,7 +9,7 @@ impl LibraryManager {
     pub async fn insert_release_records(
         &self,
         release_id: &str,
-        records: &[crate::catalog_model::records::ReleaseRecord],
+        records: &[bae_catalogs::records::ReleaseRecord],
     ) -> Result<(), LibraryError> {
         Ok(self.database.insert_release_records(release_id, records).await?)
     }
@@ -44,7 +44,7 @@ impl LibraryManager {
     pub async fn set_records(
         &self,
         release_id: &str,
-        new_records: Vec<crate::catalog_model::records::ReleaseRecord>,
+        new_records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Result<(), LibraryError> {
         let change = self.records_change(release_id, new_records).await?;
         // The atomic call does all source-album bookkeeping inside its transaction
@@ -59,7 +59,7 @@ impl LibraryManager {
     pub(super) async fn records_change(
         &self,
         release_id: &str,
-        new_records: Vec<crate::catalog_model::records::ReleaseRecord>,
+        new_records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Result<crate::db::RecordsChange, LibraryError> {
         let current_album_id =
             self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
@@ -92,7 +92,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         current_album_id: &str,
-        new_records: &[crate::catalog_model::records::ReleaseRecord],
+        new_records: &[bae_catalogs::records::ReleaseRecord],
     ) -> Result<RecordsTargetAlbum, LibraryError> {
         // No catalog describes it — always a fresh album holding only this
         // release.

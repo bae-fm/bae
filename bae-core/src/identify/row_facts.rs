@@ -4,7 +4,7 @@
 //! outranks both.
 
 use super::agreements::CandidateText;
-use crate::catalog_model::search::MetadataResult;
+use bae_catalogs::search::MetadataResult;
 use bae_types::pressing::{Country, ReleaseArea};
 use bae_types::text_match::{squash, track_title_key};
 

@@ -3,9 +3,9 @@
 //! against what names every pressing cut from one master.
 
 use super::*;
-use crate::catalog_model::{AudioOrigin, AudioSource, CdProof};
 use crate::identify::signals::{TextLine, TextOrigin};
 use crate::identify::MediumConflict;
+use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_types::pressing::{DiscogsDetail, Medium, StatedMedia};
 
 type Outcome = Findings;
@@ -130,7 +130,7 @@ fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
 
 /// A download at a rate no CD plays at, the way a store delivers one.
 const HI_RES_DOWNLOAD: AudioOrigin = AudioOrigin {
-    source: Some(AudioSource::Download(crate::catalog_model::DownloadProof::DeliverySet)),
+    source: Some(AudioSource::Download(bae_catalogs::DownloadProof::DeliverySet)),
     not_cd_rate: Some(96_000),
 };
 
@@ -406,7 +406,7 @@ fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
 fn mono_audio_against_stereo_listings_can_still_be_ready() {
     let result = stated_stereo("rel-stereo", made_of(&[Medium::Vinyl]));
     let listed = MetadataResult {
-        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 11 }),
+        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 11 }),
         ..result
     };
     let findings = combine_results(

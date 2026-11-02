@@ -216,7 +216,7 @@ pub(crate) fn resolve_for_import_on<Q: QueryOne + QueryRows>(
 pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     hash: &str,
-    credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
+    credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
 ) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
     resolve_credits_with(credits, |credit| {
         Ok(

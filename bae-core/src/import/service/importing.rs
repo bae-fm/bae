@@ -844,7 +844,7 @@ impl ImportService {
 async fn linked_records(
     tables: &crate::import::tables::ImportTables,
     link: &crate::import::ReleaseLink,
-) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, crate::import::ImportError> {
+) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, crate::import::ImportError> {
     let link = match link {
         crate::import::ReleaseLink::Album(album) => return Ok(album.records()),
         crate::import::ReleaseLink::Pressing(pressing) => pressing,

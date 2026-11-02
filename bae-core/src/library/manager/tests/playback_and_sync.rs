@@ -52,7 +52,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     assert!(
         matches!(
             error,
-            ImportError::Catalog(crate::catalog_model::CatalogError::Discogs(
+            ImportError::Catalog(bae_catalogs::CatalogError::Discogs(
                 DiscogsError::Transport(_)
             ))
         ),

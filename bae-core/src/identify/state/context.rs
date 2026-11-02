@@ -8,10 +8,6 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, MetadataResult, SearchProgress,
     SourceFailure,
 };
-use crate::catalog_model::album_links::{self, GroupLinks};
-use crate::catalog_model::payloads::DiscIdRelease;
-use crate::catalog_model::records::MetadataRef;
-use crate::catalog_model::{AudioOrigin, LookupFailure};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
@@ -20,7 +16,11 @@ use crate::identify::signals::{
 };
 use crate::identify::LookupChoices;
 use crate::identify::{IdentifyFailure, NotAskedReason};
+use bae_catalogs::album_links::{self, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::payloads::DiscIdRelease;
+use bae_catalogs::records::MetadataRef;
+use bae_catalogs::{AudioOrigin, LookupFailure};
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]
@@ -82,7 +82,7 @@ impl DiscIdEvidence {
     /// The document a lookup answered `release` with, where one did.
     pub(super) fn document_of(
         &self,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
     ) -> Option<&DiscIdRelease> {
         self.documents.iter().find(|document| document.release() == release)
     }
@@ -187,9 +187,9 @@ impl IsrcEvidence {
     }
 
     /// Where most of the audio's recordings were registered — see
-    /// [`crate::catalog_model::isrc::registered_in`].
+    /// [`bae_catalogs::isrc::registered_in`].
     fn registered_in(&self) -> Option<bae_types::pressing::ReleaseArea> {
-        crate::catalog_model::isrc::registered_in(self.tagged.iter().map(String::as_str))
+        bae_catalogs::isrc::registered_in(self.tagged.iter().map(String::as_str))
     }
 
     /// Record what the settled lookup found.
@@ -425,11 +425,9 @@ impl SignalsContext {
     /// The audio an offered release's document is read against: its tracks'
     /// lengths, where its files say it came from, and its Disc IDs. `None`
     /// before the audio is measured.
-    pub(crate) fn read_audio(&self) -> Option<crate::catalog_model::reading::ReadAudio> {
-        Some(crate::catalog_model::reading::ReadAudio::new(
-            crate::catalog_model::reading::MeasuredLengths::new(
-                self.audio.track_lengths_ms.clone(),
-            )?,
+    pub(crate) fn read_audio(&self) -> Option<bae_catalogs::reading::ReadAudio> {
+        Some(bae_catalogs::reading::ReadAudio::new(
+            bae_catalogs::reading::MeasuredLengths::new(self.audio.track_lengths_ms.clone())?,
             self.origin.clone(),
             self.disc.signal.disc_ids(),
         ))
@@ -551,7 +549,7 @@ impl SignalsContext {
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
         let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::read_groups(&list, |release| {
-            self.documents.album_statements(&crate::catalog_model::records::LookupRef::new(
+            self.documents.album_statements(&bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 release,
             ))

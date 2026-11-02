@@ -101,8 +101,8 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     let source_group_id = "reset-editor-group";
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     let raw_json = serde_json::to_string(&response).unwrap();
-    manager.fakes.musicbrainz().seed_release_cache(source_release_id, raw_json);
-    manager.fakes.musicbrainz().seed_release_group_json_cache(
+    manager.fakes.seed_musicbrainz_release(source_release_id, raw_json);
+    manager.fakes.seed_musicbrainz_release_group(
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
@@ -137,9 +137,8 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     manager
         .fakes
-        .musicbrainz()
-        .seed_release_cache(source_release_id, serde_json::to_string(&response).unwrap());
-    manager.fakes.musicbrainz().seed_release_group_json_cache(
+        .seed_musicbrainz_release(source_release_id, serde_json::to_string(&response).unwrap());
+    manager.fakes.seed_musicbrainz_release_group(
         source_group_id,
         r#"{"id":"steps-editor-group"}"#.to_string(),
     );
@@ -267,8 +266,8 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         &[("track.flac", crate::db::source_audio::SourceAudioLayout::File)],
     )
     .await;
-    let identity = crate::catalog_model::records::ReleaseRecord::new(
-        &crate::catalog_model::records::MetadataRef::new(
+    let identity = bae_catalogs::records::ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,
             "source-release",
         ),

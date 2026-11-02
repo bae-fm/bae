@@ -3,7 +3,7 @@
 use bae_core::followed::value_matching;
 use std::sync::Arc;
 
-use bae_core::catalog_model::providers::Providers;
+use bae_catalogs::providers::Providers;
 use bae_core::library::{CancellationToken, LibraryManager};
 use coven::{MemoryStorage, Storage};
 

@@ -17,7 +17,7 @@ pub use disc_id::{ComputedDiscId, DiscIdSignal};
 pub use origin::{SourcedValue, TextOrigin};
 pub use text::{TextLine, TextSignal};
 
-use crate::catalog_model::{AudioOrigin, InternalFailure};
+use bae_catalogs::{AudioOrigin, InternalFailure};
 
 /// The signals extracted from one candidate's files, streamed as snapshots
 /// while the artwork is read.
@@ -32,10 +32,10 @@ pub struct Signals {
     /// Every line of the candidate's own text, in reading order, which
     /// results are ranked against.
     pub text_pool: Vec<TextLine>,
-    /// Each audio file's ISRC, as [`crate::catalog_model::isrc::code`] reads its tag, in the
+    /// Each audio file's ISRC, as [`bae_catalogs::isrc::code`] reads its tag, in the
     /// files' order; a file whose tags carry none adds nothing. They are
     /// looked up on MusicBrainz, and say where the recordings were registered
-    /// (see [`crate::catalog_model::isrc::registered_in`]).
+    /// (see [`bae_catalogs::isrc::registered_in`]).
     pub isrcs: Vec<String>,
     /// Each track's title, in the tracks' order: its file's title tag, or
     /// failing that its file name without the track number. Empty unless

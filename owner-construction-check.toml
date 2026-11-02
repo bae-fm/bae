@@ -233,6 +233,9 @@ task_types = [
 ]
 # A library just set up opens.
 "bae-bridge/src/setup.rs" = ["OpenedLibrary::open"]
+# A test's catalog fakes: the providers its library asks are built over
+# them, once per library the test opens.
+"bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
 # Starts the playback service's task; its handle stops it.
 "bae-core/src/playback/service/runtime.rs" = [
     "PlaybackService::start",

@@ -25,9 +25,9 @@ pub fn offline_discogs() -> Arc<Discogs> {
 pub fn providers_asking(
     musicbrainz: &Arc<MusicBrainz>,
     discogs: &Arc<Discogs>,
-) -> bae_core::catalog_model::providers::Providers {
+) -> bae_catalogs::providers::Providers {
     let http = Http::for_test();
-    bae_core::catalog_model::providers::Providers::for_test(
+    bae_catalogs::providers::Providers::for_test(
         http.clone(),
         musicbrainz.clone(),
         discogs.clone(),

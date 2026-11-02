@@ -5,12 +5,12 @@
 //! built here and handed out inside a session; no caller receives the
 //! database the callback writes to.
 
-use crate::catalog_model::providers::{CatalogSession, Providers};
 use crate::db::{Database, DbError};
 use crate::diagnostics::Diagnostics;
 use crate::preferences::DiscogsValidation;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
+use bae_catalogs::providers::{CatalogSession, Providers};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_util::task_failure::blocking;
 use std::future::Future;
@@ -143,7 +143,7 @@ impl CatalogSessions {
     /// cross-reference, as it is without a key.
     pub(crate) async fn release_read_session(
         &self,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
     ) -> Result<CatalogSession, CatalogSessionError> {
         match self.session().await {
             Ok(session) => Ok(session),

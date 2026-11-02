@@ -4,9 +4,9 @@
 /// tracks, for a folder of two.
 fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
     let matches = (0..pressings.len())
-        .map(|index| crate::catalog_model::search::MetadataResult {
-            source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
-            ..crate::catalog_model::search::MetadataResult::for_test(
+        .map(|index| bae_catalogs::search::MetadataResult {
+            source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 2 }),
+            ..bae_catalogs::search::MetadataResult::for_test(
                 LookupCatalog::MusicBrainz,
                 &format!("mb-{index}"),
                 Some("rg-1"),

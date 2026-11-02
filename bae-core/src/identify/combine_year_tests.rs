@@ -2,8 +2,8 @@
 //! came out in confirms the album, and a later one names the edition.
 
 use super::*;
-use crate::catalog_model::search::SourceTracks;
 use crate::identify::signals::{TextLine, TextOrigin};
+use bae_catalogs::search::SourceTracks;
 
 type Outcome = Findings;
 

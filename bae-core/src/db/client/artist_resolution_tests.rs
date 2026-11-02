@@ -216,7 +216,7 @@ fn read_credit(
 ) -> crate::db::CreditResolution {
     resolve_credit_on(
         conn,
-        &crate::catalog_model::credits::ArtistCredit {
+        &bae_catalogs::credits::ArtistCredit {
             credited_as: None,
             name: name.to_string(),
             sort_name: None,
@@ -278,7 +278,7 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
 
     let resolution = resolve_credit_on(
         &conn,
-        &crate::catalog_model::credits::ArtistCredit {
+        &bae_catalogs::credits::ArtistCredit {
             credited_as: None,
             name: "Artist Name".to_string(),
             sort_name: None,

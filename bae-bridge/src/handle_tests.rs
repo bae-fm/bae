@@ -153,7 +153,7 @@ pub(super) fn fresh_test_library(
     let library = runtime.block_on(bae_test_support::test_library_from_handle(
         handle,
         &root,
-        bae_core::catalog_model::providers::Providers::offline(),
+        bae_catalogs::providers::Providers::offline(),
     ));
     (runtime, library, root)
 }
@@ -311,7 +311,7 @@ fn enqueue_export_missing_release_does_not_panic() {
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
     let signals = bae_core::identify::signals::Signals {
-        origin: bae_core::catalog_model::AudioOrigin::default(),
+        origin: bae_catalogs::AudioOrigin::default(),
         disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
         barcode: bae_core::identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: bae_core::identify::signals::TextSignal::Settled {
@@ -689,7 +689,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let ((manager, database, catalogs, closing), storage) =
         runtime.block_on(bae_test_support::storage_library(
             directory.path(),
-            bae_core::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         ));
     runtime.block_on(async {
         bae_test_support::connect_storage(&manager, &storage).await;

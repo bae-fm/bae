@@ -81,7 +81,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let (manager, database, ..) = bae_test_support::test_library_from_handle(
         handle.clone(),
         directory.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
+        bae_catalogs::providers::Providers::offline(),
     )
     .await;
     let artist = bae_core::db::DbArtist {

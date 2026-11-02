@@ -94,7 +94,7 @@ struct PreparedMetadata {
     picked_artists: Vec<String>,
     /// One per catalog that describes this release; empty for file metadata and
     /// direct entry.
-    records: Vec<crate::catalog_model::records::ReleaseRecord>,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
     album_title: String,
 }
 
@@ -620,14 +620,14 @@ fn spawn_root_scan(
 /// The records a pick commits: the primary's and every partner's, each
 /// release's own record outranking what another says about its catalog.
 pub(crate) fn records_for_commit(
-    primary: &crate::catalog_model::source_release::SourceRelease,
-    partners: &[crate::catalog_model::source_release::SourceRelease],
-) -> Vec<crate::catalog_model::records::ReleaseRecord> {
+    primary: &bae_catalogs::source_release::SourceRelease,
+    partners: &[bae_catalogs::source_release::SourceRelease],
+) -> Vec<bae_catalogs::records::ReleaseRecord> {
     let claimed: Vec<_> = std::iter::once(primary)
         .chain(partners)
-        .map(crate::catalog_model::source_release::SourceRelease::records)
+        .map(bae_catalogs::source_release::SourceRelease::records)
         .collect();
-    crate::catalog_model::source_release::claimed_records(&claimed)
+    bae_catalogs::source_release::claimed_records(&claimed)
 }
 
 #[cfg(test)]

@@ -445,8 +445,8 @@ impl ImportServiceHandle {
     /// leaves the key unvalidated and fails with why, so the person who asked
     /// is told rather than shown the same state again.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        use crate::catalog_model::providers::DiscogsCheck;
         use crate::preferences::DiscogsValidation;
+        use bae_catalogs::providers::DiscogsCheck;
 
         if crate::preferences::preferences(&self.database).await?.discogs
             != Some(DiscogsValidation::Unvalidated)
@@ -469,9 +469,7 @@ impl ImportServiceHandle {
         .map_err(crate::import::DiscogsKeyError::from)?;
         match check {
             DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
-            DiscogsCheck::Unchecked(error) => {
-                Err(crate::catalog_model::CatalogError::from(error).into())
-            }
+            DiscogsCheck::Unchecked(error) => Err(bae_catalogs::CatalogError::from(error).into()),
         }
     }
 

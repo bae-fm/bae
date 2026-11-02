@@ -322,7 +322,7 @@ impl IdentifyRunView {
     /// Every release a lookup of the folder's disc IDs found: what the Disc
     /// ID agreement is read from, since no record states the disc IDs it
     /// carries.
-    pub(crate) fn disc_id_releases(&self) -> HashSet<crate::catalog_model::records::LookupRef> {
+    pub(crate) fn disc_id_releases(&self) -> HashSet<bae_catalogs::records::LookupRef> {
         let DiscIdStepView::Read { discs } = &self.disc_id else {
             return HashSet::new();
         };

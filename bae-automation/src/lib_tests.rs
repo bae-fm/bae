@@ -267,8 +267,8 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
 #[cfg(desktop)]
 mod identify_mirrors {
     use super::*;
-    use bae_core::catalog_model::search::MetadataResult;
-    use bae_core::catalog_model::LookupFailure;
+    use bae_catalogs::search::MetadataResult;
+    use bae_catalogs::LookupFailure;
     use bae_core::db::LibraryStatus;
     use bae_core::identify::signals::{
         BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
@@ -299,7 +299,7 @@ mod identify_mirrors {
         SignalsContext {
             providers: Vec::new(),
             artwork: bae_core::identify::signals::ArtworkScan::Absent,
-            origin: bae_core::catalog_model::AudioOrigin::default(),
+            origin: bae_catalogs::AudioOrigin::default(),
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
@@ -332,9 +332,9 @@ mod identify_mirrors {
 
     /// `result`, printing the barcode `code`.
     fn printing(
-        mut result: bae_core::catalog_model::search::MetadataResult,
+        mut result: bae_catalogs::search::MetadataResult,
         code: &str,
-    ) -> bae_core::catalog_model::search::MetadataResult {
+    ) -> bae_catalogs::search::MetadataResult {
         result.barcodes = vec![code.to_string()];
         result
     }
@@ -342,7 +342,7 @@ mod identify_mirrors {
     /// A run's ledger whose one disc ID's lookup found `found`: what the Disc
     /// ID agreement is read from.
     fn disc_id_ledger(
-        found: &[bae_core::catalog_model::search::MetadataResult],
+        found: &[bae_catalogs::search::MetadataResult],
     ) -> bae_core::identify::IdentifyRunView {
         use bae_core::identify::release_group::{group_results, unranked};
         use bae_core::identify::{
@@ -581,9 +581,9 @@ mod identify_mirrors {
     #[test]
     fn signals_map_all_three_subsignals() {
         let signals = Signals {
-            origin: bae_core::catalog_model::AudioOrigin {
-                source: Some(bae_core::catalog_model::AudioSource::CdRip {
-                    proof: bae_core::catalog_model::CdProof::RipLog,
+            origin: bae_catalogs::AudioOrigin {
+                source: Some(bae_catalogs::AudioSource::CdRip {
+                    proof: bae_catalogs::CdProof::RipLog,
                     file: Some("Album.log".to_string()),
                 }),
                 not_cd_rate: None,

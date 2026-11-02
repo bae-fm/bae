@@ -140,7 +140,7 @@ mod tests {
         let manager = crate::app::test_library::TestLibrary::open(
             database.clone(),
             crate::app_dir::AppDir::under_home(directory.path()).unwrap(),
-            crate::catalog_model::providers::Providers::offline(),
+            bae_catalogs::providers::Providers::offline(),
         )
         .await;
         let (reader, _read) =

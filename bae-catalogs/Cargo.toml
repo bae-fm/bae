@@ -14,6 +14,9 @@ name = "bae_catalogs"
 path = "src/lib.rs"
 
 [dependencies]
+# The pressing values the catalog clients read releases into and whose words
+# they compare, and the credit line a stored artist credit is written as.
+bae-types = { workspace = true }
 # The shared transport, its retries and response cache, and the error text a
 # request failure prints.
 bae-util = { workspace = true }
@@ -32,11 +35,6 @@ tracing = { workspace = true }
 # atomic persist.
 tempfile = { workspace = true }
 
-# The catalog clients read releases into pressing values and compare their
-# words, and only the import pipeline asks a catalog anything; the predicate is the
-# `desktop` cfg's (bae-util/build.rs), which gates the clients.
-[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
-bae-types = { workspace = true }
 
 [dev-dependencies]
 # The test transport and the retry that sleeps no real time.
@@ -54,8 +52,9 @@ chrono = { workspace = true }
 
 [features]
 default = []
-# The clients' `for_test` constructors and the image cache over a temporary
-# directory, for the tests of every crate that builds on this one. Dev/test-only:
+# The clients' `for_test` constructors, the image cache over a temporary
+# directory, the fakes a test's providers ask and the documents they answer
+# with, for the tests of every crate that builds on this one. Dev/test-only:
 # a production build never enables it.
 test-utils = ["bae-util/test-utils"]
 # What bae-core's own unit tests read back: the MusicBrainz requests waiting

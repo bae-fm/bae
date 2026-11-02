@@ -2,7 +2,7 @@
 //! since a stored snapshot has no pass to report on, so it rides beside the
 //! snapshot on the `SignalsUpdated` event.
 
-use crate::catalog_model::InternalFailure;
+use bae_catalogs::InternalFailure;
 
 /// The artwork pass over a candidate's images.
 #[derive(Debug, Clone, PartialEq, Eq)]

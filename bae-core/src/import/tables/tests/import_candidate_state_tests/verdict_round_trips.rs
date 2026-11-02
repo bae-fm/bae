@@ -89,8 +89,8 @@ async fn a_stored_verdict_keeps_no_track_titles_or_notes() {
 /// groups as its run did.
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
-    use crate::catalog_model::album_links::AlbumLinks;
-    use crate::catalog_model::records::MetadataRef;
+    use bae_catalogs::album_links::AlbumLinks;
+    use bae_catalogs::records::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::{
         DiscogsDetail, Medium, Packaging, Region, ReleaseArea, ReleaseStatus, StatedFormat,
@@ -251,9 +251,9 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     let hash = candidate.content_hash();
     let verdict = TerminalVerdict::Failed {
         failures: vec![crate::identify::IdentifyFailure::Search(
-            crate::catalog_model::search::SourceFailure {
+            bae_catalogs::search::SourceFailure {
                 source: bae_catalogs::catalog::Catalog::MusicBrainz,
-                failure: crate::catalog_model::LookupFailure::Provider { status: Some(503) },
+                failure: bae_catalogs::LookupFailure::Provider { status: Some(503) },
             },
         )],
         findings: sample_findings(),
@@ -282,7 +282,7 @@ async fn an_error_verdict_round_trips_its_failure() {
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let failure = crate::catalog_model::InternalFailure {
+    let failure = bae_catalogs::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
     let verdict = TerminalVerdict::Error { failure };
@@ -421,14 +421,14 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
         BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, IsrcStepView,
         NotAskedReason, ProviderCell, SearchStepView, SignalValueRow,
     };
-    use crate::catalog_model::LookupFailure;
+    use bae_catalogs::LookupFailure;
     
 
     let offered = release_on(LookupCatalog::MusicBrainz, "rel-offered");
     let catalogued = release_on(LookupCatalog::Discogs, "42");
     let set_aside = release_on(LookupCatalog::MusicBrainz, "rel-set-aside");
     let ruled_out = MetadataResult {
-        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 9 }),
+        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 9 }),
         ..release_on(LookupCatalog::MusicBrainz, "rel-ruled-out")
     };
     let found = |releases: &[&MetadataResult]| {

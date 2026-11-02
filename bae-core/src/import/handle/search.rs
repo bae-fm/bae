@@ -1,9 +1,9 @@
 use super::*;
-use crate::catalog_model::search::SearchQuery;
 use crate::import::candidate_search::{CandidateSearch, SearchRun};
 use crate::import::cover_art::RemoteCoverGallery;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::search::SearchQuery;
 
 impl ImportServiceHandle {
     /// Bytes of provider art for a slot `pixels` wide on its longer side: the
@@ -99,7 +99,7 @@ impl ImportServiceHandle {
                             &query
                         ))
                     })?;
-                    crate::catalog_model::search::search_source(
+                    bae_catalogs::search::search_source(
                         &session,
                         source,
                         &query,
@@ -111,7 +111,7 @@ impl ImportServiceHandle {
                 {
                     Ok(found) => found,
                     Err(failed) => {
-                        Err(crate::catalog_model::Failure::Internal(diagnostics.bug(failed).into()))
+                        Err(bae_catalogs::Failure::Internal(diagnostics.bug(failed).into()))
                     }
                 };
                 land_source_search(&runtime, &diagnostics, &candidate_key, run, source, found)
@@ -128,8 +128,8 @@ impl ImportServiceHandle {
     pub(super) async fn land_picked(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::LookupRef,
-        links: crate::catalog_model::album_links::AlbumLinks,
+        release: &bae_catalogs::records::LookupRef,
+        links: bae_catalogs::album_links::AlbumLinks,
     ) -> Result<(), crate::import::ImportError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
@@ -152,7 +152,7 @@ impl ImportServiceHandle {
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
-        let results = crate::catalog_model::search::search_provider(
+        let results = bae_catalogs::search::search_provider(
             &self.catalogs.search_session(source).await?,
             source,
             &query,
@@ -263,11 +263,11 @@ impl ImportServiceHandle {
     /// record names, each once, in the records' order.
     async fn records_gallery(
         &self,
-        records: &[crate::catalog_model::records::ReleaseRecord],
+        records: &[bae_catalogs::records::ReleaseRecord],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
         for record in records {
-            use crate::catalog_model::records::ReleaseRecord;
+            use bae_catalogs::records::ReleaseRecord;
             let Some(catalog) = record.catalog().lookup() else {
                 continue;
             };
@@ -314,10 +314,9 @@ impl ImportServiceHandle {
     pub(super) async fn release_for_pick(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
         steps: &crate::import::CatalogApplySteps,
-    ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
-    {
+    ) -> Result<bae_catalogs::source_release::PreparedRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
             self.tables.load_source_release(release).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
@@ -342,7 +341,7 @@ impl ImportServiceHandle {
     async fn is_settled_lead(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::LookupRef,
+        release: &bae_catalogs::records::LookupRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);
@@ -431,7 +430,7 @@ async fn land_source_search(
     candidate_key: &crate::import::CandidateKey,
     run: SearchRun,
     source: LookupCatalog,
-    found: crate::catalog_model::search::SourceLookup,
+    found: bae_catalogs::search::SourceLookup,
 ) {
     match runtime.land_search(run, source, found).await {
         Ok(true) => {}

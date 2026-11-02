@@ -3,8 +3,8 @@
 
 use super::tests::*;
 use super::*;
-use crate::catalog_model::search::SourceFailure;
 use crate::identify::{Findings, IdentifyFailure, TerminalVerdict};
+use bae_catalogs::search::SourceFailure;
 
 const DG: LookupCatalog = LookupCatalog::Discogs;
 

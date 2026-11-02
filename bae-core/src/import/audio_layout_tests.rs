@@ -1,10 +1,10 @@
 use super::*;
-use crate::catalog_model::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use crate::import::folder_scanner::{
     collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer, SheetDisc,
     SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::import::probe::source_durations;
+use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use std::fs;
 use std::path::Path;
 

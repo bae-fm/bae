@@ -68,7 +68,7 @@ pub(crate) struct CandidateSaveExtras {
     /// each one a row names once the save's rows are written is stored in
     /// the same write, and the rest are not (a release is stored only while
     /// something names it).
-    pub releases: Vec<crate::catalog_model::source_release::SourceRelease>,
+    pub releases: Vec<bae_catalogs::source_release::SourceRelease>,
 }
 
 /// What this save does to where the candidate's pane stands.

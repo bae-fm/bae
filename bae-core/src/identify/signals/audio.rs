@@ -16,7 +16,7 @@ pub struct AudioFacts {
     /// Every audio file carries one channel.
     pub mono: bool,
     /// The rate that rules a CD out, when the audio rules one out — see
-    /// [`crate::catalog_model::rip::rate_ruling_out_cd`].
+    /// [`bae_catalogs::rip::rate_ruling_out_cd`].
     pub rate_ruling_out_cd: Option<u32>,
 }
 
@@ -33,9 +33,7 @@ impl AudioFacts {
             track_count,
             track_lengths_ms,
             mono: !formats.is_empty() && formats.iter().all(|format| format.channels == 1),
-            rate_ruling_out_cd: crate::catalog_model::rip::rate_ruling_out_cd(
-                formats.iter().copied(),
-            ),
+            rate_ruling_out_cd: bae_catalogs::rip::rate_ruling_out_cd(formats.iter().copied()),
         }
     }
 }

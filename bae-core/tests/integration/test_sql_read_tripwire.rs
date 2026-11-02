@@ -75,7 +75,7 @@ async fn pure_reads_use_the_read_connection() {
             ),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::identify::signals::Signals {
-                origin: bae_core::catalog_model::AudioOrigin::default(),
+                origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
                 barcode: bae_core::identify::signals::BarcodeSignal::Absent,
                 text: bae_core::identify::signals::TextSignal::Settled {
@@ -88,7 +88,7 @@ async fn pure_reads_use_the_read_connection() {
             },
             pick: Some(bae_core::import::tables::VerdictPick {
                 link: bae_core::identify::PressingLink {
-                    record: bae_core::catalog_model::records::LookupRef::new(
+                    record: bae_catalogs::records::LookupRef::new(
                         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                         "unwritten-release",
                     ),
