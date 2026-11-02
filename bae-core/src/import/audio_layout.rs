@@ -7,6 +7,7 @@
 //! disc image plus loose bonus tracks offers both — neither set is dropped for
 //! the other. A candidate's draft holds one track per unit, in this order.
 
+use crate::catalog_model::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::import::probe::{sheet_analysis, SourceDurations};
 use crate::import::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
@@ -14,20 +15,6 @@ use crate::import::ImportError;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::debug;
-
-/// How far a row's two lengths may differ before the row says so.
-///
-/// A source that rounds its track lengths to whole seconds is out by up to one;
-/// lossy encoder delay and padding add a fraction more; a pregap counted on one
-/// side and not the other is up to two on a Red Book disc. Three seconds
-/// absorbs all of that.
-///
-/// What it deliberately does not absorb is a wrong pairing. Two different
-/// tracks off one album differ by tens of seconds far more often than by three,
-/// and the row shows both numbers regardless — this only decides whether to
-/// point at them, with no consequence beyond a mark: nothing here disables the
-/// commit.
-pub(crate) const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
 
 /// Whether a row's two lengths are far enough apart to be worth pointing at.
 /// `false` when either side has no number: there is nothing to compare, which
