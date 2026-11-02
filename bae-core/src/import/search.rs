@@ -2,6 +2,7 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
+use crate::catalog_model::CatalogError;
 use crate::import::album_links::AlbumLinks;
 use crate::import::parse_year;
 use crate::import::types::MetadataRef;
@@ -506,7 +507,7 @@ pub(crate) async fn search_mb(
     musicbrainz: &musicbrainz::MusicBrainz,
     params: ReleaseSearchParams,
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, ImportError> {
+) -> Result<Vec<MetadataResult>, CatalogError> {
     let releases = musicbrainz.search_releases_with_params(&params, priority).await?;
 
     Ok(releases
@@ -591,9 +592,18 @@ fn lookup_or_internal(
 /// build, an answer it could not parse, a store read.
 pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
     match error {
-        ImportError::MusicBrainz(error) => mb_provider_failure(error),
-        ImportError::RemoteImage(error) => remote_image_failure(error),
-        ImportError::Discogs(error) => match error {
+        ImportError::Catalog(error) => catalog_provider_failure(error),
+        _ => None,
+    }
+}
+
+/// The failure a catalog answered with, or `None` for an error bae met on its
+/// own side: a request it could not build, an answer it could not parse.
+pub(crate) fn catalog_provider_failure(error: &CatalogError) -> Option<LookupFailure> {
+    match error {
+        CatalogError::MusicBrainz(error) => mb_provider_failure(error),
+        CatalogError::RemoteImage(error) => remote_image_failure(error),
+        CatalogError::Discogs(error) => match error {
             DiscogsError::Transport(error) => transport_failure(error),
             DiscogsError::Provider { status, .. } => {
                 Some(LookupFailure::Provider { status: Some(status.as_u16()) })

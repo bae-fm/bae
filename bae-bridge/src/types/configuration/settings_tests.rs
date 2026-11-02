@@ -1,16 +1,17 @@
 use super::*;
 use bae_catalogs::catalog::Catalog;
+use bae_core::catalog_model::CatalogError;
 use bae_core::import::ImportError;
 
 #[test]
 fn unexpected_import_data_is_distinct_from_domain_refusals() {
     for error in [
-        ImportError::SourceData {
+        ImportError::Catalog(CatalogError::SourceData {
             catalog: Catalog::MusicBrainz,
             detail: "missing track title".into(),
-        },
+        }),
         ImportError::CoverArt { detail: "unsupported image decoder".into() },
-        ImportError::MusicBrainz(bae_catalogs::musicbrainz::MusicBrainzError::Other(
+        ImportError::from(bae_catalogs::musicbrainz::MusicBrainzError::Other(
             "invalid release JSON".into(),
         )),
     ] {
@@ -79,15 +80,15 @@ fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
 fn expected_provider_errors_remain_domain_failures() {
     use bae_catalogs::{discogs::client::DiscogsError, musicbrainz::MusicBrainzError};
     for error in [
-        ImportError::MusicBrainz(MusicBrainzError::NotFound("release".into())),
-        ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(500), told_wait: None }),
-        ImportError::MusicBrainz(MusicBrainzError::Timeout),
-        ImportError::Discogs(DiscogsError::NotFound),
-        ImportError::Discogs(DiscogsError::Provider {
+        ImportError::from(MusicBrainzError::NotFound("release".into())),
+        ImportError::from(MusicBrainzError::Provider { status: Some(500), told_wait: None }),
+        ImportError::from(MusicBrainzError::Timeout),
+        ImportError::from(DiscogsError::NotFound),
+        ImportError::from(DiscogsError::Provider {
             status: 500u16.try_into().unwrap(),
             told_wait: None,
         }),
-        ImportError::Discogs(DiscogsError::InvalidApiKey),
+        ImportError::from(DiscogsError::InvalidApiKey),
     ] {
         assert!(matches!(
             BridgeError::from(error),

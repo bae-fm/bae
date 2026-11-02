@@ -9,7 +9,7 @@ use bae_catalogs::musicbrainz::{
 fn map(
     response: &MbReleaseResponse,
     supporting: Vec<crate::import::SourcePayload>,
-) -> Result<ReleaseValues, ImportError> {
+) -> Result<ReleaseValues, CatalogError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
             MetadataRef::new(Catalog::MusicBrainz, &response.id),
@@ -89,7 +89,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
 fn map_for_audio(
     response: &MbReleaseResponse,
     audio_durations_ms: &[u64],
-) -> Result<ReleaseValues, ImportError> {
+) -> Result<ReleaseValues, crate::import::ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
             MetadataRef::new(Catalog::MusicBrainz, &response.id),
@@ -100,7 +100,7 @@ fn map_for_audio(
         .extract()
         .unwrap()
         .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio_durations_ms))
-        .map_err(ImportError::from)
+        .map_err(crate::import::ImportError::from)
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
@@ -187,7 +187,7 @@ fn audio_no_mediums_hold_is_refused_with_both_counts() {
         .expect_err("no set of mediums holds three tracks");
 
     assert!(
-        matches!(refused, ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 }),
+        matches!(refused, crate::import::ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 }),
         "{refused}"
     );
 }
@@ -360,7 +360,7 @@ fn medium_with_no_tracks_returns_err() {
     let result = map(&response, vec![]);
     assert!(matches!(
         result.unwrap_err(),
-        ImportError::SourceData { detail, .. } if detail.contains("no tracks")
+        CatalogError::SourceData { detail, .. } if detail.contains("no tracks")
     ));
 }
 
@@ -413,7 +413,7 @@ fn track_without_recording_or_track_title_returns_err() {
         .expect_err("expected missing MusicBrainz track title to return an error");
 
     assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
+        matches!(&err, CatalogError::SourceData { detail, .. } if detail.contains("has no track title")),
         "unexpected error message: {err}"
     );
 }
@@ -528,7 +528,7 @@ fn release_with_no_artist_credits_returns_err() {
         map(&response, vec![]).expect_err("expected missing artist credits to return an error");
 
     assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
+        matches!(&err, CatalogError::SourceData { detail, .. } if detail.contains("has no album artist")),
         "unexpected error message: {err}"
     );
 }

@@ -639,7 +639,7 @@ fn a_track_without_any_title_fails_the_reading() {
         .every_medium_values()
         .expect_err("expected error for a title-less track");
     assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
+        matches!(&err, CatalogError::SourceData { detail, .. } if detail.contains("has no track title")),
         "unexpected error: {err}"
     );
 }

@@ -1,9 +1,10 @@
+use crate::catalog_model::CatalogError;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::import::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
-use crate::import::{ArtistCredit, CreditedRole, ImportError};
+use crate::import::{ArtistCredit, CreditedRole};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
@@ -280,7 +281,7 @@ pub(crate) fn values(
     release: &SourceRelease,
     coverage: &MediumCoverage,
     audio_durations_ms: Option<&[u64]>,
-) -> Result<ReleaseValues, ImportError> {
+) -> Result<ReleaseValues, CatalogError> {
     let release_id = &release.release.key;
     let covered: Vec<&crate::import::source_release::SourceMedium> =
         release.covered_mediums(coverage).collect();

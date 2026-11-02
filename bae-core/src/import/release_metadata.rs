@@ -1,4 +1,5 @@
-use super::{ImportError, SourceCredit};
+use super::SourceCredit;
+use crate::catalog_model::CatalogError;
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::Pressing;
 
@@ -47,9 +48,9 @@ impl AlbumMetadata {
 
     /// `Ok` when the release credits its album to an artist: a catalog
     /// release always does, so one that names none is data bae cannot read.
-    pub(crate) fn require_artists(&self, catalog: Catalog, key: &str) -> Result<(), ImportError> {
+    pub(crate) fn require_artists(&self, catalog: Catalog, key: &str) -> Result<(), CatalogError> {
         if self.artists.is_empty() {
-            return Err(ImportError::SourceData {
+            return Err(CatalogError::SourceData {
                 catalog,
                 detail: format!("{} release {key} has no album artist", catalog.display_name()),
             });

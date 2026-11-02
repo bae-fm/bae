@@ -8,10 +8,11 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
+use crate::catalog_model::CatalogError;
 use crate::import::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
-use crate::import::{ImportError, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
+use crate::import::{MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::DiscogsClient;
 use bae_catalogs::discogs::DiscogsRelease;
@@ -137,21 +138,21 @@ impl ReleasePayloads {
             .map(|d| d.json.as_str())
     }
 
-    fn source_data(&self, detail: String) -> ImportError {
-        ImportError::SourceData { catalog: self.release.catalog, detail }
+    fn source_data(&self, detail: String) -> CatalogError {
+        CatalogError::SourceData { catalog: self.release.catalog, detail }
     }
 
     /// The anchoring MusicBrainz release, parsed. Only called down the
     /// MusicBrainz arm of a `self.release.catalog` match, where the anchor is
     /// that release's own document.
-    fn musicbrainz_anchor(&self) -> Result<MbReleaseResponse, ImportError> {
+    fn musicbrainz_anchor(&self) -> Result<MbReleaseResponse, CatalogError> {
         serde_json::from_str(&self.anchor).map_err(|e| {
             self.source_data(format!("stored MusicBrainz release does not parse: {e}"))
         })
     }
 
     /// The anchoring Discogs release, parsed, as [`Self::musicbrainz_anchor`].
-    fn discogs_anchor(&self) -> Result<DiscogsRelease, ImportError> {
+    fn discogs_anchor(&self) -> Result<DiscogsRelease, CatalogError> {
         bae_catalogs::discogs::documents::parse_discogs_release_json(&self.anchor)
             .map_err(|e| self.source_data(format!("stored Discogs release does not parse: {e}")))
     }
@@ -160,7 +161,7 @@ impl ReleasePayloads {
     /// one, parsed. `None` when the anchor's url-rels name none, or when no
     /// Discogs key was configured when it was fetched — both of which the
     /// mapper takes as "no cross-reference".
-    fn discogs_xref(&self) -> Result<Option<DiscogsRelease>, ImportError> {
+    fn discogs_xref(&self) -> Result<Option<DiscogsRelease>, CatalogError> {
         let Some(counterpart) = self.counterpart()? else {
             return Ok(None);
         };
@@ -169,11 +170,11 @@ impl ReleasePayloads {
         };
         bae_catalogs::discogs::documents::parse_discogs_release_json(json)
             .map(Some)
-            .map_err(ImportError::from)
+            .map_err(CatalogError::from)
     }
 
     /// The MusicBrainz release cross-linked to a Discogs-seeded one.
-    fn musicbrainz_xref(&self) -> Result<Option<MbReleaseResponse>, ImportError> {
+    fn musicbrainz_xref(&self) -> Result<Option<MbReleaseResponse>, CatalogError> {
         let Some(json) = self.document(PayloadSource::MusicBrainzDiscogsXref, &self.release.key)
         else {
             return Ok(None);
@@ -186,7 +187,7 @@ impl ReleasePayloads {
     /// The images the release documents in this set publish: the anchor's own
     /// front image, and every image of the release an editor cross-linked to
     /// it. These are this pressing's artwork, whichever catalog printed it.
-    fn release_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+    fn release_covers(&self) -> Result<Vec<RemoteCover>, CatalogError> {
         let mut covers = Vec::new();
         match self.release.catalog {
             Catalog::MusicBrainz => {
@@ -215,7 +216,7 @@ impl ReleasePayloads {
     /// An album's image is some release of the album's, which may not be this
     /// one and may not exist at all, so every one of them is offered after
     /// every release image.
-    fn album_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+    fn album_covers(&self) -> Result<Vec<RemoteCover>, CatalogError> {
         let musicbrainz = match self.release.catalog {
             Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
             Catalog::Discogs => self.musicbrainz_xref()?,
@@ -240,7 +241,7 @@ impl ReleasePayloads {
     /// Read every fact the import surfaces use out of this set: the
     /// release's resolved album and pressing facts, the records its documents
     /// state, its cover options, and its full tracklist.
-    pub fn extract(&self) -> Result<SourceRelease, ImportError> {
+    pub fn extract(&self) -> Result<SourceRelease, CatalogError> {
         let metadata = self.projected_metadata()?;
         let mut other_records = self.projected_records()?;
         other_records.retain(|record| record.catalog() != self.release.catalog);

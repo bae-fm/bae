@@ -415,7 +415,7 @@ impl LibraryManager {
         params: bae_catalogs::musicbrainz::ReleaseSearchParams,
         priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        self.providers.search_musicbrainz(params, priority).await
+        Ok(self.providers.search_musicbrainz(params, priority).await?)
     }
 
     #[cfg(desktop)]
@@ -471,7 +471,7 @@ impl LibraryManager {
         primary: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.providers.pick_gallery_covers(primary, partners).await
+        Ok(self.providers.pick_gallery_covers(primary, partners).await?)
     }
 
     #[cfg(desktop)]

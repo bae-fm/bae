@@ -36,21 +36,21 @@ fn all_discs(release: &SourceRelease) -> MediumCoverage {
 fn map_with(
     release: &DiscogsRelease,
     audio_durations_ms: Option<&[u64]>,
-) -> Result<crate::import::ReleaseRows, ImportError> {
+) -> Result<crate::import::ReleaseRows, CatalogError> {
     let stored = stored(release);
     super::values(&stored, &all_discs(&stored), audio_durations_ms)
         .map(crate::import::release_values::committed_rows)
 }
 
 /// Exercise track and credit mapping with the release's own metadata.
-fn map(release: &DiscogsRelease) -> Result<crate::import::ReleaseRows, ImportError> {
+fn map(release: &DiscogsRelease) -> Result<crate::import::ReleaseRows, CatalogError> {
     map_with(release, None)
 }
 
 fn map_for_audio(
     release: &DiscogsRelease,
     audio_durations_ms: &[u64],
-) -> Result<crate::import::ReleaseRows, ImportError> {
+) -> Result<crate::import::ReleaseRows, CatalogError> {
     map_with(release, Some(audio_durations_ms))
 }
 
@@ -125,7 +125,7 @@ fn release_without_artists_errors_when_title_yields_no_artist() {
             map(&release).expect_err(&format!("expected error for unattributed title {title:?}"));
 
         assert!(
-            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
+            matches!(&err, CatalogError::SourceData { detail, .. } if detail.contains("has no album artist")),
             "unexpected error message for {title:?}: {err}"
         );
     }

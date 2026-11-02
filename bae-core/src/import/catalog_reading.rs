@@ -8,6 +8,7 @@
 //! rows lay out, together, and reads the chosen tracks into values. Nothing
 //! else lays a tracklist out.
 
+use crate::catalog_model::CatalogError;
 use crate::import::medium_coverage::{candidate_sets, Fit, MediumCoverage, MediumShape};
 use crate::import::release_values::ReleaseValues;
 use crate::import::search::SourceTracks;
@@ -109,7 +110,9 @@ impl From<ReadingRefusal> for ImportError {
                 Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
             }
             ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
-            ReadingRefusal::Unreadable { catalog, detail } => Self::SourceData { catalog, detail },
+            ReadingRefusal::Unreadable { catalog, detail } => {
+                CatalogError::SourceData { catalog, detail }.into()
+            }
         }
     }
 }
@@ -247,7 +250,7 @@ impl SourceRelease {
         &self,
         coverage: &MediumCoverage,
         audio: &ReadAudio,
-    ) -> Result<ReleaseValues, ImportError> {
+    ) -> Result<ReleaseValues, CatalogError> {
         match self.release.catalog {
             Catalog::MusicBrainz => crate::import::musicbrainz_mapper::values(self, coverage),
             Catalog::Discogs => crate::import::discogs_mapper::values(
@@ -279,7 +282,7 @@ impl SourceRelease {
 impl SourceRelease {
     /// Every medium's tracks, each index and heading read out to its
     /// sub-tracks: what a reader's test reads with no audio to lay out on.
-    pub(crate) fn every_medium_values(&self) -> Result<ReleaseValues, ImportError> {
+    pub(crate) fn every_medium_values(&self) -> Result<ReleaseValues, CatalogError> {
         let every = MediumCoverage::all(self.mediums.len());
         match self.release.catalog {
             Catalog::MusicBrainz => crate::import::musicbrainz_mapper::values(self, &every),
@@ -290,9 +293,9 @@ impl SourceRelease {
 }
 
 /// A catalog reader's failure: always its release's own data.
-fn unreadable(error: ImportError) -> ReadingRefusal {
+fn unreadable(error: CatalogError) -> ReadingRefusal {
     match error {
-        ImportError::SourceData { catalog, detail } => {
+        CatalogError::SourceData { catalog, detail } => {
             ReadingRefusal::Unreadable { catalog, detail }
         }
         other => unreachable!("a catalog reader fails only on its release's own data: {other}"),

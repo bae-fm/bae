@@ -2,7 +2,7 @@ use super::*;
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 
 impl ReleasePayloads {
-    pub(super) fn counterpart(&self) -> Result<Option<MetadataRef>, ImportError> {
+    pub(super) fn counterpart(&self) -> Result<Option<MetadataRef>, CatalogError> {
         match self.release.catalog {
             Catalog::MusicBrainz => {
                 let keys = self.discogs_counterpart_keys()?;
@@ -18,7 +18,7 @@ impl ReleasePayloads {
         }
     }
 
-    pub(super) fn anchor_parent(&self) -> Result<Option<MetadataRef>, ImportError> {
+    pub(super) fn anchor_parent(&self) -> Result<Option<MetadataRef>, CatalogError> {
         Ok(match self.release.catalog {
             Catalog::MusicBrainz => self
                 .musicbrainz_anchor()?
@@ -33,7 +33,7 @@ impl ReleasePayloads {
 
     /// Parents are projected in selected-provider order. Alias documents name
     /// the same entity as the canonical document and are read only once.
-    pub(super) fn album_documents(&self) -> Result<Vec<(Catalog, &str, &str)>, ImportError> {
+    pub(super) fn album_documents(&self) -> Result<Vec<(Catalog, &str, &str)>, CatalogError> {
         let parent = self.anchor_parent()?;
         let admitted = self.album_links()?;
         let mut documents = Vec::new();
@@ -57,7 +57,7 @@ impl ReleasePayloads {
         Ok(documents)
     }
 
-    pub(super) fn projected_metadata(&self) -> Result<ReleaseMetadata, ImportError> {
+    pub(super) fn projected_metadata(&self) -> Result<ReleaseMetadata, CatalogError> {
         let mut metadata = match self.release.catalog {
             Catalog::MusicBrainz => {
                 crate::import::musicbrainz_mapper::metadata(&self.musicbrainz_anchor()?)?
@@ -130,7 +130,7 @@ impl ReleasePayloads {
         Ok(metadata)
     }
 
-    pub(super) fn projected_records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
+    pub(super) fn projected_records(&self) -> Result<Vec<ReleaseRecord>, CatalogError> {
         let parent = self.anchor_parent()?;
         let mut records = vec![ReleaseRecord::new(&self.release, parent.map(|parent| parent.key))];
         if let Some(counterpart) = self.counterpart()? {
@@ -180,7 +180,7 @@ fn merge_record(records: &mut Vec<ReleaseRecord>, incoming: ReleaseRecord) {
 fn usable_supplemental_credits(
     credits: Vec<bae_catalogs::musicbrainz::MbArtistCredit>,
     entity_id: &str,
-) -> Result<Vec<bae_catalogs::musicbrainz::MbArtistCredit>, ImportError> {
+) -> Result<Vec<bae_catalogs::musicbrainz::MbArtistCredit>, CatalogError> {
     let mut usable = Vec::new();
     for credit in credits {
         match crate::import::musicbrainz_mapper::artist_credits(
@@ -188,7 +188,7 @@ fn usable_supplemental_credits(
             entity_id,
         ) {
             Ok(_) => usable.push(credit),
-            Err(error @ ImportError::SourceData { .. }) => {
+            Err(error @ CatalogError::SourceData { .. }) => {
                 warn!(
                     entity_id,
                     %error,

@@ -334,7 +334,9 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await;
     shut_down(handle).await;
-    assert!(matches!(result, Err(crate::import::ImportError::DiscogsNotConfigured)));
+    assert!(matches!(result, Err(crate::import::ImportError::Catalog(
+        crate::catalog_model::CatalogError::DiscogsNotConfigured
+    ))));
 }
 
 struct CountingFileTagReader {

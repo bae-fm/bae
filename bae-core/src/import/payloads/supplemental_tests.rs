@@ -4,7 +4,7 @@ use serde_json::json;
 
 fn parse(
     payloads: &ReleasePayloads,
-) -> Result<crate::import::release_values::ReleaseValues, ImportError> {
+) -> Result<crate::import::release_values::ReleaseValues, CatalogError> {
     payloads.extract().and_then(|release| release.every_medium_values())
 }
 
@@ -104,7 +104,7 @@ fn malformed_selected_release_credit_is_still_rejected() {
     );
     assert!(matches!(
         parse(&payloads),
-        Err(ImportError::SourceData { catalog: Catalog::MusicBrainz, .. })
+        Err(CatalogError::SourceData { catalog: Catalog::MusicBrainz, .. })
     ));
 }
 

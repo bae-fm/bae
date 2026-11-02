@@ -8,6 +8,7 @@
 //! API exposes no MBID field — so it is resolved through MB's URL endpoint
 //! instead.
 
+use crate::catalog_model::CatalogError;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{
     position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
@@ -16,7 +17,7 @@ use crate::import::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
-use crate::import::{ArtistCredit, CreditedRole, ImportError, SourceCredit};
+use crate::import::{ArtistCredit, CreditedRole, SourceCredit};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::musicbrainz::{
     release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork,
@@ -195,8 +196,8 @@ fn stated_title(track: &MbTrack) -> Option<String> {
 /// Errors when the track carries no non-blank title: there is no title to
 /// show, and an empty string in its place is a lie the user can't see
 /// through.
-fn track_title(release_id: &str, track: &TracklistEntry) -> Result<String, ImportError> {
-    track.title.clone().ok_or_else(|| ImportError::SourceData {
+fn track_title(release_id: &str, track: &TracklistEntry) -> Result<String, CatalogError> {
+    track.title.clone().ok_or_else(|| CatalogError::SourceData {
         catalog: Catalog::MusicBrainz,
         detail: format!(
             "MusicBrainz release {} track {:?} has no track title",
@@ -225,9 +226,9 @@ pub(crate) struct MediumSides {
 pub(crate) fn medium_sides(
     release_id: &str,
     medium: &SourceMedium,
-) -> Result<MediumSides, ImportError> {
+) -> Result<MediumSides, CatalogError> {
     if medium.entries.is_empty() {
-        return Err(ImportError::SourceData {
+        return Err(CatalogError::SourceData {
             catalog: Catalog::MusicBrainz,
             detail: format!("MusicBrainz release {} has a medium with no tracks", release_id),
         });
@@ -270,12 +271,12 @@ pub(crate) fn medium_sides(
 pub(crate) fn artist_credits(
     credits: &[bae_catalogs::musicbrainz::MbArtistCredit],
     entity_id: &str,
-) -> Result<Vec<SourceCredit>, ImportError> {
+) -> Result<Vec<SourceCredit>, CatalogError> {
     let mut stated: Vec<SourceCredit> = Vec::new();
     for credit in credits {
         let artist = match &credit.artist {
             Some(artist_obj) => mb_credited_artist(artist_obj, &credit.name).ok_or_else(|| {
-                ImportError::SourceData {
+                CatalogError::SourceData {
                     catalog: Catalog::MusicBrainz,
                     detail: format!(
                         "MusicBrainz release {} artist credit {:?} has no artist name",
@@ -297,7 +298,7 @@ pub(crate) fn artist_credits(
 
 pub(crate) fn metadata(
     response: &MbReleaseResponse,
-) -> Result<super::release_metadata::ReleaseMetadata, ImportError> {
+) -> Result<super::release_metadata::ReleaseMetadata, CatalogError> {
     let release_refs = artist_credits(&response.artist_credit, &response.id)?;
     let album_year = super::parse_year(
         response.release_group.as_ref().and_then(|group| group.first_release_date.as_deref()),
@@ -439,7 +440,7 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
 pub(crate) fn values(
     release: &SourceRelease,
     coverage: &MediumCoverage,
-) -> Result<ReleaseValues, ImportError> {
+) -> Result<ReleaseValues, CatalogError> {
     let release_id = &release.release.key;
     let metadata = release.metadata.clone();
     metadata.album.require_artists(Catalog::MusicBrainz, release_id)?;

@@ -11,7 +11,7 @@ pub(super) fn related_documents(
     source: PayloadSource,
     key: &str,
     json: &str,
-) -> Result<Vec<DocumentKey>, ImportError> {
+) -> Result<Vec<DocumentKey>, CatalogError> {
     let mut next = Vec::new();
     let (urls, album) = match source {
         PayloadSource::MusicBrainz | PayloadSource::MusicBrainzDiscogsXref => {
@@ -70,7 +70,7 @@ pub(super) fn related_documents(
         }
         PayloadSource::Wikidata => {
             let item = bae_catalogs::wikidata::parse_entity(json).map_err(|error| {
-                ImportError::SourceData { catalog: Catalog::Wikidata, detail: error.to_string() }
+                CatalogError::SourceData { catalog: Catalog::Wikidata, detail: error.to_string() }
             })?;
             for page in item.catalog_pages() {
                 if let Some(request) = page_document(&page, true) {
@@ -108,8 +108,8 @@ pub(super) fn supporting_document_edges(
     }
 }
 
-fn mb_data(error: serde_json::Error) -> ImportError {
-    ImportError::SourceData { catalog: Catalog::MusicBrainz, detail: error.to_string() }
+fn mb_data(error: serde_json::Error) -> CatalogError {
+    CatalogError::SourceData { catalog: Catalog::MusicBrainz, detail: error.to_string() }
 }
 
 fn page_document(page: &CatalogPage, album_context: bool) -> Option<DocumentKey> {
@@ -148,7 +148,7 @@ struct DocumentTraversal {
 }
 
 impl DocumentTraversal {
-    fn new(release: &MetadataRef, anchor: String, depth: ReadDepth) -> Result<Self, ImportError> {
+    fn new(release: &MetadataRef, anchor: String, depth: ReadDepth) -> Result<Self, CatalogError> {
         let source = PayloadSource::release_of(release.catalog);
         let edges = related_documents(source, &release.key, &anchor)?;
         let payloads = ReleasePayloads {
@@ -248,7 +248,7 @@ impl DocumentTraversal {
         &mut self,
         source: PayloadSource,
         key: String,
-        fetched: Result<Fetched, ImportError>,
+        fetched: Result<Fetched, CatalogError>,
     ) {
         match fetched {
             Ok(Fetched::Document(json)) => self.accept(SourcePayload::new(source, key, json)),
@@ -361,7 +361,7 @@ impl FetchDocuments<'_> {
         &mut self,
         source: PayloadSource,
         id: &str,
-    ) -> Result<Fetched, ImportError> {
+    ) -> Result<Fetched, CatalogError> {
         let key = (source, id.to_owned());
         if let Some(json) = self.documents.get(&key) {
             return Ok(Fetched::Document(json.clone()));
@@ -382,7 +382,7 @@ impl FetchDocuments<'_> {
         Ok(Fetched::Document(json))
     }
 
-    async fn document(&mut self, source: PayloadSource, id: &str) -> Result<Fetched, ImportError> {
+    async fn document(&mut self, source: PayloadSource, id: &str) -> Result<Fetched, CatalogError> {
         if let Some(json) = self.documents.get(&(source, id.to_owned())) {
             return Ok(Fetched::Document(json.clone()));
         }
@@ -418,7 +418,7 @@ impl FetchDocuments<'_> {
     async fn discogs_pages(
         &mut self,
         pages: &[DiscogsPage],
-    ) -> Result<Vec<(DiscogsPage, Result<Fetched, ImportError>)>, ImportError> {
+    ) -> Result<Vec<(DiscogsPage, Result<Fetched, CatalogError>)>, CatalogError> {
         let mut linked = self.musicbrainz.lookup_discogs_pages(pages, self.priority).await?;
         let mut answers = Vec::with_capacity(pages.len());
         for page in pages {
@@ -474,12 +474,12 @@ pub(crate) async fn fetch_documents(
     release: &MetadataRef,
     depth: ReadDepth,
     priority: CallPriority,
-) -> Result<ReleasePayloads, ImportError> {
+) -> Result<ReleasePayloads, CatalogError> {
     let mut fetcher = FetchDocuments::new(musicbrainz, wikidata, discogs, priority);
     let anchor =
         match fetcher.document(PayloadSource::release_of(release.catalog), &release.key).await? {
             Fetched::Document(json) => json,
-            Fetched::DiscogsNotConfigured => return Err(ImportError::DiscogsNotConfigured),
+            Fetched::DiscogsNotConfigured => return Err(CatalogError::DiscogsNotConfigured),
             Fetched::Absent | Fetched::FailedEarlier => {
                 unreachable!("a release's own document is asked for first and by its own id")
             }
@@ -500,7 +500,7 @@ pub(crate) async fn read_disc_id_release(
     discogs: Option<&DiscogsClient>,
     answered: &DiscIdRelease,
     priority: CallPriority,
-) -> Result<ReleasePayloads, ImportError> {
+) -> Result<ReleasePayloads, CatalogError> {
     let release = answered.release();
     let mut traversal =
         DocumentTraversal::new(release, answered.json().to_owned(), ReadDepth::Identification)?;

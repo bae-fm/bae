@@ -1,5 +1,6 @@
 pub mod album_detail;
 pub mod app;
+pub mod catalog_model;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;

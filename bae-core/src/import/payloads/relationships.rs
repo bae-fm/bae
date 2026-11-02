@@ -52,7 +52,7 @@ fn album_urls(relations: &[bae_catalogs::musicbrainz::MbRelation]) -> Vec<Metada
 }
 
 impl ReleasePayloads {
-    pub(super) fn discogs_counterpart_keys(&self) -> Result<Vec<String>, ImportError> {
+    pub(super) fn discogs_counterpart_keys(&self) -> Result<Vec<String>, CatalogError> {
         let response = self.musicbrainz_anchor()?;
         let mut keys: Vec<_> = bae_catalogs::musicbrainz::relation_urls(&response.relations)
             .filter_map(parse_catalog_url)
@@ -68,7 +68,7 @@ impl ReleasePayloads {
 
     /// The MusicBrainz release group cross-linked to a Discogs-seeded release,
     /// through the MusicBrainz release linked to it.
-    fn counterpart_group(&self) -> Result<Option<MetadataRef>, ImportError> {
+    fn counterpart_group(&self) -> Result<Option<MetadataRef>, CatalogError> {
         Ok(self.musicbrainz_xref()?.and_then(|release| {
             release.release_group.map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id))
         }))
@@ -93,7 +93,7 @@ impl ReleasePayloads {
     /// `Unread` when nothing named an album and a document one of them reads
     /// was not fetched. Only called down the MusicBrainz arm of a
     /// `self.release.catalog` match.
-    pub(crate) fn album_statements(&self) -> Result<AlbumLinks, ImportError> {
+    pub(crate) fn album_statements(&self) -> Result<AlbumLinks, CatalogError> {
         let anchor = self.musicbrainz_anchor()?;
         let mut found = Found::default();
 
@@ -193,7 +193,7 @@ impl ReleasePayloads {
 
     /// Resolve whole groups of equally strong claims before following their
     /// documents. Archive order and URL order cannot select an album identity.
-    pub(super) fn album_links(&self) -> Result<Vec<MetadataRef>, ImportError> {
+    pub(super) fn album_links(&self) -> Result<Vec<MetadataRef>, CatalogError> {
         let mut links = AlbumClaims(HashMap::new());
         links.admit(self.anchor_parent()?);
         let musicbrainz = match self.release.catalog {

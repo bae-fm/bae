@@ -6,9 +6,6 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
-#[cfg(desktop)]
-use bae_catalogs::catalog::Catalog;
-
 /// Two exact provider identities that currently belong to different library
 /// artists. Import stops until the person chooses how this credit is used.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -129,37 +126,9 @@ pub enum ImportError {
     #[error("folder cannot be imported: {0}")]
     UnreadableAudio(#[from] crate::import::folder_scanner::UnreadableAudio),
 
-    /// A MusicBrainz request failed. Network/Timeout/Provider{status}
-    /// distinctions preserved from the wire.
-    #[cfg(desktop)]
-    #[error("MusicBrainz request failed: {0}")]
-    MusicBrainz(#[from] bae_catalogs::musicbrainz::MusicBrainzError),
-
-    /// A Wikidata request failed, with the same wire-level distinctions as
-    /// a MusicBrainz one.
-    #[cfg(desktop)]
-    #[error("Wikidata request failed: {0}")]
-    Wikidata(#[from] bae_catalogs::wikidata::WikidataError),
-
-    /// A Discogs request failed. InvalidApiKey/NotFound preserved.
-    #[cfg(desktop)]
-    #[error("Discogs request failed: {0}")]
-    Discogs(#[from] bae_catalogs::discogs::client::DiscogsError),
-
-    /// A Discogs operation was requested but no API key is configured.
-    #[cfg(desktop)]
-    #[error("Discogs API key not configured")]
-    DiscogsNotConfigured,
-
-    /// The source responded, but its payload can't be mapped to a release (no
-    /// artist credits, missing release_group, medium with no tracks, no track title, ...).
-    ///
-    /// The field is `catalog`, not `source`: thiserror reserves a field
-    /// literally named `source` for the error-chain source, which a `Catalog`
-    /// (not an `Error`) can't be.
-    #[cfg(desktop)]
-    #[error("{} release data cannot be mapped: {detail}", catalog.as_str())]
-    SourceData { catalog: Catalog, detail: String },
+    /// A catalog could not be asked, or what it answered could not be read.
+    #[error(transparent)]
+    Catalog(#[from] crate::catalog_model::CatalogError),
 
     /// The release lists another number of tracks than the folder holds, so
     /// it cannot describe the folder's audio without adding or losing tracks.
@@ -191,10 +160,6 @@ pub enum ImportError {
     /// The downloaded or selected cover cannot be parsed, decoded, or resized.
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
-
-    /// A catalog's image or an archive gallery could not be read.
-    #[error(transparent)]
-    RemoteImage(#[from] bae_catalogs::remote_image::RemoteImageError),
 
     /// The selected local cover disappeared or could not be read.
     #[cfg(desktop)]
@@ -299,6 +264,34 @@ pub enum ImportError {
     Internal { detail: String },
 }
 
+/// A catalog client's or the image cache's failure is a catalog's failure.
+#[cfg(desktop)]
+impl From<bae_catalogs::musicbrainz::MusicBrainzError> for ImportError {
+    fn from(error: bae_catalogs::musicbrainz::MusicBrainzError) -> Self {
+        Self::Catalog(error.into())
+    }
+}
+
+#[cfg(desktop)]
+impl From<bae_catalogs::wikidata::WikidataError> for ImportError {
+    fn from(error: bae_catalogs::wikidata::WikidataError) -> Self {
+        Self::Catalog(error.into())
+    }
+}
+
+#[cfg(desktop)]
+impl From<bae_catalogs::discogs::client::DiscogsError> for ImportError {
+    fn from(error: bae_catalogs::discogs::client::DiscogsError) -> Self {
+        Self::Catalog(error.into())
+    }
+}
+
+impl From<bae_catalogs::remote_image::RemoteImageError> for ImportError {
+    fn from(error: bae_catalogs::remote_image::RemoteImageError) -> Self {
+        Self::Catalog(error.into())
+    }
+}
+
 /// Work run apart from its caller gave no result: it panicked (a bug the
 /// caller has reported), or its runtime is shutting down under it.
 #[cfg(desktop)]
@@ -348,13 +341,6 @@ impl ImportError {
     /// has to say how it is shown.
     pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
         use crate::diagnostics::UiErrorCategory as C;
-        #[cfg(desktop)]
-        use bae_catalogs::discogs::client::DiscogsError;
-        #[cfg(desktop)]
-        use bae_catalogs::musicbrainz::MusicBrainzError;
-        use bae_catalogs::remote_image::RemoteImageError;
-        #[cfg(desktop)]
-        use bae_catalogs::wikidata::WikidataError;
         match self {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
@@ -374,48 +360,8 @@ impl ImportError {
             },
             #[cfg(desktop)]
             Self::TiedMediums { mediums } => C::TiedMediums { mediums: mediums.clone() },
-            #[cfg(desktop)]
-            Self::SourceData { .. } => C::ImportData,
             Self::CoverArt { .. } => C::ImportData,
-            #[cfg(desktop)]
-            Self::MusicBrainz(error) => match error {
-                MusicBrainzError::Other(_) => C::ImportData,
-                MusicBrainzError::Request(_) => C::Internal,
-                MusicBrainzError::NotFound(_)
-                | MusicBrainzError::Network(_)
-                | MusicBrainzError::Timeout
-                | MusicBrainzError::Provider { .. } => C::Import,
-            },
-            #[cfg(desktop)]
-            Self::Wikidata(error) => match error {
-                WikidataError::Other(_) => C::ImportData,
-                WikidataError::Request(_) => C::Internal,
-                WikidataError::NotFound(_)
-                | WikidataError::Network(_)
-                | WikidataError::Timeout
-                | WikidataError::Provider { .. } => C::Import,
-            },
-            #[cfg(desktop)]
-            Self::Discogs(error) => match error {
-                DiscogsError::Serialization(_) => C::ImportData,
-                DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
-                    C::Internal
-                }
-                DiscogsError::Transport(_)
-                | DiscogsError::Provider { .. }
-                | DiscogsError::InvalidApiKey
-                | DiscogsError::NotFound => C::Import,
-            },
-            Self::RemoteImage(error) => match error {
-                RemoteImageError::Unusable { .. } => C::ImportData,
-                RemoteImageError::Transport { error, .. }
-                    if error.is_builder() || error.is_redirect() =>
-                {
-                    C::Internal
-                }
-                RemoteImageError::Transport { .. } | RemoteImageError::Status { .. } => C::Import,
-                RemoteImageError::CacheTask(_) => C::Internal,
-            },
+            Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
             Self::Config { .. } => C::Config,
@@ -423,7 +369,6 @@ impl ImportError {
             Self::Scan(_)
             | Self::InvalidFolder(_)
             | Self::UnreadableAudio(_)
-            | Self::DiscogsNotConfigured
             | Self::FileTags { .. }
             | Self::UnusableFile { .. }
             | Self::LocalCover { .. }
@@ -437,9 +382,71 @@ impl ImportError {
     }
 }
 
+/// The class a surface words a catalog's failure in: provider failures apart
+/// from data bae cannot read and its own faults.
+fn catalog_category(
+    error: &crate::catalog_model::CatalogError,
+) -> crate::diagnostics::UiErrorCategory {
+    use crate::catalog_model::CatalogError;
+    use crate::diagnostics::UiErrorCategory as C;
+    #[cfg(desktop)]
+    use bae_catalogs::discogs::client::DiscogsError;
+    #[cfg(desktop)]
+    use bae_catalogs::musicbrainz::MusicBrainzError;
+    use bae_catalogs::remote_image::RemoteImageError;
+    #[cfg(desktop)]
+    use bae_catalogs::wikidata::WikidataError;
+    match error {
+        #[cfg(desktop)]
+        CatalogError::SourceData { .. } => C::ImportData,
+        #[cfg(desktop)]
+        CatalogError::DiscogsNotConfigured => C::Import,
+        #[cfg(desktop)]
+        CatalogError::MusicBrainz(error) => match error {
+            MusicBrainzError::Other(_) => C::ImportData,
+            MusicBrainzError::Request(_) => C::Internal,
+            MusicBrainzError::NotFound(_)
+            | MusicBrainzError::Network(_)
+            | MusicBrainzError::Timeout
+            | MusicBrainzError::Provider { .. } => C::Import,
+        },
+        #[cfg(desktop)]
+        CatalogError::Wikidata(error) => match error {
+            WikidataError::Other(_) => C::ImportData,
+            WikidataError::Request(_) => C::Internal,
+            WikidataError::NotFound(_)
+            | WikidataError::Network(_)
+            | WikidataError::Timeout
+            | WikidataError::Provider { .. } => C::Import,
+        },
+        #[cfg(desktop)]
+        CatalogError::Discogs(error) => match error {
+            DiscogsError::Serialization(_) => C::ImportData,
+            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
+                C::Internal
+            }
+            DiscogsError::Transport(_)
+            | DiscogsError::Provider { .. }
+            | DiscogsError::InvalidApiKey
+            | DiscogsError::NotFound => C::Import,
+        },
+        CatalogError::RemoteImage(error) => match error {
+            RemoteImageError::Unusable { .. } => C::ImportData,
+            RemoteImageError::Transport { error, .. }
+                if error.is_builder() || error.is_redirect() =>
+            {
+                C::Internal
+            }
+            RemoteImageError::Transport { .. } | RemoteImageError::Status { .. } => C::Import,
+            RemoteImageError::CacheTask(_) => C::Internal,
+        },
+    }
+}
+
 #[cfg(all(test, desktop))]
 mod tests {
     use super::*;
+    use crate::catalog_model::CatalogError;
     use bae_catalogs::musicbrainz::MusicBrainzError;
 
     /// A MusicBrainz timeout raised with `?` arrives at the terminal consumer as
@@ -448,13 +455,19 @@ mod tests {
     #[test]
     fn musicbrainz_error_is_preserved_unflattened() {
         let err: ImportError = MusicBrainzError::Timeout.into();
-        assert!(matches!(err, ImportError::MusicBrainz(MusicBrainzError::Timeout)));
+        assert!(matches!(
+            err,
+            ImportError::Catalog(CatalogError::MusicBrainz(MusicBrainzError::Timeout))
+        ));
 
         let err: ImportError =
             MusicBrainzError::Provider { status: Some(503), told_wait: None }.into();
         assert!(matches!(
             err,
-            ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(503), .. })
+            ImportError::Catalog(CatalogError::MusicBrainz(MusicBrainzError::Provider {
+                status: Some(503),
+                ..
+            }))
         ));
     }
 
@@ -465,7 +478,9 @@ mod tests {
         let err: ImportError = bae_catalogs::wikidata::WikidataError::Timeout.into();
         assert!(matches!(
             err,
-            ImportError::Wikidata(bae_catalogs::wikidata::WikidataError::Timeout)
+            ImportError::Catalog(CatalogError::Wikidata(
+                bae_catalogs::wikidata::WikidataError::Timeout
+            ))
         ));
         assert_eq!(err.category(), crate::diagnostics::UiErrorCategory::Import);
     }
@@ -481,10 +496,12 @@ mod tests {
         .into();
         assert!(matches!(
             err,
-            ImportError::Discogs(bae_catalogs::discogs::client::DiscogsError::Provider {
-                status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
-                ..
-            })
+            ImportError::Catalog(CatalogError::Discogs(
+                bae_catalogs::discogs::client::DiscogsError::Provider {
+                    status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
+                    ..
+                }
+            ))
         ));
     }
     #[test]

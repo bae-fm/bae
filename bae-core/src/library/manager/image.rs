@@ -75,7 +75,9 @@ impl LibraryManager {
                     .fetch_required(&url)
                     .await
                     .map_err(|error| {
-                        crate::import::ImportError::from(self.remote_image_failed(error))
+                        crate::import::ImportError::from(crate::catalog_model::CatalogError::from(
+                            self.remote_image_failed(error),
+                        ))
                     })?
                     .bytes
             }

@@ -107,7 +107,15 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
         .revalidate_discogs_token()
         .await
         .expect_err("a re-check Discogs cannot answer fails with why");
-    assert!(matches!(error, ImportError::Discogs(DiscogsError::Transport(_))), "{error}");
+    assert!(
+        matches!(
+            error,
+            ImportError::Catalog(crate::catalog_model::CatalogError::Discogs(
+                DiscogsError::Transport(_)
+            ))
+        ),
+        "{error}"
+    );
 }
 
 #[tokio::test]

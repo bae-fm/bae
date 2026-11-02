@@ -9,10 +9,11 @@
 //! heading rows are laid out against it, are chosen when the release is read
 //! against the audio (see `import::catalog_reading`).
 
+use crate::catalog_model::CatalogError;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
 use crate::import::search::ImportSearchReleaseDetail;
-use crate::import::{ArtistCredit, ImportError, MetadataRef, ReleaseRecord};
+use crate::import::{ArtistCredit, MetadataRef, ReleaseRecord};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_types::pressing::Pressing;
@@ -397,7 +398,7 @@ impl SourceRelease {
     async fn gallery_covers(
         &self,
         http: &bae_util::http::Http,
-    ) -> Result<Vec<RemoteCover>, ImportError> {
+    ) -> Result<Vec<RemoteCover>, CatalogError> {
         let mut covers = self.covers();
         covers.retain(|cover| cover.source != Catalog::MusicBrainz);
         if let Some(archive) = &self.archive_release {
@@ -536,7 +537,7 @@ pub(crate) async fn pick_gallery_covers(
     http: &bae_util::http::Http,
     primary: &SourceRelease,
     partners: &[SourceRelease],
-) -> Result<Vec<RemoteCover>, ImportError> {
+) -> Result<Vec<RemoteCover>, CatalogError> {
     let mut covers = Vec::new();
     for release in std::iter::once(primary).chain(partners) {
         for cover in release.gallery_covers(http).await? {

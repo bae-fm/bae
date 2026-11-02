@@ -31,9 +31,10 @@ impl DiscogsSession {
         &self,
         params: DiscogsSearchParams,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::catalog_model::CatalogError>
+    {
         let client =
-            self.client.as_ref().ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
+            self.client.as_ref().ok_or(crate::catalog_model::CatalogError::DiscogsNotConfigured)?;
         Ok(crate::import::search::search_discogs(client, params, priority).await?)
     }
 
@@ -43,7 +44,7 @@ impl DiscogsSession {
         release: &crate::import::MetadataRef,
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    ) -> Result<crate::import::payloads::ReleasePayloads, crate::catalog_model::CatalogError> {
         self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
     }
 
@@ -52,7 +53,7 @@ impl DiscogsSession {
         &self,
         answered: &crate::import::payloads::DiscIdRelease,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    ) -> Result<crate::import::payloads::ReleasePayloads, crate::catalog_model::CatalogError> {
         self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
     }
 
@@ -61,9 +62,10 @@ impl DiscogsSession {
         &self,
         release_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::catalog_model::CatalogError>
+    {
         let Some(client) = self.client.as_ref() else {
-            return Err(crate::import::ImportError::DiscogsNotConfigured);
+            return Err(crate::catalog_model::CatalogError::DiscogsNotConfigured);
         };
         let (release, _) = client.get_release(release_id, priority).await?;
         let mut covers = release.covers;
@@ -81,9 +83,10 @@ impl DiscogsSession {
         &self,
         master_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::catalog_model::CatalogError>
+    {
         let client =
-            self.client.as_ref().ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
+            self.client.as_ref().ok_or(crate::catalog_model::CatalogError::DiscogsNotConfigured)?;
         let (master, _) = client.get_master(master_id, priority).await?;
         Ok(master.covers)
     }
@@ -92,7 +95,7 @@ impl DiscogsSession {
     async fn artist_image_url(
         &self,
         artist_id: &str,
-    ) -> Result<Option<String>, crate::import::ImportError> {
+    ) -> Result<Option<String>, crate::catalog_model::CatalogError> {
         let Some(client) = self.client.as_ref() else {
             warn!(
                 discogs_artist_id = %artist_id,
@@ -262,7 +265,7 @@ impl LibraryManager {
         params: DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        self.discogs_session().await?.search(params, priority).await
+        Ok(self.discogs_session().await?.search(params, priority).await?)
     }
 
     #[cfg(desktop)]
@@ -272,7 +275,11 @@ impl LibraryManager {
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.release_read_session(release).await?.fetch_payloads(release, depth, priority).await
+        Ok(self
+            .release_read_session(release)
+            .await?
+            .fetch_payloads(release, depth, priority)
+            .await?)
     }
 
     /// A release a Disc ID lookup returned, read for an identify run from
@@ -283,10 +290,11 @@ impl LibraryManager {
         answered: &crate::import::payloads::DiscIdRelease,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.release_read_session(answered.release())
+        Ok(self
+            .release_read_session(answered.release())
             .await?
             .read_disc_id_release(answered, priority)
-            .await
+            .await?)
     }
 
     /// The Discogs session a read of `release` asks with. A MusicBrainz
@@ -330,7 +338,7 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session().await?.release_covers(release_id, priority).await
+        Ok(self.discogs_session().await?.release_covers(release_id, priority).await?)
     }
 
     #[cfg(desktop)]
@@ -339,7 +347,7 @@ impl LibraryManager {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session().await?.master_covers(master_id, priority).await
+        Ok(self.discogs_session().await?.master_covers(master_id, priority).await?)
     }
 
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
@@ -429,7 +437,9 @@ impl LibraryManager {
         self.set_discogs_validation(check.validation()).await.map_err(LibraryError::from)?;
         match check {
             DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
-            DiscogsCheck::Unchecked(error) => Err(error.into()),
+            DiscogsCheck::Unchecked(error) => {
+                Err(crate::catalog_model::CatalogError::from(error).into())
+            }
         }
     }
 

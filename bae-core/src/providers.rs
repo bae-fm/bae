@@ -9,9 +9,10 @@
 
 use std::sync::Arc;
 
+use crate::catalog_model::CatalogError;
 use crate::import::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use crate::import::search::MetadataResult;
-use crate::import::{ImportError, MetadataRef};
+use crate::import::MetadataRef;
 use crate::signals::failure::Failure;
 use bae_catalogs::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
 use bae_catalogs::musicbrainz::{MusicBrainz, ReleaseSearchParams};
@@ -81,7 +82,7 @@ impl Providers {
         release: &MetadataRef,
         depth: ReadDepth,
         priority: CallPriority,
-    ) -> Result<ReleasePayloads, ImportError> {
+    ) -> Result<ReleasePayloads, CatalogError> {
         crate::import::payloads::fetch_documents(
             &self.musicbrainz,
             &self.wikidata,
@@ -101,7 +102,7 @@ impl Providers {
         discogs: Option<&DiscogsClient>,
         answered: &DiscIdRelease,
         priority: CallPriority,
-    ) -> Result<ReleasePayloads, ImportError> {
+    ) -> Result<ReleasePayloads, CatalogError> {
         crate::import::payloads::read_disc_id_release(
             &self.musicbrainz,
             &self.wikidata,
@@ -116,7 +117,7 @@ impl Providers {
         &self,
         params: ReleaseSearchParams,
         priority: CallPriority,
-    ) -> Result<Vec<MetadataResult>, ImportError> {
+    ) -> Result<Vec<MetadataResult>, CatalogError> {
         crate::import::search::search_mb(&self.musicbrainz, params, priority).await
     }
 
@@ -157,7 +158,7 @@ impl Providers {
         &self,
         primary: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
-    ) -> Result<Vec<RemoteCover>, ImportError> {
+    ) -> Result<Vec<RemoteCover>, CatalogError> {
         crate::import::source_release::pick_gallery_covers(&self.http, primary, partners).await
     }
 }
