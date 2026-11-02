@@ -54,7 +54,7 @@ pub struct MetadataResult {
     /// Releases on other catalogs this record's own document names as the
     /// same release. Only a MusicBrainz release document states any. A
     /// search result's response carries no relations, so it states none until
-    /// its document is read (see [`crate::identify::documents`]).
+    /// its document is read.
     pub links: Vec<MetadataRef>,
     /// What the record says about its cover: a stated cover, an unstated
     /// address when it said nothing (a MusicBrainz search result), or `None`
@@ -68,8 +68,8 @@ pub struct MetadataResult {
     /// What the source says about this release's own tracklist, read against
     /// the folder's audio: what rules out a row that holds other tracks than
     /// the folder, and the other half of the auto-import check. `None` until
-    /// the release's document is read, which the run does for every row it
-    /// offers before it settles (see [`crate::identify::documents`]). No
+    /// the release's document is read, which an identification run does for
+    /// every row it offers before it settles. No
     /// lookup's answer states it: a search result lists no tracklist, and the
     /// medium a disc ID names is one disc of what the folder may hold, where
     /// the document is read against all of the folder's audio.
@@ -147,7 +147,7 @@ impl MetadataResult {
 impl MetadataResult {
     /// A stored release, as a result: what its documents state, with no
     /// lookup behind it. Its tracklist is read against the folder's audio
-    /// where its document is applied (see [`crate::identify::documents`]).
+    /// where its document is applied.
     pub(crate) fn of_release(
         release: &crate::catalog_model::source_release::SourceRelease,
     ) -> Self {
@@ -613,8 +613,8 @@ pub(crate) fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFai
 /// One provider's answer to one lookup.
 pub type SourceLookup = Result<Vec<MetadataResult>, Failure>;
 
-/// A provider that failed one lookup, and how. Serialized: it rides on
-/// [`crate::identify::IdentifyFailure`], which a failed verdict persists.
+/// A provider that failed one lookup, and how. Serialized: a failed
+/// identification verdict persists it.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SourceFailure {
     pub source: Catalog,

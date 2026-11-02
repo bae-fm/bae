@@ -178,13 +178,11 @@ impl DocumentTraversal {
     /// `None` for the release's own page. The one rule a read's depth
     /// decides.
     ///
-    /// An identification read follows what [`ReleaseDocument`] and the
-    /// release's album statements read: the release's own album page, and
+    /// An identification read follows what the release's document and its
+    /// album statements read: the release's own album page, and
     /// for a MusicBrainz release the Wikidata items and Discogs releases its
     /// own page and its release group's page link. A Discogs release's album
     /// statements are none, so nothing it links on MusicBrainz is followed.
-    ///
-    /// [`ReleaseDocument`]: crate::identify::documents::ReleaseDocument
     fn follows(&self, from: Option<&DocumentKey>, to: &DocumentKey) -> bool {
         match self.depth {
             ReadDepth::Complete => true,
