@@ -18,8 +18,6 @@ pub mod candidate_search;
 pub(crate) mod candidates;
 /// Reading a catalog release against a candidate's audio, once.
 #[cfg(desktop)]
-pub(crate) mod catalog_reading;
-#[cfg(desktop)]
 pub mod cover_art;
 #[cfg(desktop)]
 pub mod discid;

@@ -403,8 +403,8 @@ impl ImportServiceHandle {
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
         self.land_picked(&candidate_key, release.release(), release.album_links()).await?;
-        let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
-        let folder_tracks = u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
+        let audio = crate::import::audio_layout::read_audio(&candidate.files)?;
+        let folder_tracks = audio.track_count();
         // A release that cannot be read onto the folder's audio — it lists
         // another number of tracks than the folder holds, several sets of its
         // discs fit alike, or a track it lays on the audio has no title — is
@@ -412,7 +412,7 @@ impl ImportServiceHandle {
         // anything else is fetched or written. One that lists no tracks says
         // nothing either way and is applied.
         let reading = release.read(&audio);
-        let listed = crate::import::catalog_reading::listing(&reading, &audio);
+        let listed = crate::catalog_model::reading::listing(&reading, &audio);
         let values = reading?;
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.

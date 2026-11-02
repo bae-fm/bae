@@ -17,15 +17,15 @@ impl ReleaseIdentity {
     /// tracks' stored lengths, its files' origin and their Disc IDs.
     pub(crate) fn read_audio(
         self,
-    ) -> Result<crate::import::catalog_reading::ReadAudio, crate::import::ImportError> {
+    ) -> Result<crate::catalog_model::reading::ReadAudio, crate::import::ImportError> {
         let lengths =
-            crate::import::catalog_reading::MeasuredLengths::new(self.audio.track_lengths_ms)
+            crate::catalog_model::reading::MeasuredLengths::new(self.audio.track_lengths_ms)
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail:
                         "a library release with no tracks has nothing to read a release against"
                             .to_string(),
                 })?;
-        Ok(crate::import::catalog_reading::ReadAudio::of_rip(lengths, self.rip))
+        Ok(self.rip.read_audio(lengths))
     }
 }
 

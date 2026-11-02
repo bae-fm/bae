@@ -136,6 +136,22 @@ pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))
 }
 
+/// A candidate's audio as a catalog release is read against it: its tracks'
+/// lengths as its scan stored each file, and its rip logs and track sheets as
+/// they read now.
+pub(crate) fn read_audio(
+    files: &CategorizedFiles,
+) -> Result<crate::catalog_model::reading::ReadAudio, ImportError> {
+    let durations = crate::import::probe::source_durations(files)?;
+    let lengths =
+        crate::catalog_model::reading::MeasuredLengths::new(audio_durations(files, &durations)?)
+            .ok_or_else(|| ImportError::Internal {
+                detail: "a candidate with no audio has nothing to read a release against"
+                    .to_string(),
+            })?;
+    Ok(crate::import::discid::read_rip_artifacts(files).read_audio(lengths))
+}
+
 /// The candidate's effective audio rows in mapping order, reduced to the
 /// duration evidence a metadata track layout compares against.
 pub(crate) fn audio_durations(

@@ -462,11 +462,54 @@ fn catalog_category(
     }
 }
 
+/// A release that cannot be read onto the audio refuses the import that
+/// would apply it.
+#[cfg(desktop)]
+impl From<crate::catalog_model::reading::ReadingRefusal> for ImportError {
+    fn from(refusal: crate::catalog_model::reading::ReadingRefusal) -> Self {
+        use crate::catalog_model::reading::ReadingRefusal;
+        match refusal {
+            ReadingRefusal::TrackCount { folder, release } => {
+                Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
+            }
+            ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
+            ReadingRefusal::Unreadable { catalog, detail } => {
+                crate::catalog_model::CatalogError::SourceData { catalog, detail }.into()
+            }
+        }
+    }
+}
+
 #[cfg(all(test, desktop))]
 mod tests {
     use super::*;
     use crate::catalog_model::CatalogError;
     use bae_catalogs::musicbrainz::MusicBrainzError;
+
+    /// Each reason a release cannot be read onto the audio is the import's
+    /// own refusal, naming what it names.
+    #[test]
+    fn a_reading_refusal_is_the_import_refusal_it_names() {
+        use crate::catalog_model::reading::ReadingRefusal;
+        assert!(matches!(
+            ImportError::from(ReadingRefusal::Tied { mediums: vec![1, 3] }),
+            ImportError::TiedMediums { mediums } if mediums == vec![1, 3]
+        ));
+        assert!(matches!(
+            ImportError::from(ReadingRefusal::TrackCount { folder: 2, release: 7 }),
+            ImportError::MetadataTrackCount { folder_tracks: 2, release_tracks: 7 }
+        ));
+        assert!(matches!(
+            ImportError::from(ReadingRefusal::Unreadable {
+                catalog: bae_catalogs::catalog::Catalog::Discogs,
+                detail: "a track with no title".to_string(),
+            }),
+            ImportError::Catalog(CatalogError::SourceData {
+                catalog: bae_catalogs::catalog::Catalog::Discogs,
+                ..
+            })
+        ));
+    }
 
     /// A MusicBrainz timeout raised with `?` arrives at the terminal consumer as
     /// a matchable `MusicBrainz(Timeout)`, so a retry policy can read the

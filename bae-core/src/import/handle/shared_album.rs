@@ -56,7 +56,7 @@ impl ImportServiceHandle {
                     ),
                 }
             })?;
-        let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
+        let audio = crate::import::audio_layout::read_audio(&candidate.files)?;
         // What picking each row would read, top-ranked first. A release that
         // fails to load, or cannot be read onto the folder's audio, fails the
         // whole, leaving the candidate as it was.

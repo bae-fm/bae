@@ -33,7 +33,7 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     )
     .extract()
     .expect("the Discogs fixture extracts")
-    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio))
+    .read(&crate::catalog_model::reading::ReadAudio::of_lengths(audio))
     .expect("the Discogs fixture reads")
     .tracks
     .into_iter()

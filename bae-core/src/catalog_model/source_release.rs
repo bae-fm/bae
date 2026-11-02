@@ -7,7 +7,7 @@
 //! What depends on the folder's audio is not extracted: which of the release's
 //! mediums the audio is a rip of, and how a Discogs tracklist's index and
 //! heading rows are laid out against it, are chosen when the release is read
-//! against the audio (see `import::catalog_reading`).
+//! against the audio (see `reading`).
 
 use crate::catalog_model::credits::ArtistCredit;
 use crate::catalog_model::medium_coverage::MediumCoverage;

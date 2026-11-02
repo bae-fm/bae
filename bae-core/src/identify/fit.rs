@@ -216,6 +216,14 @@ mod tests {
         );
     }
 
+    /// A tracklist that could not be read is never a fit, whatever the
+    /// folder's count.
+    #[test]
+    fn an_unreadable_tracklist_is_never_a_fit() {
+        assert_eq!(TracklistFit::of(Some(&SourceTracks::Unreadable), 2), TracklistFit::Unreadable);
+        assert!(!TracklistFit::of(Some(&SourceTracks::Unreadable), 2).admits());
+    }
+
     /// A row is ruled out only by a count its read tracklists disagree on,
     /// with no record left that fits or is still to be read.
     #[test]

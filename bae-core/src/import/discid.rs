@@ -263,6 +263,17 @@ pub struct RipReading {
     pub disc_id: DiscIdReading,
 }
 
+impl RipReading {
+    /// Audio of `lengths` whose rip logs and sheets read as this.
+    pub(crate) fn read_audio(
+        self,
+        lengths: crate::catalog_model::reading::MeasuredLengths,
+    ) -> crate::catalog_model::reading::ReadAudio {
+        let disc_ids = self.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect();
+        crate::catalog_model::reading::ReadAudio::new(lengths, self.origin, disc_ids)
+    }
+}
+
 /// The disc IDs a candidate's rip artifacts hash to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiscIdReading {

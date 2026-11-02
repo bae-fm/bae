@@ -110,7 +110,7 @@ impl LibraryManager {
     pub(super) async fn release_read_audio(
         &self,
         release_id: &str,
-    ) -> Result<crate::import::catalog_reading::ReadAudio, LibraryError> {
+    ) -> Result<crate::catalog_model::reading::ReadAudio, LibraryError> {
         crate::signals::release::resolve_release_identity(self, release_id)
             .await?
             .read_audio()

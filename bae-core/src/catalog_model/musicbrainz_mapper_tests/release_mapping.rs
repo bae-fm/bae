@@ -99,7 +99,7 @@ fn map_for_audio(
     payloads
         .extract()
         .unwrap()
-        .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio_durations_ms))
+        .read(&crate::catalog_model::reading::ReadAudio::of_lengths(audio_durations_ms))
         .map_err(crate::import::ImportError::from)
 }
 

@@ -102,7 +102,7 @@ impl IdentifyState {
 
     /// The audio this state read its offered releases against; `None` for
     /// `Idle` and before the audio is measured.
-    pub(crate) fn read_audio(&self) -> Option<crate::import::catalog_reading::ReadAudio> {
+    pub(crate) fn read_audio(&self) -> Option<crate::catalog_model::reading::ReadAudio> {
         self.context().and_then(SignalsContext::read_audio)
     }
 
@@ -368,7 +368,7 @@ pub enum Effect {
     /// reading each one against `audio`.
     ReadReleases {
         releases: Vec<super::documents::ReleaseToRead>,
-        audio: crate::import::catalog_reading::ReadAudio,
+        audio: crate::catalog_model::reading::ReadAudio,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
     /// answers it.

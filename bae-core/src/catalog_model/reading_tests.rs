@@ -221,10 +221,6 @@ fn tied_discs_that_read_differently_are_refused_naming_them() {
         SourceTracks::Listed { count: 12 },
         "the tracklist still holds the folder's tracks by count"
     );
-    assert!(matches!(
-        ImportError::from(tied.unwrap_err()),
-        ImportError::TiedMediums { mediums } if mediums == vec![1, 3]
-    ));
 }
 
 /// A hybrid SACD lists its two layers as two mediums of one tracklist: tied,
@@ -287,21 +283,16 @@ fn audio_no_set_of_mediums_holds_is_refused_with_both_counts() {
 }
 
 /// A track with no title in the mediums the audio covers makes the reading
-/// unreadable, never a fit.
+/// unreadable, and its listing says so rather than a count.
 #[test]
-fn an_untitled_track_in_a_covered_medium_is_never_a_fit() {
+fn an_untitled_track_in_a_covered_medium_is_unreadable() {
     let mut rows = run("", "Song", 2, None);
     rows[1].title = None;
     let release = release(Catalog::MusicBrainz, vec![medium(Some(Medium::Cd), rows)]);
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
     assert!(matches!(reading, Err(ReadingRefusal::Unreadable { .. })), "{reading:?}");
-    let listed = listing(&reading, &audio);
-    assert_eq!(listed, SourceTracks::Unreadable);
-    assert_eq!(
-        crate::identify::TracklistFit::of(Some(&listed), 2),
-        crate::identify::TracklistFit::Unreadable
-    );
+    assert_eq!(listing(&reading, &audio), SourceTracks::Unreadable);
 }
 
 /// A release that lists no tracks reads as its album alone.

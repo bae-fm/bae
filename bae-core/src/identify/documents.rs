@@ -106,7 +106,7 @@ impl ReleaseDocument {
     /// What `prepared` states, read against the audio being identified.
     pub(crate) fn of(
         prepared: crate::catalog_model::source_release::PreparedRelease,
-        audio: &crate::import::catalog_reading::ReadAudio,
+        audio: &crate::catalog_model::reading::ReadAudio,
     ) -> Self {
         let release = &prepared.release;
         let reading = release.read(audio);
@@ -114,7 +114,7 @@ impl ReleaseDocument {
             labels: release.pressing().labels.clone(),
             barcodes: release.pressing().barcodes.clone(),
             album_first_year: release.metadata.album.first_year,
-            source_tracks: crate::import::catalog_reading::listing(&reading, audio),
+            source_tracks: crate::catalog_model::reading::listing(&reading, audio),
             track_titles: match reading {
                 Ok(values) => values.tracks.into_iter().map(|track| track.title).collect(),
                 Err(_) => Vec::new(),

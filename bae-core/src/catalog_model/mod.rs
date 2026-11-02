@@ -22,6 +22,8 @@ pub mod musicbrainz_mapper;
 pub mod payloads;
 #[cfg(desktop)]
 pub mod providers;
+#[cfg(desktop)]
+pub(crate) mod reading;
 pub mod records;
 #[cfg(desktop)]
 pub(crate) mod release_metadata;

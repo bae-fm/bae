@@ -14,7 +14,6 @@ use crate::catalog_model::search::SourceTracks;
 use crate::catalog_model::source_release::{not_fetched, SourceRelease};
 use crate::catalog_model::AudioOrigin;
 use crate::catalog_model::CatalogError;
-use crate::import::ImportError;
 use bae_catalogs::catalog::Catalog;
 use std::collections::BTreeSet;
 
@@ -46,22 +45,27 @@ impl MeasuredLengths {
 /// its files say it came from, and the Disc IDs its rips hash to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReadAudio {
-    pub(crate) lengths: MeasuredLengths,
-    pub(crate) origin: AudioOrigin,
+    lengths: MeasuredLengths,
+    origin: AudioOrigin,
     /// Every Disc ID the audio's rip logs and sheets hash to. Leaving the
     /// Disc IDs out of a run's lookups changes what the catalogs are asked,
     /// not what the folder's files are, so they are read here either way.
-    pub(crate) disc_ids: Vec<String>,
+    disc_ids: Vec<String>,
 }
 
 impl ReadAudio {
-    /// Audio of these lengths, whose rip logs and sheets read as `rip`.
-    pub(crate) fn of_rip(lengths: MeasuredLengths, rip: crate::import::discid::RipReading) -> Self {
-        Self {
-            lengths,
-            origin: rip.origin,
-            disc_ids: rip.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect(),
-        }
+    /// Audio of these lengths, from `origin`, whose rips hash to `disc_ids`.
+    pub(crate) fn new(
+        lengths: MeasuredLengths,
+        origin: AudioOrigin,
+        disc_ids: Vec<String>,
+    ) -> Self {
+        Self { lengths, origin, disc_ids }
+    }
+
+    /// How many tracks the audio holds.
+    pub(crate) fn track_count(&self) -> u32 {
+        self.lengths.count()
     }
 
     /// Audio of `lengths` whose files prove nothing and hash to no Disc ID.
@@ -72,19 +76,6 @@ impl ReadAudio {
             origin: AudioOrigin::default(),
             disc_ids: Vec::new(),
         }
-    }
-
-    /// A candidate's audio, as its scan stored each file and as its rip logs
-    /// and track sheets read now.
-    pub(crate) fn of_files(
-        files: &crate::import::folder_scanner::CategorizedFiles,
-    ) -> Result<Self, ImportError> {
-        let durations = crate::import::probe::source_durations(files)?;
-        let lengths = crate::import::audio_layout::audio_durations(files, &durations)?;
-        let lengths = MeasuredLengths::new(lengths).ok_or_else(|| ImportError::Internal {
-            detail: "a candidate with no audio has nothing to read a release against".to_string(),
-        })?;
-        Ok(Self::of_rip(lengths, crate::import::discid::read_rip_artifacts(files)))
     }
 }
 
@@ -101,20 +92,6 @@ pub(crate) enum ReadingRefusal {
     /// The tracks it lays onto the audio cannot be read into values: a track
     /// with no title, an album credited to no one.
     Unreadable { catalog: Catalog, detail: String },
-}
-
-impl From<ReadingRefusal> for ImportError {
-    fn from(refusal: ReadingRefusal) -> Self {
-        match refusal {
-            ReadingRefusal::TrackCount { folder, release } => {
-                Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
-            }
-            ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
-            ReadingRefusal::Unreadable { catalog, detail } => {
-                CatalogError::SourceData { catalog, detail }.into()
-            }
-        }
-    }
 }
 
 /// What a reading says the release lists for the audio, by count: as many
@@ -307,5 +284,5 @@ fn unreadable(error: CatalogError) -> ReadingRefusal {
 }
 
 #[cfg(test)]
-#[path = "catalog_reading_tests.rs"]
+#[path = "reading_tests.rs"]
 mod tests;

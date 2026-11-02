@@ -194,8 +194,7 @@ impl LibraryManager {
             .map_err(|refusal| LibraryError::from(crate::import::ImportError::from(refusal)))?;
         if values.tracks.is_empty() {
             return Err(LibraryError::from(crate::import::ImportError::MetadataTrackCount {
-                folder_tracks: u32::try_from(audio.lengths.len())
-                    .expect("a release holds fewer than 2^32 tracks"),
+                folder_tracks: audio.track_count(),
                 release_tracks: 0,
             }));
         }

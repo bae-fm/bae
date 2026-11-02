@@ -325,9 +325,9 @@ fn the_lengths_a_source_states_do_not_decide() {
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
         );
-    let audio = crate::import::catalog_reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
+    let audio = crate::catalog_model::reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
     let source =
-        crate::import::catalog_reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
+        crate::catalog_model::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
         crate::identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
@@ -348,7 +348,7 @@ fn a_document_lists_its_tracks_titles() {
     let release = payloads.extract().unwrap();
     let document = crate::identify::documents::ReleaseDocument::of(
         crate::catalog_model::source_release::PreparedRelease { stored: release.clone(), release },
-        &crate::import::catalog_reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
+        &crate::catalog_model::reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
     assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });
     assert_eq!(document.track_titles, vec!["Track 1", "Track 2", "Track 3"]);

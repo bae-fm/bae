@@ -200,7 +200,7 @@ async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
     verdict: &mut TerminalVerdict,
-    audio: &crate::import::catalog_reading::ReadAudio,
+    audio: &crate::catalog_model::reading::ReadAudio,
     release: &crate::catalog_model::source_release::SourceRelease,
     partners: Vec<crate::catalog_model::source_release::SourceRelease>,
     pressing_year: Option<i32>,
