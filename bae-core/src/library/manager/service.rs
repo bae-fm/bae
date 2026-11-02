@@ -291,6 +291,51 @@ impl LibraryManager {
         }
     }
 
+    /// Start the import service over this library. Its live reads end as
+    /// the library closes, before the store does.
+    #[cfg(desktop)]
+    pub async fn start_import_service(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+    ) -> Result<crate::import::ImportServiceHandle, crate::import::ImportError> {
+        crate::import::ImportService::start(
+            runtime_handle,
+            self.clone(),
+            self.database.clone(),
+            self.catalogs.clone(),
+            self.remote_images.clone(),
+            self.diagnostics.clone(),
+            self.preparations.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
+            self.tasks.closing.child_token(),
+        )
+        .await
+    }
+
+    /// [`Self::start_import_service`] reading folders' tags through
+    /// `file_tags`.
+    #[cfg(all(test, desktop))]
+    pub(crate) fn start_import_service_reading_tags_with(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+        file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> crate::import::ImportServiceHandle {
+        crate::import::ImportService::start_reading_tags_with(
+            runtime_handle,
+            self.clone(),
+            self.database.clone(),
+            self.catalogs.clone(),
+            self.remote_images.clone(),
+            self.diagnostics.clone(),
+            self.preparations.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
+            self.tasks.closing.child_token(),
+            file_tags,
+        )
+    }
+
     /// `query` as a subscription a surface reads by pulling its values,
     /// which closing the library ends before the store closes: a read waiting
     /// on it then answers that it was cancelled, and it takes no more

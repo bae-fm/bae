@@ -58,14 +58,24 @@ fn done_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
         .collect()
 }
 
+/// A list opened as the import handle opens one: closing the library ends
+/// it.
+async fn open_list(
+    manager: &LibraryManager,
+    view: crate::import::ImportListView,
+    windows: crate::library::LibraryPageWindows,
+) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
+    manager.start_import_service(tokio::runtime::Handle::current()).await?.open_list(view, windows).await
+}
+
 /// One read of `list` through `offset` and `limit`.
 async fn read_list(
-    manager: &LibraryManager,
+    database: &crate::db::Database,
     list: crate::import::ImportListId,
     offset: u64,
     limit: u64,
 ) -> crate::import::ImportListProjection {
-    manager
+    database
         .load_import_list(crate::import::ImportListRequest {
             list,
             windows: std::iter::once(crate::library::LibraryPageWindow { offset, limit }).collect(),
@@ -93,21 +103,22 @@ async fn done_runs_the_releases_still_uploading_first() {
         (crate::import::ImportListOrder::PathAscending, ["C", "B", "A", "D"]),
         (crate::import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
     ] {
-        let list = manager.open_import_list(done(order)).await.unwrap();
-        assert_eq!(done_names(&read_list(&manager, list, 0, 50).await), expected, "{order:?}");
+        let list = manager.database.open_import_list(done(order)).await.unwrap();
+        assert_eq!(done_names(&read_list(&manager.database, list, 0, 50).await), expected, "{order:?}");
     }
 
     let list =
-        manager.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
-    let across = read_list(&manager, list, 1, 2).await;
+        manager.database.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
+    let across = read_list(&manager.database, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(across.total_count, 4);
-    assert_eq!(done_names(&read_list(&manager, list, 3, 5).await), ["A"]);
+    assert_eq!(done_names(&read_list(&manager.database, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let location =
-        manager.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
+        manager.database.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
     manager
+        .database
         .change_import_list_selection(
             list,
             crate::import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
@@ -115,13 +126,15 @@ async fn done_runs_the_releases_still_uploading_first() {
         .await
         .unwrap();
     manager
+        .database
         .set_import_list_view(list, done(crate::import::ImportListOrder::OldestFirst))
         .await
         .unwrap();
-    let selected = read_list(&manager, list, 0, 0).await;
+    let selected = read_list(&manager.database, list, 0, 0).await;
     assert_eq!(selected.summary.opened_at, 1, "the view opens at B, still uploading, behind C");
     assert_eq!(
         manager
+            .database
             .load_import_list_selected(list)
             .await
             .unwrap()
@@ -158,8 +171,8 @@ fn done_uploads(
 async fn a_done_row_carries_its_release_upload() {
     let (manager, temp_dir) = setup_test_manager().await;
     done_with_two_uploading(&manager, temp_dir.path()).await;
-    let subscription = crate::import::ImportListSubscription::open(
-        manager.library.clone(),
+    let subscription = open_list(
+        &manager,
         crate::import::ImportListView {
             tab: crate::import::TriageTab::Done,
             order: crate::import::ImportListOrder::PathAscending,
@@ -221,6 +234,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let list = manager
+        .database
         .open_import_list(crate::import::ImportListView {
             tab: crate::import::TriageTab::Done,
             order: crate::import::ImportListOrder::NewestFirst,
@@ -229,6 +243,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         .await
         .unwrap();
     manager
+        .database
         .change_import_list_selection(
             list,
             crate::import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
@@ -237,6 +252,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         .unwrap();
     assert_eq!(
         manager
+            .database
             .load_import_list_selected(list)
             .await
             .unwrap()
@@ -254,8 +270,8 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
 #[tokio::test]
 async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let subscription = crate::import::ImportListSubscription::open(
-        manager.library.clone(),
+    let subscription = open_list(
+        &manager,
         crate::import::ImportListView::default(),
         crate::library::LibraryPageWindows::default(),
     )
@@ -292,8 +308,8 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
 #[tokio::test]
 async fn cancelling_closes_the_list() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let subscription = crate::import::ImportListSubscription::open(
-        manager.library.clone(),
+    let subscription = open_list(
+        &manager,
         crate::import::ImportListView::default(),
         crate::library::LibraryPageWindows::default(),
     )
@@ -311,7 +327,7 @@ async fn cancelling_closes_the_list() {
         .is_empty());
     assert!(matches!(
         subscription.set_view(crate::import::ImportListView::default()).await,
-        Err(crate::import::ImportListSubscriptionError::Library(_))
+        Err(crate::import::ImportListSubscriptionError::Database(_))
     ));
     assert!(matches!(
         subscription.next().await,
@@ -326,8 +342,8 @@ async fn cancelling_closes_the_list() {
 async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let subscription = Arc::new(
-        crate::import::ImportListSubscription::open(
-            manager.library.clone(),
+        open_list(
+            &manager,
             crate::import::ImportListView::default(),
             crate::library::LibraryPageWindows::default(),
         )

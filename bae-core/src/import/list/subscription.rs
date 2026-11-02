@@ -16,10 +16,10 @@ use super::{
     ImportCandidateListLocation, ImportListId, ImportListProjection, ImportListRequest,
     ImportListSnapshot, ImportListView,
 };
-use crate::db::SelectionWrite;
+use crate::db::{Database, DbError, SelectionWrite};
 use crate::import::selection::{SelectedRows, SelectionChange};
 use crate::import::FolderReleaseDecisionKey;
-use crate::library::{LibraryError, LibraryManager, LibraryPageWindows};
+use crate::library::{CancellationToken, LibraryPageWindows};
 use crate::live_query::CancellableLiveQuery;
 
 #[derive(Debug, thiserror::Error)]
@@ -31,7 +31,7 @@ pub enum ImportListSubscriptionError {
     #[error(transparent)]
     Query(#[from] coven::CovenError),
     #[error(transparent)]
-    Library(#[from] LibraryError),
+    Database(#[from] DbError),
 }
 
 /// The live query ending is this subscription's cancellation.
@@ -41,12 +41,13 @@ impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError
     }
 }
 
-/// One open list. Closing the library ends its live query before the store
-/// closes. Dropped without [`Self::cancel`], its live query ends and its row
-/// stays until the library next opens, when every list closes.
+/// One open list. `closing` ends its live query when the library closes,
+/// before the store does. Dropped without [`Self::cancel`], its live query
+/// ends and its row stays until the library next opens, when every list
+/// closes.
 pub struct ImportListSubscription {
     list: ImportListId,
-    manager: LibraryManager,
+    database: Database,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
@@ -54,20 +55,23 @@ impl ImportListSubscription {
     /// Open a list showing `view` through `windows`, with nothing folded and
     /// nothing selected, and the live query that reads it.
     pub(crate) async fn open(
-        manager: LibraryManager,
+        database: Database,
+        closing: CancellationToken,
         view: ImportListView,
         windows: LibraryPageWindows,
-    ) -> Result<Self, LibraryError> {
-        let list = manager.open_import_list(view).await?;
-        let query = manager
-            .until_closed(manager.subscribe_import_list(ImportListRequest { list, windows }));
-        Ok(Self { list, manager, query })
+    ) -> Result<Self, DbError> {
+        let list = database.open_import_list(view).await?;
+        let query = CancellableLiveQuery::new(
+            database.subscribe_import_list(ImportListRequest { list, windows }),
+            closing,
+        );
+        Ok(Self { list, database, query })
     }
 
     /// Show a different tab, filter or order. The windows are kept: the query
     /// reruns and the surface re-reads them. Answers with the view revision.
     pub async fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.manager.set_import_list_view(self.list, view).await?)
+        Ok(self.database.set_import_list_view(self.list, view).await?)
     }
 
     pub fn set_windows(
@@ -86,7 +90,7 @@ impl ImportListSubscription {
         group: FolderReleaseDecisionKey,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.manager.set_import_list_group_folded(self.list, group, folded).await?)
+        Ok(self.database.set_import_list_group_folded(self.list, group, folded).await?)
     }
 
     /// Fold every group shut, or open them all, as one change.
@@ -94,7 +98,7 @@ impl ImportListSubscription {
         &self,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.manager.set_import_list_groups_folded(self.list, folded).await?)
+        Ok(self.database.set_import_list_groups_folded(self.list, folded).await?)
     }
 
     /// Apply a change a person made by pointing at rows of the list, and
@@ -103,7 +107,7 @@ impl ImportListSubscription {
         &self,
         change: SelectionChange,
     ) -> Result<u64, ImportListSubscriptionError> {
-        match self.manager.change_import_list_selection(self.list, change).await? {
+        match self.database.change_import_list_selection(self.list, change).await? {
             SelectionWrite::Changed { revision } => Ok(revision),
             SelectionWrite::RunNotShown => Err(ImportListSubscriptionError::RunNotShown),
         }
@@ -111,13 +115,13 @@ impl ImportListSubscription {
 
     /// Select every row the list shows, whether or not a surface loaded it.
     pub async fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.manager.select_all_in_import_list(self.list).await?)
+        Ok(self.database.select_all_in_import_list(self.list).await?)
     }
 
     /// The selected rows, in the order the list shows them: what a bulk
     /// action runs over.
     pub async fn selected(&self) -> Result<SelectedRows, ImportListSubscriptionError> {
-        Ok(self.manager.load_import_list_selected(self.list).await?)
+        Ok(self.database.load_import_list_selected(self.list).await?)
     }
 
     /// The view and position that reveal the candidate at `candidate_key`
@@ -127,7 +131,7 @@ impl ImportListSubscription {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
-        Ok(self.manager.locate_import_candidate(self.list, candidate_key).await?)
+        Ok(self.database.locate_import_candidate(self.list, candidate_key).await?)
     }
 
     /// The first candidate the identification count is still waiting on —
@@ -137,7 +141,7 @@ impl ImportListSubscription {
     pub async fn first_identifying_candidate(
         &self,
     ) -> Result<Option<crate::import::CandidateKey>, ImportListSubscriptionError> {
-        Ok(self.manager.first_identifying_import_candidate(self.list).await?)
+        Ok(self.database.first_identifying_import_candidate(self.list).await?)
     }
 
     /// The list's next value.
@@ -186,6 +190,6 @@ impl ImportListSubscription {
     /// go.
     pub async fn cancel(&self) -> Result<(), ImportListSubscriptionError> {
         self.query.close().await;
-        Ok(self.manager.close_import_list(self.list).await?)
+        Ok(self.database.close_import_list(self.list).await?)
     }
 }

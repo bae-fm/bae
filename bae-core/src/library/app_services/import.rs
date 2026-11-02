@@ -275,12 +275,7 @@ impl AppServices {
         &self,
         view: ImportListView,
     ) -> Result<ImportListSubscription, crate::library::LibraryError> {
-        ImportListSubscription::open(
-            self.inner.manager.clone(),
-            view,
-            crate::library::LibraryPageWindows::new(),
-        )
-        .await
+        Ok(self.inner.import.open_list(view, crate::library::LibraryPageWindows::new()).await?)
     }
 
     /// Where each watched folder's scan stands: the first value at once, then
@@ -309,7 +304,7 @@ impl AppServices {
         view: ImportListView,
         windows: crate::library::LibraryPageWindows,
     ) -> Result<crate::import::ImportListProjection, crate::library::LibraryError> {
-        self.inner.manager.load_import_list_once(view, windows).await
+        Ok(self.inner.import.load_list(view, windows).await?)
     }
 
     /// One candidate as the pane reads it, once, with its standing.

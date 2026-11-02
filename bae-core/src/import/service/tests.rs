@@ -467,6 +467,7 @@ impl CoordinatorHarness {
                 folder_state_commit: folder_state_commit.clone(),
                 import_cancels: Default::default(),
                 diagnostics: service.diagnostics.clone(),
+                closing: crate::library::CancellationToken::new(),
             },
             starter,
             removal_backend.clone(),
@@ -621,6 +622,7 @@ fn test_scan_services(
             folder_state_commit: crate::import::FolderStateCommit::default(),
             import_cancels: Default::default(),
             diagnostics: service.diagnostics.clone(),
+            closing: crate::library::CancellationToken::new(),
         },
         folder_watcher,
     )

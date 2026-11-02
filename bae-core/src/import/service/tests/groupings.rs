@@ -1,14 +1,20 @@
 /// Each Pending group header with whether it can combine, and each row with
 /// whether it can separate.
-async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
-    let projection = manager
-        .load_import_list_once(
-            crate::import::ImportListView {
-                order: crate::import::ImportListOrder::PathAscending,
-                ..crate::import::ImportListView::default()
-            },
-            [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        )
+async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
+    let list = database
+        .open_import_list(crate::import::ImportListView {
+            order: crate::import::ImportListOrder::PathAscending,
+            ..crate::import::ImportListView::default()
+        })
+        .await
+        .unwrap();
+    let projection = database
+        .load_import_list(crate::import::ImportListRequest {
+            list,
+            windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
+                .into_iter()
+                .collect(),
+        })
         .await
         .unwrap();
     let mut headers = Vec::new();
@@ -54,7 +60,7 @@ fn folder_key(root: &Path, relative: &str) -> crate::import::FolderReleaseDecisi
 #[tokio::test]
 async fn one_grouped_album_under_an_artist_offers_no_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album/Disc 1", "Artist/Album/Disc 2"]).await;
-    let (headers, rows) = offers(&test.service.library_manager).await;
+    let (headers, rows) = offers(&test.database).await;
     assert_eq!(headers, vec![("Artist".to_string(), false)]);
     assert_eq!(rows, vec![("Artist/Album".to_string(), true)]);
 }
@@ -64,7 +70,7 @@ async fn one_grouped_album_under_an_artist_offers_no_combine() {
 #[tokio::test]
 async fn two_albums_under_an_artist_offer_to_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album A", "Artist/Album B"]).await;
-    let (headers, rows) = offers(&test.service.library_manager).await;
+    let (headers, rows) = offers(&test.database).await;
     assert_eq!(headers, vec![("Artist".to_string(), true)]);
     assert_eq!(
         rows,
@@ -80,7 +86,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         let discs = [format!("{album}/Disc 1"), format!("{album}/Disc 2")];
         let discs: Vec<&str> = discs.iter().map(String::as_str).collect();
         let (test, scan, root) = scanned_root(&discs).await;
-        let (_, rows) = offers(&test.service.library_manager).await;
+        let (_, rows) = offers(&test.database).await;
         assert_eq!(rows, vec![(album.to_string(), true)], "{album}");
 
         ImportService::change_folder_reading(
@@ -94,7 +100,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         )
         .await
         .unwrap();
-        let (headers, rows) = offers(&test.service.library_manager).await;
+        let (headers, rows) = offers(&test.database).await;
         assert_eq!(headers, vec![(header.to_string(), true)], "{album}");
         assert_eq!(
             rows,

@@ -109,9 +109,10 @@ impl DecisionFixture {
         decision: crate::import::FolderReleaseDecision,
         settled: &[&str],
     ) -> Vec<Vec<String>> {
-        let mut live = self.manager().subscribe_import_list(crate::import::ImportListRequest {
+        let mut live = self.test.database.subscribe_import_list(crate::import::ImportListRequest {
             list: self
-                .manager()
+                .test
+                .database
                 .open_import_list(crate::import::ImportListView {
                     order: crate::import::ImportListOrder::PathAscending,
                     ..crate::import::ImportListView::default()

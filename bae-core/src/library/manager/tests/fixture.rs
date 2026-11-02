@@ -162,8 +162,10 @@ fn fixture_candidate(
 
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
-    let list = manager.open_import_list(crate::import::ImportListView::default()).await.unwrap();
+    let list =
+        manager.database.open_import_list(crate::import::ImportListView::default()).await.unwrap();
     manager
+        .database
         .load_import_list(crate::import::ImportListRequest {
             list,
             windows: std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 })

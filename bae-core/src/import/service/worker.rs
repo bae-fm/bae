@@ -15,6 +15,7 @@ impl ImportService {
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        closing: crate::library::CancellationToken,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
@@ -33,6 +34,7 @@ impl ImportService {
             clock.clone(),
             ids.clone(),
             diagnostics.clone(),
+            closing,
         );
         Ok(Self::start_with(runtime_handle, services, runtime, diagnostics)?)
     }
@@ -50,6 +52,7 @@ impl ImportService {
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        closing: crate::library::CancellationToken,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
@@ -64,6 +67,7 @@ impl ImportService {
             clock,
             ids,
             diagnostics.clone(),
+            closing,
         );
         services.file_tags = file_tags;
         Self::start_with(runtime_handle, services, runtime, diagnostics)

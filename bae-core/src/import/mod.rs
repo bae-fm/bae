@@ -216,6 +216,9 @@ pub(crate) struct ImportServices {
     import_cancels: import_cancel::ImportCancels,
     /// Where a panic in import or scan work is reported as the bug it is.
     diagnostics: crate::diagnostics::Diagnostics,
+    /// Cancelled when the library closes, before its store does: the live
+    /// reads import opens end with it.
+    closing: crate::library::CancellationToken,
 }
 
 #[cfg(desktop)]
@@ -230,6 +233,7 @@ impl ImportServices {
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         diagnostics: crate::diagnostics::Diagnostics,
+        closing: crate::library::CancellationToken,
     ) -> Self {
         Self {
             event_tx,
@@ -245,6 +249,7 @@ impl ImportServices {
             folder_state_commit: folder_state_commit::FolderStateCommit::default(),
             import_cancels: import_cancel::ImportCancels::default(),
             diagnostics,
+            closing,
         }
     }
 }

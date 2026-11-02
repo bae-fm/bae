@@ -327,6 +327,6 @@ fn list_error(error: bae_core::import::ImportListSubscriptionError) -> BridgeErr
         bae_core::import::ImportListSubscriptionError::Query(error) => {
             BridgeError::database_query(error)
         }
-        bae_core::import::ImportListSubscriptionError::Library(error) => BridgeError::from(error),
+        bae_core::import::ImportListSubscriptionError::Database(error) => BridgeError::from(error),
     }
 }

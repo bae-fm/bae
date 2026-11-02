@@ -9,13 +9,11 @@ async fn list_subscription(
     fixture: &Fixture,
     windows: crate::library::LibraryPageWindows,
 ) -> crate::import::ImportListSubscription {
-    crate::import::ImportListSubscription::open(
-        fixture.manager.clone(),
-        crate::import::ImportListView::default(),
-        windows,
-    )
-    .await
-    .expect("the list opens")
+    fixture
+        .import
+        .open_list(crate::import::ImportListView::default(), windows)
+        .await
+        .expect("the list opens")
 }
 
 fn page_window(offset: u64, limit: u64) -> crate::library::LibraryPageWindows {

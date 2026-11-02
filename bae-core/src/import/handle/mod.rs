@@ -356,6 +356,9 @@ pub struct ImportServiceHandle {
     runtime_handle: tokio::runtime::Handle,
     /// Where a panic in work the handle starts and nobody awaits is reported.
     diagnostics: crate::diagnostics::Diagnostics,
+    /// Cancelled when the library closes, before its store does: every list
+    /// the handle opens ends with it.
+    closing: crate::library::CancellationToken,
 }
 
 #[derive(Debug, Clone)]
@@ -481,6 +484,7 @@ impl ImportServiceHandle {
             folder_state_commit,
             import_cancels,
             diagnostics,
+            closing,
         } = services;
         let release_reads = crate::import::ReleaseReads::new(database.clone(), catalogs.clone());
         let identify = crate::import::IdentifyServiceHandle::new(
@@ -518,7 +522,40 @@ impl ImportServiceHandle {
             watcher,
             runtime_handle,
             diagnostics,
+            closing,
         })
+    }
+
+    /// Open an import list showing `view` through `windows`, with nothing
+    /// folded and nothing selected. Closing the library ends it.
+    pub async fn open_list(
+        &self,
+        view: crate::import::ImportListView,
+        windows: crate::library::LibraryPageWindows,
+    ) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
+        Ok(crate::import::ImportListSubscription::open(
+            self.database.clone(),
+            self.closing.child_token(),
+            view,
+            windows,
+        )
+        .await?)
+    }
+
+    /// One read of a list showing `view` through `windows`, for a caller
+    /// with no list open: a list opened for the read and closed after it.
+    pub async fn load_list(
+        &self,
+        view: crate::import::ImportListView,
+        windows: crate::library::LibraryPageWindows,
+    ) -> Result<crate::import::ImportListProjection, crate::import::ImportError> {
+        let list = self.database.open_import_list(view).await?;
+        let projection = self
+            .database
+            .load_import_list(crate::import::ImportListRequest { list, windows })
+            .await;
+        self.database.close_import_list(list).await?;
+        Ok(projection?)
     }
 
     /// Every release a pick claims, read whole: `primary`, and its
@@ -744,13 +781,9 @@ impl ImportServiceHandle {
         view: crate::import::ImportListView,
         window: crate::library::LibraryPageWindow,
     ) -> crate::import::ImportListSubscription {
-        crate::import::ImportListSubscription::open(
-            self.library_manager.clone(),
-            view,
-            std::iter::once(window).collect(),
-        )
-        .await
-        .expect("the import list opens")
+        self.open_list(view, std::iter::once(window).collect())
+            .await
+            .expect("the import list opens")
     }
 
     /// The first folder scans `accept` admits, waiting through the query's

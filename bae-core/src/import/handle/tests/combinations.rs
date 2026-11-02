@@ -116,8 +116,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
 /// Pending rows the queue holds, by display path, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     let projection = handle
-        .library_manager
-        .load_import_list_once(
+        .load_list(
             crate::import::ImportListView {
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
