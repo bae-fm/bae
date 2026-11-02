@@ -172,12 +172,12 @@ impl ReleaseDetail {
     /// logic stays in one place.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
+        download: Option<crate::library::DownloadPhase>,
         album_artists: &[crate::db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
         let release = raw.release;
-        let download = raw.download;
 
         let tracks: Vec<TrackDetail> = raw
             .tracks

@@ -55,6 +55,7 @@ pub(crate) mod sync_start_failure;
 pub(crate) mod sync_status;
 pub(crate) use pending::PendingRow;
 mod coven_capabilities;
+pub use coven_capabilities::StorageSetupSteps;
 mod database_read;
 pub(crate) mod files;
 pub(crate) mod records;

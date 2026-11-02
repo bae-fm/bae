@@ -38,9 +38,7 @@ pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch
 pub use browse::*;
 pub use closing_step::ClosingStep;
 
-/// Where a storage setup reports each step coven runs, as coven reports it.
-pub type StorageSetupSteps<'a> =
-    &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);
+pub use crate::db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use download_snapshot::{
     DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,

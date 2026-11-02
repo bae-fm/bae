@@ -29,12 +29,11 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         pinned: false,
         remote: false,
         upload: None,
-        download: None,
         transfer_action: None,
         cover_version: None,
     };
     let ctx = ReleaseResolveCtx { has_cloud_home: false, cover: None, is_compilation: false };
-    ReleaseDetail::from_raw(raw, &[], 0, &ctx)
+    ReleaseDetail::from_raw(raw, None, &[], 0, &ctx)
 }
 
 /// The release's total and each side's are its tracks' summed lengths.

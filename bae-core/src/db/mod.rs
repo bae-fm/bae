@@ -30,7 +30,7 @@ pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackNowRow, PlaybackQueueTables,
     PlaybackTimelineRow, ReleaseStart, ShuffleChange,
 };
-pub use client::{Database, IdentityWriteError, ReleaseDeletion};
+pub use client::{Database, IdentityWriteError, ReleaseDeletion, StorageSetupSteps};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

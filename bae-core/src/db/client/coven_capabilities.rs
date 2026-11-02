@@ -1,5 +1,9 @@
 use super::*;
 
+/// Where a storage setup reports each step coven runs, as coven reports it.
+pub type StorageSetupSteps<'a> =
+    &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);
+
 /// Where each of the release `?1`'s files stands for its pin: whether this
 /// device keeps it whole, as `coven_pins` says, and while this process
 /// downloads it to be kept, the file coven downloads, as `coven_downloading`
@@ -138,7 +142,7 @@ impl Database {
         device_name: &str,
         access_key: String,
         secret_key: coven::SecretText,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner
             .handle
@@ -149,7 +153,7 @@ impl Database {
     pub(crate) async fn setup_cloudkit_storage(
         &self,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner.handle.setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps).await
     }
@@ -167,7 +171,7 @@ impl Database {
         &self,
         storage: coven::StorageConfig,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.inner.handle.setup_oauth_storage(storage, device_name, steps).await
     }

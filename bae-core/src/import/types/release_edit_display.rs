@@ -376,7 +376,6 @@ mod tests {
             pinned: false,
             remote: false,
             upload: None,
-            download: None,
             transfer_action: None,
             cover_version: None,
         };

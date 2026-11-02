@@ -374,13 +374,19 @@ fn resolve_album_detail(
 
     let cover = crate::db::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
-    for (i, r) in raw.releases.into_iter().enumerate() {
+    for (i, ReleaseDetailRead { detail, download }) in raw.releases.into_iter().enumerate() {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             has_cloud_home,
-            cover: crate::db::cover_ref(&r.release.id, r.cover_version.clone()),
+            cover: crate::db::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
         };
-        releases.push(crate::album_detail::ReleaseDetail::from_raw(r, &raw.artists, i, &ctx));
+        releases.push(crate::album_detail::ReleaseDetail::from_raw(
+            detail,
+            download,
+            &raw.artists,
+            i,
+            &ctx,
+        ));
     }
 
     crate::album_detail::AlbumDetail {

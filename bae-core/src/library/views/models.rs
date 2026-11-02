@@ -68,7 +68,7 @@ pub struct DbAlbumDetail {
     pub album: DbAlbum,
     pub artists: Vec<crate::db::credits::LibraryCredit>,
     /// The album's releases in album order.
-    pub releases: Vec<DbReleaseDetail>,
+    pub releases: Vec<ReleaseDetailRead>,
     /// The album's lowest-ordered release.
     pub primary_release_id: String,
     /// The version of that release's cover; `None` when it has none.
@@ -217,6 +217,9 @@ pub struct ArtistSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
+    /// The release's entry in this device's download queue, `None` when it
+    /// has none.
+    pub download: Option<crate::library::DownloadPhase>,
     pub album_artists: Vec<crate::db::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
@@ -328,4 +331,12 @@ pub struct DbFileUpload {
     pub file: coven::FileId,
     pub sending: bool,
     pub pending: Option<coven::PendingRecord>,
+}
+
+/// A release's rows as its detail reads them, beside its entry in this
+/// device's download queue (`None` when it has none).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseDetailRead {
+    pub detail: DbReleaseDetail,
+    pub download: Option<crate::library::DownloadPhase>,
 }

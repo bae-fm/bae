@@ -23,9 +23,6 @@ pub struct DbReleaseDetail {
     pub remote: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
-    /// The release's entry in this device's download queue, `None` when it
-    /// has none.
-    pub download: Option<crate::library::DownloadPhase>,
     /// The storage transition this process runs for the release; `None`
     /// when it runs none.
     pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,

@@ -35,7 +35,7 @@ impl LibraryViews {
                 };
                 Ok(Some(build_release_detail_on(&sql, release)?))
             })
-            .process(|rows| Ok(rows.map(ReleaseDetailRows::process)))
+            .process(|rows| Ok(rows.map(|rows| rows.process().detail)))
             .await
     }
 
@@ -93,13 +93,14 @@ fn resolve_release_detail(
     context: ReleaseDetailContext,
     has_cloud_home: bool,
 ) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, album_artists, release_index, is_compilation } = context;
+    let ReleaseDetailContext { detail, download, album_artists, release_index, is_compilation } =
+        context;
     let ctx = ReleaseResolveCtx {
         has_cloud_home,
         cover: crate::db::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
-    ReleaseDetail::from_raw(detail, &album_artists, release_index, &ctx)
+    ReleaseDetail::from_raw(detail, download, &album_artists, release_index, &ctx)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -154,8 +155,10 @@ pub(crate) struct ReleaseContextRows {
 
 impl ReleaseContextRows {
     pub(crate) fn process(self) -> ReleaseDetailContext {
+        let ReleaseDetailRead { detail, download } = self.detail.process();
         ReleaseDetailContext {
-            detail: self.detail.process(),
+            detail,
+            download,
             album_artists: self.album_artists,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
@@ -231,8 +234,8 @@ pub(crate) struct ReleaseDetailRows {
 }
 
 impl ReleaseDetailRows {
-    pub(crate) fn process(self) -> DbReleaseDetail {
-        DbReleaseDetail {
+    pub(crate) fn process(self) -> ReleaseDetailRead {
+        let detail = DbReleaseDetail {
             release: self.release,
             mediums: self.mediums,
             tracks: process_tracks(self.tracks),
@@ -242,10 +245,10 @@ impl ReleaseDetailRows {
             pinned: self.pinned,
             remote: self.remote,
             upload: self.upload,
-            download: self.download,
             transfer_action: self.transfer_action,
             cover_version: self.cover_version,
-        }
+        };
+        ReleaseDetailRead { detail, download: self.download }
     }
 }
 
