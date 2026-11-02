@@ -49,6 +49,39 @@ for package in metadata["packages"]:
 '
 }
 
+# What the checks of the crates named as arguments turn on: a "feature
+# <crate>/<feature>" line for each test feature a crate declares
+# (`test-utils`, `test-instrumentation`), and a "mobile <crate>" line for each
+# crate the mobile apps build: bae-core and the workspace crates it depends on.
+crate_check_plan() {
+    python3 - "$@" <<'PLAN'
+import json, subprocess, sys
+metadata = json.loads(subprocess.check_output(
+    ["cargo", "metadata", "--format-version", "1", "--offline"]))
+members = set(metadata["workspace_members"])
+packages = {package["id"]: package for package in metadata["packages"]}
+by_name = {packages[member]["name"]: member for member in members}
+nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
+mobile, pending = set(), [by_name["bae-core"]]
+while pending:
+    member = pending.pop()
+    if member in mobile:
+        continue
+    mobile.add(member)
+    for dependency in nodes[member]["deps"]:
+        normal = any(kind["kind"] is None for kind in dependency["dep_kinds"])
+        if dependency["pkg"] in members and normal:
+            pending.append(dependency["pkg"])
+for name in sys.argv[1:]:
+    package = packages[by_name[name]]
+    for feature in ("test-utils", "test-instrumentation"):
+        if feature in package["features"]:
+            print("feature", f"{name}/{feature}")
+    if by_name[name] in mobile:
+        print("mobile", name)
+PLAN
+}
+
 # The packages, of the "<package> <directory>" lines on stdin, with a staged
 # path under their directory.
 changed_workspace_crates() {
