@@ -359,7 +359,7 @@ pub struct ImportServiceHandle {
     diagnostics: crate::diagnostics::Diagnostics,
     /// Cancelled when the library closes, before its store does: every list
     /// the handle opens ends with it.
-    closing: crate::library::CancellationToken,
+    closing: tokio_util::sync::CancellationToken,
 }
 
 #[derive(Debug, Clone)]

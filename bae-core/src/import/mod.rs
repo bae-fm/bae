@@ -217,7 +217,7 @@ pub(crate) struct ImportServices {
     diagnostics: crate::diagnostics::Diagnostics,
     /// Cancelled when the library closes, before its store does: the live
     /// reads import opens end with it.
-    closing: crate::library::CancellationToken,
+    closing: tokio_util::sync::CancellationToken,
 }
 
 #[cfg(desktop)]
@@ -231,7 +231,7 @@ impl ImportServices {
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         diagnostics: crate::diagnostics::Diagnostics,
-        closing: crate::library::CancellationToken,
+        closing: tokio_util::sync::CancellationToken,
     ) -> Self {
         Self {
             event_tx,

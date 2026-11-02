@@ -14,7 +14,7 @@ impl ImportService {
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
-        closing: crate::library::CancellationToken,
+        closing: tokio_util::sync::CancellationToken,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
@@ -49,7 +49,7 @@ impl ImportService {
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
-        closing: crate::library::CancellationToken,
+        closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
