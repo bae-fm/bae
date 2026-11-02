@@ -15,15 +15,15 @@ path = "src/lib.rs"
 
 [dependencies]
 # Every pressing value is stored and serialized by its key.
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 # Text is compared with its diacritics folded away (src/text_match/fold.rs).
-unicode-normalization = "0.1"
+unicode-normalization = { workspace = true }
 
 # Album and track titles are read for the brackets that name an edition
 # (src/text_match/title.rs), which only the import pipeline compares; the
 # predicate is the `desktop` cfg's (bae-util/build.rs), which gates the module.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
-regex = "1.11"
+regex = { workspace = true }
 
 [features]
 default = []

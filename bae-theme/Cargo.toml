@@ -13,8 +13,8 @@ name = "theme-gen"
 path = "src/bin/theme-gen.rs"
 
 [dependencies]
-serde = { version = "1.0.228", features = ["derive"] }
-toml = "1.1.2"
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
 
 [lints]
 workspace = true

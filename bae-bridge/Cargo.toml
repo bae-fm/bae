@@ -18,58 +18,58 @@ name = "bae_bridge"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-async-trait = "0.1.92"
-bae-desktop = { path = "../bae-desktop", optional = true }
-bae-cast = { path = "../bae-cast", optional = true }
-bae-core = { path = "../bae-core" }
+async-trait = { workspace = true }
+bae-desktop = { workspace = true, optional = true }
+bae-cast = { workspace = true, optional = true }
+bae-core = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
-bae-catalogs = { path = "../bae-catalogs" }
+bae-catalogs = { workspace = true }
 # The pressing values and barcode refusals the bridge mirrors.
-bae-types = { path = "../bae-types" }
-bae-util = { path = "../bae-util" }
-bae-mirror = { path = "../bae-mirror" }
+bae-types = { workspace = true }
+bae-util = { workspace = true }
+bae-mirror = { workspace = true }
 # Boundary records mirror the same coven instance used by bae-core.
 coven = { workspace = true }
-uniffi = { version = "0.32", features = ["tokio"] }
-tokio = { version = "1.0", features = ["full"] }
+uniffi = { workspace = true, features = ["tokio"] }
+tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 thiserror = { workspace = true }
-serde_json = "1.0"
-libsqlite3-sys = { version = "0.38.0", features = ["session", "bundled"] }
+serde_json = { workspace = true }
+libsqlite3-sys = { workspace = true, features = ["session", "bundled"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-tracing-oslog = "0.3"
+tracing-oslog = { workspace = true }
 
 [target.'cfg(target_os = "ios")'.dependencies]
-tracing-oslog = "0.3"
+tracing-oslog = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
-jni = { version = "0.21", default-features = false }
-rustls-platform-verifier = "=0.6.2"
-tracing-android = "0.2"
+jni = { workspace = true }
+rustls-platform-verifier = { workspace = true }
+tracing-android = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # ETW (TraceLogging) output for tracing — Windows' unified-logging equivalent.
 # Provider "bae-core", GUID derived from the name, so a capture session names
 # it as `logman ... -p "*bae-core"`.
-tracing-etw = "0.2"
+tracing-etw = { workspace = true }
 
 # The remaining desktop target (Linux) logs to the systemd journal, read with
 # `journalctl --user -t bae`.
 [target.'cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows")))'.dependencies]
-tracing-journald = "0.3.2"
+tracing-journald = { workspace = true }
 
 [dev-dependencies]
-bae-test-support = { path = "../bae-test-support" }
+bae-test-support = { workspace = true }
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
-bae-loc = { path = "../bae-loc" }
-bae-core = { path = "../bae-core", features = ["test-utils"] }
-bae-util = { path = "../bae-util", features = ["test-utils"] }
-tempfile = "3"
+bae-loc = { workspace = true }
+bae-core = { workspace = true, features = ["test-utils"] }
+bae-util = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
-keyring-core = "1.0.1"
+keyring-core = { workspace = true }
 
 [features]
 default = []

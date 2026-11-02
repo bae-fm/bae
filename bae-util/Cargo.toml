@@ -17,39 +17,39 @@ coven = { workspace = true }
 # The outbound client every provider shares (src/http.rs). `rustls`: the
 # providers it reaches are HTTPS.
 reqwest = { workspace = true, features = ["rustls"] }
-serde = { version = "1.0" }
-tokio = { version = "1.0", features = ["rt", "sync", "time"] }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
 # The embedded servers' graceful-shutdown token (src/server.rs).
-tokio-util = "0.7"
+tokio-util = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 # HTTP-date and epoch arithmetic for a response's asked-for wait (src/http.rs).
-chrono = "0.4"
+chrono = { workspace = true }
 # The jitter drawn into each retry wait (src/retry.rs).
-rand = "0.9"
-lru = "0.18.2"
-sha2 = "0.10"
-hex = "0.4"
+rand = { workspace = true }
+lru = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 # Image downscaling at store time (src/stored_image.rs) runs on every
 # platform — imports, change-cover and artist pictures store a ≤600 JPEG
 # everywhere, so a stored image file is uniform regardless of which device
 # imported it. Decode JPEG, PNG, GIF and WebP without default features (no
 # rayon), including mobile.
-image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 
 # The open-file limit (src/open_file_limit.rs) is a Unix resource limit.
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
+libc = { workspace = true }
 
 # Text encoding detection (src/text_encoding.rs) serves the import pipeline,
 # which a mobile build does not compile; the predicate is the `desktop` cfg's
 # (build.rs), which gates the module.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
-chardetng = "0.1"
-encoding_rs = "0.8"
+chardetng = { workspace = true }
+encoding_rs = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["macros", "net", "io-util"] }
+tokio = { workspace = true, features = ["macros", "net", "io-util"] }
 
 [features]
 default = []

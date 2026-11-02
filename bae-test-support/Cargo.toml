@@ -16,31 +16,31 @@ path = "src/lib.rs"
 # test-utils gives `Database::new_test` and the in-memory keyring the helpers
 # below build on. bae-core dev-depends back on this crate; Cargo permits that
 # cycle because it runs only through dev-dependencies.
-bae-core = { path = "../bae-core", features = ["test-utils"] }
+bae-core = { workspace = true, features = ["test-utils"] }
 # The decoded-audio shape the sample helpers read.
-bae-audio = { path = "../bae-audio" }
+bae-audio = { workspace = true }
 # The canned catalog answers and the image cache the helpers build, through
 # the clients' test constructors.
-bae-catalogs = { path = "../bae-catalogs", features = ["test-utils"] }
+bae-catalogs = { workspace = true, features = ["test-utils"] }
 # The labels the canned catalog releases state.
-bae-types = { path = "../bae-types" }
+bae-types = { workspace = true }
 # test-utils gives the test transport whose hosts `RemoteImageHost::route`
 # sends here.
-bae-util = { path = "../bae-util", features = ["test-utils"] }
+bae-util = { workspace = true, features = ["test-utils"] }
 # The local stand-in for the Cover Art Archive: cover addresses are derived, so
 # a test that wants bytes at one has to answer it.
-axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+axum = { workspace = true, features = ["http1", "tokio"] }
 coven = { workspace = true, features = ["test-utils"] }
 # For synthesizing a folder-cover image in tests that need a release with art.
-image = { version = "0.25", default-features = false, features = ["png"] }
-lofty = "0.25"
+image = { workspace = true, features = ["png"] }
+lofty = { workspace = true }
 # The Discogs release fixtures are rendered as the endpoint's own JSON so the
 # production parser is what turns them into a release.
-serde_json = "1.0"
-tempfile = "3.8"
-tokio = { version = "1.0", features = ["full"] }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-uuid = { version = "1.0", features = ["v4"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+uuid = { workspace = true, features = ["v4"] }
 
 [lints]
 workspace = true

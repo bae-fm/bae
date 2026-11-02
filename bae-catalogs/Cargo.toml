@@ -16,41 +16,41 @@ path = "src/lib.rs"
 [dependencies]
 # The shared transport, its retries and response cache, and the error text a
 # request failure prints.
-bae-util = { path = "../bae-util" }
+bae-util = { workspace = true }
 # Every catalog request is an HTTPS GET with a query string.
 reqwest = { workspace = true, features = ["query", "rustls"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 # `raw_value`: a MusicBrainz Disc ID answer lists whole release documents,
 # each kept as the bytes MusicBrainz sent for a read to start from.
-serde_json = { version = "1.0", features = ["raw_value"] }
+serde_json = { workspace = true, features = ["raw_value"] }
 # The rate limiter's waits and the image cache's disk work, which runs on the
 # blocking pool.
-tokio = { version = "1.0", features = ["macros", "rt", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 # The remote-image cache spools a download to a temporary file before an
 # atomic persist.
-tempfile = "3.8"
+tempfile = { workspace = true }
 
 # The catalog clients read releases into pressing values and compare their
 # words, and only the import pipeline asks a catalog anything; the predicate is the
 # `desktop` cfg's (bae-util/build.rs), which gates the clients.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
-bae-types = { path = "../bae-types" }
+bae-types = { workspace = true }
 
 [dev-dependencies]
 # The test transport and the retry that sleeps no real time.
-bae-util = { path = "../bae-util", features = ["test-utils"] }
-bae-types = { path = "../bae-types", features = ["test-utils"] }
-tokio = { version = "1.0", features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
+bae-util = { workspace = true, features = ["test-utils"] }
+bae-types = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
 # The local HTTP servers tests stand in for catalogs and cover archives with.
-axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json", "form"] }
+axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
 # The images the cache tests serve.
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { workspace = true, features = ["png"] }
 # The rate limiter's load model draws its request times.
-rand = "0.9"
+rand = { workspace = true }
 # The reset times the MusicBrainz rate tests state.
-chrono = "0.4"
+chrono = { workspace = true }
 
 [features]
 default = []

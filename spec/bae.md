@@ -3842,6 +3842,11 @@ each device and hands playback the channel or sink.
 - **Desktop-only code is compiled out of phones.** One condition gates the
   import pipeline, identification and the catalog clients, and the same
   condition gates their dependencies, so a phone build carries none of them.
+- **One declaration per dependency.** Every dependency, the workspace's own
+  crates included, is declared once, in the root manifest's
+  `[workspace.dependencies]`, with its version or path, its package name and
+  whether default features are on. A crate names it with `workspace = true`
+  and, at most, the features it needs and whether it is optional.
 - **Visibility.** Every crate denies unreachable `pub` items and dead code;
   test-only code is gated to tests, never allowed to rot.
 - **Files.** A source file stays under 1,000 lines, split along its domain's
