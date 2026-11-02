@@ -44,8 +44,8 @@ struct IdentifierBand: View {
                     isExpanded: $showsCatalogCandidates
                 )
             }
-            if run.readingArtwork {
-                ScanningChip()
+            if let wait = ChipWait(readingArtworkOf: run) {
+                ScanningChip(wait: wait)
             }
         }
         .padding(.vertical, ThemeSpace.related)
@@ -62,7 +62,7 @@ struct IdentifierBand: View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
         switch run.discId {
         case .reading:
-            IdentifierChip(label: label) { ChipWait(text: Text("Reading…")) }
+            IdentifierChip(label: label) { ChipWait(waitingOn: run.discId) }
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
@@ -219,7 +219,7 @@ struct IdentifierBand: View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.isrc)
         switch run.isrc {
         case .reading:
-            IdentifierChip(label: label) { ChipWait(text: Text("Reading…")) }
+            IdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No ISRC in the files' tags")
@@ -286,13 +286,7 @@ extension IdentifierBand {
                 isWaiting: true,
                 onCommit: onEditTitleSearch
             ) {
-                ChipWait(
-                    text: Text(
-                        "Waiting…",
-                        comment:
-                            "Find online ledger: in the title search chip, while the run asks about the folder's identifiers before it searches by these words."
-                    )
-                )
+                ChipWait(waitingOn: run.search)
             }
         case .searched(let album, let artist, let cells):
             TitleSearchChip(

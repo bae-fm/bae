@@ -124,12 +124,64 @@ struct IdentifierWarning: View {
 }
 
 /// The words a chip carries while what feeds it is still being read or
-/// asked: what it waits on.
+/// asked: what it waits on. Each initializer takes the state a chip shows and
+/// fails for a state that is not a wait.
 struct ChipWait: View {
-    let text: Text
+    let words: String
+
+    /// A Disc ID still being read off the folder's rip logs and CUE sheets.
+    init?(waitingOn step: BridgeDiscIdStep) {
+        guard case .reading = step else { return nil }
+        words = Self.reading
+    }
+
+    /// ISRCs still being read off the files' tags.
+    init?(waitingOn step: BridgeIsrcStep) {
+        guard case .reading = step else { return nil }
+        words = Self.reading
+    }
+
+    /// A title search waiting on the identifiers' lookups.
+    init?(waitingOn step: BridgeSearchStep) {
+        guard case .waiting = step else { return nil }
+        words = String(
+            localized: "Waiting…",
+            comment:
+                "Find online ledger: in the title search chip, while the run asks about the folder's identifiers before it searches by these words."
+        )
+    }
+
+    /// A catalog still being asked about a value.
+    init?(waitingOn lookup: BridgeLookupState) {
+        guard case .lookingUp = lookup else { return nil }
+        words = String(
+            localized: "Searching…",
+            comment:
+                "Find online ledger: beside a catalog's name in an identifier's chip, while bae asks that catalog about the identifier."
+        )
+    }
+
+    /// The artwork still being read, which can add barcodes and catalog
+    /// numbers to the band.
+    init?(readingArtworkOf run: BridgeIdentifyRun) {
+        guard run.readingArtwork else { return nil }
+        words = String(
+            localized: "Reading artwork…",
+            comment:
+                "Find online ledger: the chip closing the identifier band while bae still reads text from the folder's artwork, which can add barcodes and catalog numbers."
+        )
+    }
+
+    private static var reading: String {
+        String(
+            localized: "Reading…",
+            comment:
+                "Find online ledger: in the Disc ID or ISRC chip while bae reads the folder's rip logs, CUE sheets or tags for it."
+        )
+    }
 
     var body: some View {
-        text
+        Text(verbatim: words)
             .themeText(.chip)
             .foregroundStyle(.tertiary)
             .fixedSize()
@@ -138,20 +190,16 @@ struct ChipWait: View {
 
 /// A chip closing the band while the artwork is still being read.
 struct ScanningChip: View {
+    let wait: ChipWait
+
     var body: some View {
-        ChipWait(
-            text: Text(
-                "Reading artwork…",
-                comment:
-                    "Find online ledger: the chip closing the identifier band while bae still reads text from the folder's artwork, which can add barcodes and catalog numbers."
+        wait
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
+            .background(
+                Theme.hover,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
-        )
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-        .background(
-            Theme.hover,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-        )
     }
 }
 
@@ -169,13 +217,7 @@ struct LookupCellView: View {
         case .notAsked:
             IdentifierDash()
         case .lookingUp:
-            ChipWait(
-                text: Text(
-                    "Searching…",
-                    comment:
-                        "Find online ledger: beside a catalog's name in an identifier's chip, while bae asks that catalog about the identifier."
-                )
-            )
+            ChipWait(waitingOn: lookup)
         case .found(let count, let groups):
             LookupCountView(count: Int(count), groups: groups)
         case .noMatch:

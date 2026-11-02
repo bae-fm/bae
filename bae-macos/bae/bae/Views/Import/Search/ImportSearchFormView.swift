@@ -92,12 +92,6 @@ struct ImportSearchFormView: View {
         signals?.text.catalogValues ?? []
     }
 
-    /// Whether core is still reading the artwork, which can add
-    /// suggestions; the form says so under a field that offers them.
-    private var isScanning: Bool {
-        signals?.text.isScanning ?? false
-    }
-
     private var signalFailure: BridgeInternalFailure? {
         signals?.text.failure
     }
@@ -130,14 +124,10 @@ struct ImportSearchFormView: View {
                     .controlSize(.small)
                     .disabled(isSearchDisabled)
             }
-            if isScanning, activeTab != .barcode {
-                Text(
-                    "Reading the artwork for suggestions…",
-                    comment:
-                        "Find online search form, under the artist, album or catalog number field: bae still reads text from the folder's artwork, which can add suggestions."
-                )
-                .themeText(.body)
-                .foregroundStyle(.tertiary)
+            if let note = Self.artworkReadNote(signals?.text, tab: activeTab) {
+                Text(verbatim: note)
+                    .themeText(.body)
+                    .foregroundStyle(.tertiary)
             }
             if let signalFailure {
                 Label(
@@ -166,6 +156,20 @@ struct ImportSearchFormView: View {
         // Clicking another candidate does not end the field edit first, so
         // what was typed goes with the candidate as the pane leaves it.
         .onDisappear(perform: commit)
+    }
+
+    /// The line under the fields while core still reads the artwork, which
+    /// can add suggestions: `nil` once it is read, and on the barcode tab,
+    /// whose field takes none.
+    static func artworkReadNote(_ text: BridgeTextSignal?, tab: SearchTab)
+        -> String?
+    {
+        guard text?.isScanning == true, tab != .barcode else { return nil }
+        return String(
+            localized: "Reading the artwork for suggestions…",
+            comment:
+                "Find online search form, under the artist, album or catalog number field: bae still reads text from the folder's artwork, which can add suggestions."
+        )
     }
 
     @ViewBuilder

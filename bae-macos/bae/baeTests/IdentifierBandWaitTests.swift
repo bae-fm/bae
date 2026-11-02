@@ -10,34 +10,69 @@ import Testing
 @MainActor
 @Suite("Identifier band waits")
 struct IdentifierBandWaitTests {
+    /// A run waiting on everything the band names: a Disc ID and ISRCs still
+    /// being read, a barcode being asked about, the title search waiting, and
+    /// the artwork still being read.
+    private static let waitingRun = BridgeIdentifyRun(
+        providers: [.musicBrainz],
+        discId: .reading,
+        barcode: .rows(
+            rows: [
+                BridgeSignalValueRow(
+                    value: "0123456789012",
+                    excluded: false,
+                    cells: [
+                        BridgeProviderCell(
+                            source: .musicBrainz,
+                            lookup: .lookingUp
+                        )
+                    ]
+                )
+            ]
+        ),
+        catalog: .numbers(rows: [], candidates: []),
+        isrc: .reading,
+        search: .waiting(album: "Album Title", artist: "Artist Name"),
+        readingArtwork: true
+    )
+
     @Test("every wait in the band is named")
-    func waitsAreNamed() async throws {
-        let run = BridgeIdentifyRun(
-            providers: [.musicBrainz],
-            discId: .reading,
-            barcode: .rows(
-                rows: [
-                    BridgeSignalValueRow(
-                        value: "0123456789012",
-                        excluded: false,
-                        cells: [
-                            BridgeProviderCell(
-                                source: .musicBrainz,
-                                lookup: .lookingUp
-                            )
-                        ]
-                    )
-                ]
-            ),
-            catalog: .numbers(rows: [], candidates: []),
-            isrc: .absent,
-            search: .waiting(album: "Album Title", artist: "Artist Name"),
-            readingArtwork: true
+    func waitsAreNamed() {
+        let run = Self.waitingRun
+        #expect(ChipWait(waitingOn: run.discId)?.words == "Reading…")
+        #expect(ChipWait(waitingOn: run.isrc)?.words == "Reading…")
+        #expect(ChipWait(waitingOn: run.search)?.words == "Waiting…")
+        #expect(
+            ChipWait(waitingOn: BridgeLookupState.lookingUp)?.words
+                == "Searching…"
         )
+        #expect(
+            ChipWait(readingArtworkOf: run)?.words == "Reading artwork…"
+        )
+    }
+
+    @Test("a chip past its wait names none")
+    func settledStatesWaitOnNothing() {
+        #expect(ChipWait(waitingOn: BridgeDiscIdStep.absent) == nil)
+        #expect(
+            ChipWait(
+                waitingOn: BridgeIsrcStep.read(
+                    isrcs: ["XX0000000001"],
+                    lookup: .noMatch
+                )
+            ) == nil
+        )
+        #expect(ChipWait(waitingOn: BridgeSearchStep.notNeeded) == nil)
+        #expect(ChipWait(waitingOn: BridgeLookupState.queued) == nil)
+        #expect(ChipWait(readingArtworkOf: PreviewData.identifyRunFound) == nil)
+    }
+
+    @Test("the band waits without a spinner")
+    func bandDrawsNoSpinner() async throws {
         let size = NSSize(width: 1_400, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             IdentifierBand(
-                run: run,
+                run: Self.waitingRun,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
@@ -51,25 +86,36 @@ struct IdentifierBandWaitTests {
             let spinners = SnapshotTestSupport.descendants(of: host)
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty, "drew \(spinners)")
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            // The pixels the words were read from, kept with the test's
-            // results: a runner can read them differently from this Mac.
-            Attachment.record(png, named: "Identifier band.png")
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            for wait in ["Searching", "Waiting", "Reading artwork"] {
-                #expect(lines.carrying(wait), "drew \(lines) without \(wait)")
-            }
-            // The Disc ID chip's read, beside the artwork's.
-            let reads =
-                lines.joined(separator: " ")
-                .components(separatedBy: "Reading").count - 1
-            #expect(reads == 2, "drew \(lines)")
         }
     }
 
     @Test("the search form says the artwork is still being read")
-    func formNamesTheArtworkRead() async throws {
+    func formNamesTheArtworkRead() {
+        let scanning = BridgeTextSignal.scanning(
+            catalogs: [],
+            freeText: ["Album Title"]
+        )
+        for tab in [SearchTab.general, .catalogNumber] {
+            #expect(
+                ImportSearchFormView.artworkReadNote(scanning, tab: tab)
+                    == "Reading the artwork for suggestions…"
+            )
+        }
+        // The barcode field takes no suggestions.
+        #expect(
+            ImportSearchFormView.artworkReadNote(scanning, tab: .barcode)
+                == nil
+        )
+        #expect(
+            ImportSearchFormView.artworkReadNote(
+                .settled(catalogs: [], freeText: ["Album Title"]),
+                tab: .general
+            ) == nil
+        )
+    }
+
+    @Test("the search form waits without a spinner")
+    func formDrawsNoSpinner() async throws {
         let size = NSSize(width: 900, height: 90)
         try await SnapshotTestSupport.withHostedWindow(
             ImportSearchFormView(
@@ -88,14 +134,6 @@ struct IdentifierBandWaitTests {
             let spinners = SnapshotTestSupport.descendants(of: host)
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty, "drew \(spinners)")
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            Attachment.record(png, named: "Search form.png")
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(
-                lines.carrying("Reading the artwork for suggestions"),
-                "drew \(lines)"
-            )
         }
     }
 }
