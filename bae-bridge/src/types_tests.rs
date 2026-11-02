@@ -265,9 +265,9 @@ mod conversion_roundtrip {
     #[test]
     fn artist_search_result_keeps_identity_fields() {
         let core = bae_core::album_detail::ArtistSearchResult {
-            credit_names: vec![bae_core::credits::ArtistCreditName {
+            credit_names: vec![bae_core::db::credits::ArtistCreditName {
                 artist_id: "artist-1".to_string(),
-                credit: bae_core::credits::CreditName {
+                credit: bae_core::db::credits::CreditName {
                     key: "printed name".to_string(),
                     name: "Printed Name".to_string(),
                 },

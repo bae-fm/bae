@@ -26,12 +26,12 @@ impl LibraryManager {
         let album = self.database.get_album_for_release(release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
-        let album_artist = crate::credits::library_line(&album_artists);
+        let album_artist = crate::db::credits::library_line(&album_artists);
         let track_artists = self.database.get_artists_for_track(&track.id).await?;
         let artist = if track_artists.is_empty() {
             album_artist.clone()
         } else {
-            crate::credits::library_line(&track_artists)
+            crate::db::credits::library_line(&track_artists)
         };
 
         let total_tracks = self.database.count_tracks_for_release(&release.id).await?;

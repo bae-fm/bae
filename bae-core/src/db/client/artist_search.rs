@@ -18,7 +18,7 @@ pub struct ArtistSearchProjection {
 pub struct DbArtistSearchRow {
     pub artist: DbArtist,
     pub image_version: Option<String>,
-    pub credit_names: Vec<crate::credits::ArtistCreditName>,
+    pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
 }
 
 impl Database {

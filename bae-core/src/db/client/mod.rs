@@ -1,4 +1,4 @@
-use crate::credits::LibraryCredit;
+use crate::db::credits::LibraryCredit;
 use crate::db::models::*;
 // The catalogs a record names belong to the import path, which the mobile
 // builds do not carry; the modules that read one are gated with it.

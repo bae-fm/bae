@@ -577,7 +577,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
             ..bae_core::db::DbAlbumArtist::new(&album.id, &artist_a, 0, now)
         },
         bae_core::db::DbAlbumArtist {
-            credit: Some(bae_core::credits::CreditName {
+            credit: Some(bae_core::db::credits::CreditName {
                 key: "b alias".to_string(),
                 name: "B Alias".to_string(),
             }),

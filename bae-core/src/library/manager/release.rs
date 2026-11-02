@@ -367,7 +367,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         raw: crate::db::DbReleaseDetail,
-        album_artists: Vec<crate::credits::LibraryCredit>,
+        album_artists: Vec<crate::db::credits::LibraryCredit>,
         release_index: usize,
         is_compilation: bool,
         has_cloud_home: bool,

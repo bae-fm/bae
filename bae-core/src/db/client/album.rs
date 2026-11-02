@@ -719,7 +719,7 @@ impl AlbumAppearanceRow {
                 .filter(|credit| credit.artist.id != group)
                 .cloned()
                 .collect::<Vec<_>>();
-            (!others.is_empty()).then(|| crate::credits::library_line(&others))
+            (!others.is_empty()).then(|| crate::db::credits::library_line(&others))
         });
         Ok(DbAlbumAppearance { album: self.row.process_with(&credits)?, credited_with })
     }

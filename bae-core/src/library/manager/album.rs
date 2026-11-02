@@ -215,7 +215,7 @@ impl LibraryManager {
         raw: crate::db::DbAlbumDetail,
         has_cloud_home: bool,
     ) -> AlbumDetail {
-        let artist_names = crate::credits::library_line(&raw.artists);
+        let artist_names = crate::db::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
         let cover = crate::db::cover_ref(&primary_release_id, raw.primary_cover_version);

@@ -193,7 +193,7 @@ pub(crate) async fn track_child(
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
         album: Some(album_title.to_string()),
-        artist: Some(bae_core::credits::library_line(&credits)).filter(|line| !line.is_empty()),
+        artist: Some(bae_core::db::credits::library_line(&credits)).filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
         year: release.pressing.year,
         cover_art,
@@ -299,7 +299,7 @@ async fn shown_track_credits(
     services: &AppServices,
     track_id: &str,
     album_id: &str,
-) -> Result<Vec<bae_core::credits::LibraryCredit>, SubError> {
+) -> Result<Vec<bae_core::db::credits::LibraryCredit>, SubError> {
     let own = services.get_artists_for_track(track_id).await.map_err(lib_err)?;
     if !own.is_empty() {
         return Ok(own);

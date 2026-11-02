@@ -469,7 +469,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationCreditName = bae_core::credits::CreditName,
+    AutomationCreditName = bae_core::db::credits::CreditName,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { key, name },

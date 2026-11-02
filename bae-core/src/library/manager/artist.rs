@@ -12,14 +12,14 @@ impl LibraryManager {
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
-    ) -> Result<Vec<crate::credits::LibraryCredit>, LibraryError> {
+    ) -> Result<Vec<crate::db::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_album(album_id).await?)
     }
 
     pub async fn get_artists_for_track(
         &self,
         track_id: &str,
-    ) -> Result<Vec<crate::credits::LibraryCredit>, LibraryError> {
+    ) -> Result<Vec<crate::db::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_track(track_id).await?)
     }
 

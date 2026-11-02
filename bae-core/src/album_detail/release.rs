@@ -404,7 +404,7 @@ impl ReleaseDetail {
     /// depend on track-format joins and therefore add no orphan cases here.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
-        album_artists: &[crate::credits::LibraryCredit],
+        album_artists: &[crate::db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> (ReleaseDetail, u32) {
@@ -417,9 +417,9 @@ impl ReleaseDetail {
             .into_iter()
             .map(|entry| {
                 let artist_names = if entry.artists.is_empty() {
-                    crate::credits::library_line(album_artists)
+                    crate::db::credits::library_line(album_artists)
                 } else {
-                    crate::credits::library_line(&entry.artists)
+                    crate::db::credits::library_line(&entry.artists)
                 };
                 let position = raw.mediums.position(&entry.track);
                 let position_text = position.text();

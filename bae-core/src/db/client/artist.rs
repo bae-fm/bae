@@ -392,7 +392,7 @@ fn find_artist_detail_on(
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
-    credit_names: Vec<crate::credits::ArtistCreditName>,
+    credit_names: Vec<crate::db::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
 }
 

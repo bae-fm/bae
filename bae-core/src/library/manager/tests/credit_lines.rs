@@ -40,7 +40,7 @@ async fn credited_library() -> CreditedLibrary {
         manager
             .database
             .insert_album_artist(&crate::db::DbAlbumArtist {
-                credit: credit.map(crate::credits::CreditName::of),
+                credit: credit.map(crate::db::credits::CreditName::of),
                 join_phrase: join.map(str::to_string),
                 ..crate::db::DbAlbumArtist::new(&album.id, artist, position, now)
             })

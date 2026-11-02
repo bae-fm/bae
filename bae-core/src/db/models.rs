@@ -85,7 +85,7 @@ pub struct DbAlbumArtist {
     pub artist_id: String,
     /// The credit's place in the list, from 0.
     pub position: u32,
-    pub credit: Option<crate::credits::CreditName>,
+    pub credit: Option<crate::db::credits::CreditName>,
     /// Printed after the credit when another follows; `None` prints ", ".
     pub join_phrase: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -98,7 +98,7 @@ pub struct DbTrackArtist {
     pub artist_id: String,
     /// The credit's place in the list, from 0.
     pub position: u32,
-    pub credit: Option<crate::credits::CreditName>,
+    pub credit: Option<crate::db::credits::CreditName>,
     pub join_phrase: Option<String>,
     pub created_at: DateTime<Utc>,
 }

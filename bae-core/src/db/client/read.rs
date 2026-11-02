@@ -61,7 +61,9 @@ pub(super) fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit
     Ok(LibraryCredit {
         artist: row_to_artist_with_prefix(row, "artist_")?,
         credit: match row.get::<_, Option<String>>("credit_key")? {
-            Some(key) => Some(crate::credits::CreditName { key, name: row.get("credit_name")? }),
+            Some(key) => {
+                Some(crate::db::credits::CreditName { key, name: row.get("credit_name")? })
+            }
             None => None,
         },
         join: row.get("credit_join")?,
@@ -108,7 +110,7 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
                     created_at,
                 },
                 credit: match (credit.credit_key, credit.credit_name) {
-                    (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
+                    (Some(key), Some(name)) => Some(crate::db::credits::CreditName { key, name }),
                     _ => None,
                 },
                 join: credit.join,
@@ -121,7 +123,7 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
 pub(super) fn credit_line_column(row: &Row, column: &str) -> rusqlite::Result<String> {
     let json: String = row.get(column)?;
     credits_from_json(&json)
-        .map(|credits| crate::credits::library_line(&credits))
+        .map(|credits| crate::db::credits::library_line(&credits))
         .map_err(|error| column_conversion_error(row, column, error.to_string()))
 }
 

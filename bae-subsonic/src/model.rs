@@ -47,7 +47,7 @@ impl CreditedArtist {
     }
 
     /// Every credit of `credits`, in order.
-    pub(crate) fn of(credits: &[bae_core::credits::LibraryCredit]) -> Vec<Self> {
+    pub(crate) fn of(credits: &[bae_core::db::credits::LibraryCredit]) -> Vec<Self> {
         credits
             .iter()
             .map(|credit| Self {

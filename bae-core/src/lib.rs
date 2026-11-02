@@ -4,7 +4,6 @@ pub mod catalog_model;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;
-pub mod credits;
 #[cfg(desktop)]
 pub mod cue_flac;
 pub mod db;

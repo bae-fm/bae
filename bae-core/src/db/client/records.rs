@@ -200,7 +200,7 @@ pub(super) fn set_records_on(
                     Ok(DbAlbumArtist {
                         credit: match row.get::<_, Option<String>>("name_key")? {
                             Some(key) => {
-                                Some(crate::credits::CreditName { key, name: row.get("name")? })
+                                Some(crate::db::credits::CreditName { key, name: row.get("name")? })
                             }
                             None => None,
                         },

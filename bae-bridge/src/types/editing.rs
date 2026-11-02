@@ -115,7 +115,7 @@ pub struct BridgeCredited {
 }
 
 /// One of an artist's other printed names. Mirror of
-/// `bae_core::credits::CreditName`: its folded key and the name as printed.
+/// `bae_core::db::credits::CreditName`: its folded key and the name as printed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeCreditName {
     pub key: String,
@@ -124,7 +124,7 @@ pub struct BridgeCreditName {
 
 /// One of an artist's other printed names with the artist whose row holds
 /// it (the artist, or one merged into it). Mirror of
-/// `bae_core::credits::ArtistCreditName`.
+/// `bae_core::db::credits::ArtistCreditName`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeArtistCreditName {
     pub artist_id: String,
@@ -144,7 +144,7 @@ pub struct BridgeExistingArtist {
 }
 
 mirror_struct! {
-    BridgeCreditName = bae_core::credits::CreditName,
+    BridgeCreditName = bae_core::db::credits::CreditName,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -152,7 +152,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeArtistCreditName = bae_core::credits::ArtistCreditName,
+    BridgeArtistCreditName = bae_core::db::credits::ArtistCreditName,
     from_core: pub(crate) fn,
     fields: { artist_id, credit: (BridgeCreditName) },
 }

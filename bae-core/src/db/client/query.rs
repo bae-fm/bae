@@ -907,14 +907,14 @@ impl AlbumSummaryRow {
     }
 
     /// The album's credits, in list order.
-    pub(super) fn credits(&self) -> Result<Vec<crate::credits::LibraryCredit>, DbError> {
+    pub(super) fn credits(&self) -> Result<Vec<crate::db::credits::LibraryCredit>, DbError> {
         super::read::credits_from_json(&self.album_credits)
     }
 
     /// The summary, its artist line printed from `credits`, the album's own.
     pub(super) fn process_with(
         self,
-        credits: &[crate::credits::LibraryCredit],
+        credits: &[crate::db::credits::LibraryCredit],
     ) -> Result<DbAlbumSummary, DbError> {
         let release_ids = serde_json::from_str(&self.release_ids_json)
             .map_err(|error| DbError::Message(error.to_string()))?;
@@ -923,7 +923,7 @@ impl AlbumSummaryRow {
             title: self.title,
             year: self.year,
             is_compilation: self.is_compilation,
-            artist_names: crate::credits::library_line(credits),
+            artist_names: crate::db::credits::library_line(credits),
             release_ids,
             primary_release_id: self.primary_release_id,
             cover_version: self.primary_cover_version,

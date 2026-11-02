@@ -8,7 +8,7 @@
 //! same write, so no link names a key its artist no longer holds.
 
 use super::*;
-use crate::credits::{ArtistCreditName, CreditName};
+use crate::db::credits::{ArtistCreditName, CreditName};
 
 /// The credit name a link to `artist_id` stores for `credit`: none where it
 /// folds to the artist's own name, else its key, the name added to the

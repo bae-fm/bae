@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 /// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
-    Picked { artist: ExistingArtist, credit_name: Option<crate::credits::CreditName> },
+    Picked { artist: ExistingArtist, credit_name: Option<crate::db::credits::CreditName> },
     Credit { credit: ArtistCredit },
 }
 
@@ -53,7 +53,7 @@ impl Credited {
 
     /// A library credit as the editor holds it: its artist picked, with the
     /// credit name and join it names.
-    pub fn of_library(credit: crate::credits::LibraryCredit) -> Self {
+    pub fn of_library(credit: crate::db::credits::LibraryCredit) -> Self {
         Self {
             artist: ArtistAssignment::Picked {
                 artist: credit.artist.into(),
@@ -182,10 +182,10 @@ impl ArtistAssignment {
     /// write resolves its artist: a picked artist's chosen one; for a credit,
     /// the name it prints, which the write keeps only where it is not the
     /// resolved artist's own (see `db::client::write::settle_credit_name`).
-    pub(crate) fn link_credit(&self) -> Option<crate::credits::CreditName> {
+    pub(crate) fn link_credit(&self) -> Option<crate::db::credits::CreditName> {
         match self {
             Self::Picked { credit_name, .. } => credit_name.clone(),
-            Self::Credit { credit } => Some(crate::credits::CreditName::of(credit.printed())),
+            Self::Credit { credit } => Some(crate::db::credits::CreditName::of(credit.printed())),
         }
     }
 

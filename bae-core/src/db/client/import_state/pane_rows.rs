@@ -760,7 +760,7 @@ impl StoredAssignment {
                     discogs_artist_id: self.discogs_artist_id,
                 },
                 credit_name: match (self.credit_key, self.credit_name) {
-                    (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
+                    (Some(key), Some(name)) => Some(crate::db::credits::CreditName { key, name }),
                     _ => None,
                 },
             },

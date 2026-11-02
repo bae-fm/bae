@@ -1,4 +1,5 @@
 mod client;
+pub mod credits;
 mod error;
 pub use error::DbError;
 pub mod identity;
