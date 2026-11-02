@@ -47,6 +47,27 @@
             .background(Theme.background)
         }
 
+        /// The gallery with its lookup in `remote`, saving the cover picked
+        /// when `isSaving`.
+        static func lookup(
+            _ remote: RemoteCoverItems,
+            isSaving: Bool = false
+        ) -> some View {
+            CoverPickerFrame {
+                CoverGalleryView(
+                    remoteItems: remote,
+                    releaseItems: releaseItems,
+                    selectedCover: releaseItems[0].selection,
+                    isSaving: isSaving,
+                    onRefresh: {},
+                    onSelect: { _ in },
+                    onDone: {}
+                )
+            }
+            .environment(PreviewData.artImageStore())
+            .background(Theme.background)
+        }
+
         static func lightbox() -> some View {
             CoverGalleryView(
                 remoteItems: .linked(remoteItems),
@@ -129,5 +150,15 @@
 
     #Preview("Cover gallery — unlinked release") {
         CoverPickerPreviewScene.unlinked().frame(width: 1_148, height: 868)
+    }
+
+    #Preview("Cover gallery — fetching covers") {
+        CoverPickerPreviewScene.lookup(.loading([]))
+            .frame(width: 1_148, height: 868)
+    }
+
+    #Preview("Cover gallery — saving") {
+        CoverPickerPreviewScene.lookup(.linked([]), isSaving: true)
+            .frame(width: 1_148, height: 868)
     }
 #endif
