@@ -3,7 +3,9 @@
 //! queued, active or failed, in order, and whether the queue is paused. The
 //! task and its progress live here, since neither outlives the process.
 
-use crate::db::{Database, QueuedPayload};
+pub(crate) mod tables;
+
+use crate::db::Database;
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::library::release_queue::ReleaseQueueSnapshot;
 use crate::library::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
@@ -13,6 +15,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
+pub(crate) use tables::QueuedPayload;
 use tokio::sync::{watch, Notify};
 use tracing::{debug, error};
 
@@ -81,7 +84,11 @@ where
     }
 
     pub(crate) async fn contains(&self, release_id: &str) -> Result<bool, LibraryError> {
-        Ok(self.database.release_queued::<Extra>(release_id).await?)
+        let release_id = release_id.to_string();
+        Ok(self
+            .database
+            .read(move |sql| tables::release_queued_on::<Extra>(&sql, &release_id))
+            .await?)
     }
 
     /// Queue every entry in order, passing over a release already queued,
@@ -91,7 +98,8 @@ where
         &self,
         entries: Vec<ReleaseQueueEntry<Extra>>,
     ) -> Result<bool, LibraryError> {
-        let added = self.database.enqueue_releases(entries).await?;
+        let added =
+            self.database.call(move |sql| tables::enqueue_releases_on(sql, &entries)).await?;
         if added {
             self.shared.wake.notify_one();
         }
@@ -107,7 +115,10 @@ where
     /// the next release; the in-flight one runs to completion. Resuming
     /// wakes the worker.
     pub(crate) async fn set_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        let was_paused = self.database.set_release_queue_paused::<Extra>(paused).await?;
+        let was_paused = self
+            .database
+            .call(move |sql| tables::set_release_queue_paused_on::<Extra>(sql, paused))
+            .await?;
         if was_paused && !paused {
             self.shared.wake.notify_one();
         }
@@ -116,14 +127,17 @@ where
 
     /// Take out a queued or failed entry; abort the active one's task.
     pub(crate) async fn cancel(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.database.cancel_queued_release::<Extra>(release_id).await?;
+        let cancelled = release_id.to_string();
+        self.database
+            .call(move |sql| tables::cancel_queued_release_on::<Extra>(sql, &cancelled))
+            .await?;
         self.stop(|running| running == release_id);
         Ok(())
     }
 
     /// Queue every failed entry again and wake the worker.
     pub(crate) async fn retry_failed(&self) -> Result<(), LibraryError> {
-        if self.database.retry_failed_releases::<Extra>().await? {
+        if self.database.call(|sql| tables::retry_failed_releases_on::<Extra>(sql)).await? {
             self.shared.wake.notify_one();
         }
         Ok(())
@@ -185,14 +199,16 @@ where
     /// Every entry of the queue now.
     #[cfg(any(desktop, test, feature = "test-utils"))]
     pub(crate) async fn snapshot(&self) -> Result<ReleaseQueueSnapshot<Extra, ()>, LibraryError> {
-        Ok(self.database.release_queue::<Extra>().await?)
+        Ok(self.database.read(|sql| tables::release_queue_on::<Extra>(&sql)).await?)
     }
 
     /// Follow every entry of the queue, for a test that waits on the whole
     /// queue.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn subscribe(&self) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>> {
-        self.database.subscribe_release_queue::<Extra>()
+        self.database.subscribe(|sql| {
+            tables::release_queue_on::<Extra>(&sql).map_err(coven::CovenError::from)
+        })
     }
 
     /// Follow how many entries the queue holds and the windows `initial`
@@ -204,17 +220,25 @@ where
         crate::db::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<Extra>,
     > {
-        self.database.subscribe_release_queue_windows::<Extra>(initial)
+        let places = crate::db::client::list_windows::KnownPlaces::new();
+        self.database
+            .subscribe_reconfigurable(initial, move |windows, sql| {
+                tables::release_queue_windows_on::<Extra>(&sql, windows, &places)
+                    .map_err(coven::CovenError::from)
+            })
+            .process(Ok)
     }
 
     /// How many entries are in each phase now, and whether it is paused.
     pub(crate) async fn counts(&self) -> Result<ReleaseQueueCounts, LibraryError> {
-        Ok(self.database.release_queue_counts::<Extra>().await?)
+        Ok(self.database.read(|sql| tables::release_queue_counts_on::<Extra>(&sql)).await?)
     }
 
     /// Follow how many entries are in each phase, and whether it is paused.
     pub(crate) fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts> {
-        self.database.subscribe_release_queue_counts::<Extra>()
+        self.database.subscribe(|sql| {
+            tables::release_queue_counts_on::<Extra>(&sql).map_err(coven::CovenError::from)
+        })
     }
 
     fn register(&self, release_id: &str, abort: tokio::task::AbortHandle, progress: Progress) {
@@ -246,7 +270,11 @@ where
         progress: Progress,
     ) -> Result<bool, LibraryError> {
         self.register(release_id, abort, progress);
-        let started = self.database.activate_queued_release::<Extra>(release_id).await?;
+        let activated = release_id.to_string();
+        let started = self
+            .database
+            .call(move |sql| tables::activate_queued_release_on::<Extra>(sql, &activated))
+            .await?;
         if started {
             self.publish_started(release_id);
         } else {
@@ -311,18 +339,19 @@ where
         };
         let database = &self.database;
         loop {
-            let entry = match database.next_queued_release::<Extra>().await {
-                Ok(Some(entry)) => entry,
-                Ok(None) => {
-                    self.shared.wake.notified().await;
-                    continue;
-                }
-                Err(error) => {
-                    store_failed(label, &error.into());
-                    self.shared.wake.notified().await;
-                    continue;
-                }
-            };
+            let entry =
+                match database.read(|sql| tables::next_queued_release_on::<Extra>(&sql)).await {
+                    Ok(Some(entry)) => entry,
+                    Ok(None) => {
+                        self.shared.wake.notified().await;
+                        continue;
+                    }
+                    Err(error) => {
+                        store_failed(label, &error.into());
+                        self.shared.wake.notified().await;
+                        continue;
+                    }
+                };
             let release_id = entry.release_id.clone();
 
             let started = caught(label, async { start(entry).await })
@@ -332,8 +361,11 @@ where
                 Ok(started) => started,
                 Err(error) => {
                     error!("{label} failed for release {release_id}: {error}");
+                    let (failed_id, message) = (release_id.clone(), error.to_string());
                     match database
-                        .fail_queued_release::<Extra>(&release_id, error.to_string())
+                        .call(move |sql| {
+                            tables::fail_queued_release_on::<Extra>(sql, &failed_id, &message)
+                        })
                         .await
                     {
                         Ok(true) => done(&release_id, Err(&error)),
@@ -349,7 +381,11 @@ where
             let RunningOp { abort, outcome } = running;
 
             self.register(&release_id, abort.clone(), progress);
-            match database.activate_queued_release::<Extra>(&release_id).await {
+            let activated = release_id.clone();
+            match database
+                .call(move |sql| tables::activate_queued_release_on::<Extra>(sql, &activated))
+                .await
+            {
                 Ok(true) => self.publish_started(&release_id),
                 Ok(false) => {
                     self.unregister(&release_id);
@@ -367,10 +403,20 @@ where
             }
 
             let result = caught(label, outcome).await.unwrap_or_else(|panic| Err(failed(panic)));
+            let left_id = release_id.clone();
             let left = match &result {
-                Ok(()) => database.finish_queued_release::<Extra>(&release_id).await,
+                Ok(()) => {
+                    database
+                        .call(move |sql| tables::finish_queued_release_on::<Extra>(sql, &left_id))
+                        .await
+                }
                 Err(error) => {
-                    database.fail_queued_release::<Extra>(&release_id, error.to_string()).await
+                    let message = error.to_string();
+                    database
+                        .call(move |sql| {
+                            tables::fail_queued_release_on::<Extra>(sql, &left_id, &message)
+                        })
+                        .await
                 }
             };
             self.unregister(&release_id);
@@ -390,6 +436,26 @@ where
                 }
             }
         }
+    }
+}
+
+impl<Progress> QueuedReleases<(), Progress>
+where
+    Progress: Clone + PartialEq + Send + Sync + 'static,
+{
+    /// Queue to pin, in the order given, each of `release_ids` that is
+    /// uploaded and not wholly pinned on this device, in one write (see
+    /// [`tables::enqueue_pinnable_releases_on`]); `true` when any went in or
+    /// was queued again.
+    pub(crate) async fn enqueue_pinnable(
+        &self,
+        release_ids: Vec<String>,
+        created_at: i64,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .call(move |sql| tables::enqueue_pinnable_releases_on(sql, &release_ids, created_at))
+            .await?)
     }
 }
 

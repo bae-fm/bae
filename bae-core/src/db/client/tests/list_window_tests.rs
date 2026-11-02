@@ -4,6 +4,7 @@
 
 use super::super::list_windows::OrderKey;
 use super::super::*;
+use crate::db::client::list_windows::{Keyed, ListOrder, Seek};
 use crate::db::{LibraryPageWindow, LibraryPageWindows};
 use crate::library::views::album::album_browse_order;
 use crate::library::views::*;
@@ -696,16 +697,21 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
 #[tokio::test]
 async fn the_download_queue_seeks_its_windows_through_its_key() {
     let (db, _tmp) = library().await;
-    let order = super::super::release_queues::queue_order();
-    let key =
-        key_at(&db, &order, super::super::release_queues::queue_window_rows_on::<()>, 150).await;
+    let order = crate::library::queued_releases::tables::queue_order();
+    let key = key_at(
+        &db,
+        &order,
+        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
+        150,
+    )
+    .await;
     assert_seeks_search(
         &db,
         "downloads",
         &order,
         key,
         |seek| {
-            super::super::release_queues::queue_rows_sql::<()>(
+            crate::library::queued_releases::tables::queue_rows_sql::<()>(
                 Some(&order),
                 &format!(
                     "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",

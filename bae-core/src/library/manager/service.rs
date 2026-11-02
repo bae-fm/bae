@@ -58,7 +58,7 @@ impl LibraryManager {
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.
-        database.clear_transfers().await?;
+        database.call(crate::library::queued_releases::tables::clear_transfers_on).await?;
         // Nor does discovery: the cast picker's list starts empty.
         database.clear_cast_devices().await?;
         // Nor does an attempt to start sync: a failed start stands only in

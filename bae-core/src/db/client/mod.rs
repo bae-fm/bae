@@ -96,8 +96,6 @@ mod release_deletion;
 mod release_file;
 mod release_locality;
 pub use release_deletion::ReleaseDeletion;
-pub(crate) mod release_queues;
-pub(crate) use release_queues::QueuedPayload;
 mod cast_devices;
 pub(crate) mod release_storage_action;
 pub(crate) use release_storage_action::StoredTransition;
@@ -126,10 +124,6 @@ pub(crate) mod read;
 mod scrub_points_column;
 pub(crate) mod write;
 
-use list_windows::{
-    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
-    WindowsRead,
-};
 use query::*;
 use read::*;
 use write::*;

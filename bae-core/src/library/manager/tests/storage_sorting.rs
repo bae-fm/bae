@@ -322,12 +322,10 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     assert_eq!(ascending().await, second_pinning, "queued");
 
-    assert!(manager.database.activate_queued_release::<()>(&second).await.unwrap());
+    assert!(activate_download(&manager, &second).await.unwrap());
     assert_eq!(ascending().await, second_pinning, "downloading");
 
-    assert!(manager
-        .database
-        .fail_queued_release::<()>(&second, "the network connection was lost".into())
+    assert!(fail_download(&manager, &second, "the network connection was lost".into())
         .await
         .unwrap());
     assert_eq!(ascending().await, resting, "failed");
@@ -350,12 +348,12 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert_eq!(ascending().await, resting, "cancelled");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    assert!(manager.database.activate_queued_release::<()>(&second).await.unwrap());
-    assert!(manager.database.finish_queued_release::<()>(&second).await.unwrap());
+    assert!(activate_download(&manager, &second).await.unwrap());
+    assert!(finish_download(&manager, &second).await.unwrap());
     assert_eq!(ascending().await, resting, "finished");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    manager.database.clear_transfers().await.unwrap();
+    clear_transfers_as_opening(&manager).await.unwrap();
     assert_eq!(ascending().await, resting, "emptied as the library opens");
 }
 
@@ -410,7 +408,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         }
     );
 
-    assert!(manager.database.activate_queued_release::<()>(&pinning).await.unwrap());
+    assert!(activate_download(&manager, &pinning).await.unwrap());
     manager
         .database
         .execute_for_test(
@@ -430,9 +428,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         }
     );
 
-    assert!(manager
-        .database
-        .fail_queued_release::<()>(&pinning, "the network connection was lost".into())
+    assert!(fail_download(&manager, &pinning, "the network connection was lost".into())
         .await
         .unwrap());
     assert_eq!(
@@ -440,4 +436,62 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         StorageQueues { uploads, pins: None, outputs },
         "a failed pin is no work"
     );
+}
+
+/// Start the download queue's entry for `release_id`, as its worker does.
+async fn activate_download(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> Result<bool, crate::db::DbError> {
+    let release_id = release_id.to_string();
+    manager
+        .database
+        .call(move |sql| {
+            crate::library::queued_releases::tables::activate_queued_release_on::<()>(
+                sql,
+                &release_id,
+            )
+        })
+        .await
+}
+
+/// Finish the download queue's active entry for `release_id`.
+async fn finish_download(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> Result<bool, crate::db::DbError> {
+    let release_id = release_id.to_string();
+    manager
+        .database
+        .call(move |sql| {
+            crate::library::queued_releases::tables::finish_queued_release_on::<()>(
+                sql,
+                &release_id,
+            )
+        })
+        .await
+}
+
+/// Fail the download queue's entry for `release_id` with `error`.
+async fn fail_download(
+    manager: &LibraryManager,
+    release_id: &str,
+    error: String,
+) -> Result<bool, crate::db::DbError> {
+    let release_id = release_id.to_string();
+    manager
+        .database
+        .call(move |sql| {
+            crate::library::queued_releases::tables::fail_queued_release_on::<()>(
+                sql,
+                &release_id,
+                &error,
+            )
+        })
+        .await
+}
+
+/// Empty the transfer queues as opening the library does.
+async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), crate::db::DbError> {
+    manager.database.call(crate::library::queued_releases::tables::clear_transfers_on).await
 }

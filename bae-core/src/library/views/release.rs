@@ -185,7 +185,7 @@ pub(crate) fn build_release_detail_on(
         params![release.id],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
-    let download = crate::db::client::release_queues::download_phase_on(sql, &release.id)?;
+    let download = crate::library::queued_releases::tables::download_phase_on(sql, &release.id)?;
     let cover_version = sql.query_row(
         &format!("SELECT {}", cover_version_sql("?1")),
         params![release.id],

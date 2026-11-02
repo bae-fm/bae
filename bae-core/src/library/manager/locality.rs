@@ -188,11 +188,10 @@ impl LibraryManager {
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
         let enqueued_at =
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
-        match self.database.enqueue_pinnable_releases(release_ids, enqueued_at).await {
+        match self.downloads.enqueue_pinnable(release_ids, enqueued_at).await {
             Ok(true) => self.downloads.queued(),
             Ok(false) => debug!("enqueue_pins: nothing to pin"),
             Err(error) => {
-                let error = LibraryError::from(error);
                 self.diagnostics
                     .report_bug("queue releases to pin", &bae_util::error_text::CauseChain(&error));
                 return Err(error);

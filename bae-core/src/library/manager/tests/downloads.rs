@@ -327,14 +327,15 @@ async fn opening_a_library_empties_its_transfer_queues() {
         .unwrap();
     let left =
         Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
-    left.enqueue_releases(vec![crate::library::DownloadEntry {
+    let left = crate::library::Downloads::new(left);
+    left.enqueue_all(vec![crate::library::DownloadEntry {
         release_id: REL_1.to_string(),
         created_at: 0,
         payload: (),
     }])
     .await
     .unwrap();
-    left.set_release_queue_paused::<()>(true).await.unwrap();
+    left.set_paused(true).await.unwrap();
 
     let manager = TestLibrary::open_with(
         Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),

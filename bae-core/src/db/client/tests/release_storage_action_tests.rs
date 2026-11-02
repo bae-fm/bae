@@ -53,16 +53,19 @@ async fn a_release_is_in_one_transition_at_a_time() {
 #[tokio::test]
 async fn the_active_download_reads_as_a_pin() {
     let (db, _tmp) = library().await;
-    db.enqueue_releases(vec![ReleaseQueueEntry {
-        release_id: RELEASE_B.to_string(),
-        created_at: 7,
-        payload: (),
-    }])
-    .await
-    .unwrap();
+    let entries =
+        vec![ReleaseQueueEntry { release_id: RELEASE_B.to_string(), created_at: 7, payload: () }];
+    db.call(move |sql| crate::library::queued_releases::tables::enqueue_releases_on(sql, &entries))
+        .await
+        .unwrap();
     assert_eq!(db.release_transfer_action(RELEASE_B).await.unwrap(), None);
 
-    assert!(db.activate_queued_release::<()>(RELEASE_B).await.unwrap());
+    assert!(db
+        .call(|sql| crate::library::queued_releases::tables::activate_queued_release_on::<()>(
+            sql, RELEASE_B
+        ))
+        .await
+        .unwrap());
     assert_eq!(
         db.release_transfer_action(RELEASE_B).await.unwrap(),
         Some(ReleaseStorageAction::Pin)
@@ -76,7 +79,7 @@ async fn opening_ends_every_transition() {
     let (db, _tmp) = library().await;
     db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap();
 
-    db.clear_transfers().await.unwrap();
+    db.call(crate::library::queued_releases::tables::clear_transfers_on).await.unwrap();
 
     assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
 }

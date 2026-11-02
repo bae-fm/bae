@@ -4,7 +4,75 @@
 use super::super::*;
 use super::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
+use crate::library::queued_releases::tables::{self, QueuedPayload};
 use crate::library::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
+
+async fn enqueue_releases<P: QueuedPayload>(
+    db: &Database,
+    entries: Vec<ReleaseQueueEntry<P>>,
+) -> Result<bool, DbError> {
+    db.call(move |sql| tables::enqueue_releases_on(sql, &entries)).await
+}
+
+async fn next_queued_release<P: QueuedPayload>(
+    db: &Database,
+) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
+    db.read(|sql| tables::next_queued_release_on::<P>(&sql)).await
+}
+
+async fn activate_queued_release<P: QueuedPayload>(
+    db: &Database,
+    release_id: &str,
+) -> Result<bool, DbError> {
+    let release_id = release_id.to_string();
+    db.call(move |sql| tables::activate_queued_release_on::<P>(sql, &release_id)).await
+}
+
+async fn finish_queued_release<P: QueuedPayload>(
+    db: &Database,
+    release_id: &str,
+) -> Result<bool, DbError> {
+    let release_id = release_id.to_string();
+    db.call(move |sql| tables::finish_queued_release_on::<P>(sql, &release_id)).await
+}
+
+async fn fail_queued_release<P: QueuedPayload>(
+    db: &Database,
+    release_id: &str,
+    error: String,
+) -> Result<bool, DbError> {
+    let release_id = release_id.to_string();
+    db.call(move |sql| tables::fail_queued_release_on::<P>(sql, &release_id, &error)).await
+}
+
+async fn retry_failed_releases<P: QueuedPayload>(db: &Database) -> Result<bool, DbError> {
+    db.call(|sql| tables::retry_failed_releases_on::<P>(sql)).await
+}
+
+async fn set_release_queue_paused<P: QueuedPayload>(
+    db: &Database,
+    paused: bool,
+) -> Result<bool, DbError> {
+    db.call(move |sql| tables::set_release_queue_paused_on::<P>(sql, paused)).await
+}
+
+async fn cancel_queued_release<P: QueuedPayload>(
+    db: &Database,
+    release_id: &str,
+) -> Result<bool, DbError> {
+    let release_id = release_id.to_string();
+    db.call(move |sql| tables::cancel_queued_release_on::<P>(sql, &release_id)).await
+}
+
+async fn release_queue<P: QueuedPayload>(
+    db: &Database,
+) -> Result<crate::library::release_queue::ReleaseQueueSnapshot<P, ()>, DbError> {
+    db.read(|sql| tables::release_queue_on::<P>(&sql)).await
+}
+
+async fn clear_transfers(db: &Database) -> Result<(), DbError> {
+    db.call(tables::clear_transfers_on).await
+}
 
 fn download(release_id: &str) -> ReleaseQueueEntry<()> {
     ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 7, payload: () }
@@ -13,7 +81,7 @@ fn download(release_id: &str) -> ReleaseQueueEntry<()> {
 /// The download queue's entries as the Downloads pane lists them: each
 /// release and its phase, in the order queued.
 async fn downloads(db: &Database) -> Vec<(String, ReleaseQueueState<()>)> {
-    db.release_queue::<()>()
+    release_queue::<()>(db)
         .await
         .unwrap()
         .rows
@@ -27,8 +95,8 @@ async fn downloads(db: &Database) -> Vec<(String, ReleaseQueueState<()>)> {
 #[tokio::test]
 async fn a_queued_release_is_a_row_in_the_order_queued() {
     let (db, _tmp) = temp_db().await;
-    assert!(db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap());
-    assert!(!db.enqueue_releases(vec![download(RELEASE_A)]).await.unwrap());
+    assert!(enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap());
+    assert!(!enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap());
 
     let rows: Vec<String> = db
         .call(|sql| {
@@ -39,7 +107,7 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
         .await
         .unwrap();
     assert_eq!(rows, vec![RELEASE_A.to_string(), RELEASE_B.to_string()]);
-    assert_eq!(db.next_queued_release::<()>().await.unwrap(), Some(download(RELEASE_A)));
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
 }
 
 /// The worker's moves: the first queued entry starts, one at a time; a
@@ -48,16 +116,15 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
 #[tokio::test]
 async fn an_entry_starts_fails_retries_and_finishes() {
     let (db, _tmp) = temp_db().await;
-    db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
 
-    assert!(db.activate_queued_release::<()>(RELEASE_A).await.unwrap());
+    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
     assert!(
-        !db.activate_queued_release::<()>(RELEASE_A).await.unwrap(),
+        !activate_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
         "an active entry does not start again"
     );
-    assert_eq!(db.next_queued_release::<()>().await.unwrap(), Some(download(RELEASE_B)));
-    assert!(db
-        .fail_queued_release::<()>(RELEASE_A, "the cloud refused".to_string())
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_B)));
+    assert!(fail_queued_release::<()>(&db, RELEASE_A, "the cloud refused".to_string())
         .await
         .unwrap());
     assert_eq!(
@@ -71,13 +138,16 @@ async fn an_entry_starts_fails_retries_and_finishes() {
         ]
     );
 
-    assert!(db.retry_failed_releases::<()>().await.unwrap());
-    assert!(!db.retry_failed_releases::<()>().await.unwrap(), "none failed");
-    assert!(db.activate_queued_release::<()>(RELEASE_A).await.unwrap());
-    assert!(db.finish_queued_release::<()>(RELEASE_A).await.unwrap());
-    assert!(!db.finish_queued_release::<()>(RELEASE_A).await.unwrap(), "a finished entry is gone");
+    assert!(retry_failed_releases::<()>(&db).await.unwrap());
+    assert!(!retry_failed_releases::<()>(&db).await.unwrap(), "none failed");
+    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    assert!(finish_queued_release::<()>(&db, RELEASE_A).await.unwrap());
     assert!(
-        !db.activate_queued_release::<()>(RELEASE_Z).await.unwrap(),
+        !finish_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
+        "a finished entry is gone"
+    );
+    assert!(
+        !activate_queued_release::<()>(&db, RELEASE_Z).await.unwrap(),
         "a release never queued does not start"
     );
     assert_eq!(downloads(&db).await, vec![(RELEASE_B.to_string(), ReleaseQueueState::Queued)]);
@@ -87,8 +157,8 @@ async fn an_entry_starts_fails_retries_and_finishes() {
 #[tokio::test]
 async fn a_queue_holds_one_active_entry_at_most() {
     let (db, _tmp) = temp_db().await;
-    db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
-    db.activate_queued_release::<()>(RELEASE_A).await.unwrap();
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
+    activate_queued_release::<()>(&db, RELEASE_A).await.unwrap();
     let second = db
         .call(|sql| {
             Ok(sql.execute(
@@ -105,26 +175,26 @@ async fn a_queue_holds_one_active_entry_at_most() {
 #[tokio::test]
 async fn a_paused_queue_offers_nothing_to_start() {
     let (db, _tmp) = temp_db().await;
-    db.enqueue_releases(vec![download(RELEASE_A)]).await.unwrap();
-    assert!(!db.set_release_queue_paused::<()>(true).await.unwrap());
-    assert_eq!(db.next_queued_release::<()>().await.unwrap(), None);
-    let queue = db.release_queue::<()>().await.unwrap();
+    enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
+    assert!(!set_release_queue_paused::<()>(&db, true).await.unwrap());
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), None);
+    let queue = release_queue::<()>(&db).await.unwrap();
     assert!(queue.paused);
     assert_eq!(queue.total.queued, 1);
-    assert!(db.set_release_queue_paused::<()>(false).await.unwrap());
-    assert_eq!(db.next_queued_release::<()>().await.unwrap(), Some(download(RELEASE_A)));
+    assert!(set_release_queue_paused::<()>(&db, false).await.unwrap());
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
 }
 
 /// Cancelling takes an entry out in any phase.
 #[tokio::test]
 async fn cancelling_takes_entries_out() {
     let (db, _tmp) = temp_db().await;
-    db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_Z)])
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_Z)])
         .await
         .unwrap();
-    db.activate_queued_release::<()>(RELEASE_A).await.unwrap();
-    assert!(db.cancel_queued_release::<()>(RELEASE_A).await.unwrap());
-    assert!(!db.cancel_queued_release::<()>(RELEASE_A).await.unwrap());
+    activate_queued_release::<()>(&db, RELEASE_A).await.unwrap();
+    assert!(cancel_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    assert!(!cancel_queued_release::<()>(&db, RELEASE_A).await.unwrap());
     assert_eq!(
         downloads(&db).await,
         vec![
@@ -146,9 +216,9 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
     .await
     .unwrap();
     let gone = "0f0b3c1e-5a07-4a8e-9a43-3d2d64d1e7a1";
-    db.enqueue_releases(vec![download(RELEASE_A), download(gone)]).await.unwrap();
+    enqueue_releases(&db, vec![download(RELEASE_A), download(gone)]).await.unwrap();
 
-    let queue = db.release_queue::<()>().await.unwrap();
+    let queue = release_queue::<()>(&db).await.unwrap();
     let release = queue.rows[0].release.as_ref().expect("RELEASE_A is held");
     assert_eq!(release.file_count, 0);
     assert_eq!(queue.rows[1].op.release_id, gone);
@@ -178,9 +248,9 @@ async fn an_output_keeps_its_target_and_preset() {
             kind: OutputKind::Export,
         },
     };
-    db.enqueue_releases(vec![save.clone(), export.clone()]).await.unwrap();
-    assert_eq!(db.next_queued_release::<OutputRequest>().await.unwrap(), Some(save.clone()));
-    let queue = db.release_queue::<OutputRequest>().await.unwrap();
+    enqueue_releases(&db, vec![save.clone(), export.clone()]).await.unwrap();
+    assert_eq!(next_queued_release::<OutputRequest>(&db).await.unwrap(), Some(save.clone()));
+    let queue = release_queue::<OutputRequest>(&db).await.unwrap();
     let payloads: Vec<OutputRequest> = queue.rows.into_iter().map(|row| row.op.payload).collect();
     assert_eq!(payloads, vec![save.payload, export.payload]);
     assert!(downloads(&db).await.is_empty(), "an output is not a download");
@@ -191,16 +261,16 @@ async fn an_output_keeps_its_target_and_preset() {
 #[tokio::test]
 async fn opening_leaves_the_queues_empty_and_running() {
     let (db, _tmp) = temp_db().await;
-    db.enqueue_releases(vec![download(RELEASE_A)]).await.unwrap();
-    db.set_release_queue_paused::<()>(true).await.unwrap();
-    db.set_release_queue_paused::<OutputRequest>(true).await.unwrap();
+    enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
+    set_release_queue_paused::<()>(&db, true).await.unwrap();
+    set_release_queue_paused::<OutputRequest>(&db, true).await.unwrap();
 
-    db.clear_transfers().await.unwrap();
+    clear_transfers(&db).await.unwrap();
 
-    let queue = db.release_queue::<()>().await.unwrap();
+    let queue = release_queue::<()>(&db).await.unwrap();
     assert!(queue.rows.is_empty());
     assert!(!queue.paused);
-    assert!(!db.release_queue::<OutputRequest>().await.unwrap().paused);
+    assert!(!release_queue::<OutputRequest>(&db).await.unwrap().paused);
 }
 
 /// The worker's lookups use the table's keys, and the pane's read joins
@@ -227,7 +297,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
         by_release.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
         "{by_release}"
     );
-    let pane = plan(super::super::release_queues::queue_rows_sql::<()>(
+    let pane = plan(crate::library::queued_releases::tables::queue_rows_sql::<()>(
         None,
         "ORDER BY q.position LIMIT 100 OFFSET 0",
     ))
@@ -243,11 +313,13 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
     let (db, _tmp) = temp_db().await;
     let releases: Vec<String> =
         (0..5).map(|i| bae_test_support::test_uuid(&format!("window-release-{i}"))).collect();
-    db.enqueue_releases(releases.iter().map(|id| download(id)).collect()).await.unwrap();
-    let mut live = db.subscribe_release_queue_windows::<()>(crate::db::LibraryPageWindows::from([
-        crate::db::LibraryPageWindow { offset: 1, limit: 2 },
-        crate::db::LibraryPageWindow { offset: 9, limit: 2 },
-    ]));
+    enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
+    let mut live = crate::library::Downloads::new(db.clone()).subscribe_windows(
+        crate::db::LibraryPageWindows::from([
+            crate::db::LibraryPageWindow { offset: 1, limit: 2 },
+            crate::db::LibraryPageWindow { offset: 9, limit: 2 },
+        ]),
+    );
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.total_count, 5);
     let shown: Vec<Vec<String>> = read
@@ -271,15 +343,18 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
     })
     .await
     .unwrap();
-    db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
-    db.enqueue_releases(vec![ReleaseQueueEntry {
-        release_id: RELEASE_B.to_string(),
-        created_at: 3,
-        payload: OutputRequest {
-            target_dir: "/Users/ana/Music/Copies".into(),
-            kind: OutputKind::Export,
-        },
-    }])
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
+    enqueue_releases(
+        &db,
+        vec![ReleaseQueueEntry {
+            release_id: RELEASE_B.to_string(),
+            created_at: 3,
+            payload: OutputRequest {
+                target_dir: "/Users/ana/Music/Copies".into(),
+                kind: OutputKind::Export,
+            },
+        }],
+    )
     .await
     .unwrap();
 

@@ -6,9 +6,9 @@
 
 use super::pending::pending_rows_on;
 use super::queued_uploads::upload_queue_counts_on;
-use super::release_queues::release_queue_counts_on;
 use super::sync_start_failure::start_failure_on;
 use super::*;
+use crate::library::queued_releases::tables::release_queue_counts_on;
 use crate::library::{SyncActivity, SyncStatusSnapshot};
 
 /// The sync status as one read of its tables sees it.

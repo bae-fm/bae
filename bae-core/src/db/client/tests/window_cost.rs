@@ -14,6 +14,7 @@
 //! ```
 
 use super::super::*;
+use crate::db::client::list_windows::{read_windows, Keyed, ListOrder, Seek};
 use crate::library::views::*;
 use std::time::{Duration, Instant};
 
@@ -434,8 +435,8 @@ async fn measure_queues(db: &Database, n: u64) {
         "downloads",
         "queued",
         n,
-        super::super::release_queues::queue_order(),
-        super::super::release_queues::queue_window_rows_on::<()>,
+        crate::library::queued_releases::tables::queue_order(),
+        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
     )
     .await;
     // The context lane's upcoming windows are read by offset alone: the
