@@ -257,6 +257,12 @@ pub enum ImportError {
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
 
+    /// Where the library syncs to could not be read, which decides where an
+    /// import's files go.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Sync(#[from] coven::SyncError),
+
     /// The session a catalog is asked with could not be had: the library's
     /// preferences or its keyring could not be read.
     #[cfg(desktop)]
@@ -392,6 +398,8 @@ impl ImportError {
             Self::CatalogSession(crate::import::CatalogSessionError::Keyring(error)) => {
                 crate::diagnostics::key_category(error)
             }
+            #[cfg(desktop)]
+            Self::Sync(error) => crate::diagnostics::sync_category(error),
             #[cfg(desktop)]
             Self::ImportWriting => C::Import,
             #[cfg(desktop)]

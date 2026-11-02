@@ -144,8 +144,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         "the broken folder is stored as one that can't be imported: {stored:?}"
     );
     let reading = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(
             &root_key,
             &crate::import::CandidateKey::folder(&files.album),
@@ -169,8 +168,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         "the rescan stores what the scan before it stored"
     );
     let reread = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(
             &root_key,
             &crate::import::CandidateKey::folder(&files.album),
@@ -296,8 +294,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let album_key = crate::import::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
     let reading = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&root_key, &album_key)
         .await
         .unwrap()
@@ -309,8 +306,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
 
     assert_eq!(files.reads(&tags), before, "no file is read again");
     let stored = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&root_key, &album_key)
         .await
         .unwrap()
@@ -365,8 +361,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     let mut hashes = Vec::new();
     for folder in ["First", "Second"] {
         let stored = test
-            .service
-            .library_manager
+            .database
             .load_candidate_file_tag_snapshot(
                 &root_key,
                 &crate::import::CandidateKey::folder(&root.join(folder)),
@@ -458,8 +453,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         .expect("the discs read as one release");
     assert_eq!(release.files.audio().count(), 4);
     let reading = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(std::path::Path::new(&root_key), &release.key())
         .await
         .unwrap()

@@ -197,3 +197,20 @@ pub(crate) fn check_cover_bytes(
         }
     }
 }
+
+/// The rows an import of the candidate `content_hash` consumes, or `None` for
+/// a hash no scan stored a candidate under. A candidate whose files this
+/// device already imported holds no draft, so reading it fails as an import of
+/// those files does.
+pub(crate) async fn import_preparation(
+    database: &crate::db::Database,
+    content_hash: &str,
+) -> Result<Option<crate::db::DbCandidateImportPreparation>, crate::import::ImportError> {
+    match database.load_import_candidate_preparation(content_hash).await? {
+        None => Ok(None),
+        Some(crate::db::DbPreparationRead::Prepared(preparation)) => Ok(Some(preparation)),
+        Some(crate::db::DbPreparationRead::Imported { release_id }) => {
+            Err(crate::import::ImportError::FilesAlreadyImported { release_id })
+        }
+    }
+}

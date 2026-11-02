@@ -114,7 +114,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         .unwrap();
 
     let release_id = "70000101";
-    seed_discogs_pressing(handle.library_manager.providers(), release_id, "Label Name", "CAT-1");
+    seed_discogs_pressing(handle.catalogs.providers(), release_id, "Label Name", "CAT-1");
     handle
         .select_candidate_release(
             key.clone(),
@@ -160,7 +160,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
         .unwrap();
     let release_id = "70000102";
     seed_discogs_release(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         release_id,
         "Label Name",
         "CAT-1",

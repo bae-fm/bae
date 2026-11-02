@@ -14,7 +14,7 @@ async fn picked_with_front(
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     super::lookup_choices::seed_mb_release_with_front(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         release_id,
         "CAT-1",
     );
@@ -75,7 +75,7 @@ async fn linking_the_album_offers_no_catalog_cover() {
             .await;
     super::shared_album::store_two_pressings(&handle, &hash).await;
     super::lookup_choices::seed_mb_release_with_front(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         "mb-pressing-1",
         "CAT-100",
     );
@@ -98,7 +98,7 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
         "refetched-release".to_string(),
     );
     let mut stored = handle
-        .library_manager
+        .database
         .load_source_release(&record)
         .await
         .unwrap()
@@ -111,7 +111,7 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
         source: bae_catalogs::catalog::Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });
-    handle.library_manager.save_source_release(&stored).await.unwrap();
+    handle.database.save_source_release(&stored).await.unwrap();
     assert_eq!(
         offered(&handle, &key).await,
         [front_of("refetched-release"), "https://images.example/back.jpg".to_string()]

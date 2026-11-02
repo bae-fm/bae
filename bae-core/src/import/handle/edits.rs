@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let revision = self
-            .library_manager
+            .database
             .load_import_candidate_state(&hash)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
@@ -94,7 +94,7 @@ impl ImportServiceHandle {
                     candidate.file_edit_revision,
                 )
                 .await?;
-            this.library_manager.set_candidate_album_pick(&hash, album_id.as_deref()).await
+            Ok(this.database.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
         })
         .await
     }
@@ -287,12 +287,11 @@ impl ImportServiceHandle {
     ) -> Result<DraftEditBase, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let preparation =
-            self.library_manager.load_import_candidate_preparation(&hash).await?.ok_or_else(
-                || crate::import::ImportError::Internal {
-                    detail: format!("{candidate_key} has no stored import preparation"),
-                },
-            )?;
+        let preparation = crate::import::preparation::import_preparation(&self.database, &hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
         if preparation.file_edit_revision != candidate.file_edit_revision {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),

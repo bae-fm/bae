@@ -9,11 +9,11 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     assert_eq!(pane(&handle, &key).await.draft().unwrap().album, crate::import::DraftAlbum::New);
 
     let artist = make_artist("Artist Name", None, None);
-    handle.library_manager.insert_artist(&artist).await.unwrap();
+    handle.database.insert_artist(&artist).await.unwrap();
     let album = make_album("Library Album");
     let release = make_release(&album.id);
     handle
-        .library_manager
+        .database
         .insert_album_with_release_and_tracks(
             &album,
             &[crate::db::DbAlbumArtist::new_test(&album.id, &artist.id)],

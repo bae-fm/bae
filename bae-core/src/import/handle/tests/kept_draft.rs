@@ -6,9 +6,7 @@ use crate::import::{NeedsYouReason, PendingStanding};
 
 /// Store a verdict that found nothing for the fixture's candidate.
 async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
-    let prep = handle
-        .library_manager
-        .load_import_candidate_preparation(hash)
+    let prep = crate::import::preparation::import_preparation(&handle.database, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -99,7 +97,7 @@ async fn a_pick_after_keeping_the_draft_is_identified() {
     store_not_found(&handle, &hash).await;
     handle.keep_candidate_draft(key.clone()).await.unwrap();
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         "kept-then-picked",
         "CAT-1",
     );
@@ -108,7 +106,7 @@ async fn a_pick_after_keeping_the_draft_is_identified() {
 
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
     let kept = handle
-        .library_manager
+        .database
         .load_import_candidate_state(&hash)
         .await
         .unwrap()

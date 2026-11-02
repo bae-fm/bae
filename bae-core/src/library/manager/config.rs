@@ -151,12 +151,6 @@ impl LibraryManager {
         .await
     }
 
-    /// Whether a release found now is identified on its own.
-    #[cfg(desktop)]
-    pub(crate) async fn identifies_automatically(&self) -> Result<bool, crate::db::DbError> {
-        Ok(self.preferences().await?.identification.automatic)
-    }
-
     /// Which metadata sources this library asks, one entry per
     /// [`Catalog`](bae_catalogs::catalog::Catalog). See
     /// [`Preferences::metadata_sources`](crate::config::Preferences::metadata_sources)

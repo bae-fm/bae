@@ -32,7 +32,7 @@ impl ImportServiceHandle {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
         let state = self
-            .library_manager
+            .database
             .load_import_candidate_state(&content_hash)
             .await?
             .filter(|state| state.file_edits.revision == candidate.file_edit_revision)

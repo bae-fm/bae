@@ -86,8 +86,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("combined import failed: {error}"));
-    let imported =
-        handle.library_manager.open_release_edit(&release_id).await.unwrap().opened().clone();
+    let imported = manager.open_release_edit(&release_id).await.unwrap().opened().clone();
     assert_eq!(imported.edit.album_title, "Collected Volumes");
     assert_eq!(imported.edit.tracks.len(), 4);
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
@@ -105,7 +104,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert!(pane(&handle, &key).await.is_added());
     handle.separate_candidate(&key).await.unwrap();
     assert_eq!(
-        handle.library_manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
+        manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
         imported,
         "separating source folders preserves the imported copy"
     );
@@ -157,12 +156,12 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     assert_eq!(pending(&handle).await, vec![members[0].1.to_string()]);
     let order: Vec<crate::import::CandidateKey> = members.into_iter().map(|(key, _)| key).collect();
     assert!(matches!(
-        handle.library_manager.load_grouping(&key).await.unwrap(),
+        handle.database.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Picked { members }) if members == order
     ));
 
     handle.separate_candidate(&key).await.unwrap();
-    assert!(handle.library_manager.load_grouping(&key).await.unwrap().is_none());
+    assert!(handle.database.load_grouping(&key).await.unwrap().is_none());
     assert!(handle.get_release_candidate(&key).await.unwrap().is_none());
     assert_eq!(pending(&handle).await.len(), 2);
     assert_eq!(pane(&handle, &first_key).await.draft().unwrap().metadata_draft, before);
@@ -201,7 +200,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 
     let key = handle.combine_candidates(keys.clone()).await.unwrap();
     assert_eq!(
-        handle.library_manager.load_grouping(&key).await.unwrap(),
+        handle.database.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Anchored {
             folder: crate::import::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
@@ -220,7 +219,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
     );
     assert!(matches!(
-        handle.library_manager.load_grouping(&key).await.unwrap(),
+        handle.database.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Anchored {
             decision: crate::import::FolderReleaseDecision::KeepAsSeparateReleases,
             ..
@@ -253,7 +252,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
     // Live 3 stays out, so the pick is not every release under `Artist/`.
     let key = handle.combine_candidates(vec![key_of("Live 10"), key_of("Live 2")]).await.unwrap();
     assert!(matches!(
-        handle.library_manager.load_grouping(&key).await.unwrap(),
+        handle.database.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Picked { .. })
     ));
 

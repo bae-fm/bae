@@ -10,8 +10,8 @@ use super::*;
 /// Every release in the library.
 async fn release_count(handle: &ImportServiceHandle) -> usize {
     let mut count = 0;
-    for album in handle.library_manager.get_albums(&[]).await.unwrap() {
-        count += handle.library_manager.get_releases_for_album(&album.id).await.unwrap().len();
+    for album in handle.database.get_albums(&[]).await.unwrap() {
+        count += handle.database.get_releases_for_album(&album.id).await.unwrap().len();
     }
     count
 }

@@ -76,7 +76,7 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
         .await
         .unwrap();
     assert!(matches!(
-        handle.library_manager.load_grouping(&key).await.unwrap(),
+        handle.database.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Picked { .. })
     ));
     assert_eq!(files_of(&handle, &key).await, ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]);

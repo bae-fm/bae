@@ -31,42 +31,6 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
-    #[cfg(desktop)]
-    pub(crate) async fn choose_import_artist_identity(
-        &self,
-        content_hash: &str,
-        metadata_revision: u64,
-        choice: crate::import::ArtistIdentityConflictChoice,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .choose_import_artist_identity(
-                content_hash,
-                metadata_revision,
-                choice,
-                self.ids.as_ref(),
-            )
-            .await?;
-        Ok(())
-    }
-
-    #[cfg(desktop)]
-    pub(crate) async fn choose_import_label_identity(
-        &self,
-        content_hash: &str,
-        metadata_revision: u64,
-        choice: crate::import::LabelIdentityConflictChoice,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .choose_import_label_identity(
-                content_hash,
-                metadata_revision,
-                choice,
-                self.ids.as_ref(),
-            )
-            .await?;
-        Ok(())
-    }
-
     /// Follow what an artist picker's search finds, from `initial` on.
     pub(crate) fn subscribe_artist_search(
         &self,

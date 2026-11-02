@@ -133,7 +133,7 @@ async fn a_pick_ends_identification_in_its_write() {
         .unwrap();
     let release_id = "70000301";
     super::metadata_application::seed_discogs_pressing(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         release_id,
         "Label Name",
         "CAT-1",

@@ -13,7 +13,7 @@ async fn linked_cover_gallery_can_be_empty() {
         .await
         .unwrap();
     let release_id = "70000003";
-    seed_discogs_release(handle.library_manager.providers(), release_id);
+    seed_discogs_release(handle.catalogs.providers(), release_id);
     handle
         .select_candidate_release(
             key.clone(),
@@ -55,9 +55,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .unwrap();
 
     let discogs_release_id = "70000001";
-    seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
+    seed_discogs_release(handle.catalogs.providers(), discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
-    seed_mb_release(handle.library_manager.providers(), mb_release_id, "partner-mb-group-1");
+    seed_mb_release(handle.catalogs.providers(), mb_release_id, "partner-mb-group-1");
     let partner = crate::catalog_model::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         mb_release_id.to_string(),
@@ -79,7 +79,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .unwrap();
 
     let stored = handle
-        .library_manager
+        .database
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -97,13 +97,11 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     assert!(
-        handle.library_manager.load_source_release(&partner).await.unwrap().is_some(),
+        handle.database.load_source_release(&partner).await.unwrap().is_some(),
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
-        handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
+        crate::import::preparation::import_preparation(&handle.database, &hash)
             .await
             .unwrap()
             .expect("the picked candidate is prepared")
@@ -123,10 +121,10 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
 
     let mb_release_id = "unpaired-mb-rel-1";
-    seed_mb_release(handle.library_manager.providers(), mb_release_id, "unpaired-mb-group-1");
+    seed_mb_release(handle.catalogs.providers(), mb_release_id, "unpaired-mb-group-1");
 
     let before = handle
-        .library_manager
+        .database
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -153,7 +151,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
 
     assert_eq!(
         handle
-            .library_manager
+            .database
             .load_import_candidate_state(&hash)
             .await
             .unwrap()
@@ -173,10 +171,10 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
 
     let mb_release_id = "repeat-mb-rel-1";
-    seed_mb_release(handle.library_manager.providers(), mb_release_id, "repeat-mb-group-1");
+    seed_mb_release(handle.catalogs.providers(), mb_release_id, "repeat-mb-group-1");
 
     let before = handle
-        .library_manager
+        .database
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -203,7 +201,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 
     assert_eq!(
         handle
-            .library_manager
+            .database
             .load_import_candidate_state(&hash)
             .await
             .unwrap()
@@ -242,7 +240,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    let release = seed_linked_discogs_release(handle.library_manager.providers());
+    let release = seed_linked_discogs_release(handle.catalogs.providers());
 
     let read_by_the_run = handle.release_reads.release(
         &release,
@@ -270,7 +268,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .await
         .unwrap();
     let picked = handle
-        .library_manager
+        .database
         .load_source_release(&release)
         .await
         .unwrap()
@@ -283,7 +281,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    seed_linked_discogs_release(scratch.library_manager.providers());
+    seed_linked_discogs_release(scratch.catalogs.providers());
     let complete = scratch.release_reads.release(
         &release,
         crate::catalog_model::payloads::ReadDepth::Complete,
@@ -428,7 +426,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let release_id = "numeric-vinyl-release";
     handle
-        .library_manager
+        .catalogs
         .providers()
         .musicbrainz()
         .seed_release_cache(release_id, serde_json::json!({
@@ -454,9 +452,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         )
         .await
         .unwrap();
-    let draft = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let draft = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .unwrap()
@@ -476,7 +472,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let tracks = handle.library_manager.get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = handle.database.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
         tracks
             .iter()
@@ -503,13 +499,13 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let primary = "70000004";
     let partner = "refetched-partner-release";
     let group = "refetched-partner-group";
-    seed_discogs_release(handle.library_manager.providers(), primary);
-    seed_mb_release(handle.library_manager.providers(), partner, group);
+    seed_discogs_release(handle.catalogs.providers(), primary);
+    seed_mb_release(handle.catalogs.providers(), partner, group);
     let group_json = |allmusic: &str| {
         serde_json::json!({"id":group,"relations":[{"url":{"resource":format!("https://www.allmusic.com/album/{allmusic}")}}]}).to_string()
     };
     handle
-        .library_manager
+        .catalogs
         .providers()
         .musicbrainz()
         .seed_release_group_json_cache(group, group_json("mw111"));
@@ -534,7 +530,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // another album on AllMusic: a pick references its releases rather than
     // copying them, so the import commits what the partner says now.
     handle
-        .library_manager
+        .database
         .save_source_release(
             &crate::catalog_model::payloads::ReleasePayloads::for_test(
                 crate::catalog_model::records::LookupRef::new(
@@ -556,7 +552,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle.library_manager.get_release_records(&release_id).await.unwrap();
+    let records = handle.database.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(
         records
@@ -585,7 +581,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    let providers = handle.library_manager.providers();
+    let providers = handle.catalogs.providers();
     let group = "chain-mb-group";
     seed_discogs_release_in(providers, "70000012", Some("909"), None);
     crate::import::identify_service::keep_album_links(
@@ -608,7 +604,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .await
         .unwrap();
     let records = handle
-        .library_manager
+        .database
         .load_source_release(&picked)
         .await
         .unwrap()
@@ -645,9 +641,9 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
         .await
         .unwrap();
     let discogs_release_id = "70000021";
-    seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
+    seed_discogs_release(handle.catalogs.providers(), discogs_release_id);
     let mb_release_id = "steps-mb-rel-1";
-    seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-mb-group-1");
+    seed_mb_release(handle.catalogs.providers(), mb_release_id, "steps-mb-group-1");
     let (steps, told) = recorded();
 
     handle
@@ -697,7 +693,7 @@ async fn a_pick_of_a_held_release_tells_no_read() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     let mb_release_id = "steps-held-mb-rel-1";
-    seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-held-mb-group-1");
+    seed_mb_release(handle.catalogs.providers(), mb_release_id, "steps-held-mb-group-1");
     let link = crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,

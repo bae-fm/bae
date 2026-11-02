@@ -83,9 +83,7 @@ async fn pick_mb(
 }
 
 async fn stored_draft(handle: &ImportServiceHandle, hash: &str) -> crate::import::CandidateDraft {
-    handle
-        .library_manager
-        .load_import_candidate_preparation(hash)
+    crate::import::preparation::import_preparation(&handle.database, hash)
         .await
         .unwrap()
         .expect("the candidate is prepared")
@@ -107,7 +105,7 @@ async fn three_track_draft() -> (StoredCandidate, String) {
         .await
         .unwrap();
     seed_mb_release_with_works(
-        fixture.handle.library_manager.providers(),
+        fixture.handle.catalogs.providers(),
         "release-with-works",
         "release-with-works",
         &["First Track", "Second Track", "Third Track"],
@@ -221,7 +219,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
     let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
-    let providers = handle.library_manager.providers();
+    let providers = handle.catalogs.providers();
     seed_mb_release_with_works(
         providers,
         "edited-release",
@@ -258,14 +256,14 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         )
         .await
         .unwrap();
-    handle.library_manager.save_source_release(&payloads.extract().unwrap()).await.unwrap();
+    handle.database.save_source_release(&payloads.extract().unwrap()).await.unwrap();
     assert_eq!(stored_draft(&handle, &hash).await, applied);
 
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _album_id) =
         await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-    let written = handle.library_manager.track_sources_for_test(&release_id).await.unwrap();
+    let written = handle.database.track_sources_for_test(&release_id).await.unwrap();
     shut_down(handle).await;
 
     assert_eq!(
@@ -326,10 +324,10 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         let import_id = handle.start_import(&key).await.unwrap().expect_queued();
         let (release_id, album_id) =
             await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-        let tracks = handle.library_manager.get_tracks_for_release(&release_id).await.unwrap();
+        let tracks = handle.database.get_tracks_for_release(&release_id).await.unwrap();
         let album = handle
-            .library_manager
-            .get_album_by_id(&album_id)
+            .database
+            .find_album_by_id(&album_id)
             .await
             .unwrap()
             .expect("the album is written");

@@ -300,7 +300,7 @@ async fn a_run_off_the_page_delivers_its_count() {
 async fn a_verdict_off_the_page_delivers_its_count() {
     let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page().await;
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         "off-the-page",
         "CAT-1",
     );

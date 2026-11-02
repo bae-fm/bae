@@ -171,7 +171,7 @@ async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
 async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-1", "NJ 8255");
+    seed_mb_release_with_catalog(handle.catalogs.providers(), "chosen-mb-rel-1", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-1").await;
 
@@ -188,7 +188,7 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")])
         .await;
     let choices = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "NJ 8255");
+    seed_mb_release_with_catalog(handle.catalogs.providers(), "chosen-mb-rel-2", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;
 
@@ -200,9 +200,7 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
 /// Store settled signals for the fixture's candidate whose folder name,
 /// `printed`, is also its one catalog number.
 async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &str) {
-    let prep = handle
-        .library_manager
-        .load_import_candidate_preparation(hash)
+    let prep = crate::import::preparation::import_preparation(&handle.database, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");

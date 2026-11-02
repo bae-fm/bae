@@ -176,8 +176,8 @@ async fn store_scanned_candidate(
         name,
     )
     .await;
-    let file_tag_snapshot = service
-        .library_manager
+    let file_tag_snapshot = test
+        .database
         .load_candidate_file_tag_snapshot(folder, &candidate_key)
         .await
         .unwrap()

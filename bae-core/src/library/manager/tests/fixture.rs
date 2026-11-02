@@ -251,7 +251,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             .collect::<Vec<_>>(),
         [root.as_path()]
     );
-    let scans = manager.load_folder_scan_progress().await.unwrap();
+    let scans = manager.database.load_folder_scan_progress().await.unwrap();
     assert_eq!(scans.activity, None, "no folder reads as being read");
     assert_eq!(
         scans

@@ -91,7 +91,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .unwrap();
 
     assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title, "");
-    let stored = handle.library_manager.load_import_candidate_pane_rows(&hash).await.unwrap();
+    let stored = handle.database.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(
         stored.draft.album_title,
         String::new(),
@@ -126,7 +126,7 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
 async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let existing = make_artist("Existing Artist", Some("discogs-existing"), None);
-    handle.library_manager.insert_artist(&existing).await.unwrap();
+    handle.database.insert_artist(&existing).await.unwrap();
     let assignments = vec![
         crate::import::ArtistAssignment::picked(existing.clone().into()),
         crate::import::ArtistAssignment::named("New Artist"),
@@ -151,7 +151,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let stored =
-        handle.library_manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap();
+        crate::import::preparation::import_preparation(&handle.database, &hash).await.unwrap().unwrap();
 
     let error = handle
         .set_candidate_track_edit(
@@ -167,9 +167,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
 
     assert!(error.to_string().contains("audio"), "{error}");
     assert_eq!(
-        handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
+        crate::import::preparation::import_preparation(&handle.database, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -240,9 +238,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .await
         .unwrap();
 
-    let preparation = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let preparation = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
@@ -259,9 +255,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let before = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");
@@ -281,9 +275,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     })
     .await;
 
-    let after = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let after = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the candidate remains prepared");
@@ -296,7 +288,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
 /// import wrote it.
 #[tokio::test(flavor = "multi_thread")]
 async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let StoredCandidate { handle, manager, key, tmp: _tmp, .. } = picked_stored_candidate().await;
     handle
         .set_candidate_album_artists(
             &key,
@@ -316,7 +308,7 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
     let release_before =
-        handle.library_manager.open_release_edit(&release_id).await.unwrap().opened().clone();
+        manager.open_release_edit(&release_id).await.unwrap().opened().clone();
 
     let refused = handle
         .set_candidate_edit_field(
@@ -333,7 +325,7 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
             .to_string())
     );
     assert_eq!(
-        handle.library_manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
+        manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
         release_before
     );
 }
@@ -395,9 +387,7 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
             .collect::<Vec<_>>()
     };
     let before = rows(
-        &handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
+        &crate::import::preparation::import_preparation(&handle.database, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -405,18 +395,14 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let reapplied = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let reapplied = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
     assert_eq!(rows(&reapplied.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
-    let cleared = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let cleared = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the cleared source remains prepared");

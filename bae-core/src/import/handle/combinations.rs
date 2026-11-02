@@ -12,7 +12,7 @@ impl ImportServiceHandle {
         &self,
         key: &CandidateKey,
     ) -> Result<Vec<std::path::PathBuf>, ImportError> {
-        let detail = self.library_manager.load_import_candidate(key).await?.ok_or_else(|| {
+        let detail = self.database.load_import_candidate(key).await?.ok_or_else(|| {
             ImportError::Internal { detail: format!("{key} is no longer a candidate") }
         })?;
         Ok(detail.candidate.source_folders())
@@ -54,7 +54,7 @@ impl ImportServiceHandle {
         for member in &members {
             if let Some(grouping) = &member.grouping {
                 if let Some(crate::db::GroupingFacts::Picked { .. }) =
-                    self.library_manager.load_grouping(grouping).await?
+                    self.database.load_grouping(grouping).await?
                 {
                     return Err(ImportError::Internal {
                         detail:
@@ -67,10 +67,10 @@ impl ImportServiceHandle {
         if let Some(folder) = self.folder_holding_exactly(&members).await? {
             return self.combine_folder(folder).await;
         }
-        let key = CandidateKey::grouping(&self.library_manager.new_id());
+        let key = CandidateKey::grouping(&self.ids.new_id().to_string());
         let _commit = self.folder_state_commit.lock("combine releases").await;
         let regrouped = self
-            .library_manager
+            .database
             .combine_releases(key.clone(), members)
             .await?
             .map_err(|reason| ImportError::GroupingBlocked { reason })?;
@@ -105,7 +105,7 @@ impl ImportServiceHandle {
         }
         let selected: std::collections::BTreeSet<CandidateKey> =
             members.iter().map(crate::import::FolderCandidate::key).collect();
-        let below = self.library_manager.scanned_release_keys_at_or_below(root, &folder).await?;
+        let below = self.database.scanned_release_keys_at_or_below(root, &folder).await?;
         if below != selected {
             return Ok(None);
         }
@@ -126,13 +126,11 @@ impl ImportServiceHandle {
             FolderReleaseDecision::CombineAsOneRelease,
         )
         .await?;
-        self.library_manager.folder_reading_grouping(&folder).await?.ok_or_else(|| {
-            ImportError::Internal {
-                detail: format!(
-                    "{} was combined but no grouping is stored for it",
-                    folder.relative_folder.text()
-                ),
-            }
+        self.database.folder_reading_grouping(&folder).await?.ok_or_else(|| ImportError::Internal {
+            detail: format!(
+                "{} was combined but no grouping is stored for it",
+                folder.relative_folder.text()
+            ),
         })
     }
 
@@ -155,7 +153,7 @@ impl ImportServiceHandle {
             let _commit = self.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key).await?;
         }
-        match self.library_manager.load_grouping(key).await? {
+        match self.database.load_grouping(key).await? {
             Some(crate::db::GroupingFacts::Anchored { folder, .. }) => {
                 self.set_folder_release_decision(
                     folder,
@@ -165,15 +163,10 @@ impl ImportServiceHandle {
             }
             Some(crate::db::GroupingFacts::Picked { .. }) => {
                 let _commit = self.folder_state_commit.lock("separate a picked release").await;
-                let (returned, regrouped) =
-                    self.library_manager.separate_picked_grouping(key).await?;
+                let (returned, regrouped) = self.database.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
-                let automatic = self
-                    .library_manager
-                    .identifies_automatically()
-                    .await
-                    .map_err(crate::library::LibraryError::from)?;
+                let automatic = self.database.preferences().await?.identification.automatic;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.clone(),
                 }));
@@ -213,11 +206,7 @@ impl ImportServiceHandle {
                 candidate_key: candidate_key.clone(),
             }));
         }
-        let automatic = self
-            .library_manager
-            .identifies_automatically()
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        let automatic = self.database.preferences().await?.identification.automatic;
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {

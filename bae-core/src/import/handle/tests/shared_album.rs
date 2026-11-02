@@ -40,12 +40,10 @@ fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::Metadat
 /// candidate, each seeded where a read of it finds it, under its own
 /// catalog number.
 pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str) {
-    let providers = handle.library_manager.providers();
+    let providers = handle.catalogs.providers();
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-1", "CAT-100");
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-2", "CAT-200");
-    let prep = handle
-        .library_manager
-        .load_import_candidate_preparation(hash)
+    let prep = crate::import::preparation::import_preparation(&handle.database, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -93,7 +91,7 @@ fn album() -> AlbumLink {
 
 async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
     handle
-        .library_manager
+        .database
         .load_import_candidate_state(hash)
         .await
         .unwrap()
@@ -173,7 +171,7 @@ async fn an_import_linked_to_an_album_stores_the_album() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle.library_manager.get_release_records(&release_id).await.unwrap();
+    let records = handle.database.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(records, album().records());
     assert_eq!(records[0].url(), format!("https://musicbrainz.org/release-group/{ALBUM}"));

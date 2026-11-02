@@ -468,14 +468,6 @@ impl LibraryManager {
         }
     }
 
-    /// Every row of every table the library holds, rendered, by table name.
-    #[cfg(test)]
-    pub(crate) async fn every_row_for_test(
-        &self,
-    ) -> std::collections::BTreeMap<String, Vec<String>> {
-        self.database.every_row_for_test().await.unwrap()
-    }
-
     /// Follow the sync status to log its failure and report a failed pass,
     /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.

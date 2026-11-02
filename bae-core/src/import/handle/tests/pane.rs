@@ -257,14 +257,24 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::import::Candida
 async fn pane_fixture_with(
     http: bae_util::http::Http,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
-    let fixture = stored_candidate_with(http).await;
+    let fixture = picked_stored_candidate_with(http).await;
     let hash = fixture.candidate.files.content_hash();
-    let handle = fixture.handle;
-    let key = fixture.key;
-    let revision = handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    (fixture.handle, fixture.tmp, fixture.key, hash)
+}
+
+/// [`pane_fixture`] with the library it was started from, for a test that
+/// reads what an import wrote through the library's own operations.
+async fn picked_stored_candidate() -> StoredCandidate {
+    picked_stored_candidate_with(bae_util::http::Http::for_test()).await
+}
+
+/// [`stored_candidate_with`] with the folder's own tags already picked.
+async fn picked_stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
+    let fixture = stored_candidate_with(http).await;
+    let revision = fixture.handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
     assert_eq!(revision, 1);
-    assert_eq!(pane(&handle, &key).await.metadata_revision, revision);
-    (handle, fixture.tmp, key, hash)
+    assert_eq!(pane(&fixture.handle, &fixture.key).await.metadata_revision, revision);
+    fixture
 }
 
 async fn pane(
@@ -452,7 +462,7 @@ async fn stored_tags(
     key: &crate::import::CandidateKey,
 ) -> Option<crate::import::file_tag_snapshot::FileTagSnapshot> {
     handle
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, key)
         .await
         .unwrap()
@@ -586,9 +596,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let stale = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
+    let stale = crate::import::preparation::import_preparation(&handle.database, &hash)
         .await
         .unwrap()
         .expect("the candidate starts prepared");
@@ -640,9 +648,7 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     ] {
         handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let preparation = handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
+        let preparation = crate::import::preparation::import_preparation(&handle.database, &hash)
             .await
             .unwrap()
             .expect("the candidate remains prepared");
@@ -666,7 +672,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     let root = tmp.path().join("watched");
     let before = handle
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
@@ -693,7 +699,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .await
         .expect_err("the changed audio cannot import");
     let after = handle
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
@@ -730,7 +736,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
 
     operation.await.unwrap().expect("the pick reads the tags of the newer scan");
     let stored = handle
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
         .await
         .unwrap()

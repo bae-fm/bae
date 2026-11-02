@@ -84,7 +84,7 @@ async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::import:
 }
 
 async fn album_count(handle: &ImportServiceHandle) -> usize {
-    handle.library_manager.get_albums(&[]).await.unwrap().len()
+    handle.database.get_albums(&[]).await.unwrap().len()
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -184,7 +184,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
         }
     }
     files.sort();
-    let mut rows = handle.library_manager.every_row_for_test().await;
+    let mut rows = handle.database.every_row_for_test().await.unwrap();
     rows.remove("list_order_versions").expect("the store holds the lists' move counts");
     StoreState { rows, files }
 }

@@ -168,8 +168,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             .await
             .unwrap();
         let snapshot = test
-            .service
-            .library_manager
+            .database
             .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
             .await
             .unwrap()
@@ -261,8 +260,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     )
     .await;
     let reading = async || {
-        test.service
-            .library_manager
+        test.database
             .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
             .await
             .unwrap()
@@ -339,7 +337,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, preparations, database: _, temp: tmp } =
+    let TestService { service, preparations, database, temp: tmp } =
         setup_import_service().await;
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
@@ -415,8 +413,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         )
         .await
         .unwrap();
-    let file_tag_snapshot = service
-        .library_manager
+    let file_tag_snapshot = database
         .load_candidate_file_tag_snapshot(
             std::path::Path::new(&watched_folder_path),
             &crate::import::CandidateKey::folder(&folder),
@@ -742,8 +739,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         vec!["Track Two (White Noise)".to_string(), "Track Three (Brown Noise)".to_string(),]
     );
     let snapshot = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
         .await
         .unwrap()
@@ -757,8 +753,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     scan.rescan(&root).await.expect("the folder is read again");
     assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
     assert!(test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
         .await
         .unwrap()

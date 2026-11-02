@@ -5,7 +5,7 @@ const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 
 use super::*;
 use crate::db::{Database, DbArtist};
-use crate::library::LibraryError;
+use crate::library::{LibraryError, LibraryManager};
 use bae_test_support::HANG_GUARD;
 use chrono::Utc;
 use std::path::{Path, PathBuf};

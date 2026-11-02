@@ -4,14 +4,6 @@ use super::*;
 use crate::import::CandidateKey;
 
 impl LibraryManager {
-    pub(crate) async fn set_grouping_skipped(
-        &self,
-        key: &CandidateKey,
-        skipped: bool,
-    ) -> Result<bool, LibraryError> {
-        Ok(self.database.set_grouping_skipped(key, skipped).await?)
-    }
-
     /// The release stored at `key`, when it may be worked on — or why a
     /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
@@ -25,44 +17,6 @@ impl LibraryManager {
         LibraryError,
     > {
         Ok(self.database.load_release_candidate(key).await?)
-    }
-
-    /// Read `members`, each as the caller read it, as one release under the
-    /// new grouping `key`.
-    pub(crate) async fn combine_releases(
-        &self,
-        key: CandidateKey,
-        members: Vec<crate::import::FolderCandidate>,
-    ) -> Result<Result<crate::db::GroupingChanges, crate::import::GroupingBlock>, LibraryError>
-    {
-        Ok(self.database.combine_releases(key, members).await?)
-    }
-
-    /// Undo the grouping of releases picked together at `key`, returning them
-    /// as stored and the releases of groupings rebuilt now that the files of
-    /// the folder it read are free.
-    pub(crate) async fn separate_picked_grouping(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<
-        (Vec<crate::import::folder_scanner::ScanItem>, crate::db::GroupingChanges),
-        LibraryError,
-    > {
-        Ok(self.database.separate_picked_grouping(key).await?)
-    }
-
-    /// How the grouping `key` reads, or `None` when no grouping has it.
-    pub(crate) async fn load_grouping(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<Option<crate::db::GroupingFacts>, LibraryError> {
-        Ok(self.database.load_grouping(key).await?)
-    }
-
-    pub(crate) async fn load_folder_scan_progress(
-        &self,
-    ) -> Result<crate::import::FolderScanProgress, LibraryError> {
-        Ok(self.database.load_folder_scan_progress().await?)
     }
 
     pub(crate) fn subscribe_folder_scan_progress(
@@ -106,33 +60,6 @@ impl LibraryManager {
         self.database.subscribe_import_candidate(initial)
     }
 
-    /// Record the pane's per-candidate state between visits.
-    pub(crate) async fn save_import_candidate_session(
-        &self,
-        content_hash: &str,
-        session: &crate::import::CandidateSession,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.save_import_candidate_session(content_hash, session).await?)
-    }
-
-    /// Move the pane of every one of these candidates by `pane_move`.
-    pub(crate) async fn move_import_candidate_panes(
-        &self,
-        content_hashes: Vec<String>,
-        pane_move: crate::import::PaneMove,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.move_import_candidate_panes(content_hashes, pane_move).await?)
-    }
-
-    /// Record what a candidate's identification asks about.
-    pub(crate) async fn save_import_candidate_lookup_choices(
-        &self,
-        content_hash: &str,
-        choices: &crate::identify::LookupChoices,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.save_import_candidate_lookup_choices(content_hash, choices).await?)
-    }
-
     pub(crate) async fn load_import_candidate(
         &self,
         key: &CandidateKey,
@@ -163,34 +90,6 @@ impl LibraryManager {
         &self,
     ) -> Result<Vec<crate::import::WatchedFolder>, LibraryError> {
         Ok(self.database.load_watched_import_folders().await?)
-    }
-
-    /// The watched folder that holds `path` inside it, not `path` itself.
-    pub(crate) async fn watched_import_folder_above(
-        &self,
-        path: &Path,
-    ) -> Result<Option<PathBuf>, LibraryError> {
-        Ok(self.database.watched_import_folder_above(path).await?)
-    }
-
-    /// The watched folders inside `path`, not `path` itself, in their order.
-    pub(crate) async fn watched_import_folders_below(
-        &self,
-        path: &Path,
-    ) -> Result<Vec<PathBuf>, LibraryError> {
-        Ok(self.database.watched_import_folders_below(path).await?)
-    }
-
-    /// Whether `path`, spelled as the store keys it, is a watched folder.
-    pub(crate) async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, LibraryError> {
-        Ok(self.database.is_watched_import_folder(path).await?)
-    }
-
-    pub(crate) async fn is_release_candidate_skipped(
-        &self,
-        candidate: &crate::import::folder_scanner::FolderCandidate,
-    ) -> Result<bool, LibraryError> {
-        Ok(self.database.is_release_candidate_skipped(candidate).await?)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -301,17 +200,6 @@ impl LibraryManager {
         Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
-    pub(crate) async fn load_candidate_file_tag_snapshot(
-        &self,
-        watched_folder_path: &Path,
-        candidate_path: &CandidateKey,
-    ) -> Result<Option<crate::db::DbCandidateFileTagSnapshot>, LibraryError> {
-        Ok(self
-            .database
-            .load_candidate_file_tag_snapshot(watched_folder_path, candidate_path)
-            .await?)
-    }
-
     /// The Discogs identities of the artists an import of `credits` would
     /// create, whose pictures it fetches before it writes anything. An artist
     /// the credits resolve to in the library keeps its own picture, so it is
@@ -385,19 +273,6 @@ impl LibraryManager {
     ) -> Result<std::collections::HashMap<String, crate::db::DbImportCandidateState>, LibraryError>
     {
         Ok(self.database.load_import_candidate_states().await?)
-    }
-
-    /// Pick the library album the candidate `content_hash` joins, or
-    /// (`None`) leave it to its records.
-    pub(crate) async fn set_candidate_album_pick(
-        &self,
-        content_hash: &str,
-        album_id: Option<&str>,
-    ) -> Result<(), crate::import::ImportError> {
-        self.database
-            .set_candidate_album_pick(content_hash, album_id)
-            .await
-            .map_err(|error| crate::import::ImportError::Db(LibraryError::Database(error)))
     }
 
     /// The library album picked for the candidate `content_hash`, if one is.
@@ -501,23 +376,5 @@ impl LibraryManager {
         content_hash: &str,
     ) -> Result<crate::import::folder_scanner::CandidateFileEdits, LibraryError> {
         Ok(self.database.load_candidate_file_edits(content_hash).await?)
-    }
-
-    /// The grouping the folder `folder` is read as; `None` when no reading
-    /// of it is stored.
-    pub(crate) async fn folder_reading_grouping(
-        &self,
-        folder: &crate::import::folder_scanner::FolderReleaseDecisionKey,
-    ) -> Result<Option<CandidateKey>, LibraryError> {
-        Ok(self.database.folder_reading_grouping(folder).await?)
-    }
-
-    /// The keys of the scanned releases at `folder` or below it.
-    pub(crate) async fn scanned_release_keys_at_or_below(
-        &self,
-        watched_folder_path: &Path,
-        folder: &Path,
-    ) -> Result<std::collections::BTreeSet<CandidateKey>, LibraryError> {
-        Ok(self.database.scanned_release_keys_at_or_below(watched_folder_path, folder).await?)
     }
 }

@@ -36,8 +36,8 @@ impl crate::import::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
 }
 
 /// Where the stored scan of the only watched root stands.
-async fn root_scan_status(service: &ImportService) -> crate::import::FolderScanStatus {
-    let mut statuses = service.library_manager.load_folder_scan_progress().await.unwrap().statuses;
+async fn root_scan_status(database: &Database) -> crate::import::FolderScanStatus {
+    let mut statuses = database.load_folder_scan_progress().await.unwrap().statuses;
     assert_eq!(statuses.len(), 1, "one root is watched");
     statuses.remove(0).status
 }
@@ -78,7 +78,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
             .unwrap(),
         Ok(())
     );
-    let crate::import::FolderScanStatus::Failed { error } = root_scan_status(&test.service).await
+    let crate::import::FolderScanStatus::Failed { error } = root_scan_status(&test.database).await
     else {
         panic!("the panicked pass is stored as failed");
     };
@@ -99,7 +99,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         Ok(())
     );
     assert!(matches!(
-        root_scan_status(&test.service).await,
+        root_scan_status(&test.database).await,
         crate::import::FolderScanStatus::Complete
     ));
 

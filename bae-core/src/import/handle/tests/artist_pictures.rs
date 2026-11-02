@@ -10,6 +10,9 @@ use super::*;
 /// transport.
 struct DiscogsPick {
     handle: ImportServiceHandle,
+    /// The library the import writes the pictures into, whose stored bytes
+    /// a test reads.
+    manager: LibraryManager,
     tmp: TempDir,
     key: crate::import::CandidateKey,
     images: bae_test_support::RemoteImageHost,
@@ -23,7 +26,7 @@ impl DiscogsPick {
     /// Discogs' artist documents: none for the album artist, and for the
     /// track artist one whose primary image is `picture_url`.
     fn seed_artists(&self, picture_url: String) {
-        let discogs = self.handle.library_manager.providers().discogs();
+        let discogs = self.handle.catalogs.providers().discogs();
         discogs.seed_artist_image_response(&self.album_artist_id, None);
         discogs.seed_artist_image_response(&self.track_artist_id, Some(picture_url));
     }
@@ -39,7 +42,7 @@ impl DiscogsPick {
     async fn track_artist(&self, release_id: &str) -> crate::db::DbArtist {
         let first_track = self
             .handle
-            .library_manager
+            .database
             .get_tracks_for_release(release_id)
             .await
             .unwrap()
@@ -47,7 +50,7 @@ impl DiscogsPick {
             .next()
             .expect("the imported release has its first track");
         self.handle
-            .library_manager
+            .database
             .get_artists_for_track(&first_track.id)
             .await
             .unwrap()
@@ -62,7 +65,7 @@ impl DiscogsPick {
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
         let mut search =
-            self.handle.library_manager.subscribe_artist_search(crate::library::ArtistSearchView {
+            self.handle.database.subscribe_artist_search(crate::library::ArtistSearchView {
                 query: crate::library::LibrarySearchQuery::parse("Track Artist"),
                 windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into(),
             });
@@ -74,7 +77,7 @@ impl DiscogsPick {
             .find(|result| result.artist.id == artist_id)
             .expect("the track artist is searchable");
         let image = result.image?;
-        self.handle.library_manager.read_image_bytes(&image).await.unwrap()
+        self.manager.read_image_bytes(&image).await.unwrap()
     }
 }
 
@@ -107,7 +110,7 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 
 async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_test_support::RemoteImageHost::start().await;
-    let (handle, tmp, key, _hash) = pane_fixture_with(
+    let StoredCandidate { handle, manager, key, tmp, .. } = picked_stored_candidate_with(
         bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
     )
     .await;
@@ -141,11 +144,11 @@ async fn picked_discogs_release() -> DiscogsPick {
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
     handle
-        .library_manager
+        .catalogs
         .providers()
         .discogs()
         .seed_release_cache(&source_release_id, raw_release);
-    handle.library_manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    handle.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()),
         None,
     )]);
@@ -167,6 +170,7 @@ async fn picked_discogs_release() -> DiscogsPick {
 
     DiscogsPick {
         handle,
+        manager,
         tmp,
         key,
         images,
@@ -203,7 +207,7 @@ async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pi
 async fn an_artist_the_library_already_has_is_not_fetched_again() {
     let pick = picked_discogs_release().await;
     let existing = make_artist("Track Artist", Some(&pick.track_artist_id), None);
-    pick.handle.library_manager.insert_artist(&existing).await.unwrap();
+    pick.handle.database.insert_artist(&existing).await.unwrap();
     let picture_url = pick.images.serve_image(&pick.picture_path, bae_test_support::cover_png());
 
     pick.seed_artists(picture_url);
@@ -228,7 +232,7 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     pick.import().await.expect_err("a picture that fails to download fails the import");
     let failed_requests = pick.images.requests(&pick.picture_path);
     assert!(failed_requests > 0, "the failed import asked for the picture");
-    let rows = pick.handle.library_manager.every_row_for_test().await;
+    let rows = pick.handle.database.every_row_for_test().await.unwrap();
     for table in ["releases", "albums", "artists", "artist_images", "release_files"] {
         assert!(
             rows.get(table).is_none_or(Vec::is_empty),
@@ -348,7 +352,7 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
         .await
         .expect_err("a file changed since its scan fails the import");
     assert!(error.contains("changed after its import candidate was scanned"), "{error}");
-    let rows = pick.handle.library_manager.every_row_for_test().await;
+    let rows = pick.handle.database.every_row_for_test().await.unwrap();
     for table in ["releases", "release_files"] {
         assert!(
             rows.get(table).is_none_or(Vec::is_empty),

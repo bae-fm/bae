@@ -28,7 +28,7 @@ pub(super) async fn picked_fixture(
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey) {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.library_manager.providers(),
+        handle.catalogs.providers(),
         release_id,
         "CAT-1",
     );

@@ -4,7 +4,6 @@ use crate::import::folder_scanner::{
 };
 use crate::import::types::{ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
-use crate::library::LibraryManager;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::path::Path;
@@ -326,7 +325,6 @@ pub struct ImportServiceHandle {
     /// The import worker. Its `LibraryManager` clone holds coven's store-open
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
-    library_manager: LibraryManager,
     /// The library's store, which the handle reads and writes directly.
     database: crate::db::Database,
     /// The catalogs as this library may ask them.
@@ -337,6 +335,8 @@ pub struct ImportServiceHandle {
     remote_images: crate::import::RemoteImages,
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
+    /// The clock a refused import's failure is stamped with.
+    clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     /// Reads a folder's audio files for their embedded tags; the scan's
     /// pre-fill uses the same reader.
@@ -454,7 +454,7 @@ impl ImportServiceHandle {
         key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::import::ImportError>
     {
-        self.library_manager
+        self.database
             .load_release_candidate(key)
             .await?
             .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })
@@ -472,12 +472,12 @@ impl ImportServiceHandle {
     ) -> Result<Self, crate::library::LibraryError> {
         let crate::import::ImportServices {
             event_tx,
-            library_manager,
+            library_manager: _,
             database,
             catalogs,
             remote_images,
             preparations,
-            clock: _,
+            clock,
             ids,
             file_tags,
             directories: _,
@@ -505,12 +505,12 @@ impl ImportServiceHandle {
         );
         Ok(Self {
             worker,
-            library_manager,
             database,
             catalogs,
             release_reads,
             remote_images,
             preparations,
+            clock,
             ids,
             file_tags,
             event_tx,
@@ -740,7 +740,7 @@ impl ImportServiceHandle {
         key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::library::LibraryError> {
         Ok(self
-            .library_manager
+            .database
             .load_import_candidate(key)
             .await?
             .map(crate::import::ImportCandidateDetailProjection::resolve))
@@ -756,7 +756,7 @@ impl ImportServiceHandle {
         Option<crate::import::CandidateKey>,
         Option<crate::import::ImportCandidateDetailProjection>,
     > {
-        self.library_manager.subscribe_import_candidate(Some(key.clone()))
+        self.database.subscribe_import_candidate(Some(key.clone()))
     }
 
     /// The import list for `view` as one window over every item, for a test
@@ -793,7 +793,7 @@ impl ImportServiceHandle {
         &self,
         mut accept: impl FnMut(&crate::import::FolderScanProgress) -> bool,
     ) -> crate::import::FolderScanProgress {
-        let mut scans = self.library_manager.subscribe_folder_scan_progress();
+        let mut scans = self.database.subscribe_folder_scan_progress();
         loop {
             let progress = scans
                 .next()
@@ -831,7 +831,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::library::LibraryError> {
-        let stored = self.library_manager.load_folder_scan_item(key).await?;
+        let stored = self.database.load_folder_scan_item(key).await?;
         let candidate = match stored {
             Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => {
                 Some((candidate, true))
@@ -891,11 +891,12 @@ impl ImportServiceHandle {
         candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
         Ok(crate::import::CandidateStanding {
-            skipped: self.library_manager.is_release_candidate_skipped(candidate).await?,
+            skipped: self.database.is_release_candidate_skipped(candidate).await?,
             imported: self
-                .library_manager
-                .is_content_hash_imported(&candidate.files.content_hash())
-                .await?,
+                .database
+                .release_imported_from(&candidate.files.content_hash())
+                .await?
+                .is_some(),
             claimed: self.runtime.import_claimed(key).await?,
         })
     }
@@ -965,7 +966,7 @@ impl ImportServiceHandle {
     {
         bae_util::task_failure::joined("a candidate write", self.runtime_handle.spawn(write))
             .await
-            .map_err(|failed| self.library_manager.bug(failed))?
+            .map_err(|failed| self.diagnostics.bug(failed))?
     }
 }
 

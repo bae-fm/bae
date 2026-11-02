@@ -34,11 +34,7 @@ impl ImportServiceHandle {
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), crate::import::ImportError> {
-        let sources = self
-            .library_manager
-            .metadata_sources()
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        let sources = self.database.preferences().await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
         let run = self
             .runtime
@@ -175,7 +171,7 @@ impl ImportServiceHandle {
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
-        let statuses = self.library_manager.check_releases_in_library(&checks).await?;
+        let statuses = self.database.check_releases_in_library(&checks).await?;
 
         let status_map: HashMap<String, crate::db::LibraryStatus> =
             statuses.into_iter().map(|s| (s.release_id.clone(), s)).collect();
@@ -229,10 +225,8 @@ impl ImportServiceHandle {
                 detail: format!("{key} is not a scanned candidate"),
             });
         };
-        let state = self
-            .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
-            .await?;
+        let state =
+            self.database.load_import_candidate_state(&candidate.files.content_hash()).await?;
         let link = match state.and_then(|state| state.release_link) {
             None => return Ok(RemoteCoverGallery::Unlinked),
             // An album's artwork is what each catalog shows for the album.
@@ -245,17 +239,15 @@ impl ImportServiceHandle {
         };
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
-            claimed_releases.push(
-                self.library_manager.load_source_release(claimed).await?.ok_or_else(|| {
-                    crate::import::ImportError::Internal {
-                        detail: format!(
-                            "{key} names {} release {} that is not stored",
-                            claimed.catalog.as_str(),
-                            claimed.key
-                        ),
-                    }
-                })?,
-            );
+            claimed_releases.push(self.database.load_source_release(claimed).await?.ok_or_else(
+                || crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{key} names {} release {} that is not stored",
+                        claimed.catalog.as_str(),
+                        claimed.key
+                    ),
+                },
+            )?);
         }
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
@@ -268,7 +260,7 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
     ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
-        let records = self.library_manager.get_release_records(release_id).await?;
+        let records = self.database.get_release_records(release_id).await?;
 
         if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);
@@ -336,7 +328,7 @@ impl ImportServiceHandle {
     ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
     {
         if self.is_settled_lead(candidate_key, release).await? {
-            self.library_manager.load_source_release(release).await?.ok_or_else(|| {
+            self.database.load_source_release(release).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!(
                         "{candidate_key} settled on {} release {} but nothing stored it",
@@ -364,10 +356,8 @@ impl ImportServiceHandle {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        let Some(row) = self
-            .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
-            .await?
+        let Some(row) =
+            self.database.load_import_candidate_state(&candidate.files.content_hash()).await?
         else {
             return Ok(false);
         };
