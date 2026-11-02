@@ -30,8 +30,8 @@ impl crate::playback::audio_output::AudioOutput for VolumePanicsOutput {
 async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
-    let (mut service, mut progress_rx) = playback_service_over(&manager);
+    let store = seeded_store(&[]).await;
+    let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
     service.audio_output = Box::new(VolumePanicsOutput(AudioOutputControls::new(1.0)));
     let command_tx = service.command_tx.clone();
     let (_deletions_tx, deletions_rx) = tokio_mpsc::unbounded_channel();

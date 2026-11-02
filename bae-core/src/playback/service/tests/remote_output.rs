@@ -13,19 +13,15 @@ fn wait_until(predicate: impl Fn() -> bool) -> bool {
 /// Seed the audio format, segment, and backing file that make `track_id`
 /// resolvable, so the remote path can turn it into media. No real bytes on disk —
 /// the device, not bae, fetches the audio, so the remote path never decodes it.
-async fn seed_playable_track(
-    library_manager: &crate::library::LibraryManager,
-    release_id: &str,
-    track_id: &str,
-) {
-    seed_track_window(library_manager, release_id, track_id, 0, None, None).await;
+async fn seed_playable_track(store: &SeededStore, release_id: &str, track_id: &str) {
+    seed_track_window(store, release_id, track_id, 0, None, None).await;
 }
 
 /// [`seed_playable_track`] with its one main segment spanning
 /// `start_sample..end_sample` of its file, as a CUE image's track does, after
 /// `generated_pregap_samples` of silence a CUE `PREGAP` generates.
 async fn seed_track_window(
-    library_manager: &crate::library::LibraryManager,
+    store: &SeededStore,
     release_id: &str,
     track_id: &str,
     start_sample: u64,
@@ -38,7 +34,13 @@ async fn seed_track_window(
     let file_id = bae_test_support::test_uuid(&format!("{track_id}-file"));
     let file =
         NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
-    library_manager.add_file(&file, 4_096).await.unwrap();
+    crate::db::client::tests::aggregate_ordering_tests::insert_file(
+        store,
+        store.home.path(),
+        file,
+        4_096,
+    )
+    .await;
     let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,
@@ -62,7 +64,7 @@ async fn seed_track_window(
         end_byte: None,
         created_at: now,
     };
-    library_manager
+    store
         .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
         .await
         .unwrap();
@@ -72,7 +74,7 @@ async fn seed_track_window(
 /// media.
 async fn remote_service(
     releases: &[(&str, &[&str])],
-) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, service, rx) = seeded_playback_service(releases).await;
     for (release_id, tracks) in releases {
         for track_id in *tracks {
@@ -116,7 +118,7 @@ async fn playing_remote_fixture(
     tracks: &[&str],
     position: StreamPosition,
 ) -> (
-    SeededLibrary,
+    SeededStore,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -131,7 +133,7 @@ async fn remote_fixture_from(
     position: StreamPosition,
     phase: TrackPhase,
 ) -> (
-    SeededLibrary,
+    SeededStore,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -379,7 +381,7 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
 /// [`playing_remote_fixture`] over one track at position zero, waited until the
 /// device has taken its first load.
 async fn remote_over_fake() -> (
-    SeededLibrary,
+    SeededStore,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -540,7 +542,6 @@ async fn set_volume_while_remote_sets_the_device_volume() {
 /// handed playback. The device is not loaded again mid-track.
 #[tokio::test]
 async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_title() {
-    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const FIRST: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (library, mut service, state, _rx) =
@@ -550,43 +551,12 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     let first_url = format!("http://renderer.local/stream?id={FIRST}");
     let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
-    library
-        .apply_release_metadata_user_edit(
-            RELEASE,
-            &crate::import::ReleaseUserEdit {
-                album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(
-                    crate::import::ArtistAssignment::Picked {
-                        credit_name: None,
-                        artist: crate::db::ExistingArtist {
-                            artist_id: bae_test_support::test_uuid(
-                                "e36744a5-1a36-460f-891c-e7e558034edf",
-                            ),
-                            name: "Artist Name".to_string(),
-                            sort_name: None,
-                            musicbrainz_artist_id: None,
-                            discogs_artist_id: None,
-                        },
-                    },
-                )],
-                album_year: None,
-                pressing: bae_types::pressing::Pressing::blank(),
-                tracks: vec![
-                    crate::import::TrackUserEdit {
-                        title: "Track Title".to_string(),
-                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                        file: None,
-                    },
-                    crate::import::TrackUserEdit {
-                        title: "Renamed Track".to_string(),
-                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                        file: None,
-                    },
-                ],
-            },
-        )
-        .await
-        .unwrap();
+    crate::db::client::tests::exec(
+        &library,
+        "UPDATE tracks SET title = 'Renamed Track' WHERE id = ?1",
+        &[SECOND],
+    )
+    .await;
 
     service
         .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {

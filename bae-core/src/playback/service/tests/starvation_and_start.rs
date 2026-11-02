@@ -31,8 +31,8 @@ fn starvation_ended_event(track_id: &str) -> AudioEvent {
 #[tokio::test]
 async fn starvation_onset_reports_the_track_time_it_starved_at() {
     let (diagnostics, transport) = recording_diagnostics();
-    let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
-    let (mut service, _progress_rx) = playback_service_over(&manager);
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
     let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
     prepared.timeline = TrackTimeline::new(
         Some(std::time::Duration::from_secs(10)),
@@ -95,8 +95,8 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
 async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics).await;
-    let (mut service, mut progress_rx) = playback_service_over(&manager);
+    let store = seeded_store(&[]).await;
+    let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
     service.slot =
         active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
 

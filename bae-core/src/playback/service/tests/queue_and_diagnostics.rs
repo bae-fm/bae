@@ -18,7 +18,7 @@ async fn context_lane(
 /// releases were chosen, and reports the releases that contributed as the source.
 #[tokio::test]
 async fn play_releases_concatenates_tracks_in_input_order() {
-    let (_home, library) = seeded_library_manager(&[
+    let library = seeded_store(&[
         (
             RELEASE_TWO_TRACKS,
             &["5634d119-43be-4435-8432-575baddc4705", "5634ce19-43be-4f1c-8432-545baddc41ec"],
@@ -26,7 +26,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
     ])
     .await;
-    let (mut service, _rx) = playback_service_over(&library);
+    let (mut service, _rx) = playback_service_over(&library, crate::diagnostics::Diagnostics::noop());
 
     service
         .playback_queue
@@ -38,7 +38,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
         .unwrap();
 
     assert_eq!(
-        context_lane(&service, library.database()).await,
+        context_lane(&service, &library).await,
         (
             ContextSource::Releases,
             vec![
@@ -54,12 +54,12 @@ async fn play_releases_concatenates_tracks_in_input_order() {
 /// releases still play in order.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
-    let (_home, library) = seeded_library_manager(&[
+    let library = seeded_store(&[
         (RELEASE_TWO_TRACKS, &["5634d119-43be-4435-8432-575baddc4705"]),
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B]),
     ])
     .await;
-    let (mut service, _rx) = playback_service_over(&library);
+    let (mut service, _rx) = playback_service_over(&library, crate::diagnostics::Diagnostics::noop());
 
     service
         .playback_queue
@@ -72,7 +72,7 @@ async fn play_releases_skips_a_release_without_tracks() {
         .unwrap();
 
     assert_eq!(
-        context_lane(&service, library.database()).await,
+        context_lane(&service, &library).await,
         (
             ContextSource::Releases,
             vec![
@@ -527,15 +527,11 @@ async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
 #[tokio::test]
 async fn a_play_command_ships_playback_command_started_and_track_started() {
     let (diagnostics, transport) = recording_diagnostics();
-    let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[(
+    let store = seeded_store(&[(
             "c61a9e19-f3ba-4728-842c-c59dbc82e238",
             &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        )],
-        diagnostics.clone(),
-    )
-    .await;
-    let (mut service, _progress_rx) = playback_service_over(&manager);
+        )]).await;
+    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
 
     // Queue the play command and a shutdown, then let the real loop drain both:
     // it emits the command telemetry, runs the play, then breaks on shutdown.
@@ -546,7 +542,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    let track_deletions = manager.subscribe_track_deletions();
+    let (_deletions_tx, track_deletions) = tokio_mpsc::unbounded_channel();
     service.run(track_deletions).await;
 
     diagnostics.flush().await.expect("flush succeeds");
@@ -573,15 +569,11 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
 #[tokio::test]
 async fn previous_ships_track_started() {
     let (diagnostics, transport) = recording_diagnostics();
-    let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[(
+    let store = seeded_store(&[(
             "c61a9e19-f3ba-4728-842c-c59dbc82e238",
             &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        )],
-        diagnostics.clone(),
-    )
-    .await;
-    let (mut service, _progress_rx) = playback_service_over(&manager);
+        )]).await;
+    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
 
     // A two-track context playing from t1, so Previous steps back to t0.
     service
@@ -636,12 +628,8 @@ fn playback_command_kind_maps_user_intent_only() {
 #[tokio::test]
 async fn track_completion_ships_track_completed_with_decode_error_count() {
     let (diagnostics, transport) = recording_diagnostics();
-    let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[("c61a9e19-f3ba-4728-842c-c59dbc82e238", &["08c80007-b56a-4fc9-8df6-af2967fa09b9"])],
-        diagnostics.clone(),
-    )
-    .await;
-    let (mut service, _progress_rx) = playback_service_over(&manager);
+    let store = seeded_store(&[("c61a9e19-f3ba-4728-842c-c59dbc82e238", &["08c80007-b56a-4fc9-8df6-af2967fa09b9"])]).await;
+    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
 
     // A track must be active for the completion to mark its phase.
     let buffer = create_sparse_buffer(1_024);

@@ -1,5 +1,4 @@
 use super::*;
-use crate::app::test_library::TestLibrary;
 use crate::playback::audio_output::{
     audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender,
     AudioOutputControls, AudioState, AudioStream,
@@ -158,22 +157,28 @@ async fn fill_test_release(service: &mut PlaybackService, release_id: &str) {
     );
 }
 
-async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, TestLibrary) {
-    seeded_library_manager_with_diagnostics(releases, crate::diagnostics::Diagnostics::noop()).await
+/// A store seeded with releases, and the directory holding it, which
+/// outlives it.
+struct SeededStore {
+    database: crate::db::Database,
+    home: TempDir,
 }
 
-async fn seeded_library_manager_with_diagnostics(
-    releases: &[(&str, &[&str])],
-    diagnostics: crate::diagnostics::Diagnostics,
-) -> (TempDir, TestLibrary) {
-    seeded_library_manager_with_track_length(releases, diagnostics, 180_000).await
+impl std::ops::Deref for SeededStore {
+    type Target = crate::db::Database;
+    fn deref(&self) -> &crate::db::Database {
+        &self.database
+    }
 }
 
-async fn seeded_library_manager_with_track_length(
+async fn seeded_store(releases: &[(&str, &[&str])]) -> SeededStore {
+    seeded_store_with_track_length(releases, 180_000).await
+}
+
+async fn seeded_store_with_track_length(
     releases: &[(&str, &[&str])],
-    diagnostics: crate::diagnostics::Diagnostics,
     track_length_ms: u64,
-) -> (TempDir, TestLibrary) {
+) -> SeededStore {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
@@ -181,34 +186,11 @@ async fn seeded_library_manager_with_track_length(
             .await
             .unwrap();
     seed_test_releases(&database, releases, track_length_ms).await;
-
-    let library = TestLibrary::open_with(
-        database,
-        crate::app_dir::AppDir::under_home(home.path()).unwrap(),
-        crate::catalog_model::providers::Providers::offline(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidIds),
-        diagnostics,
-    )
-    .await;
-    (home, library)
-}
-
-/// A seeded test library, and the directory holding it, which outlives it.
-struct SeededLibrary {
-    library: TestLibrary,
-    _home: TempDir,
-}
-
-impl std::ops::Deref for SeededLibrary {
-    type Target = TestLibrary;
-    fn deref(&self) -> &TestLibrary {
-        &self.library
-    }
+    SeededStore { database, home }
 }
 
 async fn test_playback_service(
-) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     seeded_playback_service(&[]).await
 }
 
@@ -246,29 +228,30 @@ fn recording_diagnostics(
 
 async fn seeded_playback_service(
     releases: &[(&str, &[&str])],
-) -> (SeededLibrary, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
-    let (home, library) = seeded_library_manager(releases).await;
-    let (service, progress_rx) = playback_service_over(&library);
-    (SeededLibrary { library, _home: home }, service, progress_rx)
+) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+    let store = seeded_store(releases).await;
+    let (service, progress_rx) =
+        playback_service_over(&store, crate::diagnostics::Diagnostics::noop());
+    (store, service, progress_rx)
 }
 
-/// Assemble a directly-drivable `PlaybackService` over a given library (with a
-/// stub audio output), for tests that call its handlers without the actor loop.
+/// Assemble a directly-drivable `PlaybackService` over `database` (with a
+/// stub audio output), reporting to `diagnostics`, for tests that call its
+/// handlers without the actor loop.
 fn playback_service_over(
-    library: &TestLibrary,
+    database: &crate::db::Database,
+    diagnostics: crate::diagnostics::Diagnostics,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-    let diagnostics = library.diagnostics().clone();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
-    let playback_queue = PlaybackQueue::new(crate::playback::tables::PlaybackQueueTables::new(
-        library.database().clone(),
-    ));
-    let staged_sides = advance::staged_sides_follow(library.database(), &diagnostics);
+    let playback_queue =
+        PlaybackQueue::new(crate::playback::tables::PlaybackQueueTables::new(database.clone()));
+    let staged_sides = advance::staged_sides_follow(database, &diagnostics);
     let service = PlaybackService {
-        database: library.database().clone(),
-        ids: library.ids().clone(),
+        database: database.clone(),
+        ids: Arc::new(coven::UuidIds),
         diagnostics,
         command_tx,
         command_rx,
