@@ -4,7 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// Find online states whose words the tests leave to the gallery: a row
+    /// Find online states whose words and looks the tests leave to the
+    /// gallery: the Discogs bar; every shape of identify run's band; a row
     /// whose release could not be read, with its failure line and Retry; a
     /// pane nothing has run for, and one with no source to ask; a folder
     /// whose matches are pressings of one album, offered Not sure; a card
@@ -13,6 +14,45 @@ extension ShotScene {
     /// that puts them away.
     static let findOnlineScenes: [ShotScene] = [
         pane("import-search-not-started", PreviewData.searchStateIdle),
+        ShotScene(
+            id: "import-search-discogs-bar",
+            size: CGSize(width: 900, height: 600)
+        ) {
+            AnyView(
+                ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+                    .environment(
+                        PreviewData.makeConfigStore(
+                            libraryFullWidth: false,
+                            discogsUsable: false
+                        )
+                    )
+                    .importPreviewEnvironment()
+                    .windowBackground()
+            )
+        },
+        ShotScene(
+            id: "identify-band-runs",
+            size: CGSize(width: 660, height: 900)
+        ) {
+            AnyView(
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(bandRuns.enumerated()), id: \.offset) {
+                        _,
+                        run in
+                        IdentifierBand(
+                            run: run,
+                            onToggleLookup: { _ in },
+                            onToggleCatalogAgreement: { _ in },
+                            onRetryFailed: {},
+                            onEditTitleSearch: { _, _ in }
+                        )
+                        Divider()
+                    }
+                }
+                .importPreviewEnvironment()
+                .windowBackground()
+            )
+        },
         ShotScene(
             id: "import-search-no-source",
             size: CGSize(width: 900, height: 600)
@@ -95,6 +135,24 @@ extension ShotScene {
             )
         },
     ]
+
+    /// Each shape of run the band draws: starting, in flight, a provider
+    /// failed, a catalog number waiting to be used, a barcode left out and
+    /// both asked, a Disc ID left out and one no provider answers, nothing
+    /// found.
+    private static var bandRuns: [BridgeIdentifyRun] {
+        [
+            PreviewData.identifyRunStarting,
+            PreviewData.identifyRunInFlight,
+            PreviewData.identifyRunProviderFailed,
+            PreviewData.identifyRunCatalogWaiting,
+            PreviewData.identifyRunBarcodeLeftOut,
+            PreviewData.identifyRunBothBarcodesAsked,
+            PreviewData.identifyRunDiscIdLeftOut,
+            PreviewData.identifyRunOneSource,
+            PreviewData.identifyRunNothingFound,
+        ]
+    }
 
     /// The Find online pane over `state`.
     private static func pane(_ id: String, _ state: ImportSearchState)

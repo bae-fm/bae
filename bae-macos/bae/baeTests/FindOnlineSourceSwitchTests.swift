@@ -96,37 +96,6 @@ struct FindOnlineSourceSwitchTests {
         #expect(FindOnlineAutomaticSection.hasSourceToSearch(ordinary.config))
     }
 
-    /// A run that asked one source names that source on its chips. The
-    /// capsules come off the provider list a cell at a time, so a run on one
-    /// source has to draw its band rather than nothing, and differently from a
-    /// run on both.
-    @Test("a run on one source draws its band")
-    func aRunOnOneSourceDrawsItsBand() async throws {
-        let size = NSSize(width: 660, height: 260)
-        func band(_ run: BridgeIdentifyRun) async throws -> Data {
-            try await FindOnlineRendering.pixels(
-                IdentifierBand(
-                    run: run,
-                    onToggleLookup: { _ in },
-                    onToggleCatalogAgreement: { _ in },
-                    onRetryFailed: {},
-                    onEditTitleSearch: { _, _ in }
-                ),
-                size: size
-            )
-        }
-
-        let oneSource = try await band(PreviewData.identifyRunOneSource)
-        let bothSources = try await band(PreviewData.identifyRunStarting)
-        let blank = try await FindOnlineRendering.pixels(
-            Color.clear,
-            size: size
-        )
-
-        #expect(oneSource != blank, "a one-source run still draws its band")
-        #expect(oneSource != bothSources)
-    }
-
 }
 
 /// Collects what the source checkboxes write, and optionally refuses the way

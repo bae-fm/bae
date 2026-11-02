@@ -203,77 +203,37 @@ struct NarrowedOutDisclosureTests {
     }
 }
 
-/// The pane's standing notice that Discogs was never asked.
-///
-/// Asserted in pixels: the bar sits above both section headers, so what it
-/// changes is the whole pane, and putting it away takes that row with it.
+/// The pane's standing notice that Discogs was never asked, above both
+/// sections since neither asked it. How it looks is the
+/// `import-search-discogs-bar` shot's.
 @MainActor
 @Suite("The Discogs-not-configured bar")
 struct FindOnlineDiscogsBarTests {
-    private static let size = NSSize(width: 900, height: 620)
-
-    /// AUTOMATIC open, with nothing looked up yet.
-    @Test("it stands over the automatic section until it is put away")
-    func overTheAutomaticSection() async throws {
-        try await assertBarIsTheDifference(state: PreviewData.searchStateIdle)
-    }
-
-    /// SEARCH open. The per-source lines no longer say anything about a
-    /// source that was never asked, so this bar is all there is to say it.
-    @Test("and over the search section, which no longer says it per source")
-    func overTheSearchSection() async throws {
-        try await assertBarIsTheDifference(
-            state: PreviewData.searchStateSearchEmpty
-        )
-    }
-
-    private func assertBarIsTheDifference(
-        state: ImportSearchState
-    ) async throws {
-        let showing = try await pixels(
-            state: state,
-            discogsUsable: false,
-            dismissed: false
-        )
-        let dismissed = try await pixels(
-            state: state,
-            discogsUsable: false,
-            dismissed: true
-        )
-        let configured = try await pixels(
-            state: state,
-            discogsUsable: true,
-            dismissed: false
-        )
-
-        #expect(showing != dismissed, "putting the bar away takes its row")
+    @Test("it stands over the pane until it is put away")
+    func itStandsUntilPutAway() {
+        let noKey =
+            PreviewData.makeConfigStore(
+                libraryFullWidth: false,
+                discogsUsable: false
+            )
+            .config
+        let key =
+            PreviewData.makeConfigStore(
+                libraryFullWidth: false,
+                discogsUsable: true
+            )
+            .config
+        #expect(ImportSearchPane.showsDiscogsBar(noKey, dismissed: false))
+        #expect(!ImportSearchPane.showsDiscogsBar(noKey, dismissed: true))
         #expect(
-            showing != configured,
+            !ImportSearchPane.showsDiscogsBar(key, dismissed: false),
             "a library with a token never shows the bar"
         )
-    }
 
-    private func pixels(
-        state: ImportSearchState,
-        discogsUsable: Bool,
-        dismissed: Bool
-    ) async throws -> Data {
         let uiStore = UiStore()
-        if dismissed {
-            uiStore.dismissDiscogsNotice()
-        }
-        return try await FindOnlineRendering.pixels(
-            ImportSearchPane.preview(state: state)
-                .environment(uiStore)
-                .environment(
-                    PreviewData.makeConfigStore(
-                        libraryFullWidth: false,
-                        discogsUsable: discogsUsable
-                    )
-                )
-                .importPreviewEnvironment(),
-            size: Self.size
-        )
+        #expect(!uiStore.discogsNoticeDismissed)
+        uiStore.dismissDiscogsNotice()
+        #expect(uiStore.discogsNoticeDismissed)
     }
 }
 
@@ -570,26 +530,13 @@ struct FindOnlineReadingPickTests {
     }
 }
 
+/// How each shape of run draws its band — a number in the run against one
+/// waiting, a code left out against one asked about, a Disc ID left out
+/// against one no provider answers, a run on one source — is the
+/// `identify-band-runs` shot's.
 @MainActor
 @Suite("The band a run shows")
 struct IdentifierBandTests {
-    /// The chips draw themselves — labels, values, provider capsules — rather
-    /// than handing anything to an AppKit control. Assert each shape of run
-    /// puts something on screen, and that different runs draw differently.
-    @Test("every shape of run draws")
-    func everyShapeOfRunDraws() async throws {
-        let starting = try await Self.pixels(PreviewData.identifyRunStarting)
-        let inFlight = try await Self.pixels(PreviewData.identifyRunInFlight)
-        let failed = try await Self.pixels(
-            PreviewData.identifyRunProviderFailed
-        )
-        let empty = try await Self.pixels(PreviewData.identifyRunNothingFound)
-
-        #expect(starting != inFlight)
-        #expect(inFlight != failed)
-        #expect(failed != empty)
-    }
-
     /// A run in flight lists what has landed under its band, so the area
     /// scrolls.
     @Test("the matches landed so far list under the band")
@@ -610,67 +557,6 @@ struct IdentifierBandTests {
         }
     }
 
-    /// A catalog number is drawn where it stands: filled, with a capsule per
-    /// provider, once it is in the run; outlined and dimmed while it waits.
-    /// The same number in the two states draws differently.
-    @Test("a catalog number in the run draws differently from one waiting")
-    func aNumberInTheRunDrawsDifferently() async throws {
-        let active = try await Self.pixels(
-            PreviewData.identifyRunProviderFailed
-        )
-        let waiting = try await Self.pixels(
-            PreviewData.identifyRunCatalogWaiting
-        )
-
-        #expect(active != waiting)
-    }
-
-    /// An identifier the person left out of the run is the off chip: outlined,
-    /// dimmed, and with no provider capsules. The same two codes with both
-    /// asked about draw differently.
-    @Test(
-        "a barcode left out of the run draws differently from one asked about"
-    )
-    func aLeftOutBarcodeDrawsDifferently() async throws {
-        let leftOut = try await Self.pixels(
-            PreviewData.identifyRunBarcodeLeftOut
-        )
-        let asked = try await Self.pixels(
-            PreviewData.identifyRunBothBarcodesAsked
-        )
-
-        #expect(leftOut != asked)
-    }
-
-    /// A Disc ID nothing looked up is two different situations, and the band
-    /// draws them apart: the person took it out, which they can undo, or no
-    /// provider the run asks answers Disc IDs, which they cannot.
-    @Test("a Disc ID left out draws differently from one with no provider")
-    func aLeftOutDiscIdDrawsDifferently() async throws {
-        let leftOut = try await Self.pixels(
-            PreviewData.identifyRunDiscIdLeftOut
-        )
-        let noProvider = try await Self.pixels(
-            PreviewData.identifyRunOneSource
-        )
-
-        #expect(leftOut != noProvider)
-    }
-
-    /// The band on its own, at the width the pane's previews give it.
-    private static func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
-        try await FindOnlineRendering.pixels(
-            IdentifierBand(
-                run: run,
-                onToggleLookup: { _ in },
-                onToggleCatalogAgreement: { _ in },
-                onRetryFailed: {},
-                onEditTitleSearch: { _, _ in },
-            )
-            .importPreviewEnvironment(),
-            size: NSSize(width: 660, height: 260)
-        )
-    }
 }
 
 /// A pick being read is not yet a pick. Its row says so — no second click to
@@ -741,7 +627,7 @@ struct PickedRowTests {
     }
 }
 
-/// Rendering a view to pixels, for the checks that a surface drew at all.
+/// Hosting a view for the checks of its view tree.
 ///
 /// Hosts without making the window key. Key status is process-wide: a window
 /// taking it ends the field editing in whatever window had it, and these tests
@@ -749,15 +635,6 @@ struct PickedRowTests {
 /// focused. Capture needs layout and `cacheDisplay`, not focus.
 @MainActor
 enum FindOnlineRendering {
-    static func pixels(
-        _ view: some View,
-        size: NSSize = NSSize(width: 380, height: 220)
-    ) async throws -> Data {
-        try await withHosted(view.windowBackground(), size: size) { _, host in
-            try await SnapshotTestSupport.capturePNG(host, size: size)
-        }
-    }
-
     /// `view` framed to `size` and hosted for the length of `body`.
     static func withHosted<Value>(
         _ view: some View,

@@ -152,13 +152,22 @@ struct ImportSearchPane: View {
     /// stays hidden for the session.
     @ViewBuilder
     private var discogsBar: some View {
-        if !configStore.config.discogsUsable, !uiStore.discogsNoticeDismissed {
+        if Self.showsDiscogsBar(
+            configStore.config,
+            dismissed: uiStore.discogsNoticeDismissed
+        ) {
             FindOnlineDiscogsBar(
                 onOpenSettings: onOpenSettings,
                 onDismiss: { uiStore.dismissDiscogsNotice() }
             )
             Divider()
         }
+    }
+
+    /// Whether the bar shows: while Discogs can't be asked, until the
+    /// person puts it away for the session.
+    static func showsDiscogsBar(_ config: Config, dismissed: Bool) -> Bool {
+        !config.discogsUsable && !dismissed
     }
 
     @ViewBuilder
