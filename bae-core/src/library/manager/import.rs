@@ -4,50 +4,6 @@ use super::*;
 use crate::import::CandidateKey;
 
 impl LibraryManager {
-    pub(crate) fn subscribe_folder_scan_progress(
-        &self,
-    ) -> coven::LiveQuery<crate::import::FolderScanProgress> {
-        self.database.subscribe_folder_scan_progress()
-    }
-
-    pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<crate::import::ImportCounts> {
-        self.database.subscribe_import_counts()
-    }
-
-    pub(crate) fn subscribe_candidate_runtime(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>> {
-        self.database.subscribe_candidate_runtime(key)
-    }
-
-    pub(crate) fn subscribe_invalid_candidate(
-        &self,
-        initial: Option<CandidateKey>,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<CandidateKey>,
-        Option<crate::import::InvalidCandidateDetail>,
-    > {
-        self.database.subscribe_invalid_candidate(initial)
-    }
-
-    pub(crate) fn subscribe_import_candidate(
-        &self,
-        initial: Option<CandidateKey>,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<CandidateKey>,
-        Option<crate::import::ImportCandidateDetailProjection>,
-    > {
-        self.database.subscribe_import_candidate(initial)
-    }
-
-    pub(crate) async fn load_import_candidate(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<Option<crate::import::ImportCandidateDetailProjection>, LibraryError> {
-        Ok(self.database.load_import_candidate(key).await?)
-    }
-
     /// Store `release` with no row naming it, which only a test's setup
     /// does.
     #[cfg(test)]

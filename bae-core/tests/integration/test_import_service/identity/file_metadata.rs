@@ -76,7 +76,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     // shows, and what the commit below has to agree with.
     let draft = f
         .handle
-        .candidate_pane(&candidate_key)
+        .load_candidate(&candidate_key)
         .await
         .unwrap()
         .expect("the scanned candidate reads back")
@@ -435,7 +435,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     f.handle.select_candidate_file_tags(candidate_key.clone()).await.unwrap();
     let pane = f
         .handle
-        .candidate_pane(&candidate_key)
+        .load_candidate(&candidate_key)
         .await
         .unwrap()
         .expect("the prepared file-metadata candidate reads back");

@@ -165,7 +165,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     let pane_reads_pick = || async {
         fixture
             .import
-            .candidate_pane(&key)
+            .load_candidate(&key)
             .await
             .unwrap()
             .expect("the pane reads the candidate")

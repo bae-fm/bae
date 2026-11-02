@@ -120,10 +120,10 @@ impl AppServices {
         crate::import::InvalidCandidateDetail,
         crate::import::CandidateKey,
     > {
-        let manager = self.inner.manager.clone();
+        let import = self.inner.import.clone();
         detail_read(
-            manager.clone(),
-            move |key| manager.subscribe_invalid_candidate(key),
+            self.inner.manager.clone(),
+            move |key| import.subscribe_invalid_candidate(key),
             |detail| detail,
         )
     }

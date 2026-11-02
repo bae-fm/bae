@@ -242,7 +242,7 @@ async fn open_tagged_pane(
     f.handle.add_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let pane = f.handle.subscribe_candidate_pane(&key);
+    let pane = f.handle.subscribe_candidate(Some(key.clone()));
     (key, pane)
 }
 

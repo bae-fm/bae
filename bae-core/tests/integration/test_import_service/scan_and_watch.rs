@@ -811,7 +811,7 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
     };
     for (key, release_id) in keys.iter().zip(&release_ids) {
         assert_eq!(&imported_release(key), release_id, "{key} is its own import");
-        let pane = f.handle.candidate_pane(key).await.unwrap().unwrap();
+        let pane = f.handle.load_candidate(key).await.unwrap().unwrap();
         assert!(
             matches!(
                 &pane.import_status,

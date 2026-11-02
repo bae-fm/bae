@@ -89,7 +89,7 @@ fn audio_folder(root: &Path, name: &str) {
 /// Retitle `key` and wait for its pane to read the new title back, as long as
 /// that takes.
 async fn retitle(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
-    let mut pane_query = handle.subscribe_candidate_pane(key);
+    let mut pane_query = handle.subscribe_candidate(Some(key.clone()));
     pane_query.next().await.expect("the query stays open").result.unwrap();
     handle
         .set_candidate_edit_field(

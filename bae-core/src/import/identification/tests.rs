@@ -566,11 +566,7 @@ impl Fixture {
 
     /// One candidate's pane as it reads back from the tables.
     async fn pane(&self, dir: &Path) -> Option<crate::import::ImportCandidateDetail> {
-        self.manager
-            .load_import_candidate(&crate::import::CandidateKey::folder(dir))
-            .await
-            .unwrap()
-            .map(crate::import::ImportCandidateDetailProjection::resolve)
+        self.import.load_candidate(&crate::import::CandidateKey::folder(dir)).await.unwrap()
     }
 
     /// The stored MusicBrainz release, if a fetch stored one.

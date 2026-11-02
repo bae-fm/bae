@@ -137,7 +137,7 @@ async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
 async fn a_row_leaves_its_stored_entry_while_an_import_owns_it() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let stored = handle
-        .candidate_pane(&key)
+        .load_candidate(&key)
         .await
         .unwrap()
         .expect("the candidate reads back")

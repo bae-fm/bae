@@ -281,7 +281,7 @@ async fn pane(
     handle: &ImportServiceHandle,
     key: &crate::import::CandidateKey,
 ) -> crate::import::ImportCandidateDetail {
-    handle.candidate_pane(key).await.unwrap().expect("the picked candidate reads back")
+    handle.load_candidate(key).await.unwrap().expect("the picked candidate reads back")
 }
 
 async fn shut_down(handle: ImportServiceHandle) {

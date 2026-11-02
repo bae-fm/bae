@@ -222,7 +222,7 @@ async fn pick_release_for_folder(
         .unwrap();
     let pane = f
         .handle
-        .candidate_pane(&candidate_key)
+        .load_candidate(&candidate_key)
         .await
         .unwrap()
         .expect("the picked candidate reads back");
@@ -275,7 +275,7 @@ async fn candidate_pane(
     f: &ImportFixture,
     candidate_key: &bae_core::import::CandidateKey,
 ) -> bae_core::import::ImportCandidateDetail {
-    f.handle.candidate_pane(candidate_key).await.unwrap().expect("the candidate reads back")
+    f.handle.load_candidate(candidate_key).await.unwrap().expect("the candidate reads back")
 }
 
 /// A release listing another number of tracks than the folder holds is

@@ -45,6 +45,10 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &crate::import::CandidateKey, assignments: Vec<crate::import::Credited>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &crate::import::CandidateKey, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &crate::import::CandidateKey, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, load_import_candidate => load_candidate(key: &crate::import::CandidateKey) -> Result<Option<ImportCandidateDetail>, crate::import::ImportError>);
+    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> crate::library::LiveValues<crate::import::FolderScanProgress>);
+    delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> crate::library::LiveValues<crate::import::ImportCounts>);
+    delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &crate::import::CandidateKey) -> crate::library::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>>);
 
     /// Register the platform's artwork analyzer, which extraction reads
     /// barcodes and text off a candidate's images with.
@@ -228,16 +232,6 @@ impl AppServices {
         self.inner.import.end_candidate_import_for_test(candidate_key, import_id).await;
     }
 
-    /// What is in flight for `key`: the first value at once, then a value
-    /// after each write that changes it; `None` while nothing is.
-    pub fn subscribe_candidate_runtime(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> crate::library::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>> {
-        let manager = &self.inner.manager;
-        manager.values_until_closed(manager.subscribe_candidate_runtime(key))
-    }
-
     /// Each running import's percent, by candidate key, as its import last
     /// reported.
     pub fn import_percents(&self) -> std::collections::HashMap<crate::import::CandidateKey, u32> {
@@ -278,25 +272,6 @@ impl AppServices {
         Ok(self.inner.import.open_list(view, crate::library::LibraryPageWindows::new()).await?)
     }
 
-    /// Where each watched folder's scan stands: the first value at once, then
-    /// a value only when the scans changed, which the live query tests on the
-    /// processed progress.
-    pub fn subscribe_folder_scans(
-        &self,
-    ) -> crate::library::LiveValues<crate::import::FolderScanProgress> {
-        let manager = &self.inner.manager;
-        manager.values_until_closed(manager.subscribe_folder_scan_progress())
-    }
-
-    /// How far the identifications and imports in flight have got: the
-    /// first value at once, then a value after each write that moves them.
-    pub fn subscribe_import_counts(
-        &self,
-    ) -> crate::library::LiveValues<crate::import::ImportCounts> {
-        let manager = &self.inner.manager;
-        manager.values_until_closed(manager.subscribe_import_counts())
-    }
-
     /// One read of a list showing `view` through `windows`, for a caller
     /// with no subscription: a list opened for the read and closed after it.
     pub async fn load_import_list(
@@ -307,19 +282,6 @@ impl AppServices {
         Ok(self.inner.import.load_list(view, windows).await?)
     }
 
-    /// One candidate as the pane reads it, once, with its standing.
-    pub async fn load_import_candidate(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> Result<Option<ImportCandidateDetail>, crate::library::LibraryError> {
-        Ok(self
-            .inner
-            .manager
-            .load_import_candidate(key)
-            .await?
-            .map(crate::import::ImportCandidateDetailProjection::resolve))
-    }
-
     /// The import pane's candidate as it changes, read for the key the
     /// subscription is set to: its rows and where it stands among them.
     /// `None` once the key names no scanned folder, which is what clears a
@@ -328,7 +290,7 @@ impl AppServices {
         &self,
     ) -> crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>
     {
-        self.read_import_candidate(self.inner.manager.subscribe_import_candidate(None))
+        self.read_import_candidate(self.inner.import.subscribe_candidate(None))
     }
 
     /// [`Self::subscribe_import_candidate`], with a handle that counts its
@@ -340,7 +302,7 @@ impl AppServices {
         crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>,
         coven::LiveQueryRuns,
     ) {
-        let query = self.inner.manager.subscribe_import_candidate(None);
+        let query = self.inner.import.subscribe_candidate(None);
         let runs = query.runs();
         (self.read_import_candidate(query), runs)
     }

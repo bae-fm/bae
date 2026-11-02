@@ -15,9 +15,9 @@ pub enum LiveValuesError {
 }
 
 /// A live query's values, one per pull: the first at once, then one after
-/// each write that changes what it reads. Made only by the library manager,
-/// over the library's closing, so closing the library cancels it before the
-/// store closes.
+/// each write that changes what it reads. Made over a token the library's
+/// closing cancels, by the library manager or the import service, so closing
+/// the library cancels it before the store closes.
 pub struct LiveValues<T> {
     query: tokio::sync::Mutex<Option<coven::LiveQuery<T>>>,
     cancellation: CancellationToken,

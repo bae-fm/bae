@@ -66,7 +66,7 @@ async fn await_cancelled(
 /// failure on its row.
 async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     assert!(handle.candidate_runtime(key).await.unwrap().is_none(), "nothing is running for {key}");
-    let pane = handle.candidate_pane(key).await.unwrap().expect("the candidate reads back");
+    let pane = handle.load_candidate(key).await.unwrap().expect("the candidate reads back");
     assert!(pane.import_status.is_none(), "{key} records no failure");
 }
 
@@ -373,7 +373,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     assert!(handle.candidate_runtime(&key).await.unwrap().is_none(), "nothing is running");
 
     assert_imports_again_from_the_start(&handle, &key).await;
-    let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
+    let pane = handle.load_candidate(&key).await.unwrap().unwrap();
     assert!(
         matches!(pane.import_status, Some(crate::import::CandidateImportStatus::Complete { .. })),
         "the import that landed answers the one that failed"
@@ -408,7 +408,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
         before,
         "the cancelled retry left the store as it was"
     );
-    let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
+    let pane = handle.load_candidate(&key).await.unwrap().unwrap();
     assert_eq!(
         pane.draft().unwrap().failure.clone().map(|failure| failure.reason),
         Some(crate::import::ImportFailureReason::error(error)),

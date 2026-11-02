@@ -700,33 +700,6 @@ impl ImportServiceHandle {
         self.runtime.every_count()
     }
 
-    /// One candidate's pane as it reads back from the tables, its standing
-    /// among them.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn candidate_pane(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::import::ImportError> {
-        Ok(self
-            .database
-            .load_import_candidate(key)
-            .await?
-            .map(crate::import::ImportCandidateDetailProjection::resolve))
-    }
-
-    /// The query the pane subscribes to for one candidate, for a test that
-    /// watches it change.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_candidate_pane(
-        &self,
-        key: &crate::import::CandidateKey,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<crate::import::CandidateKey>,
-        Option<crate::import::ImportCandidateDetailProjection>,
-    > {
-        self.database.subscribe_import_candidate(Some(key.clone()))
-    }
-
     /// The import list for `view` as one window over every item, for a test
     /// that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
