@@ -19,8 +19,8 @@ async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease
 
 /// A Remote track whose bytes must come from the cloud, read with no provider
 /// connected, reports `SyncDisconnected` — the reconnect-sync state — not a
-/// generic diagnostic. coven raises `NoCloudHome` for the cloud miss; the
-/// classifier keys it.
+/// generic diagnostic. coven raises `FileReadError::NoStorage` for the cloud
+/// miss, and playback's `playback_error_for_file_read` maps it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
