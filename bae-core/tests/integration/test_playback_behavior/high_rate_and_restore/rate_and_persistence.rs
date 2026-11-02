@@ -30,7 +30,7 @@ impl HighSampleRateTestFixture {
             )
         };
         let release_id_key =
-            seed_discogs_test_release(library_manager.providers(), discogs_release);
+            seed_discogs_test_release(catalogs.providers(), discogs_release);
 
         support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
 
@@ -326,7 +326,7 @@ async fn imported_library_without_playback() -> (LibraryManager, TempDir) {
     let (library_manager, catalogs, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
-        seed_discogs_test_release(library_manager.providers(), create_test_album());
+        seed_discogs_test_release(catalogs.providers(), create_test_album());
     support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
     (library_manager, temp_dir)
 }

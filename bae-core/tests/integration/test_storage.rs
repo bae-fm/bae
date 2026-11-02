@@ -45,7 +45,7 @@ async fn test_local_import() {
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
     let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -142,7 +142,7 @@ async fn test_local_delete_preserves_files() {
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
     let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -200,7 +200,7 @@ async fn run_import_with_cover_test() {
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
     let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
     let selected_cover = "scans/back.jpg".to_string();
     let import_id = uuid::Uuid::new_v4().to_string();

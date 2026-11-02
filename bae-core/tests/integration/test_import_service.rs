@@ -32,6 +32,8 @@ struct ImportFixture {
     storage: Arc<coven::MemoryStorage>,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
+    /// The catalogs the library asks, for a test to seed their answers.
+    catalogs: bae_core::import::CatalogSessions,
     ids: Arc<dyn coven::IdSource>,
     /// The Cover Art Archive and image host this library's requests reach.
     /// Every MusicBrainz release group offers a derived cover address, and an
@@ -62,7 +64,7 @@ impl ImportFixture {
             .await
             .expect("import service starts");
 
-        Self { db, storage, handle, library_manager, ids, images, _temp: temp }
+        Self { db, storage, handle, library_manager, catalogs, ids, images, _temp: temp }
     }
 
     fn temp_path(&self) -> &Path {

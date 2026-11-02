@@ -161,7 +161,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
             .collect(),
         ..support::discogs_test_release("test-multi-disc-cue-ape", "Multi-Disc Album", &[])
     };
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
     let import_handle =
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), &catalogs).await;
 

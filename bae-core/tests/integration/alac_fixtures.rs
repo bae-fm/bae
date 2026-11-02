@@ -50,7 +50,7 @@ async fn import_single_m4a_fixture(
     let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
 
     let release_id =
         support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
@@ -224,7 +224,7 @@ async fn import_cue_alac_pair() {
         "Album Title",
         &["Track One", "Track Two", "Track Three"],
     );
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
 
     let release_id =
         support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)

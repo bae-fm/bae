@@ -22,7 +22,7 @@ impl RemoteMultiWindowPlayback {
         support::connect_storage(&library_manager, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key =
-            seed_discogs_test_release(library_manager.providers(), create_multi_window_cue_album());
+            seed_discogs_test_release(catalogs.providers(), create_multi_window_cue_album());
         let import_handle =
             start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), &catalogs).await;
         let import_id = uuid::Uuid::new_v4().to_string();

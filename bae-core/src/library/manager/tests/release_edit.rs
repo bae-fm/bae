@@ -101,8 +101,8 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     let source_group_id = "reset-editor-group";
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     let raw_json = serde_json::to_string(&response).unwrap();
-    manager.providers().musicbrainz().seed_release_cache(source_release_id, raw_json);
-    manager.providers().musicbrainz().seed_release_group_json_cache(
+    manager.catalogs.providers().musicbrainz().seed_release_cache(source_release_id, raw_json);
+    manager.catalogs.providers().musicbrainz().seed_release_group_json_cache(
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
@@ -136,10 +136,11 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     let source_group_id = "steps-editor-group";
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     manager
+        .catalogs
         .providers()
         .musicbrainz()
         .seed_release_cache(source_release_id, serde_json::to_string(&response).unwrap());
-    manager.providers().musicbrainz().seed_release_group_json_cache(
+    manager.catalogs.providers().musicbrainz().seed_release_group_json_cache(
         source_group_id,
         r#"{"id":"steps-editor-group"}"#.to_string(),
     );

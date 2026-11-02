@@ -467,7 +467,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
     let discogs_key = support::seed_discogs_test_release(
-        manager.providers(),
+        catalogs.providers(),
         DiscogsRelease {
             country: None,
             labels: vec![],

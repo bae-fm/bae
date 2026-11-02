@@ -225,7 +225,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
     let sweep = fixture.drain_automatic_task();
 
-    let musicbrainz = fixture.manager.providers().musicbrainz();
+    let musicbrainz = fixture.catalogs.providers().musicbrainz();
     let waiting = tokio::time::timeout(Duration::from_secs(20), async {
         loop {
             let queued = musicbrainz.queued_requests(CallPriority::Background);
@@ -239,7 +239,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     .expect("automatic identification queues background lookups on the limiter");
 
     let typed = fixture
-        .manager
+        .catalogs
         .providers()
         .search_musicbrainz(
             bae_catalogs::musicbrainz::ReleaseSearchParams {

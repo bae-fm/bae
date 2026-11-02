@@ -112,7 +112,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
             .collect(),
         ..support::discogs_test_release("test-box-set-open-files", "Album Title", &[])
     };
-    let release_key = support::seed_discogs_test_release(library_manager.providers(), release);
+    let release_key = support::seed_discogs_test_release(catalogs.providers(), release);
     let import_handle = support::start_test_import(
         tokio::runtime::Handle::current(),
         library_manager.clone(),

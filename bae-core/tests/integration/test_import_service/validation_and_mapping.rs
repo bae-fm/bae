@@ -75,7 +75,7 @@ fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_i
         ..support::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
     let mb_release_id = support::seed_mb_release(
-        f.library_manager.providers().musicbrainz(),
+        f.catalogs.providers().musicbrainz(),
         response,
         mb_group_id,
     );
@@ -177,7 +177,7 @@ fn seed_mb_release_with_media(
         ..support::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
     let mb_release_id = support::seed_mb_release(
-        f.library_manager.providers().musicbrainz(),
+        f.catalogs.providers().musicbrainz(),
         response,
         mb_group_id,
     );
@@ -475,7 +475,7 @@ fn seed_mb_release_with_front_cover(
         },
         ..support::mb_release(mb_release_id, mb_group_id, title)
     };
-    support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id)
+    support::seed_mb_release(f.catalogs.providers().musicbrainz(), response, mb_group_id)
 }
 
 /// An import with no cover pick takes the release's own cover: no pick means

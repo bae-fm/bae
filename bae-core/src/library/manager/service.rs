@@ -703,20 +703,14 @@ impl LibraryManager {
     }
 }
 
-/// The providers a library asks, for a test to seed their answers, and its
-/// store, for a test that writes rows no operation writes.
-#[cfg(all(any(test, feature = "test-utils"), desktop))]
+/// The library's store, for a test that writes rows no operation writes.
+#[cfg(all(test, desktop))]
 mod test_access {
     impl super::LibraryManager {
         /// The store under the library, for a test that writes rows no
         /// operation writes as it wants them.
-        #[cfg(test)]
         pub(crate) fn database_for_test(&self) -> &crate::db::Database {
             &self.database
-        }
-
-        pub fn providers(&self) -> &crate::catalog_model::providers::Providers {
-            self.catalogs.providers()
         }
     }
 }

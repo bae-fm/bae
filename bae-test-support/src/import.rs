@@ -241,7 +241,7 @@ where
     let (library_manager, catalogs, album_dir, temp_dir) =
         setup_test_library_with_album_dir().await;
 
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), release);
+    let release_id_key = seed_discogs_test_release(catalogs.providers(), release);
     generate_files(&album_dir);
 
     let (release_id, _album_id) = send_folder_import_and_wait(

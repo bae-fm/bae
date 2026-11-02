@@ -814,7 +814,7 @@ mod release_album {
         std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
         one_track(&picked_dir);
         let picked_key = bae_test_support::seed_discogs_test_release(
-            manager.providers(),
+            catalogs.providers(),
             bae_test_support::discogs_test_release(
                 "album-set-picked",
                 "Picked Album",

@@ -308,7 +308,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     fixture.provider.route("/releases/70000101", 200, discogs_release_json("70000101"));
     // Nothing links this synthetic Discogs release to a MusicBrainz one, which
     // is the answer the cross-reference lookup would come back with.
-    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fixture.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release("70000101".to_string()),
         None,
     )]);
@@ -395,7 +395,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         discogs_search_json("70000102", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
     fixture.provider.route("/releases/70000102", 200, discogs_release_json("70000102"));
-    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fixture.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release("70000102".to_string()),
         None,
     )]);
@@ -486,7 +486,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         }));
         release.to_string()
     });
-    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fixture.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release("70000103".to_string()),
         None,
     )]);

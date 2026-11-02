@@ -68,7 +68,7 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
 
     let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
     let release_id_key =
-        seed_discogs_test_release(library_manager.providers(), create_test_discogs_release());
+        seed_discogs_test_release(catalogs.providers(), create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)

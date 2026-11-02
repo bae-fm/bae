@@ -319,7 +319,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     copy_cue_flac_fixture_with_seektable(&album_dir);
     let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
     let release_id_key =
-        seed_discogs_test_release(library_manager.providers(), create_test_discogs_release());
+        seed_discogs_test_release(catalogs.providers(), create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
             .await;

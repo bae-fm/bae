@@ -189,7 +189,7 @@ async fn seed_library() -> Library {
     std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();
     std::fs::copy(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue")).unwrap();
     let discogs_key =
-        support::seed_discogs_test_release(manager.providers(), cue_discogs_release());
+        support::seed_discogs_test_release(catalogs.providers(), cue_discogs_release());
     let cue_import =
         support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
     let cue_id = "cue".to_string();
