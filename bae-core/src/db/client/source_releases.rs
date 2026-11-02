@@ -11,9 +11,9 @@
 //! a mix.
 
 use super::*;
-use crate::import::album_links::AlbumLinks;
-use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
-use crate::import::source_release::{
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
+use crate::catalog_model::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
@@ -677,7 +677,7 @@ fn own_records_on<S: QueryRows>(
 /// `own` and the `joined` albums, in the order surfaces list catalogs.
 fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> Vec<ReleaseRecord> {
     own.extend(joined.iter().map(ReleaseRecord::album));
-    own.sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
+    own.sort_by_key(|record| crate::catalog_model::source_release::catalog_rank(record.catalog()));
     own
 }
 
@@ -807,7 +807,7 @@ pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
         source_group_id.as_deref(),
         &own,
     )?;
-    Ok(Some(crate::import::source_release::release_records(
+    Ok(Some(crate::catalog_model::source_release::release_records(
         release,
         source_group_id,
         with_joined_records(own, &joined),

@@ -155,12 +155,14 @@ fn draft_rows_on(
     // pressing's releases describe it, an album names its own.
     let records = match &release_link {
         Some(ReleaseLink::Album(album)) => album.records(),
-        Some(ReleaseLink::Pressing(_)) | None => crate::import::source_release::claimed_records(
-            &claimed
-                .iter()
-                .map(crate::import::source_release::SourceRelease::records)
-                .collect::<Vec<_>>(),
-        ),
+        Some(ReleaseLink::Pressing(_)) | None => {
+            crate::catalog_model::source_release::claimed_records(
+                &claimed
+                    .iter()
+                    .map(crate::catalog_model::source_release::SourceRelease::records)
+                    .collect::<Vec<_>>(),
+            )
+        }
     };
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
@@ -324,7 +326,7 @@ fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
     link: Option<&PressingLink>,
-) -> Result<Vec<crate::import::source_release::SourceRelease>, DbError> {
+) -> Result<Vec<crate::catalog_model::source_release::SourceRelease>, DbError> {
     let Some(link) = link else {
         return Ok(Vec::new());
     };
@@ -342,14 +344,14 @@ fn claimed_releases_on(
 }
 
 /// The covers the picker offers: those the linked pressing's releases offer
-/// (see [`crate::import::source_release::pick_covers`]), read from the stored
+/// (see [`crate::catalog_model::source_release::pick_covers`]), read from the stored
 /// releases as they stand, while the draft is the one read from that
 /// pressing. A draft read from the files' tags, typed in or cleared, or a
 /// candidate linked to an album or to nothing, is offered none.
 fn offered_covers(
     current: Option<&DbImportCandidateState>,
     link: Option<&ReleaseLink>,
-    claimed: &[crate::import::source_release::SourceRelease],
+    claimed: &[crate::catalog_model::source_release::SourceRelease],
 ) -> Vec<bae_catalogs::remote_image::RemoteCover> {
     let read_from_link = match (
         current.and_then(|state| state.metadata_provenance.as_ref()),
@@ -362,7 +364,7 @@ fn offered_covers(
     };
     match claimed.split_first() {
         Some((primary, partners)) if read_from_link => {
-            crate::import::source_release::pick_covers(primary, partners)
+            crate::catalog_model::source_release::pick_covers(primary, partners)
         }
         _ => Vec::new(),
     }

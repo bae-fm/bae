@@ -1,6 +1,6 @@
 use super::*;
 use crate::identify::IdentifyFailure;
-use crate::import::album_links::AlbumLinks;
+use crate::catalog_model::album_links::AlbumLinks;
 use crate::import::LookupChoices;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use bae_catalogs::catalog::Catalog;
@@ -155,7 +155,7 @@ fn signals_with_catalogs(
     catalogs: Vec<String>,
 ) -> Signals {
     Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id,
         barcode,
         text: TextSignal::Settled { catalogs, free_text: vec![] },
@@ -230,7 +230,7 @@ fn no_disc_no_barcode_is_manual_only() {
 #[test]
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
@@ -257,11 +257,11 @@ fn nothing_to_run_waits_for_the_settled_text() {
 /// and the abort's detail stated.
 #[test]
 fn an_aborted_extraction_ends_the_run_as_an_error() {
-    let failure = crate::signals::InternalFailure {
+    let failure = crate::catalog_model::InternalFailure {
         detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
     };
     let aborted = Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: DiscIdSignal::Failed { failure: failure.clone() },
         barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
         text: TextSignal::Failed { failure: failure.clone(), catalogs: vec![], free_text: vec![] },
@@ -281,7 +281,7 @@ fn an_aborted_extraction_ends_the_run_as_an_error() {
 /// run there: the lookup's answer lands on a run that is over.
 #[test]
 fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
-    let failure = crate::signals::InternalFailure { detail: "OCR worker failed".to_string() };
+    let failure = crate::catalog_model::InternalFailure { detail: "OCR worker failed".to_string() };
     let (state, _) = update(
         started(),
         signals(
@@ -340,7 +340,7 @@ fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
             &[],
         ),
     );
-    let failure = crate::signals::InternalFailure {
+    let failure = crate::catalog_model::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
     let (state, effects) = step(state, IdentifyEvent::Broke { failure: failure.clone() });

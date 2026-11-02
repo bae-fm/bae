@@ -16,13 +16,13 @@ use super::ledger_rows::{
 };
 use super::match_rows::{ordinal_column, store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
+use crate::catalog_model::search::MetadataResult;
+use crate::catalog_model::InternalFailure;
 use crate::identify::{
     Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote, RunOutcome,
     TerminalVerdict,
 };
-use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
-use crate::signals::InternalFailure;
 
 /// Whose verdict-shaped rows these are: a candidate's verdict, under its
 /// files' content hash, or how a run in flight stands, under the run.

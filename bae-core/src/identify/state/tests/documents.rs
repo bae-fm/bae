@@ -35,13 +35,13 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
             .map(|(name, number)| bae_types::pressing::ReleaseLabel::of(Some(name), Some(number)))
             .collect(),
         barcodes: Vec::new(),
-        source_tracks: crate::import::search::SourceTracks::Listed { count: tracks },
+        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: tracks },
         album_first_year: None,
         track_titles: Vec::new(),
         notes: Vec::new(),
         links: Vec::new(),
-        album_links: crate::import::album_links::AlbumLinks::NotAsked,
-        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
             crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "release-1",
@@ -336,7 +336,7 @@ fn a_document_s_barcode_joins_its_result_s() {
 #[test]
 fn tied_rows_rank_on_the_documents_this_run_reads() {
     let mut known = first_label_only("dg-known");
-    known.source_tracks = Some(crate::import::search::SourceTracks::Listed { count: 5 });
+    known.source_tracks = Some(crate::catalog_model::search::SourceTracks::Listed { count: 5 });
     let (state, releases) = reading_documents(vec![
         known,
         packed(first_label_only("dg-other-1"), bae_types::pressing::Packaging::Digipak),

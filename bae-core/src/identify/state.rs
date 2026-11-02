@@ -12,7 +12,7 @@
 //! offered row's pressing on the catalog it has no record of — are asked,
 //! until a round brings no new key and every offered row is read. What the
 //! documents state its MusicBrainz albums are on Discogs joins the albums
-//! (see [`crate::import::album_links`]); the run combines the results into a
+//! (see [`crate::catalog_model::album_links`]); the run combines the results into a
 //! terminal state, keeps what it read each album to be, and records the
 //! ledger it showed.
 
@@ -20,11 +20,10 @@ use super::combine::{combine_results, Findings};
 use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
-use crate::import::search::{MetadataResult, SourceFailure};
+use crate::catalog_model::search::{MetadataResult, SourceFailure};
+use crate::catalog_model::{InternalFailure, LookupFailure};
 use crate::import::LookupChoices;
-use crate::signals::{
-    ArtworkScan, AudioFacts, BarcodeSignal, InternalFailure, LookupFailure, Signals,
-};
+use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use bae_catalogs::catalog::Catalog;
 
 /// One candidate's identify state. Every settled state carries the ledger its
@@ -115,7 +114,7 @@ impl IdentifyState {
 
     /// The releases this run read the documents of, as their read stores
     /// them: what a write of the rows naming them stores beside those rows.
-    pub(crate) fn read_releases(&self) -> Vec<crate::import::source_release::SourceRelease> {
+    pub(crate) fn read_releases(&self) -> Vec<crate::catalog_model::source_release::SourceRelease> {
         self.context()
             .map(|context| {
                 context

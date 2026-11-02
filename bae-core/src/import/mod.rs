@@ -3,8 +3,6 @@
 // desktop builds carry: mobile is a sync and playback client. Of `types`, only
 // the shared domain types compile on mobile.
 #[cfg(desktop)]
-pub mod album_links;
-#[cfg(desktop)]
 pub mod apply_steps;
 #[cfg(desktop)]
 pub(crate) mod assemble;
@@ -27,11 +25,7 @@ pub mod cover_art;
 pub mod discid;
 #[cfg(desktop)]
 mod discid_hash;
-#[cfg(desktop)]
-pub mod discogs_mapper;
 /// A Discogs tracklist split into the mediums its positions name.
-#[cfg(desktop)]
-pub(crate) mod discogs_mediums;
 mod error;
 #[cfg(desktop)]
 mod file_evidence;
@@ -70,13 +64,7 @@ mod loudness;
 pub mod mapping;
 /// Which of a release's mediums a folder's audio is a rip of.
 #[cfg(desktop)]
-pub(crate) mod medium_coverage;
-#[cfg(desktop)]
-pub mod musicbrainz_mapper;
-#[cfg(desktop)]
 pub mod pane;
-#[cfg(desktop)]
-pub mod payloads;
 #[cfg(desktop)]
 pub mod preparation;
 #[cfg(desktop)]
@@ -90,15 +78,11 @@ pub mod relative_folder;
 pub mod release_candidate;
 #[cfg(desktop)]
 pub mod release_group;
-#[cfg(desktop)]
-pub(crate) mod release_metadata;
 /// What one reading of a source says a release is, as plain values.
 #[cfg(desktop)]
 pub(crate) mod release_values;
 #[cfg(desktop)]
 pub(crate) mod scrub_points;
-#[cfg(desktop)]
-pub mod search;
 #[cfg(desktop)]
 pub mod selection;
 #[cfg(desktop)]
@@ -106,8 +90,6 @@ pub(crate) mod service;
 pub mod session;
 #[cfg(desktop)]
 pub mod shared_album;
-#[cfg(desktop)]
-pub mod source_release;
 #[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]
@@ -128,13 +110,6 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
-
-/// The four-digit year at the head of a metadata date string (`"1998"`,
-/// `"1998-05-01"`), or `None` when the value is absent or has no leading year.
-#[cfg(desktop)]
-pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
-    date?.split('-').next()?.parse().ok()
-}
 
 /// The rows of the works one import writes.
 #[cfg(desktop)]
@@ -328,8 +303,6 @@ pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use preparations::CandidatePreparations;
 pub use relative_folder::RelativeFolder;
-#[cfg(desktop)]
-pub use search::{SearchQuery, SourceFailure, SourceLookup};
 #[cfg(desktop)]
 pub use service::ImportService;
 pub use session::{

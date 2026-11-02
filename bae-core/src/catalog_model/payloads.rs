@@ -8,10 +8,10 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
-use crate::catalog_model::CatalogError;
-use crate::import::source_release::{
+use crate::catalog_model::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
+use crate::catalog_model::CatalogError;
 use crate::import::{MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::DiscogsClient;
@@ -266,25 +266,25 @@ impl ReleasePayloads {
                 let anchor = self.musicbrainz_anchor()?;
                 (
                     anchor.release_group.as_ref().map(|group| group.id.clone()),
-                    crate::import::musicbrainz_mapper::mediums(&anchor),
+                    crate::catalog_model::musicbrainz_mapper::mediums(&anchor),
                     CatalogFacts::MusicBrainz {
-                        links: crate::import::search::release_links_of(&anchor.relations),
+                        links: crate::catalog_model::search::release_links_of(&anchor.relations),
                         album_links: self.album_statements()?,
                     },
-                    crate::import::search::musicbrainz_release_notes(&anchor),
+                    crate::catalog_model::search::musicbrainz_release_notes(&anchor),
                 )
             }
             Catalog::Discogs => {
                 let anchor = self.discogs_anchor()?;
-                let media = crate::import::discogs_mapper::pressing(&anchor).1;
+                let media = crate::catalog_model::discogs_mapper::pressing(&anchor).1;
                 (
                     anchor.master_id.clone(),
-                    crate::import::discogs_mapper::mediums(&anchor, &media),
+                    crate::catalog_model::discogs_mapper::mediums(&anchor, &media),
                     CatalogFacts::Discogs {
                         media,
-                        release_roles: crate::import::discogs_mapper::release_roles(&anchor),
+                        release_roles: crate::catalog_model::discogs_mapper::release_roles(&anchor),
                     },
-                    crate::import::search::discogs_release_notes(&anchor),
+                    crate::catalog_model::search::discogs_release_notes(&anchor),
                 )
             }
             other => not_fetched(other),

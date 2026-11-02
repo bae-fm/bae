@@ -218,7 +218,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 /// A Discogs release under a master, which MusicBrainz's lookup by its
 /// address links to a MusicBrainz release, seeded into the caches a read asks.
 fn seed_linked_discogs_release(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
 ) -> crate::import::MetadataRef {
     seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
     seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
@@ -244,7 +244,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let read_by_the_run = crate::import::service::prepare_release(
         &handle.library_manager,
         &release,
-        crate::import::payloads::ReadDepth::Identification,
+        crate::catalog_model::payloads::ReadDepth::Identification,
         bae_catalogs::rate_limiter::CallPriority::Interactive,
     )
     .await
@@ -285,7 +285,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let complete = crate::import::service::prepare_release(
         &scratch.library_manager,
         &release,
-        crate::import::payloads::ReadDepth::Complete,
+        crate::catalog_model::payloads::ReadDepth::Complete,
         bae_catalogs::rate_limiter::CallPriority::Interactive,
     )
     .await
@@ -301,7 +301,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
 }
 
 /// A two-track Discogs release with no master, seeded into the release cache.
-fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &str) {
+fn seed_discogs_release(providers: &crate::catalog_model::providers::Providers, release_id: &str) {
     seed_discogs_release_in(providers, release_id, None, None);
 }
 
@@ -311,7 +311,7 @@ fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &st
 /// from `linked`, when it names a MusicBrainz release, and the master's from
 /// no release group.
 fn seed_discogs_release_in(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     master: Option<&str>,
     linked: Option<&str>,
@@ -354,7 +354,7 @@ fn seed_discogs_release_in(
 /// A two-track MusicBrainz release, seeded into the caches the fetch path
 /// reads, so a partner resolves without a network call.
 fn seed_mb_release(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     release_group_id: &str,
 ) {
@@ -535,7 +535,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     handle
         .library_manager
         .save_source_release(
-            &crate::import::payloads::ReleasePayloads::for_test(
+            &crate::catalog_model::payloads::ReleasePayloads::for_test(
                 crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     partner,

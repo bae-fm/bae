@@ -17,7 +17,7 @@ impl RemoteMultiWindowPlayback {
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let (library_manager, _, cloud) =
-            support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline())
+            support::storage_library(temp_dir.path(), bae_core::catalog_model::providers::Providers::offline())
                 .await;
         support::connect_storage(&library_manager, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);

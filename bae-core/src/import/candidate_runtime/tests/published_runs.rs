@@ -98,7 +98,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                     ProviderLookup {
                         source: Catalog::MusicBrainz,
                         state: LookupState::Done {
-                            results: vec![crate::import::search::MetadataResult::for_test(
+                            results: vec![crate::catalog_model::search::MetadataResult::for_test(
                                 Catalog::MusicBrainz,
                                 "mb-release",
                                 Some("mb-group"),
@@ -135,7 +135,7 @@ fn search_waiting() -> crate::identify::IdentifyState {
 /// with one barcode and one line of text so far.
 fn scanning_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        origin: crate::signals::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+        origin: crate::catalog_model::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Scanning {
             codes: vec![crate::signals::SourcedValue::in_file(

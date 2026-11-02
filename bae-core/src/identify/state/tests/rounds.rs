@@ -566,7 +566,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
     );
     let other_tracks = |_: &MetadataRef| ReleaseDocument {
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label"), Some("AB-100"))],
-        source_tracks: crate::import::search::SourceTracks::Listed { count: 9 },
+        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 9 },
         ..plain_document(&[])
     };
     let (mut state, effects, _) = answer_rounds(answered, other_tracks, |_, _| Vec::new());
@@ -619,7 +619,7 @@ fn an_answer_lands_on_the_search_waiting_on_its_catalog() {
 #[test]
 fn a_release_the_disc_id_answered_is_read_from_its_answer() {
     let state = disc_run_of_folder("Some Album", &[]);
-    let answered = crate::import::payloads::DiscIdRelease::new(
+    let answered = crate::catalog_model::payloads::DiscIdRelease::new(
         "mb-answered".to_string(),
         r#"{"id":"mb-answered"}"#.to_string(),
     );

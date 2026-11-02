@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::source_release::UnfetchedReason;
+use crate::catalog_model::source_release::UnfetchedReason;
 use bae_catalogs::musicbrainz::DiscogsPage;
 use std::collections::{HashMap, HashSet, VecDeque};
 

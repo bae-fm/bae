@@ -9,7 +9,7 @@
 
 use super::verdict_summary::FolderCheck;
 use super::MediumConflict;
-use crate::import::search::{MetadataResult, SourceTracks};
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
 
 /// What a record's tracklist, as its source lists it for the folder's audio,
 /// says about the folder.
@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn an_unread_document_is_named_over_an_unchecked_count() {
         let mut unread = MetadataResult::for_test(Catalog::MusicBrainz, "mb-1", Some("g"));
-        unread.document_failure = Some(crate::signals::LookupFailure::Network);
+        unread.document_failure = Some(crate::catalog_model::LookupFailure::Network);
         assert_eq!(
             unattended_pick(std::slice::from_ref(&unread), &[0], None, 11),
             Err(Declined::UnreadDocument)

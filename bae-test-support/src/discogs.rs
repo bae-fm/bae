@@ -132,7 +132,7 @@ fn discogs_fixture_artist_ids(
 /// The rendered ids are numeric, as the endpoint's are, so the returned id is
 /// not the (arbitrary) one the caller wrote on the fixture.
 pub fn seed_discogs_test_release(
-    providers: &bae_core::providers::Providers,
+    providers: &bae_core::catalog_model::providers::Providers,
     release: bae_catalogs::discogs::DiscogsRelease,
 ) -> String {
     let numeric = |value: &str| -> u64 {

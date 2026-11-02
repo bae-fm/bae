@@ -136,7 +136,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     }
 
     let (library_manager, _, storage) =
-        support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
+        support::storage_library(&db_dir, bae_core::catalog_model::providers::Providers::offline()).await;
     if let ImportDestination::Remote { .. } = destination {
         support::connect_storage(&library_manager, &storage).await;
     }

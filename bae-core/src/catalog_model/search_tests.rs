@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::discogs_mapper::parse_duration_to_ms;
+use crate::catalog_model::discogs_mapper::parse_duration_to_ms;
 use bae_catalogs::discogs::client::DiscogsSearchResult;
 use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
@@ -7,8 +7,8 @@ use bae_catalogs::musicbrainz::{
 use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 
 /// The release a MusicBrainz document extracts to, read by itself.
-fn mb_release(response: &MbReleaseResponse) -> crate::import::source_release::SourceRelease {
-    crate::import::payloads::ReleasePayloads::for_test(
+fn mb_release(response: &MbReleaseResponse) -> crate::catalog_model::source_release::SourceRelease {
+    crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
@@ -26,7 +26,7 @@ fn mb_detail(response: &MbReleaseResponse) -> ImportSearchReleaseDetail {
 fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
-    crate::import::payloads::ReleasePayloads::for_test(
+    crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(Catalog::Discogs, &release.id),
         json.to_string(),
         Vec::new(),

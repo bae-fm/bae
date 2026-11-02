@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::album_links::{names_other_album, AlbumLinks, Found};
+use crate::catalog_model::album_links::{names_other_album, AlbumLinks, Found};
 use std::collections::{HashMap, HashSet};
 
 /// The strongest album claims encountered while following this release's links.
@@ -76,7 +76,7 @@ impl ReleasePayloads {
 
     /// What this MusicBrainz release's documents state its album is on the
     /// other lookup catalog: the one rule set a stored release's records and
-    /// an identify run's rows both read (see [`crate::import::album_links`]).
+    /// an identify run's rows both read (see [`crate::catalog_model::album_links`]).
     /// Three statements, strongest first; the first that names an album is
     /// the one taken:
     ///

@@ -342,7 +342,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
         tokio::runtime::Handle::current(),
         crate::library::LibraryOpening::Open(handle),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::providers::Providers::offline(),
+        crate::catalog_model::providers::Providers::offline(),
     )
     .await
     .unwrap();

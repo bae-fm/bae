@@ -45,7 +45,7 @@ pub enum BridgeSignalKind {
 }
 
 /// Why a catalog did not answer a lookup; the UI resolves its line through
-/// `bridge_lookup_failure_key`. Mirrors `bae_core::signals::LookupFailure`.
+/// `bridge_lookup_failure_key`. Mirrors `bae_core::catalog_model::LookupFailure`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLookupFailure {
     /// No HTTP response.
@@ -59,7 +59,7 @@ pub enum BridgeLookupFailure {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeLookupFailure = bae_core::signals::LookupFailure,
+    BridgeLookupFailure = bae_core::catalog_model::LookupFailure,
     from_core: pub(crate) fn,
     variants: {
         Network,
@@ -69,7 +69,7 @@ mirror_enum! {
 }
 
 /// How bae broke on its own side. `detail` is the error chain, shown
-/// untranslated. Mirrors `bae_core::signals::InternalFailure`.
+/// untranslated. Mirrors `bae_core::catalog_model::InternalFailure`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeInternalFailure {
     pub detail: String,
@@ -77,7 +77,7 @@ pub struct BridgeInternalFailure {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeInternalFailure = bae_core::signals::InternalFailure,
+    BridgeInternalFailure = bae_core::catalog_model::InternalFailure,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { detail },

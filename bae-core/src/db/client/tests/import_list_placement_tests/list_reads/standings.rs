@@ -3,9 +3,9 @@
 //! what the entries count.
 
 use super::*;
+use crate::catalog_model::InternalFailure;
 use crate::identify::MediumConflict;
 use crate::import::{NeedsYouReason, PendingFilterEntry, PendingStanding};
-use crate::signals::InternalFailure;
 
 impl Library {
     /// Write `title` into the draft of the release at `display_path` and

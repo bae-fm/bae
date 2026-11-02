@@ -145,7 +145,7 @@ mod tests {
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::providers::Providers::offline(),
+            crate::catalog_model::providers::Providers::offline(),
         );
         let (reader, _read) =
             tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();

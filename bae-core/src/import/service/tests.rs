@@ -48,7 +48,7 @@ async fn setup_import_service() -> TestService {
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::providers::Providers::offline(),
+        crate::catalog_model::providers::Providers::offline(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::import::ImportEventBus::new(runtime.clone());

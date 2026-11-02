@@ -56,7 +56,7 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         opening: LibraryOpening,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
         let handle = match opening {
             LibraryOpening::Registered { builder, store, on_progress } => {
@@ -103,7 +103,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
     ) -> Self {
         Self::assemble(
             database,
@@ -127,7 +127,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
     ) -> Self {
         let sync = SyncController::new(database.clone(), diagnostics.clone());
         let downloads = crate::library::Downloads::new(database.clone());
@@ -414,7 +414,7 @@ impl LibraryManager {
         &self,
         params: bae_catalogs::musicbrainz::ReleaseSearchParams,
         priority: bae_catalogs::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::import::ImportError> {
         Ok(self.providers.search_musicbrainz(params, priority).await?)
     }
 
@@ -424,8 +424,11 @@ impl LibraryManager {
         discid: &str,
         priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<
-        Vec<(crate::import::search::MetadataResult, crate::import::payloads::DiscIdRelease)>,
-        crate::signals::Failure,
+        Vec<(
+            crate::catalog_model::search::MetadataResult,
+            crate::catalog_model::payloads::DiscIdRelease,
+        )>,
+        crate::catalog_model::Failure,
     > {
         self.providers.lookup_musicbrainz_discid(discid, priority).await
     }
@@ -435,7 +438,8 @@ impl LibraryManager {
         &self,
         isrcs: &[String],
         priority: bae_catalogs::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
+    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::catalog_model::Failure>
+    {
         self.providers.lookup_musicbrainz_isrcs(isrcs, priority).await
     }
 
@@ -468,8 +472,8 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn pick_gallery_covers(
         &self,
-        primary: &crate::import::source_release::SourceRelease,
-        partners: &[crate::import::source_release::SourceRelease],
+        primary: &crate::catalog_model::source_release::SourceRelease,
+        partners: &[crate::catalog_model::source_release::SourceRelease],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         Ok(self.providers.pick_gallery_covers(primary, partners).await?)
     }
@@ -780,7 +784,7 @@ impl LibraryManager {
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 mod test_access {
     impl super::LibraryManager {
-        pub fn providers(&self) -> &crate::providers::Providers {
+        pub fn providers(&self) -> &crate::catalog_model::providers::Providers {
             &self.providers
         }
     }

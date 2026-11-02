@@ -1,11 +1,11 @@
 use super::*;
+use crate::catalog_model::search::MetadataResult;
 use crate::identify::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
     ProviderLookup, SearchProgress, ValueLookup,
 };
 use crate::identify::{Findings, IdentifyFailure, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
-use crate::import::search::MetadataResult;
 use crate::signals::SourcedValue;
 use bae_catalogs::catalog::Catalog;
 
@@ -381,7 +381,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
                 release: crate::import::MetadataRef::new(MB, "mb-1"),
-                document: Err(crate::signals::LookupFailure::Network),
+                document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },
     );
@@ -684,7 +684,7 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
 /// itself.
 #[test]
 fn a_found_release_states_the_check_against_the_folder_it_failed() {
-    let lone = |listed: crate::import::search::SourceTracks| TerminalVerdict::Found {
+    let lone = |listed: crate::catalog_model::search::SourceTracks| TerminalVerdict::Found {
         findings: Findings {
             matches: vec![MetadataResult {
                 source_tracks: Some(listed),
@@ -707,11 +707,11 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         (picks_unattended, folder_check)
     };
     assert_eq!(
-        judged(lone(crate::import::search::SourceTracks::Nothing)),
+        judged(lone(crate::catalog_model::search::SourceTracks::Nothing)),
         (false, Some(crate::identify::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
-        judged(lone(crate::import::search::SourceTracks::Listed { count: 13 })),
+        judged(lone(crate::catalog_model::search::SourceTracks::Listed { count: 13 })),
         (true, None)
     );
 }

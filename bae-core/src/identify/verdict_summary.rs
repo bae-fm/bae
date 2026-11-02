@@ -12,7 +12,7 @@
 use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
-use crate::import::search::{MetadataResult, SourceTracks};
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 
@@ -39,7 +39,7 @@ pub enum VerdictKind {
     Failed,
     /// bae broke on its own side, and how.
     Error {
-        failure: crate::signals::InternalFailure,
+        failure: crate::catalog_model::InternalFailure,
     },
 }
 

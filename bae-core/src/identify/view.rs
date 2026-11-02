@@ -15,12 +15,13 @@ use super::state::{
     LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
+use crate::catalog_model::search::MetadataResult;
+use crate::catalog_model::LookupFailure;
 use crate::import::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
-use crate::import::search::MetadataResult;
 use crate::import::shared_album::SharedAlbum;
-use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
+use crate::signals::{ArtworkScan, DiscIdSignal};
 use bae_catalogs::catalog::Catalog;
 
 /// One provider's lookup of one value: a cell of the ledger.
@@ -178,11 +179,12 @@ impl IdentifyRunView {
             };
             failure == failed
         };
-        let in_cells = |cells: &[ProviderCell], failed: &crate::import::search::SourceFailure| {
-            cells.iter().any(|cell| {
-                cell.source == failed.source && failed_as(&cell.lookup, &failed.failure)
-            })
-        };
+        let in_cells =
+            |cells: &[ProviderCell], failed: &crate::catalog_model::search::SourceFailure| {
+                cells.iter().any(|cell| {
+                    cell.source == failed.source && failed_as(&cell.lookup, &failed.failure)
+                })
+            };
         let in_rows =
             |rows: &[SignalValueRow], failed| rows.iter().any(|row| in_cells(&row.cells, failed));
         match failure {
@@ -265,7 +267,7 @@ pub enum IdentifyStateView {
 
     /// bae broke on its own side and the run ended there, with why.
     Error {
-        failure: crate::signals::InternalFailure,
+        failure: crate::catalog_model::InternalFailure,
     },
 
     /// A lookup failed, with whatever the lookups that answered combine to.

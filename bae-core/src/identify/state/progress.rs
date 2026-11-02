@@ -4,9 +4,10 @@
 //! and settles once all of them have.
 
 use super::{Effect, LookupOutcome, SignalState, SignalsContext};
+use crate::catalog_model::search::{MetadataResult, SourceFailure};
+use crate::catalog_model::LookupFailure;
 use crate::identify::NotAskedReason;
-use crate::import::search::{MetadataResult, SourceFailure};
-use crate::signals::{DiscIdSignal, LookupFailure};
+use crate::signals::DiscIdSignal;
 use bae_catalogs::catalog::Catalog;
 
 /// What one lookup produced: each match paired with its library status.
@@ -18,7 +19,7 @@ pub type LookupResults = Vec<MetadataResult>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiscIdAnswer {
     pub results: LookupResults,
-    pub documents: Vec<crate::import::payloads::DiscIdRelease>,
+    pub documents: Vec<crate::catalog_model::payloads::DiscIdRelease>,
 }
 
 #[cfg(test)]
@@ -103,7 +104,7 @@ impl DiscidProgress {
         &mut self,
         disc_id: &str,
         outcome: Result<DiscIdAnswer, LookupFailure>,
-    ) -> Option<Vec<crate::import::payloads::DiscIdRelease>> {
+    ) -> Option<Vec<crate::catalog_model::payloads::DiscIdRelease>> {
         let DiscidProgress::Lookups { discs } = self else {
             return None;
         };

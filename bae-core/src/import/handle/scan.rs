@@ -263,9 +263,9 @@ impl ImportServiceHandle {
     /// that fails fails the whole with its error.
     pub(crate) async fn external_candidate_metadata(
         &self,
-        release: &crate::import::source_release::SourceRelease,
+        release: &crate::catalog_model::source_release::SourceRelease,
         values: crate::import::release_values::ReleaseValues,
-        partners: Vec<crate::import::source_release::SourceRelease>,
+        partners: Vec<crate::catalog_model::source_release::SourceRelease>,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
         steps: &crate::import::CatalogApplySteps,
@@ -287,12 +287,12 @@ impl ImportServiceHandle {
     /// fails, naming the catalog that offered the cover.
     pub(crate) async fn fetch_release_cover(
         &self,
-        release: &crate::import::source_release::SourceRelease,
-        partners: &[crate::import::source_release::SourceRelease],
+        release: &crate::catalog_model::source_release::SourceRelease,
+        partners: &[crate::catalog_model::source_release::SourceRelease],
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<Option<FetchedCover>, CoverFetchFailure> {
         let Some(remote) =
-            crate::import::source_release::pick_covers(release, partners).into_iter().next()
+            crate::catalog_model::source_release::pick_covers(release, partners).into_iter().next()
         else {
             return Ok(None);
         };
@@ -442,12 +442,17 @@ impl ImportServiceHandle {
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
         let detail = release.detail(&prepared_partners);
-        let picked = crate::import::search::MetadataResult::of_pick(&detail, listed);
+        let picked = crate::catalog_model::search::MetadataResult::of_pick(&detail, listed);
         // The records of the pressing picked, as the folder's text reads them
         // now: what the year falls back on.
-        let records: Vec<crate::import::search::MetadataResult> = std::iter::once(picked.clone())
-            .chain(prepared_partners.iter().map(crate::import::search::MetadataResult::of_release))
-            .collect();
+        let records: Vec<crate::catalog_model::search::MetadataResult> =
+            std::iter::once(picked.clone())
+                .chain(
+                    prepared_partners
+                        .iter()
+                        .map(crate::catalog_model::search::MetadataResult::of_release),
+                )
+                .collect();
         let state = self.library_manager.load_import_candidate_state(&content_hash).await?;
         let text = crate::identify::CandidateText::of_stored(
             state.as_ref().and_then(|state| state.signals.as_ref()),
@@ -846,7 +851,7 @@ pub(crate) struct CoverFetchFailure {
 /// cover fetched for it.
 pub(crate) fn external_metadata_with_cover(
     draft: crate::import::CandidateDraft,
-    release: &crate::import::source_release::SourceRelease,
+    release: &crate::catalog_model::source_release::SourceRelease,
     cover: Option<FetchedCover>,
 ) -> crate::import::CandidateMetadataDraft {
     let (cover, remote_cover) = match cover {

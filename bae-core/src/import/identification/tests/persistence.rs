@@ -93,7 +93,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     links: Vec::new(),
                     cover_art: None,
                     source_group_id: Some(group_id.to_string()),
-                    album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                    album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
                     source_tracks: None,
                     document_failure: None,
                     album_first_year: None,

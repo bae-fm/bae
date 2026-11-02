@@ -231,7 +231,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
-        releases: &[crate::import::source_release::SourceRelease],
+        releases: &[crate::catalog_model::source_release::SourceRelease],
     ) -> Result<u64, LibraryError> {
         let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             crate::library::LibraryError::Refused(
@@ -257,7 +257,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         link: Option<&crate::import::ReleaseLink>,
-        releases: &[crate::import::source_release::SourceRelease],
+        releases: &[crate::catalog_model::source_release::SourceRelease],
     ) -> Result<(), LibraryError> {
         let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
             crate::library::LibraryError::Refused(
@@ -317,7 +317,7 @@ impl CandidatePreparations {
         link: &crate::import::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
-        releases: Vec<crate::import::source_release::SourceRelease>,
+        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
@@ -355,7 +355,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         link: &crate::import::AlbumLink,
         draft: crate::import::CandidateDraft,
-        releases: Vec<crate::import::source_release::SourceRelease>,
+        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
@@ -507,7 +507,7 @@ impl CandidatePreparations {
         candidate_key: &crate::import::CandidateKey,
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
-        releases: Vec<crate::import::source_release::SourceRelease>,
+        releases: Vec<crate::catalog_model::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {
         settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {

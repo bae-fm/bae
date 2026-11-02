@@ -3,7 +3,7 @@
 //! disambiguation and annotation.
 
 use super::*;
-use crate::import::search::musicbrainz_release_notes;
+use crate::catalog_model::search::musicbrainz_release_notes;
 use crate::signals::{TextLine, TextOrigin};
 use bae_catalogs::catalog::Catalog;
 
@@ -22,7 +22,7 @@ fn discogs(document: serde_json::Value) -> MetadataResult {
         serde_json::Value::String(id) => id.clone(),
         id => id.to_string(),
     };
-    let release = crate::import::payloads::ReleasePayloads::for_test(
+    let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(Catalog::Discogs, id),
         document.to_string(),
         Vec::<crate::import::SourcePayload>::new(),

@@ -156,7 +156,7 @@ pub struct AutomationImportFailure {
     pub failed_at: String,
 }
 
-/// Mirrors bae-core's `signals::LookupFailure`.
+/// Mirrors bae-core's `catalog_model::LookupFailure`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationLookupFailure {

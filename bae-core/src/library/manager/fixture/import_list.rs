@@ -138,7 +138,7 @@ impl LibraryManager {
                     candidate,
                     TerminalVerdict::Failed {
                         failures: vec![crate::identify::IdentifyFailure::DiscId(
-                            crate::signals::LookupFailure::Network,
+                            crate::catalog_model::LookupFailure::Network,
                         )],
                         findings: crate::identify::Findings::default(),
                         track_count,
@@ -151,7 +151,7 @@ impl LibraryManager {
                 self.store_fixture_verdict(
                     candidate,
                     TerminalVerdict::Error {
-                        failure: crate::signals::InternalFailure {
+                        failure: crate::catalog_model::InternalFailure {
                             detail: FIXTURE_LOOKUP_FAILURE.to_string(),
                         },
                     },
@@ -162,7 +162,7 @@ impl LibraryManager {
                 let release_id = self.ids.new_id().to_string();
                 let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, &release_id);
                 let document = musicbrainz_release(candidate, &release_id);
-                let release = crate::import::payloads::ReleasePayloads::for_test(
+                let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
                     record.clone(),
                     document.to_string(),
                     Vec::new(),
@@ -237,7 +237,7 @@ impl LibraryManager {
                 candidate_key: candidate.key(),
                 verdict,
                 signals: crate::signals::Signals {
-                    origin: crate::signals::AudioOrigin::default(),
+                    origin: crate::catalog_model::AudioOrigin::default(),
                     disc_id: crate::signals::DiscIdSignal::Absent,
                     barcode: crate::signals::BarcodeSignal::Absent,
                     text: crate::signals::TextSignal::Settled {
@@ -312,8 +312,8 @@ fn fixture_candidate(
 fn fixture_release(
     candidate: &FolderCandidate,
     release_id: String,
-) -> crate::import::search::MetadataResult {
-    crate::import::search::MetadataResult {
+) -> crate::catalog_model::search::MetadataResult {
+    crate::catalog_model::search::MetadataResult {
         source: Catalog::MusicBrainz,
         release_id,
         title: candidate.name.clone(),
@@ -329,8 +329,8 @@ fn fixture_release(
         links: Vec::new(),
         cover_art: None,
         source_group_id: None,
-        album_links: crate::import::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::import::search::SourceTracks::Listed {
+        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed {
             count: candidate.files.files.len() as u32,
         }),
         document_failure: None,

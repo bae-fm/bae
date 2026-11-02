@@ -67,12 +67,12 @@ impl ImportServiceHandle {
             let prepared = crate::import::service::prepare_release(
                 &self.library_manager,
                 lead,
-                crate::import::payloads::ReadDepth::Complete,
+                crate::catalog_model::payloads::ReadDepth::Complete,
                 CallPriority::Interactive,
             )
             .await?;
             let release = &prepared.release;
-            records.push(crate::import::search::MetadataResult::of_release(release));
+            records.push(crate::catalog_model::search::MetadataResult::of_release(release));
             offered.push(crate::import::shared_album::OfferedReading::of(
                 &release.read(&audio).map_err(crate::import::ImportError::from)?,
             ));

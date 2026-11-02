@@ -181,7 +181,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                origin: crate::signals::AudioOrigin::default(),
+                origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Absent,
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
                 text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },

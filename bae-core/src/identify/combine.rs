@@ -12,8 +12,8 @@
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
+use crate::catalog_model::search::MetadataResult;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
-use crate::import::search::MetadataResult;
 use bae_catalogs::catalog::Catalog;
 use std::collections::{HashMap, HashSet};
 

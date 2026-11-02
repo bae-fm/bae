@@ -7,9 +7,8 @@ use crate::import::{
     ArtistAssignment, ArtistCredit, AudioFile, CandidateEditField, CoverSelection, ExistingArtist,
     ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments,
 };
-use crate::signals::{
-    BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue, TextSignal,
-};
+use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use crate::catalog_model::{InternalFailure};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -29,7 +28,7 @@ fn pane_candidate_key() -> crate::import::CandidateKey {
 
 fn settled_signals() -> Signals {
     Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -175,7 +174,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
 /// each way a lookup can fail.
 #[tokio::test]
 async fn every_settled_signal_shape_round_trips() {
-    use crate::signals::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
+    use crate::catalog_model::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
     let cd_rip = |proof, file: Option<&str>| AudioOrigin {
         source: Some(AudioSource::CdRip { proof, file: file.map(str::to_string) }),
         not_cd_rate: None,
@@ -310,7 +309,7 @@ async fn every_settled_signal_shape_round_trips() {
 async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
-            origin: crate::signals::AudioOrigin::default(),
+            origin: crate::catalog_model::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -319,7 +318,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             track_titles: Vec::new(),
         },
         Signals {
-            origin: crate::signals::AudioOrigin::default(),
+            origin: crate::catalog_model::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },

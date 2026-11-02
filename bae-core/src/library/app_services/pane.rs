@@ -4,8 +4,9 @@
 //! shows what core stored rather than what a surface made of an error.
 
 use super::*;
+use crate::catalog_model::SearchQuery;
 use crate::import::{
-    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, PressingLink, SearchQuery,
+    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, PressingLink,
 };
 
 impl AppServices {

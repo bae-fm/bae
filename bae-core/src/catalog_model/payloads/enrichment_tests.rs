@@ -66,7 +66,7 @@ async fn database() -> (Database, tempfile::TempDir) {
 /// chain, and the release it stores reads back as it was extracted.
 #[tokio::test]
 async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
-    let providers = crate::providers::Providers::offline();
+    let providers = crate::catalog_model::providers::Providers::offline();
     providers.discogs().seed_release_cache("7811", discogs());
     providers.discogs().seed_master_cache("7822", master());
     providers.musicbrainz().seed_discogs_page_lookup(&[

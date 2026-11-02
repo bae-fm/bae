@@ -21,7 +21,7 @@ use std::collections::HashMap;
 #[cfg(desktop)]
 struct DiscogsSession {
     client: Option<Arc<DiscogsClient>>,
-    providers: crate::providers::Providers,
+    providers: crate::catalog_model::providers::Providers,
 }
 
 #[cfg(desktop)]
@@ -31,29 +31,31 @@ impl DiscogsSession {
         &self,
         params: DiscogsSearchParams,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::catalog_model::CatalogError>
+    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::catalog_model::CatalogError>
     {
         let client =
             self.client.as_ref().ok_or(crate::catalog_model::CatalogError::DiscogsNotConfigured)?;
-        Ok(crate::import::search::search_discogs(client, params, priority).await?)
+        Ok(crate::catalog_model::search::search_discogs(client, params, priority).await?)
     }
 
     #[cfg(desktop)]
     async fn fetch_payloads(
         &self,
         release: &crate::import::MetadataRef,
-        depth: crate::import::payloads::ReadDepth,
+        depth: crate::catalog_model::payloads::ReadDepth,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::catalog_model::CatalogError> {
+    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::catalog_model::CatalogError>
+    {
         self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
     }
 
     #[cfg(desktop)]
     async fn read_disc_id_release(
         &self,
-        answered: &crate::import::payloads::DiscIdRelease,
+        answered: &crate::catalog_model::payloads::DiscIdRelease,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::catalog_model::CatalogError> {
+    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::catalog_model::CatalogError>
+    {
         self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
     }
 
@@ -264,7 +266,7 @@ impl LibraryManager {
         &self,
         params: DiscogsSearchParams,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::import::ImportError> {
         Ok(self.discogs_session().await?.search(params, priority).await?)
     }
 
@@ -272,9 +274,9 @@ impl LibraryManager {
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
-        depth: crate::import::payloads::ReadDepth,
+        depth: crate::catalog_model::payloads::ReadDepth,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
         Ok(self
             .release_read_session(release)
             .await?
@@ -283,13 +285,13 @@ impl LibraryManager {
     }
 
     /// A release a Disc ID lookup returned, read for an identify run from
-    /// that answer (see [`crate::import::payloads::read_disc_id_release`]).
+    /// that answer (see [`crate::catalog_model::payloads::read_disc_id_release`]).
     #[cfg(desktop)]
     pub(crate) async fn read_disc_id_release_payloads(
         &self,
-        answered: &crate::import::payloads::DiscIdRelease,
+        answered: &crate::catalog_model::payloads::DiscIdRelease,
         priority: CallPriority,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
         Ok(self
             .release_read_session(answered.release())
             .await?

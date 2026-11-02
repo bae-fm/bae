@@ -44,11 +44,11 @@ enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
         link: crate::import::PressingLink,
-        release: crate::import::source_release::SourceRelease,
-        partners: Vec<crate::import::source_release::SourceRelease>,
+        release: crate::catalog_model::source_release::SourceRelease,
+        partners: Vec<crate::catalog_model::source_release::SourceRelease>,
         /// The primary and the partners as their read stores them, which the
         /// verdict's write stores beside the link naming them.
-        stored: Vec<crate::import::source_release::SourceRelease>,
+        stored: Vec<crate::catalog_model::source_release::SourceRelease>,
         /// The year the draft's pressing takes where the release states none.
         pressing_year: Option<i32>,
     },
@@ -201,8 +201,8 @@ async fn lead_metadata(
     candidate: &FolderCandidate,
     verdict: &mut TerminalVerdict,
     audio: &crate::import::catalog_reading::ReadAudio,
-    release: &crate::import::source_release::SourceRelease,
-    partners: Vec<crate::import::source_release::SourceRelease>,
+    release: &crate::catalog_model::source_release::SourceRelease,
+    partners: Vec<crate::catalog_model::source_release::SourceRelease>,
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
     let current = match context
@@ -247,7 +247,8 @@ async fn lead_metadata(
     {
         Ok(cover) => cover,
         Err(failure) => {
-            let Some(lookup) = crate::import::search::remote_image_failure(&failure.error) else {
+            let Some(lookup) = crate::catalog_model::search::remote_image_failure(&failure.error)
+            else {
                 return Err(Settled::Unwritable {
                     error: format!(
                         "could not fetch the {} cover of {}: {}",
@@ -264,7 +265,10 @@ async fn lead_metadata(
                 failure.error
             );
             verdict.fail(crate::identify::IdentifyFailure::Cover(
-                crate::import::search::SourceFailure { source: failure.source, failure: lookup },
+                crate::catalog_model::search::SourceFailure {
+                    source: failure.source,
+                    failure: lookup,
+                },
             ));
             return Ok(None);
         }
@@ -286,7 +290,7 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     pick: Option<crate::db::VerdictPick>,
-    releases: Vec<crate::import::source_release::SourceRelease>,
+    releases: Vec<crate::catalog_model::source_release::SourceRelease>,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;
@@ -350,7 +354,7 @@ async fn settle_lead(
         let release = crate::import::service::prepare_release(
             &context.library_manager,
             &primary,
-            crate::import::payloads::ReadDepth::Complete,
+            crate::catalog_model::payloads::ReadDepth::Complete,
             priority,
         )
         .await?;
@@ -373,7 +377,7 @@ async fn settle_lead(
     let (release, prepared_partners) = match prepared {
         Ok(prepared) => prepared,
         Err(error) => {
-            let Some(failure) = crate::import::search::provider_failure(&error) else {
+            let Some(failure) = crate::catalog_model::search::provider_failure(&error) else {
                 return Err(Settled::Unwritable {
                     error: format!("could not settle {}: {error}", primary.key),
                 });

@@ -1,6 +1,6 @@
 //! Whether the folder's text names what sets a row apart from the rows beside
 //! it in its catalogs' notes — the free text a record's document writes about
-//! which pressing it is (see [`crate::import::search::MetadataResult::notes`]).
+//! which pressing it is (see [`crate::catalog_model::search::MetadataResult::notes`]).
 //!
 //! Catalogs often write what tells look-alike pressings apart — where one was
 //! made, who pressed it — only as free text, so the text is read as nothing
@@ -22,7 +22,7 @@
 //! the pressing, and those fields are ranked above this.
 
 use super::agreements::CandidateText;
-use crate::import::search::MetadataResult;
+use crate::catalog_model::search::MetadataResult;
 use bae_types::text_match::{is_stop_word, words};
 use std::collections::HashSet;
 

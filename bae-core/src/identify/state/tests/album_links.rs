@@ -10,12 +10,12 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
         labels: Vec::new(),
         barcodes: Vec::new(),
         album_first_year: None,
-        source_tracks: crate::import::search::SourceTracks::Listed { count: 5 },
+        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 5 },
         track_titles: Vec::new(),
         notes: notes.iter().map(|note| note.to_string()).collect(),
         links: Vec::new(),
         album_links: AlbumLinks::NotAsked,
-        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
             crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "release-1",

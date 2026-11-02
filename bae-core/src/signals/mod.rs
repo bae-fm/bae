@@ -2,13 +2,13 @@
 //! up and narrows by, produced as one [`Signals`] value per pass. Embedded tags
 //! are not a signal; they seed the file-metadata import instead.
 
-// `failure` and `origin` are plain data used on every platform; the rest is
-// desktop-only extraction.
-pub mod failure;
-pub use failure::{Failure, InternalFailure, LookupFailure};
-
+// `origin` is plain data used on every platform; the rest is desktop-only
+// extraction.
 pub mod origin;
 pub use origin::{SourcedValue, TextOrigin};
+
+#[cfg(desktop)]
+use crate::catalog_model::{AudioOrigin, InternalFailure};
 
 #[cfg(desktop)]
 mod analyzer;
@@ -29,8 +29,6 @@ mod pool;
 #[cfg(desktop)]
 pub(crate) mod release;
 #[cfg(desktop)]
-pub mod rip;
-#[cfg(desktop)]
 pub mod service;
 #[cfg(desktop)]
 pub mod text;
@@ -45,8 +43,6 @@ pub use audio::AudioFacts;
 pub use barcode::BarcodeSignal;
 #[cfg(desktop)]
 pub use disc_id::{ComputedDiscId, DiscIdSignal};
-#[cfg(desktop)]
-pub use rip::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
 #[cfg(desktop)]
 pub use service::{
     ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch, SignalsSnapshot,
@@ -68,10 +64,10 @@ pub struct Signals {
     /// Every line of the candidate's own text, in reading order, which
     /// results are ranked against.
     pub text_pool: Vec<TextLine>,
-    /// Each audio file's ISRC, as [`crate::isrc::code`] reads its tag, in the
+    /// Each audio file's ISRC, as [`crate::catalog_model::isrc::code`] reads its tag, in the
     /// files' order; a file whose tags carry none adds nothing. They are
     /// looked up on MusicBrainz, and say where the recordings were registered
-    /// (see [`crate::isrc::registered_in`]).
+    /// (see [`crate::catalog_model::isrc::registered_in`]).
     pub isrcs: Vec<String>,
     /// Each track's title, in the tracks' order: its file's title tag, or
     /// failing that its file name without the track number. Empty unless

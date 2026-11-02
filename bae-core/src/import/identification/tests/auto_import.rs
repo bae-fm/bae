@@ -290,7 +290,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .import
         .start_candidate_search(
             key.clone(),
-            crate::import::search::SearchQuery::General {
+            crate::catalog_model::search::SearchQuery::General {
                 artist: "Artist".to_string(),
                 album: "Album".to_string(),
             },

@@ -155,8 +155,8 @@ impl TriageRuntimeFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog_model::search::SourceTracks;
     use crate::identify::LeadMatch;
-    use crate::import::search::SourceTracks;
     use bae_catalogs::catalog::Catalog;
 
     /// The pane states the found release's failed check while identification's

@@ -10,7 +10,7 @@ async fn stored_for(
     manager: &LibraryManager,
     catalog: Catalog,
     release_id: &str,
-) -> Option<crate::import::source_release::SourceRelease> {
+) -> Option<crate::catalog_model::source_release::SourceRelease> {
     manager
         .database
         .load_source_release(&crate::import::MetadataRef::new(catalog, release_id))

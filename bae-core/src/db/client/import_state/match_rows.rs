@@ -5,8 +5,8 @@
 use super::super::album_link_rows::AlbumLinkRow;
 use super::verdict_rows::{unreadable, Owner};
 use super::*;
-use crate::import::album_links::AlbumLinks;
-use crate::import::search::{MetadataResult, SourceTracks};
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};

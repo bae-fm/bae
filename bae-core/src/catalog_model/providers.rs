@@ -9,11 +9,11 @@
 
 use std::sync::Arc;
 
+use crate::catalog_model::failure::Failure;
+use crate::catalog_model::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
+use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::CatalogError;
-use crate::import::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
-use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
-use crate::signals::failure::Failure;
 use bae_catalogs::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
 use bae_catalogs::musicbrainz::{MusicBrainz, ReleaseSearchParams};
 use bae_catalogs::rate_limiter::CallPriority;
@@ -83,7 +83,7 @@ impl Providers {
         depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
-        crate::import::payloads::fetch_documents(
+        crate::catalog_model::payloads::fetch_documents(
             &self.musicbrainz,
             &self.wikidata,
             discogs,
@@ -103,7 +103,7 @@ impl Providers {
         answered: &DiscIdRelease,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
-        crate::import::payloads::read_disc_id_release(
+        crate::catalog_model::payloads::read_disc_id_release(
             &self.musicbrainz,
             &self.wikidata,
             discogs,
@@ -118,7 +118,7 @@ impl Providers {
         params: ReleaseSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<MetadataResult>, CatalogError> {
-        crate::import::search::search_mb(&self.musicbrainz, params, priority).await
+        crate::catalog_model::search::search_mb(&self.musicbrainz, params, priority).await
     }
 
     pub(crate) async fn lookup_musicbrainz_discid(
@@ -126,7 +126,7 @@ impl Providers {
         discid: &str,
         priority: CallPriority,
     ) -> Result<Vec<(MetadataResult, DiscIdRelease)>, Failure> {
-        crate::import::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
+        crate::catalog_model::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
     }
 
     pub(crate) async fn lookup_musicbrainz_isrcs(
@@ -134,7 +134,7 @@ impl Providers {
         isrcs: &[String],
         priority: CallPriority,
     ) -> Result<Vec<MetadataResult>, Failure> {
-        crate::import::search::lookup_by_isrcs(&self.musicbrainz, isrcs, priority).await
+        crate::catalog_model::search::lookup_by_isrcs(&self.musicbrainz, isrcs, priority).await
     }
 
     /// The archive's images of a MusicBrainz release, then of its group.
@@ -156,10 +156,11 @@ impl Providers {
     /// Every image one pick's releases offer, the primary's first.
     pub(crate) async fn pick_gallery_covers(
         &self,
-        primary: &crate::import::source_release::SourceRelease,
-        partners: &[crate::import::source_release::SourceRelease],
+        primary: &crate::catalog_model::source_release::SourceRelease,
+        partners: &[crate::catalog_model::source_release::SourceRelease],
     ) -> Result<Vec<RemoteCover>, CatalogError> {
-        crate::import::source_release::pick_gallery_covers(&self.http, primary, partners).await
+        crate::catalog_model::source_release::pick_gallery_covers(&self.http, primary, partners)
+            .await
     }
 }
 

@@ -8,17 +8,17 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, MetadataResult, SearchProgress,
     SourceFailure,
 };
+use crate::catalog_model::album_links::{self, GroupLinks};
+use crate::catalog_model::payloads::DiscIdRelease;
+use crate::catalog_model::{AudioOrigin, LookupFailure};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
-use crate::import::album_links::{self, GroupLinks};
-use crate::import::payloads::DiscIdRelease;
 use crate::import::LookupChoices;
 use crate::import::MetadataRef;
 use crate::signals::{
-    ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals,
-    SourcedValue, TextSignal,
+    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };
 use bae_catalogs::catalog::Catalog;
 
@@ -184,9 +184,9 @@ impl IsrcEvidence {
     }
 
     /// Where most of the audio's recordings were registered — see
-    /// [`crate::isrc::registered_in`].
+    /// [`crate::catalog_model::isrc::registered_in`].
     fn registered_in(&self) -> Option<bae_types::pressing::ReleaseArea> {
-        crate::isrc::registered_in(self.tagged.iter().map(String::as_str))
+        crate::catalog_model::isrc::registered_in(self.tagged.iter().map(String::as_str))
     }
 
     /// Record what the settled lookup found.

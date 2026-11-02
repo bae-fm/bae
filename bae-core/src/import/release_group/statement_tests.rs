@@ -5,7 +5,7 @@
 
 use super::tests::*;
 use super::*;
-use crate::import::album_links::AlbumLinks;
+use crate::catalog_model::album_links::AlbumLinks;
 
 /// `release`'s group is `master` on Discogs because `release` links `twin`
 /// and `twin`'s own document files it under `master`.

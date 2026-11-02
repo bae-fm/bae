@@ -3,8 +3,8 @@
 
 use super::tests::*;
 use super::*;
+use crate::catalog_model::search::MetadataResult;
 use crate::identify::{Findings, NarrowedOut, TerminalVerdict};
-use crate::import::search::MetadataResult;
 use crate::signals::TextLine;
 use crate::signals::TextOrigin;
 

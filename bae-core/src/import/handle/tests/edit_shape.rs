@@ -155,7 +155,7 @@ fn vinyl_response() -> bae_catalogs::musicbrainz::MbReleaseResponse {
 fn values_for(
     response: &bae_catalogs::musicbrainz::MbReleaseResponse,
 ) -> crate::import::release_values::ReleaseValues {
-    crate::import::payloads::ReleasePayloads::for_test(
+    crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),

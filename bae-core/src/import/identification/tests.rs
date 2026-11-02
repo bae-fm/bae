@@ -2,11 +2,11 @@
 //! fixture answers their URLs and records each request.
 
 use super::*;
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::db::{
     Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
 use crate::identify::{FolderCheck, VerdictSummary};
-use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
@@ -45,7 +45,7 @@ fn copy_fixture(source: &Path, target: &Path) {
 /// Settled signals that found nothing.
 fn settled_signals() -> Signals {
     Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -332,7 +332,7 @@ impl Fixture {
             bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
             // Production request spacing: admission order is part of what these
             // tests measure.
-            crate::providers::Providers::new(http),
+            crate::catalog_model::providers::Providers::new(http),
         );
 
         let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
@@ -573,7 +573,7 @@ impl Fixture {
     async fn stored_release(
         &self,
         release_id: &str,
-    ) -> Option<crate::import::source_release::SourceRelease> {
+    ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
             .load_source_release(&crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
@@ -587,7 +587,7 @@ impl Fixture {
     async fn stored_discogs_release(
         &self,
         release_id: &str,
-    ) -> Option<crate::import::source_release::SourceRelease> {
+    ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
             .load_source_release(&crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::Discogs,
@@ -621,10 +621,10 @@ impl Fixture {
         track_lengths: &[u64],
     ) {
         let mut release = stored_pressing(release_id, group_id, track_lengths);
-        release.unfetched.push(crate::import::source_release::UnfetchedDocument {
+        release.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
             document: crate::import::PayloadSource::MusicBrainzReleaseGroup,
             key: group_id.to_string(),
-            reason: crate::import::source_release::UnfetchedReason::Failed,
+            reason: crate::catalog_model::source_release::UnfetchedReason::Failed,
         });
         self.manager.save_source_release(&release).await.unwrap();
     }
@@ -723,7 +723,7 @@ impl Fixture {
                     links: Vec::new(),
                     cover_art: None,
                     source_group_id: Some(group_id.to_string()),
-                    album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                    album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
                     source_tracks: Some(source_tracks),
                     document_failure: None,
                     album_first_year: None,
@@ -802,8 +802,8 @@ fn stored_pressing(
     release_id: &str,
     group_id: &str,
     track_lengths: &[u64],
-) -> crate::import::source_release::SourceRelease {
-    crate::import::payloads::ReleasePayloads::for_test(
+) -> crate::catalog_model::source_release::SourceRelease {
+    crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
         release_json(release_id, group_id, track_lengths),
         Vec::new(),

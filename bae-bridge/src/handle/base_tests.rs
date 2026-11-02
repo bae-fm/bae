@@ -86,7 +86,7 @@ fn setting_up_s3_storage_writes_its_steps() {
         .unwrap();
     let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
         root.path(),
-        bae_core::providers::Providers::offline(),
+        bae_core::catalog_model::providers::Providers::offline(),
     ));
     let coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } =
         coven::Storage::config(storage.as_ref())

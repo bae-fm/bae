@@ -49,7 +49,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     db.finish_folder_scan(&root, generation, None).await.unwrap();
     let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked");
     db.save_source_release(
-        &crate::import::payloads::ReleasePayloads::for_test(
+        &crate::catalog_model::payloads::ReleasePayloads::for_test(
             record.clone(),
             musicbrainz_release("mb-picked", "Picked Album").to_string(),
             Vec::new(),

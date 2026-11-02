@@ -24,14 +24,14 @@
 //!
 //! A MusicBrainz document also names the other catalogs' releases that are
 //! the same release, and states what its album is on Discogs (see
-//! [`crate::import::album_links`]). The release a document names is how the
+//! [`crate::catalog_model::album_links`]). The release a document names is how the
 //! run looks an offered row up on the catalog it has no record of — see
 //! `state::pressings`.
 
-use crate::import::album_links::AlbumLinks;
-use crate::import::search::{MetadataResult, SourceTracks};
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
+use crate::catalog_model::LookupFailure;
 use crate::import::MetadataRef;
-use crate::signals::LookupFailure;
 use bae_types::pressing::ReleaseLabel;
 
 /// Where a run is with its offered rows' documents: each record's document,
@@ -55,7 +55,7 @@ pub enum ReleaseToRead {
     ReleaseLookup(MetadataRef),
     /// The Disc ID lookup's answer that returned it, unless storage holds
     /// it: a MusicBrainz release's own document is not asked for again.
-    DiscIdAnswer(crate::import::payloads::DiscIdRelease),
+    DiscIdAnswer(crate::catalog_model::payloads::DiscIdRelease),
 }
 
 impl ReleaseToRead {
@@ -99,13 +99,13 @@ pub struct ReleaseDocument {
     pub album_links: AlbumLinks,
     /// The release as its read stores it, which the write of the run's rows
     /// naming it stores.
-    pub(crate) stored: std::sync::Arc<crate::import::source_release::SourceRelease>,
+    pub(crate) stored: std::sync::Arc<crate::catalog_model::source_release::SourceRelease>,
 }
 
 impl ReleaseDocument {
     /// What `prepared` states, read against the audio being identified.
     pub(crate) fn of(
-        prepared: crate::import::source_release::PreparedRelease,
+        prepared: crate::catalog_model::source_release::PreparedRelease,
         audio: &crate::import::catalog_reading::ReadAudio,
     ) -> Self {
         let release = &prepared.release;

@@ -1,7 +1,7 @@
 use super::*;
+use crate::catalog_model::search::{search_source, SearchQuery};
 use crate::import::candidate_search::{CandidateSearch, SearchRun};
 use crate::import::cover_art::RemoteCoverGallery;
-use crate::import::search::{search_source, SearchQuery};
 use bae_catalogs::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
@@ -108,7 +108,7 @@ impl ImportServiceHandle {
                 {
                     Ok(found) => found,
                     Err(failed) => {
-                        Err(crate::signals::Failure::Internal(diagnostics.bug(failed).into()))
+                        Err(crate::catalog_model::Failure::Internal(diagnostics.bug(failed).into()))
                     }
                 };
                 land_source_search(&runtime, &diagnostics, &candidate_key, run, source, found)
@@ -126,7 +126,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
-        links: crate::import::album_links::AlbumLinks,
+        links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<(), crate::library::LibraryError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
@@ -149,7 +149,7 @@ impl ImportServiceHandle {
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
-        let results = crate::import::search::search_provider(
+        let results = crate::catalog_model::search::search_provider(
             &self.library_manager,
             source,
             &query,
@@ -313,7 +313,8 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
         steps: &crate::import::CatalogApplySteps,
-    ) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+    ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
+    {
         if self.is_settled_lead(candidate_key, release).await? {
             self.library_manager.load_source_release(release).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
@@ -429,7 +430,7 @@ async fn land_source_search(
     candidate_key: &crate::import::CandidateKey,
     run: SearchRun,
     source: Catalog,
-    found: crate::import::search::SourceLookup,
+    found: crate::catalog_model::search::SourceLookup,
 ) {
     match runtime.land_search(run, source, found).await {
         Ok(true) => {}

@@ -152,7 +152,7 @@ pub(super) fn fresh_test_library(
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
                     bae_util::http::Http::for_test(),
                 ),
-                bae_core::providers::Providers::offline(),
+                bae_core::catalog_model::providers::Providers::offline(),
             ))
             .expect("open test library");
     (runtime, manager, root)
@@ -320,7 +320,7 @@ fn enqueue_export_missing_release_does_not_panic() {
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
     let signals = bae_core::signals::Signals {
-        origin: bae_core::signals::AudioOrigin::default(),
+        origin: bae_core::catalog_model::AudioOrigin::default(),
         disc_id: bae_core::signals::DiscIdSignal::Absent,
         barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: bae_core::signals::TextSignal::Settled {
@@ -678,7 +678,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let directory = tempfile::TempDir::new().expect("library directory");
     let (manager, database, storage) = runtime.block_on(bae_test_support::storage_library(
         directory.path(),
-        bae_core::providers::Providers::offline(),
+        bae_core::catalog_model::providers::Providers::offline(),
     ));
     runtime.block_on(async {
         bae_test_support::connect_storage(&manager, &storage).await;

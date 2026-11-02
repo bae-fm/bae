@@ -95,7 +95,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     let key = pane_candidate_key();
     let root = host_root("/music");
     let search = crate::import::CandidateSearch::started(
-        crate::import::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
+        crate::catalog_model::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
         &[crate::config::CatalogAvailability {
             catalog: bae_catalogs::catalog::Catalog::Discogs,
             state: crate::config::SourceAvailability::On,
@@ -106,7 +106,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
         .land_candidate_search(
             run,
             bae_catalogs::catalog::Catalog::Discogs,
-            Ok(vec![crate::import::search::MetadataResult::for_test(
+            Ok(vec![crate::catalog_model::search::MetadataResult::for_test(
                 bae_catalogs::catalog::Catalog::Discogs,
                 "dg-1",
                 None,

@@ -18,12 +18,12 @@ use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written}
 use super::rows::load_search_matches_on;
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::import::album_links::AlbumLinks;
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::search::{MetadataResult, SearchQuery};
+use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::import::candidates::CandidateFiles;
-use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::MetadataRef;
-use crate::signals::{Failure, InternalFailure};
 use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 

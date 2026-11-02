@@ -1,6 +1,6 @@
 use super::*;
+use crate::catalog_model::search::MetadataResult;
 use crate::import::release_group::{group_results, unranked};
-use crate::import::search::MetadataResult;
 use crate::import::{AudioFile, CandidateTrack, RawPressingEdit, RawTrackEdit};
 use bae_types::pressing::{MediaCount, Medium, PressingFacts};
 
@@ -21,7 +21,7 @@ fn release(catalog: Catalog, release_id: &str, album: Option<&str>, year: i32) -
         links: Vec::new(),
         cover_art: None,
         source_group_id: album.map(str::to_string),
-        album_links: crate::import::album_links::AlbumLinks::NotAsked,
+        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
         document_failure: None,
         album_first_year: None,

@@ -610,7 +610,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
 fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let listing = |mut result: MetadataResult, count: u32| {
-        result.source_tracks = Some(crate::import::search::SourceTracks::Listed { count });
+        result.source_tracks = Some(crate::catalog_model::search::SourceTracks::Listed { count });
         result
     };
     let outcome = combine_results(

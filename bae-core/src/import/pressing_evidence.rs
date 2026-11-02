@@ -10,7 +10,7 @@
 //! whether the two records are candidates for one pressing and how well
 //! supported that claim is.
 
-use crate::import::search::MetadataResult;
+use crate::catalog_model::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_types::barcode::comparison_key;

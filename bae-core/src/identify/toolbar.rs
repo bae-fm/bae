@@ -1,8 +1,8 @@
 //! The signal badges: one [`ToolbarSignal`] per identifying signal, built by
 //! [`crate::identify::IdentifyState::toolbar`].
 
+use crate::catalog_model::LookupFailure;
 use crate::identify::NotAskedReason;
-use crate::signals::LookupFailure;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignalKind {

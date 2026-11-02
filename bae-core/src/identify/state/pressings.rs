@@ -12,7 +12,7 @@
 //! joins it, and one that is not stands as a row of its own.
 
 use super::{LookupOutcome, LookupState};
-use crate::import::search::{MetadataResult, SourceFailure};
+use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_types::text_match::{catalog_key, same_label_name};

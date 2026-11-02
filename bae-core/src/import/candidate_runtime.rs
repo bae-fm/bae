@@ -35,11 +35,12 @@ use super::candidate_key::CandidateKey;
 use super::candidate_search::{CandidateSearch, SearchRun};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
-use super::search::{MetadataResult, SearchQuery};
 use super::types::ImportProgress;
+use crate::catalog_model::search::{MetadataResult, SearchQuery};
+use crate::catalog_model::Failure;
 use crate::db::{Database, DbError};
 use crate::identify::{IdentifyRunId, IdentifyState, RunOutcome};
-use crate::signals::{Failure, Signals};
+use crate::signals::Signals;
 use bae_catalogs::catalog::Catalog;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -302,7 +303,7 @@ impl CandidateRuntime {
         &self,
         key: &CandidateKey,
         release: &crate::import::MetadataRef,
-        links: crate::import::album_links::AlbumLinks,
+        links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<Vec<(String, Vec<crate::import::MetadataRef>)>, DbError> {
         self.database.land_candidate_search_pick(key, release, links).await
     }

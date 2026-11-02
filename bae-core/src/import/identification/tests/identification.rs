@@ -296,7 +296,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some("rg-1".to_string()),
-                album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
                 source_tracks: source,
                 document_failure: None,
                 album_first_year: None,
@@ -318,8 +318,8 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 /// it is the count: three tracks, as the folder holds.
 #[test]
 fn the_lengths_a_source_states_do_not_decide() {
-    let payloads: crate::import::payloads::ReleasePayloads =
-        crate::import::payloads::ReleasePayloads::for_test(
+    let payloads: crate::catalog_model::payloads::ReleasePayloads =
+        crate::catalog_model::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
@@ -339,14 +339,14 @@ fn the_lengths_a_source_states_do_not_decide() {
 /// many as it counts.
 #[test]
 fn a_document_lists_its_tracks_titles() {
-    let payloads = crate::import::payloads::ReleasePayloads::for_test(
+    let payloads = crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
         release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
         Vec::new(),
     );
     let release = payloads.extract().unwrap();
     let document = crate::identify::documents::ReleaseDocument::of(
-        crate::import::source_release::PreparedRelease { stored: release.clone(), release },
+        crate::catalog_model::source_release::PreparedRelease { stored: release.clone(), release },
         &crate::import::catalog_reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
     assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });

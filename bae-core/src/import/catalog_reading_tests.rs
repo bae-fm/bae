@@ -1,10 +1,10 @@
 use super::*;
-use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
-use crate::import::source_release::{
+use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
+use crate::catalog_model::source_release::{
     CatalogFacts, EntryKind, ReleaseCovers, SourceMedium, TracklistEntry,
 };
+use crate::catalog_model::{AudioSource, CdProof};
 use crate::import::{ArtistCredit, MetadataRef};
-use crate::signals::{AudioSource, CdProof};
 use bae_types::pressing::{Medium, Pressing, StatedMedia};
 
 /// One tracklist row: a track at `position` with `title`, stating `length`.
@@ -56,7 +56,7 @@ fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
         catalog: match catalog {
             Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
                 links: Vec::new(),
-                album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
             },
             Catalog::Discogs => {
                 CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }

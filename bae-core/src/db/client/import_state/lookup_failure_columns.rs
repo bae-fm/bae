@@ -3,7 +3,7 @@
 
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::signals::LookupFailure;
+use crate::catalog_model::LookupFailure;
 
 /// One failure as its two columns.
 pub(super) struct FailureColumns {

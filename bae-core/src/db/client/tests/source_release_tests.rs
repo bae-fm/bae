@@ -2,7 +2,7 @@
 //! for exactly one extraction of a release at a time.
 
 use super::empty_db;
-use crate::import::payloads::ReleasePayloads;
+use crate::catalog_model::payloads::ReleasePayloads;
 use crate::import::{MetadataRef, PayloadSource, SourcePayload};
 use bae_catalogs::catalog::Catalog;
 
@@ -174,13 +174,13 @@ fn discogs_documents() -> ReleasePayloads {
 async fn a_stored_release_reads_back_as_it_was_extracted() {
     let (db, _tmp) = empty_db().await;
     let mut musicbrainz = musicbrainz_documents().extract().unwrap();
-    musicbrainz.unfetched.push(crate::import::source_release::UnfetchedDocument {
+    musicbrainz.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "4242".to_string(),
-        reason: crate::import::source_release::UnfetchedReason::DiscogsNotConfigured,
+        reason: crate::catalog_model::source_release::UnfetchedReason::DiscogsNotConfigured,
     });
     let performed = &musicbrainz.mediums[0].entries[0].works[0].work;
-    let crate::import::source_release::SourceWorkEvent::Part { work: parent, .. } =
+    let crate::catalog_model::source_release::SourceWorkEvent::Part { work: parent, .. } =
         &performed.events[1]
     else {
         panic!("the movement names its parent work: {performed:?}");
@@ -239,8 +239,8 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
 /// them: each album named, in order, or that one could not be read.
 #[tokio::test]
 async fn a_stored_release_reads_back_its_album_links() {
-    use crate::import::album_links::AlbumLinks;
-    use crate::import::source_release::CatalogFacts;
+    use crate::catalog_model::album_links::AlbumLinks;
+    use crate::catalog_model::source_release::CatalogFacts;
     let (db, _tmp) = empty_db().await;
     let extracted = musicbrainz_documents().extract().unwrap();
     let CatalogFacts::MusicBrainz { album_links, .. } = &extracted.catalog else {

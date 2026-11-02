@@ -366,7 +366,7 @@ mod tests {
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::providers::Providers::offline(),
+            crate::catalog_model::providers::Providers::offline(),
         );
         (manager, diagnostics, transport, home)
     }

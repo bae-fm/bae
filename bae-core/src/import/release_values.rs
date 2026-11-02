@@ -8,7 +8,7 @@
 //! into a candidate's draft ([`ReleaseValues::candidate_draft`]); the library
 //! editor's reset projects the editable ones ([`ReleaseValues::user_edit`]).
 
-use crate::import::source_release::{PartDirection, SourceWork, SourceWorkEvent};
+use crate::catalog_model::source_release::{PartDirection, SourceWork, SourceWorkEvent};
 use crate::import::{
     ArtistCredit, AudioFile, CandidateDraft, Credited, CreditedRole, GraphWork, RawPressingEdit,
     RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments, TrackUserEdit, WorkGraph,

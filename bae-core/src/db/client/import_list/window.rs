@@ -486,7 +486,9 @@ impl LinkedRows {
     /// Every catalog that describes what the row is linked to.
     fn records(self) -> Vec<crate::import::ReleaseRecord> {
         match self {
-            Self::Pressing(claimed) => crate::import::source_release::claimed_records(&claimed),
+            Self::Pressing(claimed) => {
+                crate::catalog_model::source_release::claimed_records(&claimed)
+            }
             Self::Album(records) => records,
         }
     }

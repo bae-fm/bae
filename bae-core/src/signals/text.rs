@@ -1,7 +1,8 @@
 //! The text signal: catalog numbers and free text read off a candidate's
 //! surfaces, and the lines they were read from.
 
-use super::{InternalFailure, TextOrigin};
+use super::TextOrigin;
+use crate::catalog_model::InternalFailure;
 
 /// The catalog numbers and artist/album free text, each once in first-seen
 /// order; final once `Settled`.

@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
+use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
 
 impl ReleasePayloads {
     pub(super) fn counterpart(&self) -> Result<Option<MetadataRef>, CatalogError> {
@@ -60,9 +60,11 @@ impl ReleasePayloads {
     pub(super) fn projected_metadata(&self) -> Result<ReleaseMetadata, CatalogError> {
         let mut metadata = match self.release.catalog {
             Catalog::MusicBrainz => {
-                crate::import::musicbrainz_mapper::metadata(&self.musicbrainz_anchor()?)?
+                crate::catalog_model::musicbrainz_mapper::metadata(&self.musicbrainz_anchor()?)?
             }
-            Catalog::Discogs => crate::import::discogs_mapper::metadata(&self.discogs_anchor()?),
+            Catalog::Discogs => {
+                crate::catalog_model::discogs_mapper::metadata(&self.discogs_anchor()?)
+            }
             other => not_fetched(other),
         };
         let selected_pressing_year = metadata.pressing.year;
@@ -71,13 +73,13 @@ impl ReleasePayloads {
         let counterpart = match self.release.catalog {
             Catalog::MusicBrainz => self
                 .discogs_xref()?
-                .map(|release| crate::import::discogs_mapper::metadata(&release)),
+                .map(|release| crate::catalog_model::discogs_mapper::metadata(&release)),
             Catalog::Discogs => self
                 .musicbrainz_xref()?
                 .map(|mut release| {
                     release.artist_credit =
                         usable_supplemental_credits(release.artist_credit, &release.id)?;
-                    crate::import::musicbrainz_mapper::metadata(&release)
+                    crate::catalog_model::musicbrainz_mapper::metadata(&release)
                 })
                 .transpose()?,
             other => not_fetched(other),
@@ -102,16 +104,22 @@ impl ReleasePayloads {
                     let credits = usable_supplemental_credits(group.artist_credit, key)?;
                     AlbumMetadata {
                         title: group.title.unwrap_or_default(),
-                        artists: crate::import::musicbrainz_mapper::artist_credits(&credits, key)?,
-                        year: crate::import::parse_year(group.first_release_date.as_deref()),
-                        first_year: crate::import::parse_year(group.first_release_date.as_deref()),
+                        artists: crate::catalog_model::musicbrainz_mapper::artist_credits(
+                            &credits, key,
+                        )?,
+                        year: crate::catalog_model::parse_year(group.first_release_date.as_deref()),
+                        first_year: crate::catalog_model::parse_year(
+                            group.first_release_date.as_deref(),
+                        ),
                     }
                 }
                 Catalog::Discogs => {
                     let master = bae_catalogs::discogs::documents::parse_discogs_master_json(json)?;
                     AlbumMetadata {
                         title: master.title.unwrap_or_default(),
-                        artists: crate::import::discogs_mapper::discogs_credits(&master.artists),
+                        artists: crate::catalog_model::discogs_mapper::discogs_credits(
+                            &master.artists,
+                        ),
                         year: master.year.map(|year| year as i32),
                         first_year: master.year.map(|year| year as i32),
                     }
@@ -183,7 +191,7 @@ fn usable_supplemental_credits(
 ) -> Result<Vec<bae_catalogs::musicbrainz::MbArtistCredit>, CatalogError> {
     let mut usable = Vec::new();
     for credit in credits {
-        match crate::import::musicbrainz_mapper::artist_credits(
+        match crate::catalog_model::musicbrainz_mapper::artist_credits(
             std::slice::from_ref(&credit),
             entity_id,
         ) {

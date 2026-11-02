@@ -2,7 +2,7 @@
 //! LOG/CUE artifacts — from a folder's own, or from a library release's, when
 //! re-identifying.
 
-use super::InternalFailure;
+use crate::catalog_model::InternalFailure;
 
 /// Derived once during the extraction pass. Identify looks every `Computed`
 /// disc ID up on MusicBrainz; `Absent`, `NotCdAudio` and `Failed` settle the

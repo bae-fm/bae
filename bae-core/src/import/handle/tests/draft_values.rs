@@ -5,7 +5,7 @@
 /// length, credited to its own composer and performing its own work, the
 /// composers' and works' ids starting `credits`.
 fn seed_mb_release_with_works(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     credits: &str,
     titles: &[&str],
@@ -249,7 +249,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "edited-release",
             ),
-            crate::import::payloads::ReadDepth::Complete,
+            crate::catalog_model::payloads::ReadDepth::Complete,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
         .await

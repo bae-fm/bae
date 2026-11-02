@@ -8,8 +8,8 @@
 //! against the audio and keeps the ones that fit it exactly
 //! (see `SourceRelease::read`). Among those, [`Fit`] orders what decides.
 
+use crate::catalog_model::AudioOrigin;
 use crate::import::audio_layout::LENGTH_DISAGREEMENT_MS;
-use crate::signals::AudioOrigin;
 use bae_types::pressing::{CdAudio, Medium};
 use std::cmp::Reverse;
 use std::collections::BTreeSet;
@@ -309,8 +309,8 @@ mod tests {
         let cd = MediumShape { carrier: Some(Medium::Cd), ..medium(1) };
         let shape = [vinyl, cd];
         let cd_rip = AudioOrigin {
-            source: Some(crate::signals::AudioSource::CdRip {
-                proof: crate::signals::CdProof::RipLog,
+            source: Some(crate::catalog_model::AudioSource::CdRip {
+                proof: crate::catalog_model::CdProof::RipLog,
                 file: None,
             }),
             not_cd_rate: None,

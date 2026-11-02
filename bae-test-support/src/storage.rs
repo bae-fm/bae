@@ -3,7 +3,8 @@
 use bae_core::followed::value_matching;
 use std::sync::Arc;
 
-use bae_core::{db::Database, library::LibraryManager, providers::Providers};
+use bae_core::catalog_model::providers::Providers;
+use bae_core::{db::Database, library::LibraryManager};
 use coven::{MemoryStorage, Storage};
 
 /// Create a store with its own keychain and an injected provider, before setup.

@@ -13,7 +13,8 @@ use bae_test_support::{connect_storage, requested_profile, storage_library};
 async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     let directory = tempfile::tempdir().unwrap();
     let (manager, database, storage) =
-        storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
+        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
+            .await;
     connect_storage(&manager, &storage).await;
     let track = bae_test_support::test_uuid("waiting-track");
     let release = bae_test_support::test_uuid("waiting-release");

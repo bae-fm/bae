@@ -53,7 +53,7 @@ mod tests {
 
     fn signals() -> Signals {
         Signals {
-            origin: crate::signals::AudioOrigin::default(),
+            origin: crate::catalog_model::AudioOrigin::default(),
             disc_id: DiscIdSignal::Computed {
                 discs: vec![
                     ComputedDiscId {

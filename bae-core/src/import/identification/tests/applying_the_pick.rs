@@ -51,9 +51,9 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     };
     assert_eq!(
         failures,
-        &vec![crate::identify::IdentifyFailure::Cover(crate::import::search::SourceFailure {
+        &vec![crate::identify::IdentifyFailure::Cover(crate::catalog_model::search::SourceFailure {
             source: bae_catalogs::catalog::Catalog::MusicBrainz,
-            failure: crate::signals::LookupFailure::Provider { status: Some(500) },
+            failure: crate::catalog_model::LookupFailure::Provider { status: Some(500) },
         })],
     );
     assert_eq!(

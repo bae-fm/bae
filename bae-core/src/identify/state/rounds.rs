@@ -17,9 +17,9 @@ use super::{
     combined, BarcodeProgress, CatalogProgress, DocumentReading, Effect, LookupState,
     SignalsContext,
 };
+use crate::catalog_model::search::MetadataResult;
 use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
-use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::ReleaseLabel;

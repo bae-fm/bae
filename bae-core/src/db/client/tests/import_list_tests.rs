@@ -5,11 +5,11 @@ use super::super::*;
 use crate::identify::TerminalVerdict;
 
 use super::{candidate, exec, fixed_now, watched_root};
+use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
 use crate::import::list::ImportListItem;
-use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
 use std::path::PathBuf;
 
@@ -51,7 +51,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some("group-1".to_string()),
-                album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
                 source_tracks: Some(SourceTracks::Listed { count: 1 }),
                 document_failure: None,
                 album_first_year: None,
@@ -91,7 +91,7 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
             candidate_key: candidate.key(),
             verdict,
             signals: crate::signals::Signals {
-                origin: crate::signals::AudioOrigin::default(),
+                origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
@@ -183,7 +183,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     db.save_source_release(
-        &crate::import::payloads::ReleasePayloads::for_test(
+        &crate::catalog_model::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
             musicbrainz_release("mb-picked", "Picked Album").to_string(),
             Vec::new(),
@@ -285,7 +285,7 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     let TerminalVerdict::Found { findings, .. } = &mut unread else {
         unreachable!("verdict builds a found verdict");
     };
-    findings.matches[0].document_failure = Some(crate::signals::LookupFailure::Network);
+    findings.matches[0].document_failure = Some(crate::catalog_model::LookupFailure::Network);
     store_verdict(&db, &candidate, unread).await;
 
     let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
@@ -301,7 +301,7 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
 async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
-    let failure = crate::signals::InternalFailure {
+    let failure = crate::catalog_model::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
     store_verdict(&db, &candidate, TerminalVerdict::Error { failure: failure.clone() }).await;
@@ -344,7 +344,10 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             candidate_key: candidate.key(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
-                origin: crate::signals::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+                origin: crate::catalog_model::AudioOrigin {
+                    source: None,
+                    not_cd_rate: Some(96_000)
+                },
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

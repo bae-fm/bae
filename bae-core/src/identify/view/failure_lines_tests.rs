@@ -3,8 +3,8 @@
 
 use super::tests::*;
 use super::*;
+use crate::catalog_model::search::SourceFailure;
 use crate::identify::{Findings, IdentifyFailure, TerminalVerdict};
-use crate::import::search::SourceFailure;
 
 const DG: Catalog = Catalog::Discogs;
 

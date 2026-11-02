@@ -7,8 +7,8 @@ use crate::import::{AlbumLink, MetadataRef, PendingStanding, ReleaseLink};
 const ALBUM: &str = "album-group-1";
 
 /// One MusicBrainz pressing of the album, as the lookup offered it.
-fn offered(release_id: &str, year: i32) -> crate::import::search::MetadataResult {
-    crate::import::search::MetadataResult {
+fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::MetadataResult {
+    crate::catalog_model::search::MetadataResult {
         source: bae_catalogs::catalog::Catalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -24,8 +24,8 @@ fn offered(release_id: &str, year: i32) -> crate::import::search::MetadataResult
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some(ALBUM.to_string()),
-        album_links: crate::import::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 2 }),
+        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
@@ -64,7 +64,7 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
                 ledger: None,
             },
             signals: crate::signals::Signals {
-                origin: crate::signals::AudioOrigin::default(),
+                origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

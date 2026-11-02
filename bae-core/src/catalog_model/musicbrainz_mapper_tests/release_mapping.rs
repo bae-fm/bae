@@ -10,8 +10,8 @@ fn map(
     response: &MbReleaseResponse,
     supporting: Vec<crate::import::SourcePayload>,
 ) -> Result<ReleaseValues, CatalogError> {
-    let payloads: crate::import::payloads::ReleasePayloads =
-        crate::import::payloads::ReleasePayloads::for_test(
+    let payloads: crate::catalog_model::payloads::ReleasePayloads =
+        crate::catalog_model::payloads::ReleasePayloads::for_test(
             MetadataRef::new(Catalog::MusicBrainz, &response.id),
             serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
             supporting,
@@ -90,8 +90,8 @@ fn map_for_audio(
     response: &MbReleaseResponse,
     audio_durations_ms: &[u64],
 ) -> Result<ReleaseValues, crate::import::ImportError> {
-    let payloads: crate::import::payloads::ReleasePayloads =
-        crate::import::payloads::ReleasePayloads::for_test(
+    let payloads: crate::catalog_model::payloads::ReleasePayloads =
+        crate::catalog_model::payloads::ReleasePayloads::for_test(
             MetadataRef::new(Catalog::MusicBrainz, &response.id),
             serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
             Vec::new(),

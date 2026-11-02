@@ -46,7 +46,7 @@ async fn setup_test_manager_over(
         diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
-        crate::providers::Providers::for_test(http),
+        crate::catalog_model::providers::Providers::for_test(http),
     );
     (manager, temp_dir)
 }

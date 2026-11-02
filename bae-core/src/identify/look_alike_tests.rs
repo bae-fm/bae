@@ -1,9 +1,9 @@
 //! Which of the offered rows that would look alike on screen is listed.
 
+use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, LookupAnswers};
 use crate::identify::medium::FolderAudio;
-use crate::import::search::MetadataResult;
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{Packaging, ReleaseLabel};
 

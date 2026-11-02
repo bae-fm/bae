@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::source_release::SourceRelease;
+use crate::catalog_model::source_release::SourceRelease;
 use crate::import::MetadataRef;
 use bae_catalogs::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 
@@ -11,7 +11,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
         source_group_id: release.master_id.clone(),
         metadata: metadata(release),
         other_records: Vec::new(),
-        covers: crate::import::source_release::ReleaseCovers {
+        covers: crate::catalog_model::source_release::ReleaseCovers {
             release: Vec::new(),
             album: Vec::new(),
         },
@@ -22,7 +22,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
             media: pressing(release).1,
             release_roles: release_roles(release),
         },
-        notes: crate::import::search::discogs_release_notes(release),
+        notes: crate::catalog_model::search::discogs_release_notes(release),
         unfetched: Vec::new(),
     }
 }
@@ -672,8 +672,8 @@ fn release_barcodes_reach_pressing_metadata() {
         ]}"#;
     let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json).unwrap();
     assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
-    let payloads: crate::import::payloads::ReleasePayloads =
-        crate::import::payloads::ReleasePayloads::for_test(
+    let payloads: crate::catalog_model::payloads::ReleasePayloads =
+        crate::catalog_model::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(Catalog::Discogs, "123"),
             json.to_string(),
             Vec::new(),

@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::source_release::UnfetchedDocument;
+use crate::catalog_model::source_release::UnfetchedDocument;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -8,7 +8,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 struct ProviderServer {
     requests: Arc<Mutex<HashMap<String, usize>>>,
     task: tokio::task::JoinHandle<()>,
-    providers: crate::providers::Providers,
+    providers: crate::catalog_model::providers::Providers,
 }
 
 impl ProviderServer {
@@ -58,7 +58,11 @@ impl ProviderServer {
             .serve("musicbrainz.org", &origin)
             .serve("api.discogs.com", &origin)
             .serve("www.wikidata.org", &origin);
-        Self { requests, task, providers: crate::providers::Providers::for_test(http) }
+        Self {
+            requests,
+            task,
+            providers: crate::catalog_model::providers::Providers::for_test(http),
+        }
     }
 
     fn requests(&self) -> HashMap<String, usize> {

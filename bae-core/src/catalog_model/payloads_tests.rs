@@ -1,6 +1,6 @@
 use super::*;
+use crate::catalog_model::source_release::{UnfetchedDocument, UnfetchedReason};
 use crate::db::Database;
-use crate::import::source_release::{UnfetchedDocument, UnfetchedReason};
 use chrono::{DateTime, Utc};
 use coven::FixedClock;
 use std::sync::Arc;
@@ -172,7 +172,7 @@ fn a_picks_covers_are_the_images_its_documents_state() {
         illustrated_discogs_release(),
         Vec::new(),
     );
-    let covers = crate::import::source_release::pick_covers(
+    let covers = crate::catalog_model::source_release::pick_covers(
         &primary.extract().expect("the primary extracts"),
         &[partner.extract().expect("the partner extracts")],
     );
@@ -204,7 +204,7 @@ fn a_release_reachable_twice_offers_its_images_once() {
         illustrated_discogs_release(),
         Vec::new(),
     );
-    let covers = crate::import::source_release::pick_covers(
+    let covers = crate::catalog_model::source_release::pick_covers(
         &primary.extract().expect("the primary extracts"),
         &[partner.extract().expect("the partner extracts")],
     );
@@ -546,8 +546,10 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
 
     let primary = primary.extract().expect("the primary extracts");
     let partner = partner.extract().expect("the partner extracts");
-    let records =
-        crate::import::source_release::claimed_records(&[primary.records(), partner.records()]);
+    let records = crate::catalog_model::source_release::claimed_records(&[
+        primary.records(),
+        partner.records(),
+    ]);
 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
@@ -653,7 +655,7 @@ async fn an_items_records_are_stored_with_the_release() {
 /// name, which is what lets the records it adds be stored with the release.
 #[tokio::test]
 async fn a_fetch_follows_the_item_musicbrainz_names() {
-    let providers = crate::providers::Providers::offline();
+    let providers = crate::catalog_model::providers::Providers::offline();
     let release_id = "archives-item-mb-release";
     let group_id = "archives-item-mb-group";
     providers.musicbrainz().seed_release_cache(
@@ -702,7 +704,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
 /// for it again.
 #[tokio::test]
 async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
-    let providers = crate::providers::Providers::offline();
+    let providers = crate::catalog_model::providers::Providers::offline();
     let release_id = "missing-item-mb-release";
     let group_id = "missing-item-mb-group";
     providers.musicbrainz().seed_release_cache(

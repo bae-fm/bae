@@ -14,7 +14,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
     db.save_source_release(
-        &crate::import::payloads::ReleasePayloads::for_test(
+        &crate::catalog_model::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
             musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
             vec![crate::import::SourcePayload::new(

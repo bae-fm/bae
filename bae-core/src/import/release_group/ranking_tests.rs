@@ -180,8 +180,8 @@ fn cards_are_ordered_by_their_best_row() {
 
 /// A tracklist as a source states it. What it says does not matter here; that
 /// it was said is the tie-break.
-fn listed() -> crate::import::search::SourceTracks {
-    crate::import::search::SourceTracks::Listed { count: 9 }
+fn listed() -> crate::catalog_model::search::SourceTracks {
+    crate::catalog_model::search::SourceTracks::Listed { count: 9 }
 }
 
 /// One pressing as both sources state it, paired by the barcode they share.
@@ -219,7 +219,7 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
 #[test]
 fn a_stated_tracklist_leads_records_the_text_says_as_much_about() {
     let (mut mb_release, mut dg_release) = paired();
-    mb_release.source_tracks = Some(crate::import::search::SourceTracks::Nothing);
+    mb_release.source_tracks = Some(crate::catalog_model::search::SourceTracks::Nothing);
     dg_release.source_tracks = Some(listed());
 
     let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))], None);

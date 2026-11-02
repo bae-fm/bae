@@ -20,7 +20,7 @@ fn same_label(
 impl Pressing {
     /// Why a record of the row's document could not be read, where one could
     /// not: the row then states what its search result said.
-    pub fn document_failure(&self) -> Option<&crate::signals::LookupFailure> {
+    pub fn document_failure(&self) -> Option<&crate::catalog_model::LookupFailure> {
         self.releases.iter().find_map(|release| release.document_failure.as_ref())
     }
 
@@ -49,7 +49,7 @@ impl Pressing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::search::MetadataResult;
+    use crate::catalog_model::search::MetadataResult;
     use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::ReleaseLabel;
 

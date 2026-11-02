@@ -87,10 +87,10 @@ async fn a_run_reads_the_releases_its_disc_id_returned_from_that_answer() {
         let stored = fixture.stored_release(release_id).await.expect("the run stores what it read");
         assert_eq!(
             stored.unfetched,
-            vec![crate::import::source_release::UnfetchedDocument {
+            vec![crate::catalog_model::source_release::UnfetchedDocument {
                 document: crate::import::PayloadSource::MusicBrainz,
                 key: release_id.to_string(),
-                reason: crate::import::source_release::UnfetchedReason::StoppedShort,
+                reason: crate::catalog_model::source_release::UnfetchedReason::StoppedShort,
             }],
             "its own page is what the read stopped short of"
         );
@@ -128,7 +128,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
     let complete = crate::import::service::prepare_release(
         &scratch.manager,
         &release,
-        crate::import::payloads::ReadDepth::Complete,
+        crate::catalog_model::payloads::ReadDepth::Complete,
         CallPriority::Interactive,
     )
     .await
@@ -209,7 +209,7 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
         matches!(
             failures.as_slice(),
             [crate::identify::IdentifyFailure::ReleaseDetails(
-                crate::signals::LookupFailure::Provider { status: Some(400) }
+                crate::catalog_model::LookupFailure::Provider { status: Some(400) }
             )]
         ),
         "{failures:?}"
@@ -231,10 +231,10 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
     );
     let stored = fixture.stored_release("mb-short-1").await.expect("the run's read is stored");
     assert!(
-        stored.unfetched.contains(&crate::import::source_release::UnfetchedDocument {
+        stored.unfetched.contains(&crate::catalog_model::source_release::UnfetchedDocument {
             document: crate::import::PayloadSource::MusicBrainz,
             key: "mb-short-1".to_string(),
-            reason: crate::import::source_release::UnfetchedReason::StoppedShort,
+            reason: crate::catalog_model::source_release::UnfetchedReason::StoppedShort,
         }),
         "{:?}",
         stored.unfetched

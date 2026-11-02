@@ -2,7 +2,8 @@
 //! from the bars or read from the digits printed under them — or in a CUE
 //! `CATALOG` field. What counts as a code is [`bae_types::barcode`]'s to say.
 
-use super::{ArtworkAnalysis, InternalFailure, SourcedValue};
+use super::{ArtworkAnalysis, SourcedValue};
+use crate::catalog_model::InternalFailure;
 use bae_types::barcode::Barcode;
 
 /// The codes found in a candidate's files, in discovery order, each once per

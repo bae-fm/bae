@@ -7,11 +7,12 @@ use super::documents::ReleaseToRead;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
+use crate::catalog_model::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
+use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_runtime::RunSubject;
-use crate::import::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
-use crate::signals::{ExtractionWatch, Failure, InternalFailure, SignalsSnapshot};
+use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::Arc;
@@ -697,7 +698,7 @@ fn dispatch_effect(
                         // rows the run offers hold what it stores.
                         stored
                             .map(|stored| {
-                                vec![crate::import::search::MetadataResult::of_release(
+                                vec![crate::catalog_model::search::MetadataResult::of_release(
                                     &stored.release,
                                 )]
                             })
@@ -775,13 +776,18 @@ async fn read_release(
     read: &ReleaseToRead,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
-) -> Option<Result<crate::import::source_release::PreparedRelease, crate::signals::LookupFailure>> {
+) -> Option<
+    Result<
+        crate::catalog_model::source_release::PreparedRelease,
+        crate::catalog_model::LookupFailure,
+    >,
+> {
     let prepared = match read {
         ReleaseToRead::ReleaseLookup(release) => {
             crate::import::service::prepare_release(
                 library_manager,
                 release,
-                crate::import::payloads::ReadDepth::Identification,
+                crate::catalog_model::payloads::ReadDepth::Identification,
                 priority,
             )
             .await
@@ -796,7 +802,7 @@ async fn read_release(
         Err(error) => error,
     };
     let release = read.release();
-    match crate::import::search::failure_of(
+    match crate::catalog_model::search::failure_of(
         &error,
         &format!("reading {} release {}", release.catalog.as_str(), release.key),
     ) {

@@ -1,5 +1,5 @@
-use super::SourceCredit;
 use crate::catalog_model::CatalogError;
+use crate::import::SourceCredit;
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::Pressing;
 

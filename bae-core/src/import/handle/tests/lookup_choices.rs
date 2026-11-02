@@ -214,7 +214,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
             verdict: crate::identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
             signals: crate::signals::Signals {
-                origin: crate::signals::AudioOrigin::default(),
+                origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
@@ -260,7 +260,7 @@ pub(super) async fn pick(
 /// A two-track MusicBrainz release carrying `catalog_number`, in no release
 /// group so the pick fetches no cover.
 pub(super) fn seed_mb_release_with_catalog(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     catalog_number: &str,
 ) {
@@ -270,7 +270,7 @@ pub(super) fn seed_mb_release_with_catalog(
 /// [`seed_mb_release_with_catalog`]'s release, with the Cover Art Archive
 /// stating a front image for it.
 pub(super) fn seed_mb_release_with_front(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     catalog_number: &str,
 ) {
@@ -278,7 +278,7 @@ pub(super) fn seed_mb_release_with_front(
 }
 
 fn seed_mb_release(
-    providers: &crate::providers::Providers,
+    providers: &crate::catalog_model::providers::Providers,
     release_id: &str,
     catalog_number: &str,
     front: bool,

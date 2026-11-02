@@ -69,7 +69,7 @@ struct Shown {
 
 impl Shown {
     fn of(row: &Pressing, judgements: &Judgements, notes: &HashMap<ReleaseKey, String>) -> Self {
-        let key = |release: &crate::import::search::MetadataResult| {
+        let key = |release: &crate::catalog_model::search::MetadataResult| {
             (release.source, release.release_id.clone())
         };
         Self {

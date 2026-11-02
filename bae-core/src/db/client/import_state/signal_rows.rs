@@ -5,9 +5,11 @@
 
 use super::verdict_rows::{unreadable, Owner};
 use super::*;
+use crate::catalog_model::{
+    AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
+};
 use crate::signals::{
-    AudioOrigin, AudioSource, BarcodeSignal, CdProof, ComputedDiscId, DiscIdSignal, DownloadProof,
-    InternalFailure, Signals, SourcedValue, StoreMarker, TextLine, TextSignal,
+    BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str =

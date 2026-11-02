@@ -10,7 +10,7 @@
 //! documents never reach the release group still names it.
 
 use super::*;
-use crate::import::album_links::GroupAlbum;
+use crate::catalog_model::album_links::GroupAlbum;
 use crate::import::MetadataRef;
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {

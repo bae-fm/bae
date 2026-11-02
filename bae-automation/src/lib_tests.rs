@@ -268,16 +268,15 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
 mod identify_mirrors {
     use super::*;
     use bae_catalogs::catalog::Catalog;
+    use bae_core::catalog_model::search::MetadataResult;
+    use bae_core::catalog_model::LookupFailure;
     use bae_core::db::LibraryStatus;
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, SignalKind, SignalState, ToolbarSignal, ValueLookup,
     };
-    use bae_core::import::search::MetadataResult;
-    use bae_core::signals::{
-        BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
-    };
+    use bae_core::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
     /// A result with every field the mirrors render filled in.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
@@ -299,7 +298,7 @@ mod identify_mirrors {
         SignalsContext {
             providers: Vec::new(),
             artwork: bae_core::signals::ArtworkScan::Absent,
-            origin: bae_core::signals::AudioOrigin::default(),
+            origin: bae_core::catalog_model::AudioOrigin::default(),
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
@@ -332,9 +331,9 @@ mod identify_mirrors {
 
     /// `result`, printing the barcode `code`.
     fn printing(
-        mut result: bae_core::import::search::MetadataResult,
+        mut result: bae_core::catalog_model::search::MetadataResult,
         code: &str,
-    ) -> bae_core::import::search::MetadataResult {
+    ) -> bae_core::catalog_model::search::MetadataResult {
         result.barcodes = vec![code.to_string()];
         result
     }
@@ -342,7 +341,7 @@ mod identify_mirrors {
     /// A run's ledger whose one disc ID's lookup found `found`: what the Disc
     /// ID agreement is read from.
     fn disc_id_ledger(
-        found: &[bae_core::import::search::MetadataResult],
+        found: &[bae_core::catalog_model::search::MetadataResult],
     ) -> bae_core::identify::IdentifyRunView {
         use bae_core::identify::{
             BarcodeStepView, CatalogStepView, DiscIdRow, DiscIdStepView, IdentifyRunView,
@@ -581,9 +580,9 @@ mod identify_mirrors {
     #[test]
     fn signals_map_all_three_subsignals() {
         let signals = Signals {
-            origin: bae_core::signals::AudioOrigin {
-                source: Some(bae_core::signals::AudioSource::CdRip {
-                    proof: bae_core::signals::CdProof::RipLog,
+            origin: bae_core::catalog_model::AudioOrigin {
+                source: Some(bae_core::catalog_model::AudioSource::CdRip {
+                    proof: bae_core::catalog_model::CdProof::RipLog,
                     file: Some("Album.log".to_string()),
                 }),
                 not_cd_rate: None,

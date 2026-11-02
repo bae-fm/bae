@@ -19,7 +19,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::providers::Providers::offline(),
+        crate::catalog_model::providers::Providers::offline(),
     );
     let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
@@ -62,7 +62,7 @@ async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
 /// without touching MB or Discogs.
 fn absent_signals() -> Signals {
     Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
@@ -302,16 +302,16 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
 /// all the same: a stored release of the album then names the other.
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
+    use crate::catalog_model::album_links::AlbumLinks;
     use crate::identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
     use crate::identify::state::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
     };
-    use crate::import::album_links::AlbumLinks;
     use crate::import::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
-    let discogs = crate::import::payloads::ReleasePayloads::for_test(
+    let discogs = crate::catalog_model::payloads::ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "4242"),
         serde_json::json!({
             "id": 4242,
@@ -327,7 +327,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     .unwrap();
     inner.library_manager.save_source_release(&discogs).await.unwrap();
 
-    let found = crate::import::search::MetadataResult::for_test(
+    let found = crate::catalog_model::search::MetadataResult::for_test(
         Catalog::MusicBrainz,
         "mb-release",
         Some("mb-group"),
@@ -353,12 +353,12 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         labels: Vec::new(),
         barcodes: Vec::new(),
         album_first_year: None,
-        source_tracks: crate::import::search::SourceTracks::Listed { count: 1 },
+        source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 1 },
         track_titles: Vec::new(),
         notes: Vec::new(),
         links: Vec::new(),
         album_links: AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
-        stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
+        stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
             MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
         )),
     };

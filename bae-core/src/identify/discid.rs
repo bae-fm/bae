@@ -2,7 +2,7 @@
 //! *derivation* (folder scan, release re-identify resolution) lives in
 //! `crate::signals`.
 
-use crate::signals::Failure;
+use crate::catalog_model::Failure;
 use bae_catalogs::rate_limiter::CallPriority;
 
 /// Look up a disc ID on MusicBrainz, keeping each match's document as the

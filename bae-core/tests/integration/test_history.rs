@@ -7,7 +7,8 @@ use std::time::Duration;
 async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let directory = tempfile::tempdir().unwrap();
     let (manager, db, storage) =
-        storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
+        storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
+            .await;
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");
     let medium = test_uuid("history-medium");

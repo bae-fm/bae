@@ -15,7 +15,7 @@ fn mk_result(release_id: &str) -> MetadataResult {
 /// A bare context for `track_count` tracks.
 fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         providers: Vec::new(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: DiscIdEvidence { signal: crate::signals::DiscIdSignal::Absent, ..Default::default() },
@@ -117,7 +117,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
                 release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
-                document: Err(crate::signals::LookupFailure::Network),
+                document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },
     );
@@ -186,7 +186,7 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
 #[test]
 fn a_recorded_discid_failure_derives_and_stores_as_failed() {
     let mut context = mk_context(11);
-    context.disc.failures = vec![crate::signals::LookupFailure::Provider { status: None }];
+    context.disc.failures = vec![crate::catalog_model::LookupFailure::Provider { status: None }];
     let state = crate::identify::state::re_derive_for_tests(context);
     assert!(matches!(state, IdentifyState::Failed { .. }));
     let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -196,7 +196,7 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
             failures,
             track_count: 11,
             ..
-        } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Provider {
+        } if failures == vec![IdentifyFailure::DiscId(crate::catalog_model::LookupFailure::Provider {
                 status: None
             })]
     ));
@@ -245,7 +245,7 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent,
-            failures: vec![crate::signals::LookupFailure::Network],
+            failures: vec![crate::catalog_model::LookupFailure::Network],
             ..Default::default()
         },
         barcode: BarcodeEvidence {
@@ -263,7 +263,7 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
             failures,
             track_count: 9,
             ..
-        } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
+        } if failures == vec![IdentifyFailure::DiscId(crate::catalog_model::LookupFailure::Network)]
     ));
 }
 
@@ -280,7 +280,7 @@ fn clean_not_found_anywhere_is_terminal() {
 #[test]
 fn discid_failure_derives_to_failed() {
     let mut context = mk_context(7);
-    context.disc.failures = vec![crate::signals::LookupFailure::Network];
+    context.disc.failures = vec![crate::catalog_model::LookupFailure::Network];
     let state = crate::identify::state::re_derive_for_tests(context);
     assert!(matches!(state, IdentifyState::Failed { .. }));
     let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -290,7 +290,7 @@ fn discid_failure_derives_to_failed() {
             failures,
             track_count: 7,
             ..
-        } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
+        } if failures == vec![IdentifyFailure::DiscId(crate::catalog_model::LookupFailure::Network)]
     ));
 }
 
@@ -300,7 +300,7 @@ fn barcode_failure_derives_to_failed() {
     let mut context = mk_context(7);
     context.barcode.failures = vec![SourceFailure {
         source: Catalog::Discogs,
-        failure: crate::signals::LookupFailure::Timeout,
+        failure: crate::catalog_model::LookupFailure::Timeout,
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
     assert!(matches!(state, IdentifyState::Failed { .. }));
@@ -313,7 +313,7 @@ fn barcode_failure_derives_to_failed() {
             ..
         } if failures == vec![IdentifyFailure::Barcode(SourceFailure {
             source: Catalog::Discogs,
-            failure: crate::signals::LookupFailure::Timeout,
+            failure: crate::catalog_model::LookupFailure::Timeout,
         })]
     ));
 }
@@ -327,7 +327,7 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     context.barcode.results = vec![mk_result("rel-mb")];
     context.barcode.failures = vec![SourceFailure {
         source: Catalog::Discogs,
-        failure: crate::signals::LookupFailure::Network,
+        failure: crate::catalog_model::LookupFailure::Network,
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
     let IdentifyState::Failed { findings, failures, .. } = &state else {
@@ -339,7 +339,7 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
         failures,
         &vec![IdentifyFailure::Barcode(SourceFailure {
             source: Catalog::Discogs,
-            failure: crate::signals::LookupFailure::Network,
+            failure: crate::catalog_model::LookupFailure::Network,
         })]
     );
     let TerminalVerdict::Failed { findings, .. } = TerminalVerdict::try_from(state).unwrap() else {
@@ -367,7 +367,7 @@ fn a_barcode_failure_with_no_results_carries_no_matches() {
     context.barcode.had_source = true;
     context.barcode.failures = vec![SourceFailure {
         source: Catalog::Discogs,
-        failure: crate::signals::LookupFailure::Network,
+        failure: crate::catalog_model::LookupFailure::Network,
     }];
     let IdentifyState::Failed { findings, .. } =
         crate::identify::state::re_derive_for_tests(context)
@@ -386,7 +386,7 @@ fn chosen_catalog_failure_derives_to_failed() {
         results: Vec::new(),
         failures: vec![SourceFailure {
             source: Catalog::MusicBrainz,
-            failure: crate::signals::LookupFailure::Network,
+            failure: crate::catalog_model::LookupFailure::Network,
         }],
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
@@ -400,7 +400,7 @@ fn chosen_catalog_failure_derives_to_failed() {
             ..
         } if failures == vec![IdentifyFailure::Catalog(SourceFailure {
             source: Catalog::MusicBrainz,
-            failure: crate::signals::LookupFailure::Network,
+            failure: crate::catalog_model::LookupFailure::Network,
         })]
     ));
 }
@@ -410,7 +410,7 @@ fn chosen_catalog_failure_derives_to_failed() {
 #[test]
 fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     let details = |detail: &str| {
-        IdentifyFailure::ReleaseDetails(crate::signals::LookupFailure::Provider {
+        IdentifyFailure::ReleaseDetails(crate::catalog_model::LookupFailure::Provider {
             status: Some(match detail {
                 "first" => 500,
                 _ => 503,
@@ -440,7 +440,7 @@ fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
 #[test]
 fn a_resumed_failure_stands_its_findings_back_up() {
     let verdict = TerminalVerdict::Failed {
-        failures: vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)],
+        failures: vec![IdentifyFailure::DiscId(crate::catalog_model::LookupFailure::Network)],
         findings: one_disc_id_match(),
         track_count: 11,
         ledger: None,

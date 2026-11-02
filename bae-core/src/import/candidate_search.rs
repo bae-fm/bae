@@ -11,19 +11,19 @@
 //! show at once, each catalog's albums apart. Picking a MusicBrainz result
 //! reads its release's documents, and what they state its album is on Discogs
 //! joins the cards by the one rule set an identify run's rows are joined by
-//! (see [`crate::import::album_links`]).
+//! (see [`crate::catalog_model::album_links`]).
 //!
 //! The search is stored as rows (`import_candidate_search` and the tables
 //! beside it), each landing a write; this is the value a read of them makes,
 //! its cards derived from the parts that have landed. The driver that runs
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
+use crate::catalog_model::album_links::{self, AlbumLinks, GroupLinks};
+use crate::catalog_model::search::{MetadataResult, SearchQuery};
+use crate::catalog_model::Failure;
 use crate::config::{CatalogAvailability, SourceAvailability};
-use crate::import::album_links::{self, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
-use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::MetadataRef;
-use crate::signals::Failure;
 use bae_catalogs::catalog::Catalog;
 
 /// The run a stored search is on: what each catalog's answer names to land
@@ -325,7 +325,7 @@ mod tests {
         SourceSearch::Done { results }
     }
 
-    fn failed(failure: crate::signals::LookupFailure) -> SourceSearch {
+    fn failed(failure: crate::catalog_model::LookupFailure) -> SourceSearch {
         SourceSearch::Failed(failure.into())
     }
 
@@ -344,8 +344,10 @@ mod tests {
         assert!(!started.has_no_matches());
         assert_eq!(started.status(), SearchStatus::Searching);
 
-        let failing =
-            search(failed(crate::signals::LookupFailure::Network), SourceSearch::NotConfigured);
+        let failing = search(
+            failed(crate::catalog_model::LookupFailure::Network),
+            SourceSearch::NotConfigured,
+        );
         assert!(!failing.has_no_matches());
         assert_eq!(failing.status(), SearchStatus::Failed);
 
@@ -364,7 +366,8 @@ mod tests {
             SearchStatus::Searching
         );
         assert_eq!(
-            search(done(found.clone()), failed(crate::signals::LookupFailure::Timeout)).status(),
+            search(done(found.clone()), failed(crate::catalog_model::LookupFailure::Timeout))
+                .status(),
             SearchStatus::Failed
         );
         assert_eq!(
@@ -579,7 +582,7 @@ mod tests {
     fn a_failed_source_keeps_the_other_source_s_groups() {
         let search = search(
             done(vec![result(Catalog::MusicBrainz, "mb-1", "group-x")]),
-            failed(crate::signals::LookupFailure::Network),
+            failed(crate::catalog_model::LookupFailure::Network),
         );
         assert!(search.is_settled());
         assert_eq!(search.failed_sources(), vec![Catalog::Discogs]);

@@ -8,14 +8,14 @@
 //! API exposes no MBID field — so it is resolved through MB's URL endpoint
 //! instead.
 
-use crate::catalog_model::CatalogError;
-use crate::import::medium_coverage::MediumCoverage;
-use crate::import::release_values::{
-    position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
-};
-use crate::import::source_release::{
+use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
+};
+use crate::catalog_model::CatalogError;
+use crate::import::release_values::{
+    position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
 };
 use crate::import::{ArtistCredit, CreditedRole, SourceCredit};
 use bae_catalogs::catalog::Catalog;
@@ -456,7 +456,7 @@ pub(crate) fn values(
         let position = bae_types::mediums::medium_position(index);
 
         for (track, &side) in medium.entries.iter().zip(&sides.sides) {
-            let credits = crate::import::source_release::stated_credits(&track.credits);
+            let credits = crate::catalog_model::source_release::stated_credits(&track.credits);
             tracks.push(TrackValues {
                 title: track_title(release_id, track)?,
                 place: placer.place(

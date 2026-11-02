@@ -76,7 +76,7 @@ async fn measuring(runtime: &CandidateRuntime, key: &crate::import::CandidateKey
 
 pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         providers: Vec::new(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: crate::identify::state::DiscIdEvidence {
@@ -249,7 +249,7 @@ async fn identification(
 
 fn extracted_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },

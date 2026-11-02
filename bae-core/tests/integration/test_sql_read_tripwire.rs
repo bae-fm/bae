@@ -70,7 +70,7 @@ async fn pure_reads_use_the_read_connection() {
             ),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::signals::Signals {
-                origin: bae_core::signals::AudioOrigin::default(),
+                origin: bae_core::catalog_model::AudioOrigin::default(),
                 disc_id: bae_core::signals::DiscIdSignal::Absent,
                 barcode: bae_core::signals::BarcodeSignal::Absent,
                 text: bae_core::signals::TextSignal::Settled {

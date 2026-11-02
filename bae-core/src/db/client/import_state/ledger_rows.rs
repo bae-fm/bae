@@ -13,12 +13,12 @@
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::{unreadable, Owner};
 use super::*;
+use crate::catalog_model::search::MetadataResult;
 use crate::identify::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
     SignalValueRow,
 };
-use crate::import::search::MetadataResult;
 use bae_catalogs::catalog::Catalog;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;

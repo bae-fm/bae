@@ -288,7 +288,7 @@ impl LibraryManager {
     pub(crate) async fn load_source_release(
         &self,
         release: &crate::import::MetadataRef,
-    ) -> Result<Option<crate::import::source_release::SourceRelease>, LibraryError> {
+    ) -> Result<Option<crate::catalog_model::source_release::SourceRelease>, LibraryError> {
         Ok(self.database.load_source_release(release).await?)
     }
 
@@ -297,15 +297,15 @@ impl LibraryManager {
     pub(crate) async fn load_prepared_release(
         &self,
         release: &crate::import::MetadataRef,
-    ) -> Result<Option<crate::import::source_release::PreparedRelease>, LibraryError> {
+    ) -> Result<Option<crate::catalog_model::source_release::PreparedRelease>, LibraryError> {
         Ok(self.database.load_prepared_release(release).await?)
     }
 
     /// `stored`, a release just fetched, beside how import surfaces read it.
     pub(crate) async fn prepared_release(
         &self,
-        stored: crate::import::source_release::SourceRelease,
-    ) -> Result<crate::import::source_release::PreparedRelease, LibraryError> {
+        stored: crate::catalog_model::source_release::SourceRelease,
+    ) -> Result<crate::catalog_model::source_release::PreparedRelease, LibraryError> {
         Ok(self.database.prepared_release(stored).await?)
     }
 
@@ -314,7 +314,7 @@ impl LibraryManager {
     #[cfg(test)]
     pub(crate) async fn save_source_release(
         &self,
-        release: &crate::import::source_release::SourceRelease,
+        release: &crate::catalog_model::source_release::SourceRelease,
     ) -> Result<(), LibraryError> {
         Ok(self.database.save_source_release(release).await?)
     }

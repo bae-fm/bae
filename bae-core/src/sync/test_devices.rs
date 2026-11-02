@@ -440,7 +440,7 @@ impl RunningLibrary {
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::providers::Providers::offline(),
+            crate::catalog_model::providers::Providers::offline(),
         );
         let (cycles, watcher) = record_cycles(&database);
         Self { manager, database, cycles, _watcher: watcher }

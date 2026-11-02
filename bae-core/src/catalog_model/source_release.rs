@@ -9,10 +9,10 @@
 //! heading rows are laid out against it, are chosen when the release is read
 //! against the audio (see `import::catalog_reading`).
 
+use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::release_metadata::ReleaseMetadata;
+use crate::catalog_model::search::ImportSearchReleaseDetail;
 use crate::catalog_model::CatalogError;
-use crate::import::medium_coverage::MediumCoverage;
-use crate::import::release_metadata::ReleaseMetadata;
-use crate::import::search::ImportSearchReleaseDetail;
 use crate::import::{ArtistCredit, MetadataRef, ReleaseRecord};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
@@ -41,7 +41,7 @@ pub struct SourceRelease {
     /// release's own catalog, whose record [`Self::records`] derives. Its
     /// documents' statements, and, once stored, what reading its album's
     /// MusicBrainz release group found the album to be where the documents
-    /// reach no record of that catalog (see [`crate::import::album_links`]).
+    /// reach no record of that catalog (see [`crate::catalog_model::album_links`]).
     pub(crate) other_records: Vec<ReleaseRecord>,
     pub(crate) covers: ReleaseCovers,
     /// The MusicBrainz release whose Cover Art Archive gallery a picker asks
@@ -55,8 +55,8 @@ pub struct SourceRelease {
     pub(crate) catalog: CatalogFacts,
     /// What the release's own document writes about which pressing it is, in
     /// free text and in its order: see
-    /// [`crate::import::search::musicbrainz_release_notes`] and
-    /// [`crate::import::search::discogs_release_notes`].
+    /// [`crate::catalog_model::search::musicbrainz_release_notes`] and
+    /// [`crate::catalog_model::search::discogs_release_notes`].
     pub(crate) notes: Vec<String>,
     /// The documents the fetch named and did not get, whose facts are
     /// missing from the ones above: supporting documents, and the release's
@@ -73,7 +73,7 @@ pub(crate) struct PreparedRelease {
     /// it stores.
     pub(crate) stored: SourceRelease,
     /// `stored` with the albums kept album statements join to it (see
-    /// [`crate::import::album_links`]), which is what every surface reads.
+    /// [`crate::catalog_model::album_links`]), which is what every surface reads.
     pub(crate) release: SourceRelease,
 }
 
@@ -125,8 +125,8 @@ pub(crate) enum CatalogFacts {
         /// release, in relation order.
         links: Vec<MetadataRef>,
         /// What its documents state its album is on the other lookup
-        /// catalog: see [`crate::import::payloads::ReleasePayloads::album_statements`].
-        album_links: crate::import::album_links::AlbumLinks,
+        /// catalog: see [`crate::catalog_model::payloads::ReleasePayloads::album_statements`].
+        album_links: crate::catalog_model::album_links::AlbumLinks,
     },
     Discogs {
         /// What the release's format entries say it is made of, entry by
@@ -159,7 +159,7 @@ pub(crate) struct SourceMedium {
     /// The carrier this medium is, `None` where the catalog does not say one
     /// bae knows: the format MusicBrainz states for the medium, or the one a
     /// Discogs release's position prefix or format entries give it (see
-    /// [`crate::import::discogs_mediums`]).
+    /// [`crate::catalog_model::discogs_mediums`]).
     pub(crate) medium: Option<Medium>,
     /// The disc IDs MusicBrainz has registered against this medium, each
     /// once, in its order; a Discogs medium holds none.
@@ -300,7 +300,7 @@ impl SourceRelease {
         let catalog = match release.catalog {
             Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
                 links: Vec::new(),
-                album_links: crate::import::album_links::AlbumLinks::Read(Vec::new()),
+                album_links: crate::catalog_model::album_links::AlbumLinks::Read(Vec::new()),
             },
             Catalog::Discogs => {
                 CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
@@ -311,7 +311,7 @@ impl SourceRelease {
             release,
             source_group_id: None,
             metadata: ReleaseMetadata {
-                album: crate::import::release_metadata::AlbumMetadata {
+                album: crate::catalog_model::release_metadata::AlbumMetadata {
                     title: "Album Title".to_string(),
                     artists: Vec::new(),
                     year: None,
@@ -344,15 +344,15 @@ impl SourceRelease {
     /// answered, and asking again answers the same.
     pub(crate) fn fetch_could_add(
         &self,
-        depth: crate::import::payloads::ReadDepth,
+        depth: crate::catalog_model::payloads::ReadDepth,
         discogs_configured: bool,
     ) -> bool {
         self.unfetched.iter().any(|document| match document.reason {
             UnfetchedReason::Failed => true,
             UnfetchedReason::DiscogsNotConfigured => discogs_configured,
             UnfetchedReason::StoppedShort => match depth {
-                crate::import::payloads::ReadDepth::Identification => false,
-                crate::import::payloads::ReadDepth::Complete => true,
+                crate::catalog_model::payloads::ReadDepth::Identification => false,
+                crate::catalog_model::payloads::ReadDepth::Complete => true,
             },
         })
     }
@@ -455,10 +455,10 @@ impl SourceRelease {
 
     /// What its documents state its album is on the other lookup catalog:
     /// `NotAsked` for a Discogs release, whose documents state none.
-    pub(crate) fn album_links(&self) -> crate::import::album_links::AlbumLinks {
+    pub(crate) fn album_links(&self) -> crate::catalog_model::album_links::AlbumLinks {
         match &self.catalog {
             CatalogFacts::MusicBrainz { album_links, .. } => album_links.clone(),
-            CatalogFacts::Discogs { .. } => crate::import::album_links::AlbumLinks::NotAsked,
+            CatalogFacts::Discogs { .. } => crate::catalog_model::album_links::AlbumLinks::NotAsked,
         }
     }
 

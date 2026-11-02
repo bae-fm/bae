@@ -46,14 +46,14 @@ pub async fn temp_test_db() -> (bae_core::db::Database, tempfile::TempDir) {
 pub async fn open_test_library(
     dir: &std::path::Path,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
-    open_test_library_with(dir, bae_core::providers::Providers::offline()).await
+    open_test_library_with(dir, bae_core::catalog_model::providers::Providers::offline()).await
 }
 
 /// [`open_test_library`] asking `providers` — ones routed to a test's own
 /// fakes — rather than providers that reach nothing.
 pub async fn open_test_library_with(
     dir: &std::path::Path,
-    providers: bae_core::providers::Providers,
+    providers: bae_core::catalog_model::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     let database = open_test_db(dir).await;
     manager_for_database(database, dir, providers)
@@ -63,7 +63,7 @@ pub async fn open_test_library_with(
 pub fn test_library_from_handle(
     handle: coven::CovenHandle,
     dir: &std::path::Path,
-    providers: bae_core::providers::Providers,
+    providers: bae_core::catalog_model::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     manager_for_database(
         bae_core::db::Database::from_handle(
@@ -79,7 +79,7 @@ pub fn test_library_from_handle(
 fn manager_for_database(
     database: bae_core::db::Database,
     dir: &std::path::Path,
-    providers: bae_core::providers::Providers,
+    providers: bae_core::catalog_model::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     let library_manager = bae_core::library::LibraryManager::new(
         database.clone(),
@@ -137,7 +137,7 @@ pub fn setup_fresh_library(
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
     );
-    let providers = bae_core::providers::Providers::offline();
+    let providers = bae_core::catalog_model::providers::Providers::offline();
     let lm = bae_core::library::LibraryManager::new(
         database,
         app_dir,

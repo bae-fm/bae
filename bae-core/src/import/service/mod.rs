@@ -622,9 +622,9 @@ fn spawn_root_scan(
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
-    depth: crate::import::payloads::ReadDepth,
+    depth: crate::catalog_model::payloads::ReadDepth,
     priority: CallPriority,
-) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
     prepare(
         library_manager,
         release_ref,
@@ -642,8 +642,8 @@ pub(crate) async fn prepare_applied_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
     steps: &crate::import::CatalogApplySteps,
-) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
-    let depth = crate::import::payloads::ReadDepth::Complete;
+) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
+    let depth = crate::catalog_model::payloads::ReadDepth::Complete;
     prepare(
         library_manager,
         release_ref,
@@ -660,13 +660,13 @@ pub(crate) async fn prepare_applied_release(
 /// asked for; a complete read of it fetches its own document as well.
 pub(crate) async fn prepare_disc_id_release(
     library_manager: &LibraryManager,
-    answered: &crate::import::payloads::DiscIdRelease,
+    answered: &crate::catalog_model::payloads::DiscIdRelease,
     priority: CallPriority,
-) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
     prepare(
         library_manager,
         answered.release(),
-        crate::import::payloads::ReadDepth::Identification,
+        crate::catalog_model::payloads::ReadDepth::Identification,
         library_manager.read_disc_id_release_payloads(answered, priority),
         &crate::import::CatalogApplySteps::unread(),
     )
@@ -679,12 +679,15 @@ pub(crate) async fn prepare_disc_id_release(
 async fn prepare(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
-    depth: crate::import::payloads::ReadDepth,
+    depth: crate::catalog_model::payloads::ReadDepth,
     read: impl std::future::Future<
-        Output = Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError>,
+        Output = Result<
+            crate::catalog_model::payloads::ReleasePayloads,
+            crate::import::ImportError,
+        >,
     >,
     steps: &crate::import::CatalogApplySteps,
-) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
+) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_prepared_release(release_ref).await? {
         let discogs_configured = library_manager
             .can_fetch_releases_from(bae_catalogs::catalog::Catalog::Discogs)
@@ -708,7 +711,8 @@ pub(crate) async fn prepare_partners(
     partners: &[MetadataRef],
     priority: CallPriority,
     steps: &crate::import::CatalogApplySteps,
-) -> Result<Vec<crate::import::source_release::PreparedRelease>, crate::import::ImportError> {
+) -> Result<Vec<crate::catalog_model::source_release::PreparedRelease>, crate::import::ImportError>
+{
     let mut claimed = vec![primary.catalog];
     let mut prepared = Vec::with_capacity(partners.len());
     for partner in partners {
@@ -721,7 +725,7 @@ pub(crate) async fn prepare_partners(
             });
         }
         claimed.push(partner.catalog);
-        let depth = crate::import::payloads::ReadDepth::Complete;
+        let depth = crate::catalog_model::payloads::ReadDepth::Complete;
         prepared.push(
             prepare(
                 library_manager,
@@ -739,14 +743,14 @@ pub(crate) async fn prepare_partners(
 /// The records a pick commits: the primary's and every partner's, each
 /// release's own record outranking what another says about its catalog.
 pub(crate) fn records_for_commit(
-    primary: &crate::import::source_release::SourceRelease,
-    partners: &[crate::import::source_release::SourceRelease],
+    primary: &crate::catalog_model::source_release::SourceRelease,
+    partners: &[crate::catalog_model::source_release::SourceRelease],
 ) -> Vec<crate::import::ReleaseRecord> {
     let claimed: Vec<_> = std::iter::once(primary)
         .chain(partners)
-        .map(crate::import::source_release::SourceRelease::records)
+        .map(crate::catalog_model::source_release::SourceRelease::records)
         .collect();
-    crate::import::source_release::claimed_records(&claimed)
+    crate::catalog_model::source_release::claimed_records(&claimed)
 }
 
 #[cfg(test)]

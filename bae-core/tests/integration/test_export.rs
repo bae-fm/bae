@@ -29,8 +29,11 @@ impl ExportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (mgr, _, cloud) =
-            support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
+        let (mgr, _, cloud) = support::storage_library(
+            &db_dir,
+            bae_core::catalog_model::providers::Providers::offline(),
+        )
+        .await;
         support::connect_storage(&mgr, &cloud).await;
 
         let handle = mgr

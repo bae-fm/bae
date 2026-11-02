@@ -3,7 +3,7 @@ use crate::identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
-use crate::import::search::MetadataResult;
+use crate::catalog_model::search::MetadataResult;
 use crate::import::watched_folder::host_root;
 use coven::FixedClock;
 use std::path::PathBuf;
@@ -66,8 +66,8 @@ fn sample_match() -> MetadataResult {
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
-        album_links: crate::import::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 2 }),
+        album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
+        source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
         // No catalog release of it is stored, so a stored verdict reads none.
         album_first_year: None,
@@ -100,7 +100,7 @@ fn sample_findings() -> Findings {
 /// Settled signals with nothing found.
 fn sample_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        origin: crate::signals::AudioOrigin::default(),
+        origin: crate::catalog_model::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Absent,
         text: crate::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
@@ -177,8 +177,8 @@ async fn fetched(db: &Database, release_id: &str) {
 }
 
 /// The catalog release [`fetched`] stores.
-fn fetched_release(release_id: &str) -> crate::import::source_release::SourceRelease {
-    crate::import::payloads::ReleasePayloads::for_test(
+fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::SourceRelease {
+    crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
         serde_json::json!({
             "id": release_id,
@@ -480,7 +480,8 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
 async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use crate::identify::state::step as identify_step;
     use crate::identify::{IdentifyEvent, IdentifyState};
-    use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, TextSignal};
+    use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+    use crate::catalog_model::{LookupFailure};
 
     let (db, _tmp) = empty_db().await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
@@ -499,7 +500,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                origin: crate::signals::AudioOrigin::default(),
+                origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
                     discs: vec![crate::signals::ComputedDiscId {
                         disc_id: "disc-hash".to_string(),

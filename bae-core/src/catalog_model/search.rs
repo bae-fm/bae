@@ -2,12 +2,12 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::parse_year;
 use crate::catalog_model::CatalogError;
-use crate::import::album_links::AlbumLinks;
-use crate::import::parse_year;
-use crate::import::types::MetadataRef;
+use crate::catalog_model::{Failure, InternalFailure, LookupFailure};
 use crate::import::ImportError;
-use crate::signals::{Failure, InternalFailure, LookupFailure};
+use crate::import::MetadataRef;
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
@@ -148,7 +148,9 @@ impl MetadataResult {
     /// A stored release, as a result: what its documents state, with no
     /// lookup behind it. Its tracklist is read against the folder's audio
     /// where its document is applied (see [`crate::identify::documents`]).
-    pub(crate) fn of_release(release: &crate::import::source_release::SourceRelease) -> Self {
+    pub(crate) fn of_release(
+        release: &crate::catalog_model::source_release::SourceRelease,
+    ) -> Self {
         let pressing = release.pressing();
         Self {
             source: release.release().catalog,
@@ -291,7 +293,7 @@ pub fn discogs_search_result_to_metadata(
     let area = r
         .country
         .as_deref()
-        .and_then(|name| crate::import::discogs_mapper::area(&release_id, name));
+        .and_then(|name| crate::catalog_model::discogs_mapper::area(&release_id, name));
     let source_group_id = r.master_id.map(|id| id.to_string());
     MetadataResult {
         source: Catalog::Discogs,
@@ -394,7 +396,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     }
 
     let notes = musicbrainz_release_notes(&r);
-    let (pressing, media) = crate::import::musicbrainz_mapper::pressing(&r);
+    let (pressing, media) = crate::catalog_model::musicbrainz_mapper::pressing(&r);
     let links = release_links_of(&r.relations);
     let cover_art = bae_catalogs::remote_image::musicbrainz_release_cover(&r);
     Some(MetadataResult {
@@ -446,11 +448,12 @@ pub(crate) fn release_links_of(
 fn mb_discid_releases_to_metadata(
     discid: &str,
     releases: Vec<(MbReleaseResponse, String)>,
-) -> Vec<(MetadataResult, crate::import::payloads::DiscIdRelease)> {
+) -> Vec<(MetadataResult, crate::catalog_model::payloads::DiscIdRelease)> {
     releases
         .into_iter()
         .filter_map(|(release, json)| {
-            let answered = crate::import::payloads::DiscIdRelease::new(release.id.clone(), json);
+            let answered =
+                crate::catalog_model::payloads::DiscIdRelease::new(release.id.clone(), json);
             Some((mb_discid_release_to_metadata(discid, release)?, answered))
         })
         .collect()
@@ -825,7 +828,7 @@ pub(crate) async fn lookup_by_discid(
     musicbrainz: &musicbrainz::MusicBrainz,
     discid: &str,
     priority: CallPriority,
-) -> Result<Vec<(MetadataResult, crate::import::payloads::DiscIdRelease)>, Failure> {
+) -> Result<Vec<(MetadataResult, crate::catalog_model::payloads::DiscIdRelease)>, Failure> {
     let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
@@ -842,7 +845,7 @@ pub(crate) async fn lookup_by_discid(
 
 /// Every release MusicBrainz has a recording registered under any of `isrcs`
 /// on, each once, in the order the search answered, with its cover art.
-/// `isrcs` are codes as [`crate::isrc::code`] reads them; a recording the
+/// `isrcs` are codes as [`crate::catalog_model::isrc::code`] reads them; a recording the
 /// search returned under none of them answers nothing.
 pub(crate) async fn lookup_by_isrcs(
     musicbrainz: &musicbrainz::MusicBrainz,
@@ -866,7 +869,7 @@ fn isrc_releases_to_metadata(
         let asked = recording
             .isrcs
             .iter()
-            .filter_map(|stated| crate::isrc::code(stated))
+            .filter_map(|stated| crate::catalog_model::isrc::code(stated))
             .any(|code| isrcs.contains(&code));
         if !asked {
             continue;

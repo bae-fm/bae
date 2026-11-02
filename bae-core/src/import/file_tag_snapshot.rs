@@ -3,7 +3,7 @@
 use super::folder_scanner::ScannedFile;
 use super::track_numbers::TrackNumbers;
 use super::ImportError;
-use crate::signals::StoreMarker;
+use crate::catalog_model::StoreMarker;
 use bae_util::content_type::ContentType;
 use lofty::config::ParseOptions;
 use lofty::file::{AudioFile, FileType};

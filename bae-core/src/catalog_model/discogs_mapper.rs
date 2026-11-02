@@ -1,9 +1,9 @@
-use crate::catalog_model::CatalogError;
-use crate::import::medium_coverage::MediumCoverage;
-use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
-use crate::import::source_release::{
+use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
+use crate::catalog_model::CatalogError;
+use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::import::{ArtistCredit, CreditedRole};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
@@ -180,7 +180,7 @@ pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
 /// mediums its positions name, each with the carrier the release's formats
 /// give it (`media`), every row with its sub-tracks.
 pub(crate) fn mediums(release: &DiscogsRelease, media: &StatedMedia) -> Vec<SourceMedium> {
-    crate::import::discogs_mediums::split(&release.id, &release.tracklist, media)
+    crate::catalog_model::discogs_mediums::split(&release.id, &release.tracklist, media)
         .into_iter()
         .map(|medium| SourceMedium {
             medium: medium.medium,
@@ -283,7 +283,7 @@ pub(crate) fn values(
     audio_durations_ms: Option<&[u64]>,
 ) -> Result<ReleaseValues, CatalogError> {
     let release_id = &release.release.key;
-    let covered: Vec<&crate::import::source_release::SourceMedium> =
+    let covered: Vec<&crate::catalog_model::source_release::SourceMedium> =
         release.covered_mediums(coverage).collect();
     let entries = release.covered_entries(coverage);
     let entry_mediums: Vec<usize> = covered
@@ -337,7 +337,7 @@ struct CoveredLayout {
 }
 
 fn covered_layout(
-    covered: &[&crate::import::source_release::SourceMedium],
+    covered: &[&crate::catalog_model::source_release::SourceMedium],
     entries: &[TracklistEntry],
     entry_mediums: &[usize],
     processed: &[ProcessedTrack<'_>],
@@ -415,7 +415,7 @@ fn discogs_track_values(pt: &ProcessedTrack, place: bae_types::mediums::TrackPla
             source: Catalog::Discogs,
             role: role.role.clone(),
         }));
-        for stated in crate::import::source_release::stated_credits(&discogs_track.credits) {
+        for stated in crate::catalog_model::source_release::stated_credits(&discogs_track.credits) {
             if seen_credit_ids.insert(stated.credit.discogs_artist_id.clone()) {
                 credits.push(stated);
             }

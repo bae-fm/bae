@@ -124,7 +124,7 @@ async fn restore_cost(library: Library) {
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        bae_core::providers::Providers::offline(),
+        bae_core::catalog_model::providers::Providers::offline(),
     );
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {

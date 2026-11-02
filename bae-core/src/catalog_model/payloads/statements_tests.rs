@@ -2,8 +2,8 @@
 //! Discogs, strongest first.
 
 use super::*;
-use crate::import::album_links::AlbumLinks;
-use crate::import::source_release::{UnfetchedDocument, UnfetchedReason};
+use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::source_release::{UnfetchedDocument, UnfetchedReason};
 use serde_json::json;
 
 fn url(resource: &str) -> serde_json::Value {
