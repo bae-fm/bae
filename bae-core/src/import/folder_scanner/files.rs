@@ -67,7 +67,7 @@ impl ScannedFile {
         self.source_audio = Some(ScannedAudio {
             content_type: bae_util::content_type::ContentType::Flac,
             duration_ms: 5_000,
-            format: crate::album_detail::AudioFormat {
+            format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
                 sample_rate_hz: 44_100,
                 bits_per_sample: Some(16),
@@ -95,7 +95,7 @@ pub struct FileVersion {
 pub struct ScannedAudio {
     pub content_type: bae_util::content_type::ContentType,
     pub duration_ms: u64,
-    pub format: crate::album_detail::AudioFormat,
+    pub format: bae_types::audio_format::AudioFormat,
 }
 
 /// The job the scan proposes for a file. Every file the scan finds carries

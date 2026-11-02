@@ -206,7 +206,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
             source_audio: crate::import::folder_scanner::ScannedAudio {
                 content_type: bae_util::content_type::ContentType::Flac,
                 duration_ms: 1_000,
-                format: crate::album_detail::AudioFormat {
+                format: bae_types::audio_format::AudioFormat {
                     codec: "FLAC".to_string(),
                     sample_rate_hz: 44_100,
                     bits_per_sample: Some(16),

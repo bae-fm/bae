@@ -10,7 +10,6 @@
 
 use super::columns::*;
 use super::*;
-use crate::album_detail::AudioFormat;
 use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
@@ -21,6 +20,7 @@ use crate::import::folder_scanner::{
     SkippedFile, SkippedTags,
 };
 use crate::import::{CandidateKey, RelativeFolder};
+use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 

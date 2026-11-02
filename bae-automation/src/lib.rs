@@ -4,8 +4,8 @@ extern crate bae_mirror;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_core::album_detail::{
-    AudioFormat, FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail,
-    ReleaseStorageState, SearchResults, TrackDetail,
+    FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail, ReleaseStorageState,
+    SearchResults, TrackDetail,
 };
 use bae_core::catalog_model::records::MetadataRef;
 use bae_core::catalog_model::search::MetadataResult;
@@ -21,6 +21,7 @@ use bae_core::import::{
     TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
+use bae_types::audio_format::AudioFormat;
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 use schemars::JsonSchema;

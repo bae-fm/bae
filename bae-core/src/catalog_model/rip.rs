@@ -142,7 +142,7 @@ pub const CD_SAMPLE_RATE_HZ: u32 = 44_100;
 /// a one-channel file, and an HDCD decodes to more than 16 bits, so a CD rip
 /// can carry either and stay one.
 pub fn rate_ruling_out_cd<'a>(
-    audio: impl IntoIterator<Item = &'a crate::album_detail::AudioFormat>,
+    audio: impl IntoIterator<Item = &'a bae_types::audio_format::AudioFormat>,
 ) -> Option<u32> {
     let mut first = None;
     for format in audio {
@@ -158,7 +158,7 @@ pub fn rate_ruling_out_cd<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::album_detail::AudioFormat;
+    use bae_types::audio_format::AudioFormat;
 
     fn format(sample_rate_hz: i64, bits_per_sample: Option<i64>, channels: i64) -> AudioFormat {
         AudioFormat {

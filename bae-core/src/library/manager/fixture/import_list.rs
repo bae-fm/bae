@@ -286,7 +286,7 @@ fn fixture_candidate(
             file.source_audio = Some(ScannedAudio {
                 content_type: bae_util::content_type::ContentType::Flac,
                 duration_ms: 180_000,
-                format: crate::album_detail::AudioFormat {
+                format: bae_types::audio_format::AudioFormat {
                     codec: bae_util::content_type::ContentType::Flac.display_name().to_string(),
                     sample_rate_hz: 44_100,
                     bits_per_sample: Some(16),

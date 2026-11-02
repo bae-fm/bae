@@ -669,7 +669,7 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
             layout,
             content_type: ContentType::from_mime(&content_type),
             duration_ms,
-            format: crate::album_detail::AudioFormat {
+            format: bae_types::audio_format::AudioFormat {
                 codec: ContentType::from_mime(&content_type).display_name().to_string(),
                 sample_rate_hz,
                 bits_per_sample,

@@ -107,7 +107,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 source_audio: crate::import::folder_scanner::ScannedAudio {
                     content_type: ContentType::Flac,
                     duration_ms: 1000,
-                    format: crate::album_detail::AudioFormat {
+                    format: bae_types::audio_format::AudioFormat {
                         codec: "FLAC".into(),
                         sample_rate_hz: 44100,
                         bits_per_sample: Some(16),

@@ -3,9 +3,9 @@
 //! Read again for every run and every read of a stored answer, never stored
 //! beside what was concluded from it.
 
-use crate::album_detail::AudioFormat;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::SourceDurations;
+use bae_types::audio_format::AudioFormat;
 
 /// The facts of one release's audio that identification reads.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

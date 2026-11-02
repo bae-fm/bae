@@ -434,7 +434,7 @@ fn test_compute_discid_routes_cue_mp3() {
     let mp3 = ReleaseAudioFile {
         path: mp3_path,
         duration_ms: 9_000,
-        format: crate::album_detail::AudioFormat {
+        format: bae_types::audio_format::AudioFormat {
             codec: "MP3".to_string(),
             sample_rate_hz: 44_100,
             bits_per_sample: None,

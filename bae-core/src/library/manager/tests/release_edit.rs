@@ -15,7 +15,7 @@ async fn add_track_audio_sources(
         );
         file.source_audio = Some(crate::album_detail::SourceAudioFile {
             layout: Some(*layout),
-            format: crate::album_detail::AudioFormat {
+            format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
                 sample_rate_hz: 44_100,
                 bits_per_sample: Some(16),

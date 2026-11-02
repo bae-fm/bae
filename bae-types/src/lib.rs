@@ -1,8 +1,9 @@
 //! The domain values bae's catalogs, identification, library and playback
 //! share, with nothing in bae beneath them: what a pressing is, how two pieces
-//! of written text name one thing, how a barcode is read, a time within a
-//! track, and the storage moves a release can make.
+//! of written text name one thing, how a barcode is read, an audio file's
+//! format, a time within a track, and the storage moves a release can make.
 
+pub mod audio_format;
 #[cfg(desktop)]
 pub mod barcode;
 pub mod credits;

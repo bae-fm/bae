@@ -737,7 +737,7 @@ pub struct BridgeAudioFormat {
 }
 
 mirror_struct! {
-    BridgeAudioFormat = bae_core::album_detail::AudioFormat,
+    BridgeAudioFormat = bae_types::audio_format::AudioFormat,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,

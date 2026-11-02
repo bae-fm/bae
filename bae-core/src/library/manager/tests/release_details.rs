@@ -221,7 +221,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             layout: Some(layout),
             content_type,
             duration_ms: 90_000,
-            format: crate::album_detail::AudioFormat {
+            format: bae_types::audio_format::AudioFormat {
                 codec: codec.to_string(),
                 sample_rate_hz: 44_100,
                 bits_per_sample: bitrate_kbps.is_none().then_some(16),

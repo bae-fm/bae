@@ -33,7 +33,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
             source_audio: crate::import::folder_scanner::ScannedAudio {
                 content_type: probe.content_type.clone(),
                 duration_ms: probe.duration.as_millis() as u64,
-                format: crate::album_detail::AudioFormat {
+                format: bae_types::audio_format::AudioFormat {
                     codec: "MP3".to_string(),
                     sample_rate_hz: i64::from(probe.sample_rate),
                     bits_per_sample: probe.bits_per_sample.map(i64::from),

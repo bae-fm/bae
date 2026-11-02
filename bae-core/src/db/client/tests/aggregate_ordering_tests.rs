@@ -417,7 +417,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
         layout: Some(crate::album_detail::SourceAudioLayout::Cue),
         content_type: bae_util::content_type::ContentType::Flac,
         duration_ms: 187_654,
-        format: crate::album_detail::AudioFormat {
+        format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),
             sample_rate_hz: 96_000,
             bits_per_sample: Some(24),

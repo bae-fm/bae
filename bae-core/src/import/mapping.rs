@@ -153,7 +153,7 @@ pub struct MappingFile {
     pub preview_target: Option<crate::playback::PreviewTarget>,
     /// Playing time from the scan's stored facts. `None` for non-audio files.
     pub duration_ms: Option<u64>,
-    pub audio_format: Option<crate::album_detail::AudioFormat>,
+    pub audio_format: Option<bae_types::audio_format::AudioFormat>,
     pub role: MappingRole,
 }
 
@@ -175,7 +175,7 @@ pub struct MappingEntry {
     pub container_name: String,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: crate::playback::PreviewTarget,
-    pub audio_format: crate::album_detail::AudioFormat,
+    pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
 /// A track sheet, as the header of the group of rows it carves.
@@ -227,7 +227,7 @@ pub struct MappingContainer {
     pub file_id: String,
     pub name: String,
     pub size: u64,
-    pub audio_format: crate::album_detail::AudioFormat,
+    pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
 /// The folder's images and the files carried with the release that no track

@@ -106,7 +106,7 @@ fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
                     file.source_audio = Some(bae_core::import::folder_scanner::ScannedAudio {
                         content_type: bae_util::content_type::ContentType::Flac,
                         duration_ms: 1_000,
-                        format: bae_core::album_detail::AudioFormat {
+                        format: bae_types::audio_format::AudioFormat {
                             codec: "FLAC".to_string(),
                             sample_rate_hz: 44_100,
                             bits_per_sample: Some(16),

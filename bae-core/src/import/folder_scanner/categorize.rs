@@ -839,7 +839,7 @@ pub(crate) fn scanned_audio(probe: &bae_audio::ProbeResult) -> Option<ScannedAud
     Some(ScannedAudio {
         content_type: probe.content_type.clone(),
         duration_ms: probe.duration.as_millis() as u64,
-        format: crate::album_detail::AudioFormat {
+        format: bae_types::audio_format::AudioFormat {
             codec: probe.content_type.display_name().to_string(),
             sample_rate_hz: i64::from(probe.sample_rate),
             bits_per_sample,

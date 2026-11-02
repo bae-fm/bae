@@ -37,7 +37,7 @@ fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
     file.source_audio = Some(ScannedAudio {
         content_type: bae_util::content_type::ContentType::Flac,
         duration_ms: 5_000,
-        format: bae_core::album_detail::AudioFormat {
+        format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),
             sample_rate_hz: 44_100,
             bits_per_sample: Some(16),
