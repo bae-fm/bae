@@ -13,13 +13,13 @@
     <string name="close_search">Zavrieť vyhľadávanie</string>
     <string name="clear_search">Vymazať vyhľadávanie</string>
     <string name="search_placeholder">Hľadaj albumy, skladby, skladateľov a diela</string>
-    <string name="sort">Zoradiť</string>
     <string name="sort_title">Názov</string>
     <string name="sort_artist">Interpret</string>
     <string name="sort_year">Rok</string>
     <string name="sort_date_added">Dátum pridania</string>
     <string name="sort_ascending">Vzostupne</string>
     <string name="sort_descending">Zostupne</string>
+    <string name="sort_by">Zoradiť podľa</string>
     <string name="library_empty_albums">Zatiaľ žiadne albumy</string>
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
     <string name="library_load_more_albums_failed">Ďalšie albumy sa nepodarilo načítať.</string>
@@ -86,6 +86,7 @@
     <string name="library_mode_albums">Albumy</string>
     <string name="library_mode_artists">Interpreti</string>
     <string name="library_switch_view">Prepnúť zobrazenie</string>
+    <string name="more">Viac</string>
     <string name="library_empty_artists">Žiadni interpreti</string>
     <string name="album_count">%1$d albumov</string>
     <string name="artist_detail_load_failed">Tohto interpreta sa nepodarilo načítať.</string>

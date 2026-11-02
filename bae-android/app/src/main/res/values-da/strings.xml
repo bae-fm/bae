@@ -13,13 +13,13 @@
     <string name="close_search">Luk søgningen</string>
     <string name="clear_search">Ryd søgningen</string>
     <string name="search_placeholder">Søg efter album, spor, komponister og værker</string>
-    <string name="sort">Sorter</string>
     <string name="sort_title">Titel</string>
     <string name="sort_artist">Kunstner</string>
     <string name="sort_year">År</string>
     <string name="sort_date_added">Tilføjet</string>
     <string name="sort_ascending">Stigende</string>
     <string name="sort_descending">Faldende</string>
+    <string name="sort_by">Sorter efter</string>
     <string name="library_empty_albums">Ingen album endnu</string>
     <string name="library_load_failed">Dit bibliotek kunne ikke indlæses.</string>
     <string name="library_load_more_albums_failed">Der kunne ikke indlæses flere album.</string>
@@ -84,6 +84,7 @@
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Kunstnere</string>
     <string name="library_switch_view">Skift visning</string>
+    <string name="more">Mere</string>
     <string name="library_empty_artists">Ingen kunstnere</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Denne kunstner kunne ikke indlæses.</string>

@@ -13,13 +13,13 @@
     <string name="close_search">Затваряне на търсенето</string>
     <string name="clear_search">Изчистване на търсенето</string>
     <string name="search_placeholder">Търсене в албуми, песни, композитори и произведения</string>
-    <string name="sort">Подреждане</string>
     <string name="sort_title">Заглавие</string>
     <string name="sort_artist">Изпълнител</string>
     <string name="sort_year">Година</string>
     <string name="sort_date_added">Дата на добавяне</string>
     <string name="sort_ascending">Възходящо</string>
     <string name="sort_descending">Низходящо</string>
+    <string name="sort_by">Подреждане по</string>
     <string name="library_empty_albums">Все още няма албуми</string>
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
     <string name="library_load_more_albums_failed">Не могат да бъдат заредени още албуми.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Албуми</string>
     <string name="library_mode_artists">Изпълнители</string>
     <string name="library_switch_view">Смяна на изгледа</string>
+    <string name="more">Още</string>
     <string name="library_empty_artists">Няма изпълнители</string>
     <string name="album_count">%1$d албума</string>
     <string name="artist_detail_load_failed">Този изпълнител не можа да бъде зареден.</string>

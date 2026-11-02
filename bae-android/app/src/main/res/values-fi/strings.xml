@@ -13,13 +13,13 @@
     <string name="close_search">Sulje haku</string>
     <string name="clear_search">Tyhjennä haku</string>
     <string name="search_placeholder">Hae albumeita, raitoja, säveltäjiä ja teoksia</string>
-    <string name="sort">Lajittele</string>
     <string name="sort_title">Nimi</string>
     <string name="sort_artist">Esittäjä</string>
     <string name="sort_year">Vuosi</string>
     <string name="sort_date_added">Lisäyspäivä</string>
     <string name="sort_ascending">Nouseva</string>
     <string name="sort_descending">Laskeva</string>
+    <string name="sort_by">Lajitteluperuste</string>
     <string name="library_empty_albums">Ei vielä albumeita</string>
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
     <string name="library_load_more_albums_failed">Lisää albumeita ei voitu ladata.</string>
@@ -84,6 +84,7 @@
     <string name="library_mode_albums">Albumit</string>
     <string name="library_mode_artists">Esittäjät</string>
     <string name="library_switch_view">Vaihda näkymää</string>
+    <string name="more">Lisää</string>
     <string name="library_empty_artists">Ei esittäjiä</string>
     <string name="album_count">%1$d albumia</string>
     <string name="artist_detail_load_failed">Tätä esittäjää ei voitu ladata.</string>

@@ -13,13 +13,13 @@
     <string name="close_search">Zamknij wyszukiwanie</string>
     <string name="clear_search">Wyczyść wyszukiwanie</string>
     <string name="search_placeholder">Szukaj albumów, ścieżek, kompozytorów i dzieł</string>
-    <string name="sort">Sortuj</string>
     <string name="sort_title">Tytuł</string>
     <string name="sort_artist">Wykonawca</string>
     <string name="sort_year">Rok</string>
     <string name="sort_date_added">Data dodania</string>
     <string name="sort_ascending">Rosnąco</string>
     <string name="sort_descending">Malejąco</string>
+    <string name="sort_by">Sortuj według</string>
     <string name="library_empty_albums">Nie ma jeszcze albumów</string>
     <string name="library_load_failed">Nie udało się wczytać biblioteki.</string>
     <string name="library_load_more_albums_failed">Nie udało się wczytać kolejnych albumów.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Albumy</string>
     <string name="library_mode_artists">Wykonawcy</string>
     <string name="library_switch_view">Przełącz widok</string>
+    <string name="more">Więcej</string>
     <string name="library_empty_artists">Brak wykonawców</string>
     <string name="album_count">%1$d albumów</string>
     <string name="artist_detail_load_failed">Nie udało się wczytać tego wykonawcy.</string>

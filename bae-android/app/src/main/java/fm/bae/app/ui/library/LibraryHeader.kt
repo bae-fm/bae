@@ -18,8 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -57,6 +55,9 @@ import kotlin.math.roundToInt
 internal enum class LibraryHeaderMenu {
     /** The heading's own menu, switching between the library's views. */
     VIEWS,
+
+    /** The ⋮ menu: the view's sort, Shuffle library and Settings. */
+    MORE,
 }
 
 /** How far the list scrolls while the heading shrinks from full size into the slim bar, as on macOS. */
@@ -137,34 +138,8 @@ internal fun LibraryHeader(
         IconButton(onClick = { state.searchOpen = true }) {
             Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.search))
         }
-        IconButton(onClick = onShuffleLibrary) {
-            Icon(imageVector = Icons.Filled.Shuffle, contentDescription = stringResource(R.string.shuffle_library))
-        }
-        when (state.mode) {
-            LibraryBrowserMode.ALBUMS -> {
-                SortMenu(
-                    criterion = state.sortCriterion,
-                    onChange = { state.sortCriterion = it },
-                    groupByArtist = state.groupAlbumsByArtist,
-                    onGroupByArtistChange = { state.groupAlbumsByArtist = it },
-                )
-            }
-
-            LibraryBrowserMode.ARTISTS -> {
-                ArtistSortMenu(criterion = state.artistSortCriterion, onChange = { state.artistSortCriterion = it })
-            }
-
-            LibraryBrowserMode.COMPOSERS -> {
-                ComposerSortMenu(
-                    criterion = state.composerSortCriterion,
-                    onChange = { state.composerSortCriterion = it },
-                )
-            }
-        }
         syncActivity()
-        IconButton(onClick = onSettings) {
-            Icon(imageVector = Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
-        }
+        LibraryMoreMenu(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
     }
 }
 
@@ -222,7 +197,7 @@ private fun LibraryViewHeading(
 
 /** One of a menu's choices, the chosen one in the accent color. */
 @Composable
-private fun ChoiceMenuItem(
+internal fun ChoiceMenuItem(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,

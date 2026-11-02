@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,30 +12,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
@@ -53,9 +37,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerSortCriterion
-import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeSortDirection
 
 @Composable
 internal fun rememberComposerPage(
@@ -106,66 +88,6 @@ internal fun ComposerListContent(
     }
 }
 
-private val COMPOSER_SORT_FIELDS =
-    listOf(
-        BridgeComposerSortField.NAME,
-        BridgeComposerSortField.WORK_COUNT,
-        BridgeComposerSortField.LINKED_RELEASE_COUNT,
-    )
-
-@Composable
-internal fun ComposerSortMenu(
-    criterion: BridgeComposerSortCriterion,
-    onChange: (BridgeComposerSortCriterion) -> Unit,
-) {
-    fun BridgeComposerSortField.labelRes(): Int =
-        when (this) {
-            BridgeComposerSortField.NAME -> R.string.sort_name
-            BridgeComposerSortField.WORK_COUNT -> R.string.search_section_works
-            BridgeComposerSortField.LINKED_RELEASE_COUNT -> R.string.search_section_releases
-        }
-    var expanded by remember { mutableStateOf(false) }
-    val ascending = criterion.direction == BridgeSortDirection.ASCENDING
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            COMPOSER_SORT_FIELDS.forEach { field ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(field.labelRes())) },
-                    onClick = {
-                        onChange(BridgeComposerSortCriterion(field, criterion.direction))
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.alpha(if (field == criterion.field) 1f else 0f),
-                        )
-                    },
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(if (ascending) R.string.sort_ascending else R.string.sort_descending))
-                },
-                onClick = {
-                    val direction = if (ascending) BridgeSortDirection.DESCENDING else BridgeSortDirection.ASCENDING
-                    onChange(BridgeComposerSortCriterion(criterion.field, direction))
-                    expanded = false
-                },
-                leadingIcon = {
-                    val icon = if (ascending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
-                    Icon(imageVector = icon, contentDescription = null)
-                },
-            )
-        }
-    }
-}
-
 @Composable
 internal fun ComposerSummaryRow(
     composer: BridgeComposerSummary,
@@ -210,16 +132,5 @@ private fun ComposerSummaryRowPreview() {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             ComposerSummaryRow(composer = PreviewData.composerSummary(), onClick = {})
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ComposerSortMenuPreview() {
-    BaeTheme {
-        ComposerSortMenu(
-            criterion = BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING),
-            onChange = {},
-        )
     }
 }

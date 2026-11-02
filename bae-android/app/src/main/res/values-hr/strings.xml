@@ -13,13 +13,13 @@
     <string name="close_search">Zatvori pretraživanje</string>
     <string name="clear_search">Očisti pretraživanje</string>
     <string name="search_placeholder">Pretraži albume, pjesme, skladatelje i djela</string>
-    <string name="sort">Sortiraj</string>
     <string name="sort_title">Naslov</string>
     <string name="sort_artist">Izvođač</string>
     <string name="sort_year">Godina</string>
     <string name="sort_date_added">Datum dodavanja</string>
     <string name="sort_ascending">Uzlazno</string>
     <string name="sort_descending">Silazno</string>
+    <string name="sort_by">Sortiraj po</string>
     <string name="library_empty_albums">Još nema albuma</string>
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
     <string name="library_load_more_albums_failed">Nije moguće učitati više albuma.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Albumi</string>
     <string name="library_mode_artists">Izvođači</string>
     <string name="library_switch_view">Promijeni prikaz</string>
+    <string name="more">Više</string>
     <string name="library_empty_artists">Nema izvođača</string>
     <string name="album_count">%1$d albuma</string>
     <string name="artist_detail_load_failed">Nije moguće učitati ovog izvođača.</string>

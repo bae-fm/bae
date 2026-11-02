@@ -13,13 +13,13 @@
     <string name="close_search">Chiudi ricerca</string>
     <string name="clear_search">Cancella ricerca</string>
     <string name="search_placeholder">Cerca album, brani, compositori e opere</string>
-    <string name="sort">Ordina</string>
     <string name="sort_title">Titolo</string>
     <string name="sort_artist">Artista</string>
     <string name="sort_year">Anno</string>
     <string name="sort_date_added">Data di aggiunta</string>
     <string name="sort_ascending">Crescente</string>
     <string name="sort_descending">Decrescente</string>
+    <string name="sort_by">Ordina per</string>
     <string name="library_empty_albums">Ancora nessun album</string>
     <string name="library_load_failed">Impossibile caricare la tua libreria.</string>
     <string name="library_load_more_albums_failed">Impossibile caricare altri album.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Artisti</string>
     <string name="library_switch_view">Cambia vista</string>
+    <string name="more">Altro</string>
     <string name="library_empty_artists">Nessun artista</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Impossibile caricare questo artista.</string>

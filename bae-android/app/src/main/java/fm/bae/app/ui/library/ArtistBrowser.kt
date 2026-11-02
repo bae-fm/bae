@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,30 +12,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
@@ -53,9 +37,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeArtistSortCriterion
-import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeArtistSummary
-import uniffi.bae_bridge.BridgeSortDirection
 
 @Composable
 internal fun rememberArtistPage(
@@ -96,64 +78,6 @@ internal fun ArtistListContent(
                     ArtistSummaryRow(artist = artist, onClick = { onSelectArtist(artist.artistId) })
                 }
             }
-        }
-    }
-}
-
-private val ARTIST_SORT_FIELDS =
-    listOf(
-        BridgeArtistSortField.NAME,
-        BridgeArtistSortField.ALBUM_COUNT,
-    )
-
-@Composable
-internal fun ArtistSortMenu(
-    criterion: BridgeArtistSortCriterion,
-    onChange: (BridgeArtistSortCriterion) -> Unit,
-) {
-    fun BridgeArtistSortField.labelRes(): Int =
-        when (this) {
-            BridgeArtistSortField.NAME -> R.string.sort_name
-            BridgeArtistSortField.ALBUM_COUNT -> R.string.search_section_albums
-        }
-    var expanded by remember { mutableStateOf(false) }
-    val ascending = criterion.direction == BridgeSortDirection.ASCENDING
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ARTIST_SORT_FIELDS.forEach { field ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(field.labelRes())) },
-                    onClick = {
-                        onChange(BridgeArtistSortCriterion(field, criterion.direction))
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.alpha(if (field == criterion.field) 1f else 0f),
-                        )
-                    },
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(if (ascending) R.string.sort_ascending else R.string.sort_descending))
-                },
-                onClick = {
-                    val direction = if (ascending) BridgeSortDirection.DESCENDING else BridgeSortDirection.ASCENDING
-                    onChange(BridgeArtistSortCriterion(criterion.field, direction))
-                    expanded = false
-                },
-                leadingIcon = {
-                    val icon = if (ascending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
-                    Icon(imageVector = icon, contentDescription = null)
-                },
-            )
         }
     }
 }
@@ -202,16 +126,5 @@ private fun ArtistSummaryRowPreview() {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             ArtistSummaryRow(artist = PreviewData.artistSummary(), onClick = {})
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ArtistSortMenuPreview() {
-    BaeTheme {
-        ArtistSortMenu(
-            criterion = BridgeArtistSortCriterion(BridgeArtistSortField.NAME, BridgeSortDirection.ASCENDING),
-            onChange = {},
-        )
     }
 }

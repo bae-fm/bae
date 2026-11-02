@@ -13,13 +13,13 @@
     <string name="close_search">Закрити пошук</string>
     <string name="clear_search">Очистити пошук</string>
     <string name="search_placeholder">Пошук альбомів, треків, композиторів і творів</string>
-    <string name="sort">Сортування</string>
     <string name="sort_title">Назва</string>
     <string name="sort_artist">Виконавець</string>
     <string name="sort_year">Рік</string>
     <string name="sort_date_added">За датою додавання</string>
     <string name="sort_ascending">За зростанням</string>
     <string name="sort_descending">За спаданням</string>
+    <string name="sort_by">Сортувати за</string>
     <string name="library_empty_albums">Поки немає альбомів</string>
     <string name="library_load_failed">Не вдалося завантажити вашу бібліотеку.</string>
     <string name="library_load_more_albums_failed">Не вдалося завантажити більше альбомів.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Альбоми</string>
     <string name="library_mode_artists">Виконавці</string>
     <string name="library_switch_view">Змінити подання</string>
+    <string name="more">Більше</string>
     <string name="library_empty_artists">Немає виконавців</string>
     <string name="album_count">%1$d альбомів</string>
     <string name="artist_detail_load_failed">Не вдалося завантажити цього виконавця.</string>

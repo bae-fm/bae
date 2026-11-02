@@ -13,13 +13,13 @@
     <string name="close_search">Keresés bezárása</string>
     <string name="clear_search">Keresés törlése</string>
     <string name="search_placeholder">Keress albumokat, számokat, zeneszerzőket és műveket</string>
-    <string name="sort">Rendezés</string>
     <string name="sort_title">Cím</string>
     <string name="sort_artist">Előadó</string>
     <string name="sort_year">Év</string>
     <string name="sort_date_added">Hozzáadás dátuma</string>
     <string name="sort_ascending">Növekvő</string>
     <string name="sort_descending">Csökkenő</string>
+    <string name="sort_by">Rendezés alapja</string>
     <string name="library_empty_albums">Még nincs album</string>
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
     <string name="library_load_more_albums_failed">Nem sikerült több albumot betölteni.</string>
@@ -84,6 +84,7 @@
     <string name="library_mode_albums">Albumok</string>
     <string name="library_mode_artists">Előadók</string>
     <string name="library_switch_view">Nézet váltása</string>
+    <string name="more">Továbbiak</string>
     <string name="library_empty_artists">Nincs előadó</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Ezt az előadót nem sikerült betölteni.</string>

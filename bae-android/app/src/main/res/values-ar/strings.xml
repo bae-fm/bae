@@ -13,13 +13,13 @@
     <string name="close_search">إغلاق البحث</string>
     <string name="clear_search">مسح البحث</string>
     <string name="search_placeholder">البحث في الألبومات والمقاطع والمؤلفين والأعمال</string>
-    <string name="sort">فرز</string>
     <string name="sort_title">العنوان</string>
     <string name="sort_artist">الفنان</string>
     <string name="sort_year">السنة</string>
     <string name="sort_date_added">تاريخ الإضافة</string>
     <string name="sort_ascending">تصاعدي</string>
     <string name="sort_descending">تنازلي</string>
+    <string name="sort_by">ترتيب حسب</string>
     <string name="library_empty_albums">لا توجد ألبومات بعد</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
     <string name="library_load_more_albums_failed">تعذّر تحميل المزيد من الألبومات.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">الألبومات</string>
     <string name="library_mode_artists">الفنانون</string>
     <string name="library_switch_view">تبديل العرض</string>
+    <string name="more">المزيد</string>
     <string name="library_empty_artists">لا يوجد فنانون</string>
     <string name="album_count">%1$d ألبومات</string>
     <string name="artist_detail_load_failed">تعذر تحميل هذا الفنان.</string>

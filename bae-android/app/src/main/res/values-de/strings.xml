@@ -13,13 +13,13 @@
     <string name="close_search">Suche schließen</string>
     <string name="clear_search">Suche löschen</string>
     <string name="search_placeholder">Alben, Tracks, Komponisten und Werke suchen</string>
-    <string name="sort">Sortieren</string>
     <string name="sort_title">Titel</string>
     <string name="sort_artist">Interpret</string>
     <string name="sort_year">Jahr</string>
     <string name="sort_date_added">Hinzugefügt</string>
     <string name="sort_ascending">Aufsteigend</string>
     <string name="sort_descending">Absteigend</string>
+    <string name="sort_by">Sortieren nach</string>
     <string name="library_empty_albums">Noch keine Alben</string>
     <string name="library_load_failed">Deine Bibliothek konnte nicht geladen werden.</string>
     <string name="library_load_more_albums_failed">Weitere Alben konnten nicht geladen werden.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Alben</string>
     <string name="library_mode_artists">Künstler</string>
     <string name="library_switch_view">Ansicht wechseln</string>
+    <string name="more">Mehr</string>
     <string name="library_empty_artists">Keine Künstler</string>
     <string name="album_count">%1$d Alben</string>
     <string name="artist_detail_load_failed">Dieser Künstler konnte nicht geladen werden.</string>

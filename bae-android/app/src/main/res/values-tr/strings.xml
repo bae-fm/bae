@@ -13,13 +13,13 @@
     <string name="close_search">Aramayı kapat</string>
     <string name="clear_search">Aramayı temizle</string>
     <string name="search_placeholder">Albüm, parça, besteci ve eser ara</string>
-    <string name="sort">Sırala</string>
     <string name="sort_title">Başlık</string>
     <string name="sort_artist">Sanatçı</string>
     <string name="sort_year">Yıl</string>
     <string name="sort_date_added">Eklenme Tarihi</string>
     <string name="sort_ascending">Artan</string>
     <string name="sort_descending">Azalan</string>
+    <string name="sort_by">Sıralama ölçütü</string>
     <string name="library_empty_albums">Henüz albüm yok</string>
     <string name="library_load_failed">Kitaplığınız yüklenemedi.</string>
     <string name="library_load_more_albums_failed">Daha fazla albüm yüklenemedi.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Albümler</string>
     <string name="library_mode_artists">Sanatçılar</string>
     <string name="library_switch_view">Görünümü değiştir</string>
+    <string name="more">Diğer</string>
     <string name="library_empty_artists">Sanatçı yok</string>
     <string name="album_count">%1$d Albüm</string>
     <string name="artist_detail_load_failed">Bu sanatçı yüklenemedi.</string>

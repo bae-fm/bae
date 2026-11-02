@@ -28,13 +28,13 @@
     <string name="close_search">Close search</string>
     <string name="clear_search">Clear search</string>
     <string name="search_placeholder">Search albums, tracks, composers, and works</string>
-    <string name="sort">Sort</string>
     <string name="sort_title">Title</string>
     <string name="sort_artist">Artist</string>
     <string name="sort_year">Year</string>
     <string name="sort_date_added">Date Added</string>
     <string name="sort_ascending">Ascending</string>
     <string name="sort_descending">Descending</string>
+    <string name="sort_by">Sort by</string>
     <string name="library_empty_albums">No albums yet</string>
     <string name="library_load_failed">Couldn\'t load your library.</string>
     <string name="library_load_more_albums_failed">Couldn\'t load more albums.</string>
@@ -76,7 +76,7 @@
     <string name="queue_section_up_next">Up Next</string>
     <string name="queue_section_playing_from">Playing From</string>
     <string name="queue_section_your_library">Your Library</string>
-    <string name="shuffle_library">Shuffle Library</string>
+    <string name="shuffle_library">Shuffle library</string>
     <string name="queue_nothing_up_next">Nothing up next</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
@@ -111,6 +111,7 @@
     <string name="library_mode_albums">Albums</string>
     <string name="library_mode_artists">Artists</string>
     <string name="library_switch_view">Switch view</string>
+    <string name="more">More</string>
     <string name="library_empty_artists">No artists</string>
     <string name="album_count">%1$d Albums</string>
     <string name="artist_detail_load_failed">Couldn\'t load this artist.</string>

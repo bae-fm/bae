@@ -13,13 +13,13 @@
     <string name="close_search">Stäng sökningen</string>
     <string name="clear_search">Rensa sökningen</string>
     <string name="search_placeholder">Sök album, spår, kompositörer och verk</string>
-    <string name="sort">Sortera</string>
     <string name="sort_title">Titel</string>
     <string name="sort_artist">Artist</string>
     <string name="sort_year">År</string>
     <string name="sort_date_added">Tillagd</string>
     <string name="sort_ascending">Stigande</string>
     <string name="sort_descending">Fallande</string>
+    <string name="sort_by">Sortera efter</string>
     <string name="library_empty_albums">Inga album än</string>
     <string name="library_load_failed">Ditt bibliotek kunde inte läsas in.</string>
     <string name="library_load_more_albums_failed">Fler album kunde inte läsas in.</string>
@@ -84,6 +84,7 @@
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Artister</string>
     <string name="library_switch_view">Byt vy</string>
+    <string name="more">Mer</string>
     <string name="library_empty_artists">Inga artister</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Den här artisten kunde inte läsas in.</string>

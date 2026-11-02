@@ -39,7 +39,8 @@ import fm.bae.app.ui.sync.SyncActivityList
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
 //   Welcome ⇒ welcome, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
-//   library-grid-scrolled, LibraryViewMenu ⇒ library-view-menu, AlbumDetail ⇒ album-detail.
+//   library-grid-scrolled, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
+//   library-view-menu, AlbumDetail ⇒ album-detail.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -61,6 +62,13 @@ fun LibraryGrid() {
 @Composable
 fun LibraryGridScrolled() {
     LibraryGridScene(firstAlbum = 6, openMenu = null)
+}
+
+/** The ⋮ menu open over the albums view. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibraryMoreMenu() {
+    LibraryGridScene(firstAlbum = 0, openMenu = LibraryHeaderMenu.MORE)
 }
 
 /** The heading's menu of views open. */

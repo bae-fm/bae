@@ -13,13 +13,13 @@
     <string name="close_search">關閉 搜尋</string>
     <string name="clear_search">清除 搜尋</string>
     <string name="search_placeholder">搜尋專輯、曲目、作曲者和作品</string>
-    <string name="sort">排序</string>
     <string name="sort_title">標題</string>
     <string name="sort_artist">演出者</string>
     <string name="sort_year">年份</string>
     <string name="sort_date_added">加入日期</string>
     <string name="sort_ascending">遞增</string>
     <string name="sort_descending">遞減</string>
+    <string name="sort_by">排序方式</string>
     <string name="library_empty_albums">尚無專輯</string>
     <string name="library_load_failed">無法載入你的資料庫。</string>
     <string name="library_load_more_albums_failed">無法載入更多專輯。</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">專輯</string>
     <string name="library_mode_artists">藝人</string>
     <string name="library_switch_view">切換檢視</string>
+    <string name="more">更多</string>
     <string name="library_empty_artists">沒有藝人</string>
     <string name="album_count">%1$d 張專輯</string>
     <string name="artist_detail_load_failed">無法載入此藝人。</string>

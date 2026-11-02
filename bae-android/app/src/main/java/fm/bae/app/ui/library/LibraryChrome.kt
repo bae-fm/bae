@@ -1,6 +1,5 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -9,14 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,13 +19,9 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -45,9 +33,6 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import uniffi.bae_bridge.BridgeSortCriterion
-import uniffi.bae_bridge.BridgeSortDirection
-import uniffi.bae_bridge.BridgeSortField
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
@@ -126,85 +111,6 @@ internal fun LibrarySearchBar(
                             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear_search))
                         }
                     }
-                },
-            )
-        }
-    }
-}
-
-private val SORT_FIELDS =
-    listOf(
-        BridgeSortField.TITLE,
-        BridgeSortField.ARTIST,
-        BridgeSortField.YEAR,
-        BridgeSortField.DATE_ADDED,
-    )
-
-@Composable
-internal fun SortMenu(
-    criterion: BridgeSortCriterion,
-    onChange: (BridgeSortCriterion) -> Unit,
-    groupByArtist: Boolean,
-    onGroupByArtistChange: (Boolean) -> Unit,
-) {
-    fun BridgeSortField.labelRes(): Int =
-        when (this) {
-            BridgeSortField.TITLE -> R.string.sort_title
-            BridgeSortField.ARTIST -> R.string.sort_artist
-            BridgeSortField.YEAR -> R.string.sort_year
-            BridgeSortField.DATE_ADDED -> R.string.sort_date_added
-        }
-    var expanded by remember { mutableStateOf(false) }
-    val ascending = criterion.direction == BridgeSortDirection.ASCENDING
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.group_by_artist)) },
-                onClick = {
-                    onGroupByArtistChange(!groupByArtist)
-                    expanded = false
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        modifier = Modifier.alpha(if (groupByArtist) 1f else 0f),
-                    )
-                },
-            )
-            HorizontalDivider()
-            SORT_FIELDS.forEach { field ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(field.labelRes())) },
-                    onClick = {
-                        onChange(BridgeSortCriterion(field, criterion.direction))
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.alpha(if (field == criterion.field) 1f else 0f),
-                        )
-                    },
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(if (ascending) R.string.sort_ascending else R.string.sort_descending))
-                },
-                onClick = {
-                    val toggled = if (ascending) BridgeSortDirection.DESCENDING else BridgeSortDirection.ASCENDING
-                    onChange(BridgeSortCriterion(criterion.field, toggled))
-                    expanded = false
-                },
-                leadingIcon = {
-                    val icon = if (ascending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
-                    Icon(imageVector = icon, contentDescription = null)
                 },
             )
         }

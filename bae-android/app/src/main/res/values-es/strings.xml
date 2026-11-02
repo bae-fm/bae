@@ -13,13 +13,13 @@
     <string name="close_search">Cerrar la búsqueda</string>
     <string name="clear_search">Vaciar la búsqueda</string>
     <string name="search_placeholder">Buscar álbumes, pistas, compositores y obras</string>
-    <string name="sort">Ordenar</string>
     <string name="sort_title">Título</string>
     <string name="sort_artist">Artista</string>
     <string name="sort_year">Año</string>
     <string name="sort_date_added">Fecha de adición</string>
     <string name="sort_ascending">Ascendente</string>
     <string name="sort_descending">Descendente</string>
+    <string name="sort_by">Ordenar por</string>
     <string name="library_empty_albums">Aún no hay álbumes</string>
     <string name="library_load_failed">No se pudo cargar tu biblioteca.</string>
     <string name="library_load_more_albums_failed">No se pudieron cargar más álbumes.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Álbumes</string>
     <string name="library_mode_artists">Artistas</string>
     <string name="library_switch_view">Cambiar vista</string>
+    <string name="more">Más</string>
     <string name="library_empty_artists">No hay artistas</string>
     <string name="album_count">%1$d álbumes</string>
     <string name="artist_detail_load_failed">No se pudo cargar este artista.</string>

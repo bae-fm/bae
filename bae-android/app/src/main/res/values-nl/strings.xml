@@ -13,13 +13,13 @@
     <string name="close_search">Zoeken sluiten</string>
     <string name="clear_search">Zoeken wissen</string>
     <string name="search_placeholder">Zoek albums, nummers, componisten en werken</string>
-    <string name="sort">Sorteren</string>
     <string name="sort_title">Titel</string>
     <string name="sort_artist">Artiest</string>
     <string name="sort_year">Jaar</string>
     <string name="sort_date_added">Toegevoegd op</string>
     <string name="sort_ascending">Oplopend</string>
     <string name="sort_descending">Aflopend</string>
+    <string name="sort_by">Sorteren op</string>
     <string name="library_empty_albums">Nog geen albums</string>
     <string name="library_load_failed">Kan je bibliotheek niet laden.</string>
     <string name="library_load_more_albums_failed">Kan geen extra albums laden.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">Albums</string>
     <string name="library_mode_artists">Artiesten</string>
     <string name="library_switch_view">Weergave wijzigen</string>
+    <string name="more">Meer</string>
     <string name="library_empty_artists">Geen artiesten</string>
     <string name="album_count">%1$d albums</string>
     <string name="artist_detail_load_failed">Kan deze artiest niet laden.</string>

@@ -13,13 +13,13 @@
     <string name="close_search">סגור חיפוש</string>
     <string name="clear_search">נקה חיפוש</string>
     <string name="search_placeholder">חפש אלבומים, רצועות, מלחינים ויצירות</string>
-    <string name="sort">מיון</string>
     <string name="sort_title">כותרת</string>
     <string name="sort_artist">אמן</string>
     <string name="sort_year">שנה</string>
     <string name="sort_date_added">תאריך הוספה</string>
     <string name="sort_ascending">עולה</string>
     <string name="sort_descending">יורד</string>
+    <string name="sort_by">מיון לפי</string>
     <string name="library_empty_albums">עדיין אין אלבומים</string>
     <string name="library_load_failed">לא ניתן לטעון את הספרייה שלכם.</string>
     <string name="library_load_more_albums_failed">לא ניתן לטעון אלבומים נוספים.</string>
@@ -80,6 +80,7 @@
     <string name="library_mode_albums">אלבומים</string>
     <string name="library_mode_artists">אמנים</string>
     <string name="library_switch_view">החלפת תצוגה</string>
+    <string name="more">עוד</string>
     <string name="library_empty_artists">אין אמנים</string>
     <string name="album_count">%1$d אלבומים</string>
     <string name="artist_detail_load_failed">לא ניתן לטעון את האמן הזה.</string>
