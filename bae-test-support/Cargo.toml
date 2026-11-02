@@ -19,11 +19,9 @@ path = "src/lib.rs"
 bae-core = { workspace = true, features = ["test-utils"] }
 # The decoded-audio shape the sample helpers read.
 bae-audio = { workspace = true }
-# The canned catalog answers and the image cache the helpers build, through
-# the clients' test constructors.
+# The catalog fakes the helpers open libraries over, and the image cache they
+# build through its test constructor.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
-# The labels the canned catalog releases state.
-bae-types = { workspace = true }
 # test-utils gives the test transport whose hosts `RemoteImageHost::route`
 # sends here.
 bae-util = { workspace = true, features = ["test-utils"] }
@@ -34,9 +32,6 @@ coven = { workspace = true, features = ["test-utils"] }
 # For synthesizing a folder-cover image in tests that need a release with art.
 image = { workspace = true, features = ["png"] }
 lofty = { workspace = true }
-# The Discogs release fixtures are rendered as the endpoint's own JSON so the
-# production parser is what turns them into a release.
-serde_json = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

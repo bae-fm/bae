@@ -132,9 +132,8 @@ struct Library {
 /// Import a two-track file-per-track release (with a folder cover) and a
 /// three-track single-file CUE release into one manager.
 async fn seed_library() -> Library {
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
-    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(support::providers_asking(&musicbrainz, &discogs)).await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(fakes.providers()).await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
@@ -195,7 +194,7 @@ async fn seed_library() -> Library {
     std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();
     std::fs::copy(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue")).unwrap();
     let discogs_key =
-        support::seed_discogs_test_release(&discogs, &musicbrainz, cue_discogs_release());
+        fakes.seed_discogs_test_release(cue_discogs_release());
     let cue_import =
         support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let cue_id = "cue".to_string();
@@ -239,7 +238,7 @@ async fn seed_library() -> Library {
 fn cue_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
         master_id: Some("test-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "test-cue-flac",
             "Test Album",
             &[

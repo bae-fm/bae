@@ -1,11 +1,10 @@
 async fn restore_test_library() -> RestoreTestLibrary {
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(support::providers_asking(&musicbrainz, &discogs)).await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(fakes.providers()).await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
-        seed_discogs_test_release(&discogs, &musicbrainz, create_test_album());
+        fakes.seed_discogs_test_release(create_test_album());
     support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
@@ -19,8 +18,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
         database,
         closing,
         catalogs,
-        musicbrainz,
-        discogs,
+        fakes,
         runtime_handle,
         track_ids,
         _temp_dir: temp_dir,
@@ -47,7 +45,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let source = TempDir::new().unwrap();
     generate_cue_flac_files(source.path());
     let release_key =
-        seed_discogs_test_release(&lib.discogs, &lib.musicbrainz, create_cue_flac_test_album());
+        lib.fakes.seed_discogs_test_release(create_cue_flac_test_album());
     let import_handle =
         start_test_import(lib.runtime_handle.clone(), &lib.database, &lib.catalogs, &lib.closing).await;
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -216,17 +214,16 @@ impl CloudOnlyPlaybackFixture {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let musicbrainz = support::offline_musicbrainz();
-        let discogs = support::offline_discogs();
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), cloud) =
-            support::storage_library(temp_dir.path(), support::providers_asking(&musicbrainz, &discogs))
+            support::storage_library(temp_dir.path(), fakes.providers())
                 .await;
         support::connect_storage(&library_manager, &cloud).await;
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
         let release_id_key =
-            seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
+            fakes.seed_discogs_test_release(discogs_release);
         generate_test_flac_files(&album_dir);
 
         let import_handle =

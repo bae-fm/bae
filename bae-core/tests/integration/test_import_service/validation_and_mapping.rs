@@ -72,11 +72,9 @@ fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_i
             front: true,
             darkened: false,
         },
-        ..support::mb_release(mb_release_id, mb_group_id, "Split Album")
+        ..bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
-    let mb_release_id = support::seed_mb_release(
-        &f.musicbrainz,
-        response,
+    let mb_release_id = f.fakes.seed_musicbrainz_response(response,
         mb_group_id,
     );
     f.images.serve_front(&mb_release_id, support::cover_png());
@@ -139,13 +137,13 @@ fn seed_mb_release_with_track_count(
 ) -> String {
     let tracks = (1..=track_count)
         .map(|position| {
-            let mut track = support::mb_track(position as i64, &format!("Source Track {position}"));
+            let mut track = bae_catalogs::test_releases::mb_track(position as i64, &format!("Source Track {position}"));
             let recording = track.recording.as_mut().expect("a recorded track");
             recording.id = Some(format!("rec-slots-{position}"));
             track
         })
         .collect();
-    seed_mb_release_with_media(f, mb_release_id, mb_group_id, vec![support::mb_medium(tracks)])
+    seed_mb_release_with_media(f, mb_release_id, mb_group_id, vec![bae_catalogs::test_releases::mb_medium(tracks)])
 }
 
 /// Seed a plain MusicBrainz release on `media`, credited to one artist.
@@ -174,11 +172,9 @@ fn seed_mb_release_with_media(
             front: true,
             darkened: false,
         },
-        ..support::mb_release(mb_release_id, mb_group_id, "Album Title")
+        ..bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
-    let mb_release_id = support::seed_mb_release(
-        &f.musicbrainz,
-        response,
+    let mb_release_id = f.fakes.seed_musicbrainz_response(response,
         mb_group_id,
     );
     f.images.serve_front(&mb_release_id, support::cover_png());
@@ -464,18 +460,18 @@ fn seed_mb_release_with_front_cover(
             name: "Artist Name".to_string(),
             artist: None,
         }],
-        media: vec![support::mb_medium(vec![MbTrack {
+        media: vec![bae_catalogs::test_releases::mb_medium(vec![MbTrack {
             title: Some("Track".to_string()),
             recording: None,
-            ..support::mb_track(1, "Track")
+            ..bae_catalogs::test_releases::mb_track(1, "Track")
         }])],
         cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
-        ..support::mb_release(mb_release_id, mb_group_id, title)
+        ..bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, title)
     };
-    support::seed_mb_release(&f.musicbrainz, response, mb_group_id)
+    f.fakes.seed_musicbrainz_response(response, mb_group_id)
 }
 
 /// An import with no cover pick takes the release's own cover: no pick means

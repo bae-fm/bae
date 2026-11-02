@@ -29,6 +29,8 @@ tokio = { workspace = true, features = ["sync", "time"] }
 
 [dev-dependencies]
 bae-core = { workspace = true, features = ["test-utils"] }
+# The catalog fakes and releases the import tests seed.
+bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true }
 bae-test-support = { workspace = true }

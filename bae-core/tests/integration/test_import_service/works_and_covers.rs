@@ -60,9 +60,9 @@ fn seed_mb_release_with_works(
     title: &str,
     tracks: Vec<MbTrack>,
 ) -> String {
-    let mut response = support::mb_release(mb_release_id, mb_group_id, title);
+    let mut response = bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, title);
     response.media[0].tracks = tracks;
-    support::seed_mb_release(&f.musicbrainz, response, mb_group_id)
+    f.fakes.seed_musicbrainz_response(response, mb_group_id)
 }
 
 /// A MusicBrainz work MBID is frequently a name-based (version 3) UUID, which
@@ -182,7 +182,7 @@ async fn import_with_cover_art() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release("Cover Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+    let release_id_key = f.fakes.seed_discogs_test_release(release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -227,7 +227,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release("Oversized Cover Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+    let release_id_key = f.fakes.seed_discogs_test_release(release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -296,7 +296,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
     ] {
         let release = discogs_release("Cover Format Album", &["Track"]);
         let f = ImportFixture::new().await;
-        let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+        let release_id_key = f.fakes.seed_discogs_test_release(release);
 
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();

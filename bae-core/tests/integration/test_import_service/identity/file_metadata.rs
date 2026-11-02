@@ -275,7 +275,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
 
     // First import: identified, lands on its own album.
     let release = discogs_release_rich("Album Title", "master-existing", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+    let release_id_key = f.fakes.seed_discogs_test_release(release);
 
     let identified_dir = f.temp_path().join("identified");
     fs::create_dir_all(&identified_dir).unwrap();

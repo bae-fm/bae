@@ -99,9 +99,9 @@ async fn seek_by_ratio_maps_to_a_proportional_position() {
 /// The three-track album matching the `flac` fixtures.
 fn create_test_album() -> DiscogsRelease {
     DiscogsRelease {
-        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master-123".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "test-playback-123",
             "Playback Test Album",
             &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
@@ -144,9 +144,9 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
         country: Some("Test Country".to_string()),
-        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master-cue-flac".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "cue-flac-test-release",
             "Test Album",
             &[

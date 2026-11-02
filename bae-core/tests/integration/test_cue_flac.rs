@@ -14,9 +14,7 @@ use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
-use support::{
-    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release, tracing_init,
-};
+use support::{assert_captured_matches_reference, samples_as_f32, tracing_init};
 use tempfile::TempDir;
 use tracing::info;
 
@@ -325,13 +323,10 @@ async fn import_cue_flac_fixture(
     std::fs::create_dir_all(&album_dir).expect("album dir");
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_flac_fixture_with_seektable(&album_dir);
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
-            .await;
-    let release_id_key =
-        seed_discogs_test_release(&discogs, &musicbrainz, create_test_discogs_release());
+        support::open_test_library_with(&db_dir, fakes.providers()).await;
+    let release_id_key = fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)
             .await;
@@ -493,7 +488,7 @@ async fn test_cue_flac_gapless_track_boundary() {
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
         master_id: Some("test-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "test-cue-flac",
             "Test Album",
             &[
@@ -572,7 +567,7 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
         support::imported_release_setup(
             DiscogsRelease {
                 master_id: Some("pregap-album-master".to_string()),
-                ..support::discogs_test_release(
+                ..bae_catalogs::test_releases::discogs_test_release(
                     "pregap-album-release",
                     "Pregap Album",
                     &[("Pregap One", "0:05"), ("Pregap Two", "0:05")],

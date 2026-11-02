@@ -16,15 +16,14 @@ impl RemoteMultiWindowPlayback {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let musicbrainz = support::offline_musicbrainz();
-        let discogs = support::offline_discogs();
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), cloud) =
-            support::storage_library(temp_dir.path(), support::providers_asking(&musicbrainz, &discogs))
+            support::storage_library(temp_dir.path(), fakes.providers())
                 .await;
         support::connect_storage(&library_manager, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key =
-            seed_discogs_test_release(&discogs, &musicbrainz, create_multi_window_cue_album());
+            fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle =
             start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
         let import_id = uuid::Uuid::new_v4().to_string();

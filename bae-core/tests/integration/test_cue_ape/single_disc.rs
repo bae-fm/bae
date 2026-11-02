@@ -10,7 +10,7 @@ use std::time::Duration;
 use support::start_test_import;
 use support::{
     assert_captured_matches_reference, samples_as_f32,
-    seed_discogs_test_release, tracing_init, wait_for_import_complete,
+    tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tracing::info;
@@ -30,7 +30,7 @@ fn copy_cue_ape_fixture(dir: &Path) {
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
         master_id: Some("test-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "test-cue-ape",
             "Test Album",
             &[("Track One", "0:30"), ("Track Two", "0:30"), ("Track Three", "0:30")],
@@ -66,11 +66,10 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_ape_fixture(&album_dir);
 
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
-    let (library_manager, database, catalogs, closing) = support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs)).await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let (library_manager, database, catalogs, closing) = support::open_test_library_with(&db_dir, fakes.providers()).await;
     let release_id_key =
-        seed_discogs_test_release(&discogs, &musicbrainz, create_test_discogs_release());
+        fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)

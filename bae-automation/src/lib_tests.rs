@@ -798,13 +798,11 @@ mod release_album {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
-        let musicbrainz = bae_test_support::offline_musicbrainz();
-        let discogs = bae_test_support::offline_discogs();
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((manager, database, catalogs, closing), imported) =
             bae_test_support::imported_release_setup_with(
-                &musicbrainz,
-                &discogs,
-                bae_test_support::discogs_test_release(
+                &fakes,
+                bae_catalogs::test_releases::discogs_test_release(
                     "album-set-moved",
                     "Moved Album",
                     &[("Track One", "0:10")],
@@ -818,15 +816,12 @@ mod release_album {
         let picked_dir = imported.temp_dir.path().join("picked");
         std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
         one_track(&picked_dir);
-        let picked_key = bae_test_support::seed_discogs_test_release(
-            &discogs,
-            &musicbrainz,
-            bae_test_support::discogs_test_release(
+        let picked_key =
+            fakes.seed_discogs_test_release(bae_catalogs::test_releases::discogs_test_release(
                 "album-set-picked",
                 "Picked Album",
                 &[("Track One", "0:10")],
-            ),
-        );
+            ));
         let picked_release = bae_test_support::import_folder_and_wait(
             &database,
             &catalogs,

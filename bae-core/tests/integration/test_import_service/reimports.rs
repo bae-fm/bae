@@ -11,7 +11,7 @@ async fn two_sequential_imports() {
     let mut release_keys = vec![];
     for title in &titles {
         let release = discogs_release(title, &["Track"]);
-        release_keys.push(seed_discogs_test_release(&f.discogs,&f.musicbrainz, release));
+        release_keys.push(f.fakes.seed_discogs_test_release(release));
     }
 
     let mut release_ids = vec![];
@@ -57,10 +57,7 @@ async fn repeated_imports_keep_independent_copies() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-    let pressing = seed_discogs_test_release(
-        &f.discogs,
-        &f.musicbrainz,
-        discogs_release("Album Title", &["Track"]),
+    let pressing = f.fakes.seed_discogs_test_release(discogs_release("Album Title", &["Track"]),
     );
     let mut copies = Vec::new();
     for (index, destination) in [

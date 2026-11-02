@@ -10,8 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
 use support::{
-    imported_release_setup, open_test_library, samples_as_f32, seed_discogs_test_release,
-    tracing_init, wait_for_import_complete,
+    imported_release_setup, open_test_library, samples_as_f32, tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tracing::debug;

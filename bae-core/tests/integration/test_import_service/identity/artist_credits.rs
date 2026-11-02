@@ -16,7 +16,7 @@ fn discogs_album_folder(
     title: &str,
 ) -> (std::path::PathBuf, support::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
-    let release_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+    let release_key = f.fakes.seed_discogs_test_release(release);
     let dir = f.temp_path().join(dir_name);
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);
@@ -110,7 +110,7 @@ async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
     assert_eq!(
         artists[0].discogs_artist_id,
-        Some(support::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
+        Some(bae_catalogs::test_releases::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
     );
     assert_eq!(album_artist_id(&f, &catalog_album).await, artists[0].id);
     assert_eq!(album_artist_id(&f, &tagged_album).await, artists[0].id);
@@ -132,7 +132,7 @@ async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() 
     assert_eq!(artists[0].id, tagged_artist, "the artist keeps its own id");
     assert_eq!(
         artists[0].discogs_artist_id,
-        Some(support::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
+        Some(bae_catalogs::test_releases::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
     );
     assert_eq!(album_artist_id(&f, &catalog_album).await, tagged_artist);
 }
@@ -318,7 +318,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     assert_eq!(album_artist_id(&f, &tagged_album).await, catalog_artist);
     assert_eq!(
         artists[0].discogs_artist_id,
-        Some(support::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
+        Some(bae_catalogs::test_releases::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
     );
 }
 
@@ -359,11 +359,11 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
         bae_catalogs::discogs::DiscogsArtist {
             anv: Some("A Variation".to_string()),
             join: Some("&".to_string()),
-            ..support::discogs_artist("discogs-artist-a", "Artist A")
+            ..bae_catalogs::test_releases::discogs_artist("discogs-artist-a", "Artist A")
         },
-        support::discogs_artist("discogs-artist-b", "Artist B"),
+        bae_catalogs::test_releases::discogs_artist("discogs-artist-b", "Artist B"),
     ];
-    let release_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
+    let release_key = f.fakes.seed_discogs_test_release(release);
     let dir = f.temp_path().join("album-credited");
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);

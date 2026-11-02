@@ -94,21 +94,16 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 }
 
 async fn import_a_box_set_under_a_lowered_limit() {
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let ((library_manager, database, catalogs, closing), album_dir, _temp) =
-        support::setup_test_library_with_album_dir(support::providers_asking(
-            &musicbrainz,
-            &discogs,
-        ))
-        .await;
+        support::setup_test_library_with_album_dir(fakes.providers()).await;
     write_box_set(&album_dir);
 
     let release = bae_catalogs::discogs::DiscogsRelease {
         tracklist: (1..=DISCS)
             .flat_map(|disc| {
                 (1..=TRACKS_PER_DISC).map(move |track| {
-                    support::discogs_track(
+                    bae_catalogs::test_releases::discogs_track(
                         &format!("{disc}-{track}"),
                         &format!("Track Title {track}"),
                         "3:00",
@@ -116,9 +111,13 @@ async fn import_a_box_set_under_a_lowered_limit() {
                 })
             })
             .collect(),
-        ..support::discogs_test_release("test-box-set-open-files", "Album Title", &[])
+        ..bae_catalogs::test_releases::discogs_test_release(
+            "test-box-set-open-files",
+            "Album Title",
+            &[],
+        )
     };
-    let release_key = support::seed_discogs_test_release(&discogs, &musicbrainz, release);
+    let release_key = fakes.seed_discogs_test_release(release);
     let import_handle = support::start_test_import(
         tokio::runtime::Handle::current(),
         &database,

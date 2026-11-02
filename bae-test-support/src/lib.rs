@@ -5,8 +5,7 @@
 //! `use bae_test_support as support;`, and the unit tests of the crates above
 //! bae-core use them too, so they are a library of their own.
 //!
-//! The helpers are grouped by what they set up — a Discogs or MusicBrainz
-//! fixture, files on disk, a library, an import, playback — and re-exported
+//! The helpers are grouped by what they set up — files on disk, a library, an import, playback — and re-exported
 //! here, so every caller keeps reaching them as `support::<name>`.
 
 /// The calling crate's `tests/fixtures` directory, with any path segments
@@ -33,12 +32,9 @@ macro_rules! fixture_dir {
 pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
 
 mod audio;
-mod catalogs;
-mod discogs;
 mod files;
 mod import;
 mod library;
-mod musicbrainz;
 mod playback;
 mod profiles;
 mod storage;
@@ -46,11 +42,6 @@ pub use profiles::{made_profile, made_profile_on, requested_profile, requested_p
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
 pub use audio::{assert_captured_matches_reference, filled_sparse_buffer, samples_as_f32};
-pub use catalogs::{offline_discogs, offline_musicbrainz, providers_asking};
-pub use discogs::{
-    discogs_artist, discogs_fixture_id, discogs_test_release, discogs_track,
-    seed_discogs_test_release,
-};
 pub use files::{
     copy_and_tag, cover_png, read_cover_image_bytes, read_fixture, write_cover_png,
     write_tagged_flac, ImageHold, RemoteImageHost, TEST_IMAGE_HOST,
@@ -67,7 +58,6 @@ pub use library::{
     setup_test_library_with_album_dir, start_test_services, temp_test_db, test_library_from_handle,
     test_uuid, tracing_init,
 };
-pub use musicbrainz::{mb_medium, mb_release, mb_track, seed_mb_release};
 pub use playback::{
     next_capture_stream, next_matching, start_capture_playback, start_capture_playback_with_clock,
     start_playback_on, wait_for_seek, wait_until_playing, wall_playback_clock, CaptureStreamRx,

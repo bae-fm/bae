@@ -10,10 +10,9 @@ struct HighSampleRateTestFixture {
 
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let musicbrainz = support::offline_musicbrainz();
-        let discogs = support::offline_discogs();
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-            support::setup_test_library_with_album_dir(support::providers_asking(&musicbrainz, &discogs)).await;
+            support::setup_test_library_with_album_dir(fakes.providers()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
         let fixture_path = bae_test_support::fixture_dir!("flac", "96khz_test.flac");
@@ -23,16 +22,16 @@ impl HighSampleRateTestFixture {
 
         // Create release with one track
         let discogs_release = DiscogsRelease {
-            artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+            artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
             master_id: Some("test-master-96khz".to_string()),
-            ..support::discogs_test_release(
+            ..bae_catalogs::test_releases::discogs_test_release(
                 "high-sample-rate-test",
                 "96kHz Test Album",
                 &[("96kHz Track", "0:03")],
             )
         };
         let release_id_key =
-            seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
+            fakes.seed_discogs_test_release(discogs_release);
 
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
 
@@ -326,12 +325,11 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// their own service comes up — beside the library's store. The `TempDir` owns
 /// the library's files.
 async fn imported_library_without_playback() -> (LibraryManager, bae_core::db::Database, TempDir) {
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(support::providers_asking(&musicbrainz, &discogs)).await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
-        seed_discogs_test_release(&discogs, &musicbrainz, create_test_album());
+        fakes.seed_discogs_test_release(create_test_album());
     support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, database, temp_dir)
 }
@@ -500,10 +498,9 @@ struct RestoreTestLibrary {
     /// The catalog sessions the library was built over, for a test that
     /// imports again.
     catalogs: bae_core::import::CatalogSessions,
-    /// The MusicBrainz and Discogs fakes those sessions ask, which a test
-    /// that imports again seeds.
-    musicbrainz: std::sync::Arc<bae_catalogs::musicbrainz::MusicBrainz>,
-    discogs: std::sync::Arc<bae_catalogs::discogs::client::Discogs>,
+    /// The catalog fakes those sessions ask, which a test that imports again
+    /// seeds.
+    fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     runtime_handle: tokio::runtime::Handle,
     track_ids: Vec<String>,
     _temp_dir: TempDir,

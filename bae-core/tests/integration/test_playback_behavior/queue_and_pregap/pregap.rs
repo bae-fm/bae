@@ -427,9 +427,9 @@ FILE \"Back Album.flac\" WAVE
 
 fn create_back_album() -> DiscogsRelease {
     DiscogsRelease {
-        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("back-album-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "back-album-release",
             "Back Album",
             &[("Back One", "0:05"), ("Back Two", "0:10"), ("Back Three", "0:10")],

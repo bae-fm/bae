@@ -1,6 +1,5 @@
 //! Running the import service over a folder and waiting for what it lands.
 
-use crate::discogs::seed_discogs_test_release;
 use crate::library::setup_test_library_with_album_dir;
 
 fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(String, String)> {
@@ -144,8 +143,9 @@ impl DraftSource {
 }
 
 /// The pick of an import identified by a Discogs release, with no partner
-/// catalog alongside it — what a [`seed_discogs_test_release`] fixture is
-/// imported under.
+/// catalog alongside it — what a
+/// [`bae_catalogs::fake_catalogs::FakeCatalogs::seed_discogs_test_release`]
+/// fixture is imported under.
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
     DraftSource::Pick(bae_core::identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
@@ -279,8 +279,7 @@ where
     G: FnOnce(&std::path::Path),
 {
     imported_release_setup_with(
-        &crate::offline_musicbrainz(),
-        &crate::offline_discogs(),
+        &bae_catalogs::fake_catalogs::FakeCatalogs::offline(),
         release,
         candidate_key,
         import_id,
@@ -289,12 +288,10 @@ where
     .await
 }
 
-/// [`imported_release_setup`] over a library asking `musicbrainz` and
-/// `discogs`, the test's own fakes, which it keeps to seed the releases it
-/// imports next.
+/// [`imported_release_setup`] over a library asking `fakes`, the test's own
+/// catalog fakes, which it keeps to seed the releases it imports next.
 pub async fn imported_release_setup_with<G>(
-    musicbrainz: &std::sync::Arc<bae_catalogs::musicbrainz::MusicBrainz>,
-    discogs: &std::sync::Arc<bae_catalogs::discogs::client::Discogs>,
+    fakes: &bae_catalogs::fake_catalogs::FakeCatalogs,
     release: bae_catalogs::discogs::DiscogsRelease,
     candidate_key: &str,
     import_id: String,
@@ -315,9 +312,9 @@ where
     G: FnOnce(&std::path::Path),
 {
     let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-        setup_test_library_with_album_dir(crate::providers_asking(musicbrainz, discogs)).await;
+        setup_test_library_with_album_dir(fakes.providers()).await;
 
-    let release_id_key = seed_discogs_test_release(discogs, musicbrainz, release);
+    let release_id_key = fakes.seed_discogs_test_release(release);
     generate_files(&album_dir);
 
     let (release_id, _album_id) = send_folder_import_and_wait(

@@ -22,7 +22,7 @@ use bae_types::pressing::ReleaseLabel;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use support::{seed_discogs_test_release, HANG_GUARD};
+use support::HANG_GUARD;
 use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -32,9 +32,8 @@ struct ImportFixture {
     storage: Arc<coven::MemoryStorage>,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
-    /// The MusicBrainz and Discogs fakes the library asks, which a test seeds.
-    musicbrainz: Arc<bae_catalogs::musicbrainz::MusicBrainz>,
-    discogs: Arc<bae_catalogs::discogs::client::Discogs>,
+    /// The catalog fakes the library asks, which a test seeds.
+    fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     ids: Arc<dyn coven::IdSource>,
     /// The Cover Art Archive and image host this library's requests reach.
     /// Every MusicBrainz release group offers a derived cover address, and an
@@ -51,18 +50,9 @@ impl ImportFixture {
         fs::create_dir_all(&db_dir).unwrap();
 
         let http = images.route(bae_util::http::Http::for_test());
-        let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::for_test(http.clone()));
-        let discogs = Arc::new(bae_catalogs::discogs::client::Discogs::for_test(http.clone()));
-        let ((library_manager, db, catalogs, closing), storage) = support::storage_library(
-            &db_dir,
-            bae_catalogs::providers::Providers::for_test(
-                http.clone(),
-                musicbrainz.clone(),
-                discogs.clone(),
-                Arc::new(bae_catalogs::wikidata::Wikidata::for_test(http.clone())),
-            ),
-        )
-        .await;
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
+        let ((library_manager, db, catalogs, closing), storage) =
+            support::storage_library(&db_dir, fakes.providers()).await;
         let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
         support::configure_test_discogs(&catalogs).await;
 
@@ -75,17 +65,7 @@ impl ImportFixture {
         )
         .await;
 
-        Self {
-            db,
-            storage,
-            handle,
-            library_manager,
-            musicbrainz,
-            discogs,
-            ids,
-            images,
-            _temp: temp,
-        }
+        Self { db, storage, handle, library_manager, fakes, ids, images, _temp: temp }
     }
 
     fn temp_path(&self) -> &Path {
@@ -290,7 +270,11 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
     DiscogsRelease {
         country: None,
         labels: vec![],
-        ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
+        ..bae_catalogs::test_releases::discogs_test_release(
+            &synthetic_release_id(title),
+            title,
+            &tracks,
+        )
     }
 }
 

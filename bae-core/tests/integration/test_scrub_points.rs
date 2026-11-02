@@ -216,7 +216,7 @@ async fn tracks(library_manager: &LibraryManager, release_id: &str) -> Vec<Resol
 fn release(id: &str, tracks: &[(&str, &str)]) -> DiscogsRelease {
     DiscogsRelease {
         master_id: Some(format!("{id}-master")),
-        ..support::discogs_test_release(id, "Album Title", tracks)
+        ..bae_catalogs::test_releases::discogs_test_release(id, "Album Title", tracks)
     }
 }
 

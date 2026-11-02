@@ -19,7 +19,7 @@ fn write_tracks(dir: &std::path::Path) {
 /// close returns: not the track playback was reading, not its store.
 #[tokio::test(flavor = "multi_thread")]
 async fn closing_a_playing_library_leaves_none_of_its_files_open() {
-    let release = support::discogs_test_release(
+    let release = bae_catalogs::test_releases::discogs_test_release(
         "close-files-release",
         "Close Test Album",
         &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],

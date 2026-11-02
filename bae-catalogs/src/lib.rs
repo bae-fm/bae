@@ -59,6 +59,8 @@ mod serde_helpers;
 pub mod source_release;
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 pub mod test_documents;
+#[cfg(all(any(test, feature = "test-utils"), desktop))]
+pub mod test_releases;
 #[cfg(desktop)]
 pub mod wikidata;
 

@@ -225,9 +225,9 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
         country: Some("Test Country".to_string()),
-        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "cue-flac-cpu-test",
             "Test Album",
             &[("Track One", "0:30"), ("Track Two", "0:30"), ("Track Three", "0:30")],
@@ -239,9 +239,9 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
 fn create_mp3_test_album() -> DiscogsRelease {
     DiscogsRelease {
         country: Some("Test Country".to_string()),
-        artists: vec![support::discogs_artist("test-artist-2", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-2", "Test Artist")],
         master_id: Some("test-master-mp3".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "mp3-cpu-test",
             "Test Album MP3",
             &[("Track 1", "0:30"), ("Track 2", "0:30"), ("Track 3", "0:30")],

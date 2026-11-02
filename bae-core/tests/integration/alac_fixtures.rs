@@ -17,7 +17,7 @@ use bae_core::import::folder_scanner::{
 use bae_core::library::LibraryManager;
 use bae_util::content_type::ContentType;
 use std::path::{Path, PathBuf};
-use support::{seed_discogs_test_release, tracing_init};
+use support::tracing_init;
 use tempfile::TempDir;
 use tracing::info;
 
@@ -30,7 +30,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
     DiscogsRelease {
         country: None,
         labels: vec![],
-        ..support::discogs_test_release(id, title, &tracks)
+        ..bae_catalogs::test_releases::discogs_test_release(id, title, &tracks)
     }
 }
 
@@ -47,14 +47,12 @@ async fn import_single_m4a_fixture(
     let dest = album_dir.join(fixture_name);
     std::fs::copy(&fixture_path, &dest).expect("copy fixture");
 
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
-            .await;
+        support::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
+    let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
     let release_id =
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)
@@ -221,18 +219,16 @@ async fn import_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
-            .await;
+        support::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release(
         "test-cue-alac",
         "Album Title",
         &["Track One", "Track Two", "Track Three"],
     );
-    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
+    let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
     let release_id =
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)

@@ -456,9 +456,8 @@ async fn lossy_track_reports_bit_depth_zero() {
 
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
-    let musicbrainz = support::offline_musicbrainz();
-    let discogs = support::offline_discogs();
-    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(support::providers_asking(&musicbrainz, &discogs)).await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(fakes.providers()).await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -468,14 +467,11 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .join("bae-core/test-fixtures/audio-format/placeholder-opus.opus");
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
-    let discogs_key = support::seed_discogs_test_release(
-        &discogs,
-        &musicbrainz,
-        DiscogsRelease {
+    let discogs_key = fakes.seed_discogs_test_release(DiscogsRelease {
             country: None,
             labels: vec![],
-            artists: vec![support::discogs_artist("discogs-lossy-artist", "Lossy Artist")],
-            ..support::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
+            artists: vec![bae_catalogs::test_releases::discogs_artist("discogs-lossy-artist", "Lossy Artist")],
+            ..bae_catalogs::test_releases::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
         },
     );
     let import =

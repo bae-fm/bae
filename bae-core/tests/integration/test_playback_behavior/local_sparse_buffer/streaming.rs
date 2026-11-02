@@ -74,9 +74,9 @@ FILE \"Multi Window Album.flac\" WAVE
 
 fn create_multi_window_cue_album() -> DiscogsRelease {
     DiscogsRelease {
-        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("multi-window-cue-master".to_string()),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             "multi-window-cue-release",
             "Multi Window Album",
             &[

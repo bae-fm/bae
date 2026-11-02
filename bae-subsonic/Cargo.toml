@@ -29,6 +29,8 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 bae-test-support = { workspace = true }
+# The catalog fakes and releases the server tests seed.
+bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }
 # The pressing values the server tests seed releases with.
 bae-types = { workspace = true }

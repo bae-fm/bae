@@ -52,7 +52,7 @@ async fn import_image(
     let name = format!("Album Title.{extension}");
     let release = DiscogsRelease {
         master_id: Some(format!("image-{extension}-master")),
-        ..support::discogs_test_release(
+        ..bae_catalogs::test_releases::discogs_test_release(
             &format!("image-{extension}"),
             "Album Title",
             &[("Track One", "0:03"), ("Track Two", "0:03"), ("Track Three", "0:03")],
