@@ -209,8 +209,9 @@ mod tests {
     use tempfile::TempDir;
 
     async fn test_manager() -> (AppServices, TempDir) {
-        let (manager, _database, _, temp) = support::setup_test_library().await;
-        let services = AppServices::for_test(manager).await.expect("app services");
+        let ((manager, database, catalogs, closing), temp) = support::setup_test_library().await;
+        let services =
+            bae_test_support::start_test_services(manager, database, catalogs, closing).await;
         (services, temp)
     }
 

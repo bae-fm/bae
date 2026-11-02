@@ -177,7 +177,7 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     fixture.import.stop_and_join();
 
     let import =
-        fixture.manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+        fixture.manager.start_import().await.unwrap();
     let identification = import.start_identification_queue();
     fixture.rescan(&import, 1).await;
     tokio::time::timeout(Duration::from_secs(30), identification.automatic_drained_for_test())

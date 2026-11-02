@@ -137,22 +137,12 @@ mod tests {
             crate::db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
                 .await
                 .unwrap();
-        let catalogs = crate::import::CatalogSessions::new(
-            crate::catalog_model::providers::Providers::offline(),
-            database.clone(),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-        );
-        let manager = crate::library::LibraryManager::new(
+        let manager = crate::app::test_library::TestLibrary::open(
             database.clone(),
             crate::config::AppDir::under_home(directory.path()).unwrap(),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            catalogs,
-        );
+            crate::catalog_model::providers::Providers::offline(),
+        )
+        .await;
         let (reader, _read) =
             tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();
         let mut events = super::reconfigurable_live_query_events(

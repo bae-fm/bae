@@ -24,7 +24,7 @@ async fn pure_reads_use_the_read_connection() {
     db.get_release_records("missing").await.unwrap();
     db.load_playback_state().await.unwrap();
     db.queue_value().await.unwrap();
-    let queue = db.playback_queue_tables();
+    let queue = bae_core::db::PlaybackQueueTables::new(db.clone());
     queue.repeat().await.unwrap();
     queue.context_track_count().await.unwrap();
     queue.front().await.unwrap();

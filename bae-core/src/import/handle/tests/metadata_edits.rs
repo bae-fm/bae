@@ -459,7 +459,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     assert_eq!(cover.selection, crate::import::CoverSelection::Local("cover.jpg".to_string()));
     shut_down(handle).await;
 
-    let reopened = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let reopened = manager.start_import().await.unwrap();
     assert_eq!(
         pane(&reopened, &key)
             .await

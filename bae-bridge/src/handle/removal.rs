@@ -132,9 +132,11 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (manager, root) = bae_test_support::setup_fresh_library(&runtime);
+        let ((manager, database, catalogs, closing), root) =
+            bae_test_support::setup_fresh_library(&runtime);
         std::fs::create_dir_all(manager.library_path().join("cache")).unwrap();
-        let services = runtime.block_on(AppServices::for_test(manager)).unwrap();
+        let services = runtime
+            .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
         let app = Arc::new(
             AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
                 .unwrap(),

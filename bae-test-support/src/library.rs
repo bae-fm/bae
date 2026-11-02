@@ -1,5 +1,5 @@
-//! Test libraries: a database, a `LibraryManager` over it, and the runtimes
-//! and ids the tests around them need.
+//! Test libraries: a database, a library opened over it as the app opens one,
+//! and the runtimes and ids the tests around them need.
 
 /// Install the test log subscriber; the first test in the process to call
 /// this installs it, and every later call finds it there.
@@ -34,20 +34,21 @@ pub async fn temp_test_db() -> (bae_core::db::Database, tempfile::TempDir) {
     (database, temp_dir)
 }
 
-/// Open `dir/test.db` and build a [`LibraryManager`] over it, with `dir` as the
-/// library's store dir. Returns the catalog sessions the manager asks through
-/// beside it, which a test that imports stores its Discogs key with.
-///
-/// The database-only constructor, not the production `open` path — the same one
-/// every test binary was assembling by hand. Takes the directory rather than
-/// making one, so a test that already owns its library directory (a cloned
-/// fixture template, a `db/` subdirectory next to an `album/`) uses it too.
-///
-/// [`LibraryManager`]: bae_core::library::LibraryManager
+/// Open `dir/test.db` as a library, through the app's own opening step, with
+/// `dir` as the library's store dir, and return its manager, the store under
+/// it, the catalog sessions it asks through, and the token whose cancel ends
+/// what runs while it is open. [`start_test_services`] takes them to start the
+/// library's services over the same store. Takes the directory rather than making
+/// one, so a test that already owns its library directory (a cloned fixture
+/// template, a `db/` subdirectory next to an `album/`) uses it too.
 pub async fn open_test_library(
     dir: &std::path::Path,
-) -> (bae_core::library::LibraryManager, bae_core::db::Database, bae_core::import::CatalogSessions)
-{
+) -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+) {
     open_test_library_with(dir, bae_core::catalog_model::providers::Providers::offline()).await
 }
 
@@ -56,36 +57,53 @@ pub async fn open_test_library(
 pub async fn open_test_library_with(
     dir: &std::path::Path,
     providers: bae_core::catalog_model::providers::Providers,
-) -> (bae_core::library::LibraryManager, bae_core::db::Database, bae_core::import::CatalogSessions)
-{
+) -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+) {
     let database = open_test_db(dir).await;
-    manager_for_database(database, dir, providers)
+    open_library(database, bae_core::config::AppDir::under_home(dir).unwrap(), providers).await
 }
 
-/// A manager over an installation the test created with its own storage and custody.
-pub fn test_library_from_handle(
+/// A library over an installation the test created with its own storage and
+/// custody.
+pub async fn test_library_from_handle(
     handle: coven::CovenHandle,
     dir: &std::path::Path,
     providers: bae_core::catalog_model::providers::Providers,
-) -> (bae_core::library::LibraryManager, bae_core::db::Database, bae_core::import::CatalogSessions)
-{
-    manager_for_database(
+) -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+) {
+    open_library(
         bae_core::db::Database::from_handle(
             handle,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidIds),
         ),
-        dir,
+        bae_core::config::AppDir::under_home(dir).unwrap(),
         providers,
     )
+    .await
 }
 
-fn manager_for_database(
+/// Open the library over `database` as the app does: the catalog sessions
+/// over the same store and the closing token are built here, as the bootstrap
+/// builds them, and passed to the app's opening step.
+async fn open_library(
     database: bae_core::db::Database,
-    dir: &std::path::Path,
+    app_dir: bae_core::config::AppDir,
     providers: bae_core::catalog_model::providers::Providers,
-) -> (bae_core::library::LibraryManager, bae_core::db::Database, bae_core::import::CatalogSessions)
-{
+) -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+) {
     let remote_images =
         bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
     let catalogs = bae_core::import::CatalogSessions::new(
@@ -94,91 +112,122 @@ fn manager_for_database(
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let library_manager = bae_core::library::LibraryManager::new(
+    let closing = bae_core::library::CancellationToken::new();
+    let manager = bae_core::app::open_library_manager(
         database.clone(),
-        bae_core::config::AppDir::under_home(dir).unwrap(),
+        catalogs.clone(),
+        closing.clone(),
+        app_dir,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         remote_images,
-        catalogs.clone(),
-    );
-    (library_manager, database, catalogs)
+    )
+    .await
+    .expect("open the test library");
+    (manager, database, catalogs, closing)
+}
+
+/// Start the services of a library [`open_test_library`] opened, through the
+/// app's own step, with playback on a device that plays nothing and no
+/// stored queue restored.
+pub async fn start_test_services(
+    manager: bae_core::library::LibraryManager,
+    database: bae_core::db::Database,
+    catalogs: bae_core::import::CatalogSessions,
+    closing: bae_core::library::CancellationToken,
+) -> bae_core::library::AppServices {
+    let remote_images =
+        bae_catalogs::remote_image::RemoteImageCache::for_test(catalogs.providers().http().clone());
+    bae_core::app::start_library_services(
+        manager,
+        database,
+        catalogs,
+        closing,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        remote_images,
+        50,
+        false,
+        crate::wall_playback_clock(),
+        bae_core::app::PlaybackOutput::Device(Box::new(
+            bae_core::playback::audio_output::FailingAudioDevice,
+        )),
+    )
+    .await
+    .expect("the test library's services start")
 }
 
 /// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
 /// owns the database file, so it must outlive the manager.
 pub async fn setup_test_library() -> (
-    bae_core::library::LibraryManager,
-    bae_core::db::Database,
-    bae_core::import::CatalogSessions,
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
     tempfile::TempDir,
 ) {
     tracing_init();
     let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
-    let (library_manager, database, catalogs) = open_test_library(temp_dir.path()).await;
-    (library_manager, database, catalogs, temp_dir)
+    let library = open_test_library(temp_dir.path()).await;
+    (library, temp_dir)
 }
 
 /// [`setup_test_library`] with an `album/` directory made alongside it, for a
-/// test that writes audio into a folder and imports that folder. Returns
-/// (manager, catalogs, album_dir, temp_dir); the `TempDir` owns both
-/// directories, so it must outlive the manager.
+/// test that writes audio into a folder and imports that folder. The
+/// `TempDir` owns both directories, so it must outlive the manager.
 pub async fn setup_test_library_with_album_dir() -> (
-    bae_core::library::LibraryManager,
-    bae_core::import::CatalogSessions,
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
     std::path::PathBuf,
     tempfile::TempDir,
 ) {
-    let (library_manager, _database, catalogs, temp_dir) = setup_test_library().await;
+    let (library, temp_dir) = setup_test_library().await;
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).expect("test album dir");
-    (library_manager, catalogs, album_dir, temp_dir)
+    (library, album_dir, temp_dir)
 }
 
-/// Set up a fresh library + LibraryManager through the production creation and
-/// open paths. No sync manager — tests configure sync themselves via
+/// Set up a fresh library through the production creation and open paths.
+/// Sync is not set up: tests configure it themselves via
 /// connect_*/save_s3_config.
 pub fn setup_fresh_library(
     runtime: &tokio::runtime::Runtime,
-) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
+) -> (
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
+    tempfile::TempDir,
+) {
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_core::config::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
-    let handle = runtime
-        .block_on(
-            bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
-                .create_store("Test Library"),
-        )
-        .expect("create fresh test store");
-    let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
-    let database = bae_core::db::Database::from_handle(
-        handle,
-        clock.clone(),
-        std::sync::Arc::new(coven::UuidIds),
-    );
-    let providers = bae_core::catalog_model::providers::Providers::offline();
-    let remote_images =
-        bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
-    let catalogs = bae_core::import::CatalogSessions::new(
-        providers,
-        database.clone(),
-        bae_core::diagnostics::Diagnostics::noop(),
-        runtime.handle().clone(),
-    );
-    let lm = bae_core::library::LibraryManager::new(
-        database,
-        app_dir,
-        clock,
-        std::sync::Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
-        runtime.handle().clone(),
-        remote_images,
-        catalogs,
-    );
-
-    (lm, tmp)
+    let library = runtime.block_on(async {
+        let handle = bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
+            .create_store("Test Library")
+            .await
+            .expect("create fresh test store");
+        let database = bae_core::db::Database::from_handle(
+            handle,
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidIds),
+        );
+        open_library(database, app_dir, bae_core::catalog_model::providers::Providers::offline())
+            .await
+    });
+    (library, tmp)
 }
 
 /// A multi-threaded runtime with every driver enabled, for a `#[test]` that has
@@ -198,9 +247,8 @@ pub fn multi_thread_runtime() -> tokio::runtime::Runtime {
 pub fn runtime_with_services(
 ) -> (tokio::runtime::Runtime, bae_core::library::AppServices, tempfile::TempDir) {
     let runtime = multi_thread_runtime();
-    let (manager, tmp) = setup_fresh_library(&runtime);
-    let services =
-        runtime.block_on(bae_core::library::AppServices::for_test(manager)).expect("app services");
+    let ((manager, database, catalogs, closing), tmp) = setup_fresh_library(&runtime);
+    let services = runtime.block_on(start_test_services(manager, database, catalogs, closing));
     (runtime, services, tmp)
 }
 

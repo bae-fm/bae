@@ -3,8 +3,8 @@ use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use tempfile::TempDir;
 
 /// Build a real `AppServices` — library manager, actor-backed playback,
-/// and (natively) the import/identify/extraction trio — wired up exactly
-/// as `bootstrap` does for desktop, seeded with one release of
+/// and (natively) the import/identify/extraction trio — through the step
+/// `bootstrap` starts them with on desktop, seeded with one release of
 /// `track_count` tracks. Starts playing the release from its first track,
 /// so the queue's context lane is the one a real play fills, for the
 /// upcoming-window subscription to read. The seeded tracks have no
@@ -51,48 +51,23 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         track_ids.push(track_id);
     }
 
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    // Playback on a device with no hardware behind it, not the real cpal
+    // sink: this test drives the playback actor for its queue behavior and
+    // never plays audio (track prep fails before any stream is built).
+    // Building a cpal output would reach for the system audio device, and on
+    // Windows a second such build on a fresh actor thread faults — cpal's
+    // process-global WASAPI device enumerator is left dangling once the first
+    // actor thread that made it exits (the enumerator dies with that thread's
+    // COM apartment), and the test builds one player per case.
+    let services = crate::app::test_library::TestLibrary::open(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs,
-    );
-
-    // A device with no hardware behind it, not the real cpal sink: this test
-    // drives the playback actor for its queue behavior and never plays audio
-    // (track prep fails before any stream is built). Building a cpal output
-    // would reach for the system audio device, and on Windows a second such
-    // build on a fresh actor thread faults — cpal's process-global WASAPI
-    // device enumerator is left dangling once the first actor thread that made
-    // it exits (the enumerator dies with that thread's COM apartment), and the
-    // test builds one player per case.
-    let playback = manager
-        .start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            50,
-            false,
-            Box::new(crate::playback::audio_output::FailingAudioDevice),
-        )
-        .await
-        .expect("start playback");
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let services = {
-        let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
-        AppServices::new(manager, playback, import)
-    };
-    #[cfg(any(target_os = "ios", target_os = "android"))]
-    let services = AppServices::new(manager, playback);
+        crate::catalog_model::providers::Providers::offline(),
+    )
+    .await
+    .start_services()
+    .await
+    .expect("the services start");
 
     services.playback_play_release(release.id.clone(), Some(track_ids[0].clone()), false);
 

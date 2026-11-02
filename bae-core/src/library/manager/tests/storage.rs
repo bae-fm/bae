@@ -434,7 +434,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
 
-    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
+    let services = manager.start_services().await.unwrap();
     let values = services.subscribe_storage_browse(crate::library::StorageBrowseView {
         sort: crate::db::StorageSortCriterion {
             field: crate::db::StorageSortField::AlbumTitle,
@@ -571,7 +571,7 @@ async fn next_storage_value(
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
-    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
+    let services = manager.start_services().await.unwrap();
     let window = |offset, limit| crate::db::LibraryPageWindow { offset, limit };
     let view = |direction, filter, windows: &[crate::db::LibraryPageWindow]| {
         crate::library::StorageBrowseView {

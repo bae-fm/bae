@@ -254,7 +254,7 @@ use bae_catalogs::catalog::Catalog;
 
 /// Set up a manager with a single test artist that the helpers below
 /// reference for inserted albums.
-async fn setup_test_db_with_artist() -> (LibraryManager, Database, TempDir) {
+async fn setup_test_db_with_artist() -> (TestLibrary, Database, TempDir) {
     let (manager, database, tmp) = setup_test_manager().await;
     let artist = DbArtist {
         id: TEST_ARTIST_ID.to_string(),
@@ -366,7 +366,7 @@ async fn insert_with_identities(
 async fn album_with(
     title: &str,
     identities: &[ReleaseRecord],
-) -> (LibraryManager, Database, TempDir, DbAlbum, DbRelease) {
+) -> (TestLibrary, Database, TempDir, DbAlbum, DbRelease) {
     let (manager, database, tmp) = setup_test_db_with_artist().await;
     let album = make_album(title);
     let release = make_release(&album.id);
@@ -651,7 +651,7 @@ async fn test_check_cross_source_doesnt_leak() {
 
 /// A library holding album X filed under MusicBrainz group `mb-rg-x` and
 /// album Y filed under Discogs master `d-master-y`.
-async fn two_albums() -> (LibraryManager, Database, TempDir, DbAlbum, DbAlbum) {
+async fn two_albums() -> (TestLibrary, Database, TempDir, DbAlbum, DbAlbum) {
     let (manager, database, tmp, x, _) =
         album_with("Album X", &[mb_identity("mb-rg-x", "mb-rel-x")]).await;
     let y = make_album("Album Y");

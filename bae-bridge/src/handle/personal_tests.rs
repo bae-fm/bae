@@ -10,13 +10,19 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, db, _, storage) = runtime.block_on(bae_test_support::storage_library(
-        root.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    ));
+    let ((manager, db, catalogs, closing), storage) =
+        runtime.block_on(bae_test_support::storage_library(
+            root.path(),
+            bae_core::catalog_model::providers::Providers::offline(),
+        ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
     let made = runtime.block_on(bae_test_support::made_profile(&manager, "Robin"));
-    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
+    let services = runtime.block_on(bae_test_support::start_test_services(
+        manager,
+        db.clone(),
+        catalogs,
+        closing,
+    ));
     let app = Arc::new(
         AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop()).unwrap(),
     );

@@ -352,28 +352,37 @@ async fn observe_boundary(
 /// lifetime.
 async fn start_capture_service(
     library_manager: LibraryManager,
+    database: &bae_core::db::Database,
     runtime_handle: tokio::runtime::Handle,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
-    start_capture_service_with_restore(library_manager, runtime_handle, true).await
+    start_capture_service_with_restore(library_manager, database, runtime_handle, true).await
 }
 
 /// `start_capture_service` with the platform's "Restore on launch" preference
 /// explicit, for tests that cover the restore-off launch path.
 async fn start_capture_service_with_restore(
     library_manager: LibraryManager,
+    database: &bae_core::db::Database,
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
     let (capture_device, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioDevice::new();
-    let handle = library_manager
-        .start_playback_service_with_audio_device(
-            runtime_handle,
-            100,
-            restore_playback,
-            Box::new(capture_device),
-        )
+    library_manager
+        .settle_playback_queue(restore_playback)
         .await
-        .expect("start playback");
+        .expect("settle the playback queue");
+    let handle = bae_core::playback::PlaybackService::start_with_audio_device(
+        library_manager,
+        bae_core::db::PlaybackQueueTables::new(database.clone()),
+        bae_core::db::PlaybackNowRow::new(database.clone()),
+        bae_core::db::PlaybackTimelineRow::new(database.clone()),
+        bae_core::diagnostics::Diagnostics::noop(),
+        runtime_handle,
+        100,
+        restore_playback,
+        Box::new(capture_device),
+        Arc::new(bae_core::playback::WallPlaybackClock::new(Arc::new(coven::SystemClock))),
+    );
     (handle, capture_stream_rx)
 }
 
@@ -385,13 +394,18 @@ struct PlaybackTestFixture {
     album_dir: std::path::PathBuf,
     /// Lets tests read the device-local `playback_state` row directly.
     library_manager: LibraryManager,
+    /// The library's store, sessions and closing token, which the import
+    /// service [`Self::services`] starts runs over.
+    database: bae_core::db::Database,
+    catalogs: bae_core::import::CatalogSessions,
+    closing: bae_core::library::CancellationToken,
     /// Dropping this receiver would make stream creation fail.
     _capture_stream_rx: bae_core::playback::CapturedStreams,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        let (library_manager, _, imported) = imported_release_setup(
+        let ((library_manager, database, catalogs, closing), imported) = imported_release_setup(
             create_test_album(),
             "playback",
             uuid::Uuid::new_v4().to_string(),
@@ -406,17 +420,8 @@ impl PlaybackTestFixture {
         let track_ids = imported.track_ids;
         let runtime_handle = tokio::runtime::Handle::current();
 
-        let (capture_device, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioDevice::new();
-        let playback_handle = library_manager
-            .start_playback_service_with_audio_device(
-                runtime_handle,
-                100,
-                true,
-                Box::new(capture_device),
-            )
-            .await
-            .expect("start playback");
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(library_manager.clone(), &database, runtime_handle).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
@@ -424,6 +429,9 @@ impl PlaybackTestFixture {
             track_ids,
             album_dir,
             library_manager,
+            database,
+            catalogs,
+            closing,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         }
@@ -431,15 +439,19 @@ impl PlaybackTestFixture {
     /// The services over this fixture's library and playback, as an app
     /// holds them.
     async fn services(&self) -> bae_core::library::AppServices {
-        let import = self
-            .library_manager
-            .start_import_service(tokio::runtime::Handle::current())
-            .await
-            .expect("start the import service");
+        let import = support::start_import_service(
+            tokio::runtime::Handle::current(),
+            &self.database,
+            &self.catalogs,
+            &self.closing,
+        )
+        .await;
+        let identification = import.start_identification_queue();
         bae_core::library::AppServices::new(
             self.library_manager.clone(),
             self.playback_handle.clone(),
             import,
+            identification,
         )
     }
     /// Wait for a specific state change with timeout

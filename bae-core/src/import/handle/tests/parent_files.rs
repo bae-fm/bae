@@ -7,7 +7,7 @@ use super::*;
 /// track, beside a cover — and a track of its own when `album_track` — read
 /// whole, with the album folder's discs kept as releases of their own.
 async fn album_of_discs(
-    manager: &LibraryManager,
+    manager: &TestLibrary,
     tables: &crate::import::tables::ImportTables,
     tmp: &TempDir,
     discs: &[&str],
@@ -27,7 +27,7 @@ async fn album_of_discs(
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let reading = tables
         .load_folder_release_decisions(&root)

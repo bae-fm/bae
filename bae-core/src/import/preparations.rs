@@ -20,8 +20,8 @@ use crate::import::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict
 use crate::import::ImportError;
 use crate::import::MetadataAuthor;
 
-/// The writer. Held by `LibraryManager` beside the database it writes
-/// through; the import handle resolves keys, holds the commit lock, and
+/// The writer, over the database it writes through. The import service
+/// holds one; the import handle resolves keys, holds the commit lock, and
 /// fetches the cover bytes a change needs, then hands the change here.
 #[derive(Clone)]
 pub struct CandidatePreparations {

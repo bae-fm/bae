@@ -2,6 +2,7 @@
 //! fixture answers their URLs and records each request.
 
 use super::*;
+use crate::app::test_library::TestLibrary;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::db::Database;
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
@@ -11,7 +12,6 @@ use crate::import::tables::{
     DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
-use crate::library::LibraryManager;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -271,7 +271,7 @@ impl ArtworkAnalyzer for GatedAnalyzer {
 }
 
 struct Fixture {
-    manager: LibraryManager,
+    manager: TestLibrary,
     /// The store under `manager`, for a test that breaks a row directly.
     database: Database,
     /// The writer the handle uses, for tests that write a candidate directly.
@@ -326,26 +326,20 @@ impl Fixture {
             .serve("api.discogs.com", &provider.base_url);
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
-        let catalogs = crate::import::CatalogSessions::new(
-            // Production request spacing: admission order is part of what these
-            // tests measure.
-            crate::catalog_model::providers::Providers::new(http.clone()),
-            database.clone(),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-        );
-        let manager = LibraryManager::new(
+        let manager = TestLibrary::open_with(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
+            // Production request spacing: admission order is part of what these
+            // tests measure.
+            crate::catalog_model::providers::Providers::new(http),
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
-            catalogs.clone(),
-        );
+        )
+        .await;
+        let catalogs = manager.catalogs().clone();
 
-        let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+        let import = manager.start_import().await.unwrap();
 
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();

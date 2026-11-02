@@ -78,7 +78,7 @@ pub(crate) async fn empty_db() -> (super::Database, tempfile::TempDir) {
 /// The queue rows of `track_ids` queued in Up Next, as the queue value shows
 /// them.
 async fn queue_items(db: &super::Database, track_ids: &[&str]) -> Vec<crate::queue::QueueItem> {
-    db.playback_queue_tables()
+    crate::db::PlaybackQueueTables::new(db.clone())
         .add_manual(track_ids.iter().map(|id| id.to_string()).collect(), super::ManualPlace::End)
         .await
         .unwrap();

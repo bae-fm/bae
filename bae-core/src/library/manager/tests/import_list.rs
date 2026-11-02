@@ -61,11 +61,11 @@ fn done_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
 /// A list opened as the import handle opens one: closing the library ends
 /// it.
 async fn open_list(
-    manager: &LibraryManager,
+    manager: &TestLibrary,
     view: crate::import::ImportListView,
     windows: crate::db::LibraryPageWindows,
 ) -> Result<crate::import::LiveImportList, crate::import::ImportError> {
-    manager.start_import_service(tokio::runtime::Handle::current()).await?.open_list(view, windows).await
+    manager.start_import().await?.open_list(view, windows).await
 }
 
 /// One read of `list` through `offset` and `limit`.

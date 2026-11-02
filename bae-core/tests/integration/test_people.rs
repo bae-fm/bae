@@ -6,7 +6,7 @@ use bae_test_support::{
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, database, _, storage) =
+    let ((manager, database, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
@@ -46,7 +46,7 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 #[tokio::test]
 async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, database, _, storage) =
+    let ((manager, database, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     connect_storage(&manager, &storage).await;
@@ -83,7 +83,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
 #[tokio::test]
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, _database, _, storage) =
+    let ((manager, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     connect_storage(&manager, &storage).await;
@@ -113,7 +113,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
 #[tokio::test]
 async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, _database, _, storage) =
+    let ((manager, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     connect_storage(&manager, &storage).await;
@@ -282,16 +282,17 @@ impl Household {
     }
 
     /// A library manager over the owner's store, in `dir`.
-    pub(super) fn owners_manager(
+    pub(super) async fn owners_manager(
         &self,
         dir: &std::path::Path,
     ) -> bae_core::library::LibraryManager {
-        bae_test_support::test_library_from_handle(
+        let (manager, ..) = bae_test_support::test_library_from_handle(
             self.owner.clone(),
             dir,
             bae_core::catalog_model::providers::Providers::offline(),
         )
-        .0
+        .await;
+        manager
     }
 
     /// Join with `code` from a device of its own, named Guest Device.

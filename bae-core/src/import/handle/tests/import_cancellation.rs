@@ -14,7 +14,7 @@ async fn two_importable(
     let other = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &tmp, "First Album").await;
     let (_, second, _) = picked_candidate(&tables, &other, "Second Album").await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     for key in [&first, &second] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
         handle

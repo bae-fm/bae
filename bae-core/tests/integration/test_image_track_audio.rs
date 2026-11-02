@@ -58,7 +58,7 @@ async fn import_image(
             &[("Track One", "0:03"), ("Track Two", "0:03"), ("Track Three", "0:03")],
         )
     };
-    let (library_manager, _, imported) = support::imported_release_setup(
+    let ((library_manager, ..), imported) = support::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),

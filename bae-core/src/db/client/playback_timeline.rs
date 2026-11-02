@@ -12,11 +12,14 @@ pub struct PlaybackTimelineRow {
     db: Database,
 }
 
-impl Database {
-    pub fn playback_timeline_row(&self) -> PlaybackTimelineRow {
-        PlaybackTimelineRow { db: self.clone() }
+impl PlaybackTimelineRow {
+    /// The row over `db`.
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
+}
 
+impl Database {
     /// Follow where playback is, as the surfaces that move the position on
     /// themselves read it.
     pub(crate) fn subscribe_playback_timeline(&self) -> coven::LiveQuery<PlaybackTimeline> {

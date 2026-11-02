@@ -168,8 +168,7 @@ impl LibraryManager {
         track_id: String,
         position_ms: Option<u64>,
     ) -> Result<(), LibraryFixtureError> {
-        let filled = self
-            .playback_queue_tables()
+        let filled = crate::db::PlaybackQueueTables::new(self.database.clone())
             .fill(crate::db::ContextFill::Release {
                 release_id: release_id.to_string(),
                 start: crate::db::ReleaseStart::Track(track_id.clone()),

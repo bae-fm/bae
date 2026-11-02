@@ -54,7 +54,13 @@ async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
         }
     }
     let names = ids.iter().map(|(name, id)| (id.clone(), name.clone())).collect();
-    Fixture { _home: home, queue: PlaybackQueue::new(db.playback_queue_tables()), db, ids, names }
+    Fixture {
+        _home: home,
+        queue: PlaybackQueue::new(crate::db::PlaybackQueueTables::new(db.clone())),
+        db,
+        ids,
+        names,
+    }
 }
 
 /// One release `r1` holding `tracks`.
@@ -140,8 +146,7 @@ impl Fixture {
 
     /// Every track of the context lane, played or not, by name.
     async fn context_order(&self) -> Vec<String> {
-        self.db
-            .playback_queue_tables()
+        crate::db::PlaybackQueueTables::new(self.db.clone())
             .context_order()
             .await
             .unwrap()

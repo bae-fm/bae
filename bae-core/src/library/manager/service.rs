@@ -8,7 +8,7 @@ fn subscription_unstarted(error: &LibraryError) {
 
 /// The manager's background tasks, and the signal that ends them and the
 /// subscriptions [`LibraryManager::until_closed`] made.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(super) struct BackgroundTasks {
     tracker: tokio_util::task::TaskTracker,
     closing: tokio_util::sync::CancellationToken,
@@ -16,6 +16,11 @@ pub(super) struct BackgroundTasks {
 }
 
 impl BackgroundTasks {
+    /// Tasks that `closing` ends, with the subscriptions they made.
+    fn new(closing: tokio_util::sync::CancellationToken) -> Self {
+        Self { tracker: Default::default(), closing, closed: Default::default() }
+    }
+
     /// End every task and wait for each to be gone, with whatever it held.
     pub(super) async fn close(&self) {
         {
@@ -29,9 +34,11 @@ impl BackgroundTasks {
 }
 
 impl LibraryManager {
-    /// Create the library manager over the library's opened store, running
-    /// its file transfers as this device's preferences for it say.
-    pub async fn open(
+    /// Create the library manager over the library's opened store, with the
+    /// services it drives, after the store's opening steps: its file
+    /// transfers run as this device's preferences for it say, and what no
+    /// process outlives is cleared. `closing` ends its tasks when it closes.
+    pub(crate) async fn open(
         database: Database,
         app_dir: crate::config::AppDir,
         clock: ClockRef,
@@ -39,7 +46,11 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
+        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
+        sync: SyncController,
+        downloads: crate::library::Downloads,
+        #[cfg(desktop)] outputs: crate::library::Outputs,
+        closing: tokio_util::sync::CancellationToken,
     ) -> Result<Self, crate::db::DbError> {
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
@@ -53,72 +64,8 @@ impl LibraryManager {
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
         database.record_sync_start_failure(None).await?;
-        #[cfg(desktop)]
-        let catalogs = crate::import::CatalogSessions::new(
-            providers,
-            database.clone(),
-            diagnostics.clone(),
-            runtime_handle.clone(),
-        );
-        Ok(Self::assemble(
-            database,
-            app_dir,
-            clock,
-            ids,
-            diagnostics,
-            runtime_handle,
-            remote_images,
-            #[cfg(desktop)]
-            catalogs,
-        ))
-    }
-
-    /// Create a library manager over an already-open database handle, asking
-    /// the catalogs through `catalogs`, which the caller built over the same
-    /// database and may keep. Production uses [`Self::open`]; tests can supply
-    /// a handle built with `TestCoven`.
-    pub fn new(
-        database: Database,
-        app_dir: crate::config::AppDir,
-        clock: ClockRef,
-        ids: IdSourceRef,
-        diagnostics: Diagnostics,
-        runtime_handle: tokio::runtime::Handle,
-        remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
-    ) -> Self {
-        Self::assemble(
-            database,
-            app_dir,
-            clock,
-            ids,
-            diagnostics,
-            runtime_handle,
-            remote_images,
-            #[cfg(desktop)]
-            catalogs,
-        )
-    }
-
-    /// Assemble the services that share this open library.
-    fn assemble(
-        database: Database,
-        app_dir: crate::config::AppDir,
-        clock: ClockRef,
-        ids: IdSourceRef,
-        diagnostics: Diagnostics,
-        runtime_handle: tokio::runtime::Handle,
-        remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
-    ) -> Self {
-        let sync = SyncController::new(database.clone(), diagnostics.clone());
-        let downloads = crate::library::Downloads::new(database.clone());
-        #[cfg(desktop)]
-        let outputs = crate::library::Outputs::new(database.clone());
         let manager = LibraryManager {
             #[cfg(desktop)]
-            preparations: crate::import::CandidatePreparations::new(database.clone()),
-            #[cfg(desktop)]
             catalogs,
             database,
             app_dir,
@@ -127,7 +74,7 @@ impl LibraryManager {
             ids,
             diagnostics,
             runtime_handle,
-            tasks: BackgroundTasks::default(),
+            tasks: BackgroundTasks::new(closing),
             track_deletions: Arc::default(),
             sync,
             detach_cancels: Default::default(),
@@ -139,9 +86,9 @@ impl LibraryManager {
             #[cfg(test)]
             pin_reads_hold: Arc::default(),
         };
-        manager.start_queue_workers().expect("a manager being assembled has not closed");
-        manager.start_profile_requests().expect("a manager being assembled has not closed");
-        manager
+        manager.start_queue_workers().expect("a manager being opened has not closed");
+        manager.start_profile_requests().expect("a manager being opened has not closed");
+        Ok(manager)
     }
 
     /// Follow this person's profile request while the library is open, and
@@ -266,49 +213,6 @@ impl LibraryManager {
         }) {
             subscription_unstarted(&error);
         }
-    }
-
-    /// Start the import service over this library. Its live reads end as
-    /// the library closes, before the store does.
-    #[cfg(desktop)]
-    pub async fn start_import_service(
-        &self,
-        runtime_handle: tokio::runtime::Handle,
-    ) -> Result<crate::import::ImportServiceHandle, crate::import::ImportError> {
-        crate::import::ImportService::start(
-            runtime_handle,
-            self.database.clone(),
-            self.catalogs.clone(),
-            self.remote_images.clone(),
-            self.diagnostics.clone(),
-            self.preparations.clone(),
-            self.clock.clone(),
-            self.ids.clone(),
-            self.tasks.closing.child_token(),
-        )
-        .await
-    }
-
-    /// [`Self::start_import_service`] reading folders' tags through
-    /// `file_tags`.
-    #[cfg(all(test, desktop))]
-    pub(crate) fn start_import_service_reading_tags_with(
-        &self,
-        runtime_handle: tokio::runtime::Handle,
-        file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
-    ) -> crate::import::ImportServiceHandle {
-        crate::import::ImportService::start_reading_tags_with(
-            runtime_handle,
-            self.database.clone(),
-            self.catalogs.clone(),
-            self.remote_images.clone(),
-            self.diagnostics.clone(),
-            self.preparations.clone(),
-            self.clock.clone(),
-            self.ids.clone(),
-            self.tasks.closing.child_token(),
-            file_tags,
-        )
     }
 
     /// `query` as a subscription a surface reads by pulling its values,

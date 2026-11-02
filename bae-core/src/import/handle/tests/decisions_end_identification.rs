@@ -221,7 +221,7 @@ async fn combining_ends_its_folders_identification_in_its_write() {
     let second_root = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &first_root, "Volume B").await;
     let (_, second, _) = picked_candidate(&tables, &second_root, "Volume A").await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     // A folder waiting for or running a run is refused a combination; one
     // whose answer is being written is combined, and the answer ends.
     // Each run has its own id, as the identify service hands them out.

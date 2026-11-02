@@ -8,9 +8,10 @@ fn bridge_handle_holding(
     test_name: &str,
     fixture: &bae_core::library::LibraryFixture,
 ) -> (Arc<super::AppHandle>, std::path::PathBuf) {
-    let (runtime, manager, root) = super::super::tests::fresh_test_library(test_name);
+    let (runtime, (manager, database, catalogs, closing), root) =
+        super::super::tests::fresh_test_library(test_name);
     runtime.block_on(manager.write_fixture(fixture)).expect("write the library fixture");
-    (super::super::tests::start_test_handle(runtime, manager), root)
+    (super::super::tests::start_test_handle(runtime, (manager, database, catalogs, closing)), root)
 }
 
 /// Deleting an album through the handle takes it out of the grid and leaves
@@ -85,16 +86,18 @@ fn setting_up_s3_storage_writes_its_steps() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
-        root.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    ));
+    let ((manager, database, catalogs, closing), storage) =
+        runtime.block_on(bae_test_support::storage_library(
+            root.path(),
+            bae_core::catalog_model::providers::Providers::offline(),
+        ));
     let coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } =
         coven::Storage::config(storage.as_ref())
     else {
         panic!("the memory provider uses S3 configuration");
     };
-    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
+    let services = runtime
+        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let app = Arc::new(
         super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
             .unwrap(),

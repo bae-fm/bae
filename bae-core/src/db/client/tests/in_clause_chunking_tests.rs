@@ -56,7 +56,10 @@ async fn a_queue_longer_than_one_in_clause_reads_every_track() {
     let mut requested = track_ids.clone();
     requested.insert(SQL_MAX_IN_VARS / 2, bae_test_support::test_uuid("missing-track"));
 
-    let added = db.playback_queue_tables().add_manual(requested, ManualPlace::End).await.unwrap();
+    let added = crate::db::PlaybackQueueTables::new(db.clone())
+        .add_manual(requested, ManualPlace::End)
+        .await
+        .unwrap();
     assert_eq!(added, track_ids.len(), "the track the library lacks is left out");
 
     let items = db.queue_value().await.unwrap().manual;

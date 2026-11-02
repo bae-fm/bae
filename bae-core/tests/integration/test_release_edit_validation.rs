@@ -90,7 +90,7 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
         ("an artist-less album", "Album Alpha", &[][..]),
         ("a blank album artist name", "Album Alpha", &["  "][..]),
     ] {
-        let (manager, db, _, _tmp) = bae_test_support::setup_test_library().await;
+        let ((manager, db, ..), _tmp) = bae_test_support::setup_test_library().await;
         let (album_id, release_id) = seed(&db).await;
 
         let result = manager
@@ -114,7 +114,7 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
 /// what lands in the row.
 #[tokio::test]
 async fn an_untrimmed_album_title_is_stored_trimmed() {
-    let (manager, db, _, _tmp) = bae_test_support::setup_test_library().await;
+    let ((manager, db, ..), _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     manager
@@ -132,7 +132,7 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
 /// The artist names a user edit does supply are trimmed.
 #[tokio::test]
 async fn new_artist_names_are_stored_trimmed() {
-    let (manager, db, _, _tmp) = bae_test_support::setup_test_library().await;
+    let ((manager, db, ..), _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     manager
@@ -156,7 +156,7 @@ async fn new_artist_names_are_stored_trimmed() {
 /// crediting it to anyone else, or to that artist beside another, unmarks it.
 #[tokio::test]
 async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
-    let (manager, db, _, _tmp) = bae_test_support::setup_test_library().await;
+    let ((manager, db, ..), _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     for (artists, compilation) in [

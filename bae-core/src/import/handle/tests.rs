@@ -4,6 +4,7 @@ const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
 const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 
 use super::*;
+use crate::app::test_library::TestLibrary;
 use crate::db::{Database, DbArtist};
 use crate::library::{LibraryError, LibraryManager};
 use bae_test_support::HANG_GUARD;
@@ -12,51 +13,43 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-async fn setup_test_manager() -> (LibraryManager, Database, TempDir) {
+async fn setup_test_manager() -> (TestLibrary, Database, TempDir) {
     setup_test_manager_with(bae_util::http::Http::for_test()).await
 }
 
-/// A manager whose providers and image downloads send requests through `http`.
-async fn setup_test_manager_with(
-    http: bae_util::http::Http,
-) -> (LibraryManager, Database, TempDir) {
+/// A library whose providers and image downloads send requests through
+/// `http`.
+async fn setup_test_manager_with(http: bae_util::http::Http) -> (TestLibrary, Database, TempDir) {
     setup_test_manager_over(http, crate::diagnostics::Diagnostics::noop()).await
 }
 
-/// A manager reporting its bugs to `diagnostics`.
+/// A library reporting its bugs to `diagnostics`.
 async fn setup_test_manager_reporting_to(
     diagnostics: crate::diagnostics::Diagnostics,
-) -> (LibraryManager, Database, TempDir) {
+) -> (TestLibrary, Database, TempDir) {
     setup_test_manager_over(bae_util::http::Http::for_test(), diagnostics).await
 }
 
 async fn setup_test_manager_over(
     http: bae_util::http::Http,
     diagnostics: crate::diagnostics::Diagnostics,
-) -> (LibraryManager, Database, TempDir) {
+) -> (TestLibrary, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database =
         Database::new_test(db_path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
             .await
             .unwrap();
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::for_test(http.clone()),
-        database.clone(),
-        diagnostics.clone(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    let library = TestLibrary::open_with(
         database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
+        crate::catalog_model::providers::Providers::for_test(http),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         diagnostics,
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
-        catalogs,
-    );
-    (manager, database, temp_dir)
+    )
+    .await;
+    (library, database, temp_dir)
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {

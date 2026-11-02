@@ -10,9 +10,7 @@ use bae_core::db::{
     Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter,
     StorageSortCriterion, StorageSortField,
 };
-use bae_core::library::{
-    AppServices, CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView,
-};
+use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::MemoryStorage;
@@ -24,19 +22,35 @@ use uuid::Uuid;
 // Helpers
 // ---------------------------------------------------------------------------
 
-async fn setup_manager(tmp: &TempDir) -> (Database, LibraryManager, Arc<MemoryStorage>) {
-    let (manager, database, _, storage) = support::storage_library(
-        tmp.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    )
-    .await;
-    (database, manager, storage)
+async fn setup_manager(
+    tmp: &TempDir,
+) -> (
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
+    Arc<MemoryStorage>,
+) {
+    support::storage_library(tmp.path(), bae_core::catalog_model::providers::Providers::offline())
+        .await
 }
 
-async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<MemoryStorage>) {
-    let (database, manager, storage) = setup_manager(tmp).await;
-    support::connect_storage(&manager, &storage).await;
-    (database, manager, storage)
+async fn setup_with_cloud(
+    tmp: &TempDir,
+) -> (
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
+    Arc<MemoryStorage>,
+) {
+    let (library, storage) = setup_manager(tmp).await;
+    support::connect_storage(&library.0, &storage).await;
+    (library, storage)
 }
 
 /// Insert an artist + album + a Local release, write its originals under
@@ -143,7 +157,7 @@ async fn create_remote_cloud_only_release(
 #[tokio::test]
 async fn test_multiple_releases_independent_completion() {
     let tmp = TempDir::new().unwrap();
-    let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, database, catalogs, closing), _cloud) = setup_with_cloud(&tmp).await;
 
     let (release_a, _a) =
         create_local_release(&mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
@@ -175,7 +189,8 @@ async fn test_multiple_releases_independent_completion() {
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     for release_id in [&release_a, &release_b] {
         let release = services.subscribe_release_detail();
         release.set(Some(release_id.clone())).unwrap();
@@ -209,7 +224,7 @@ async fn test_multiple_releases_independent_completion() {
 async fn test_manage_refused_without_cloud_storage() {
     let tmp = TempDir::new().unwrap();
     // No cloud home connected, so the sync loop is NOT running.
-    let (db, mgr, _cloud) = setup_manager(&tmp).await;
+    let ((mgr, db, ..), _cloud) = setup_manager(&tmp).await;
     assert!(
         !mgr.is_sync_ready().await.unwrap(),
         "precondition: no cloud home / sync loop not running"
@@ -251,7 +266,7 @@ async fn test_manage_refused_without_cloud_storage() {
 #[tokio::test]
 async fn attached_release_turns_remote_once_its_uploads_finish() {
     let tmp = TempDir::new().unwrap();
-    let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, ..), _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &mgr,
@@ -282,7 +297,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 #[tokio::test]
 async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
-    let (_db, mgr, cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, ..), cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
         &mgr,
@@ -313,7 +328,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
 #[tokio::test]
 async fn truncated_source_fails_its_move_without_sending() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &mgr,
@@ -358,7 +373,7 @@ async fn truncated_source_fails_its_move_without_sending() {
 #[tokio::test]
 async fn detaching_audio_updates_summary_and_original_paths() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -389,7 +404,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 #[tokio::test]
 async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -423,7 +438,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 #[tokio::test]
 async fn detaching_audio_whose_names_write_as_one_is_refused() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let ((mgr, db, ..), _cloud) = setup_with_cloud(&tmp).await;
     let (release_id, _files) = create_remote_cloud_only_release(
         &db,
         &mgr,
@@ -484,13 +499,14 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     use bae_types::release_storage::ReleaseStorageAction;
 
     let tmp = TempDir::new().unwrap();
-    let (_db, mgr, cloud) = setup_manager(&tmp).await;
+    let ((mgr, database, catalogs, closing), cloud) = setup_manager(&tmp).await;
     // The status subscription folds coven's connection lifecycle into the
     // sync values the storage view re-resolves on.
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     let values = services.subscribe_storage_browse(StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,

@@ -20,7 +20,6 @@ use bae_core::import::folder_scanner::{
 use bae_core::import::{
     CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };
-use bae_core::library::AppServices;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -102,10 +101,12 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let temp = tempfile::TempDir::new().unwrap();
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
-    let (manager, db, _) = bae_test_support::open_test_library(&library).await;
-    let tables = bae_core::import::tables::ImportTables::new(db.clone());
+    let (manager, database, catalogs, closing) =
+        bae_test_support::open_test_library(&library).await;
+    let tables = bae_core::import::tables::ImportTables::new(database.clone());
     manager.set_identify_automatically(false).await.unwrap();
-    let services = AppServices::for_test(manager).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(manager, database, catalogs, closing).await;
 
     let root = temp.path().join("watched");
     tables.add_watched_import_folder(&root).await.unwrap();

@@ -219,7 +219,7 @@ async fn one_row_on_the_page() -> (
             .unwrap();
     }
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }

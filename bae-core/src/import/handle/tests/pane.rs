@@ -181,7 +181,7 @@ struct StoredCandidate {
     handle: ImportServiceHandle,
     /// The library the service was started from, for the tests that restart the
     /// service over it to read what survived the first one.
-    manager: LibraryManager,
+    manager: TestLibrary,
     candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
     key: crate::import::CandidateKey,
@@ -242,12 +242,12 @@ async fn unread_stored_candidate() -> StoredCandidate {
 
 /// The import service over `manager`, addressed at the stored `candidate`.
 async fn started(
-    manager: LibraryManager,
+    manager: TestLibrary,
     candidate: FolderCandidate,
     key: crate::import::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     StoredCandidate { handle, manager, candidate, key, tmp }
 }
 
@@ -331,7 +331,7 @@ async fn unlinked_cover_gallery_for_library_release() {
         )
         .await
         .unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await
@@ -344,7 +344,7 @@ async fn unlinked_cover_gallery_for_library_release() {
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let (manager, _, _tmp, _album, release) =
         album_with("Album Title", &[discogs_identity("11", "22")]).await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     let result = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await;

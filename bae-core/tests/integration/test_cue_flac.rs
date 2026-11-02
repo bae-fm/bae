@@ -29,7 +29,7 @@ use tracing::info;
 async fn test_cue_flac_records_track_positions() {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let (library_manager, _, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     info!("Import completed, release_id: {}", release_id);
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -246,7 +246,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
 async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let (library_manager, database, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have exactly 3 tracks");
 
@@ -256,15 +256,21 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let track1 = &tracks[0];
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
-    let playback_handle = library_manager
-        .start_playback_service(
-            tokio::runtime::Handle::current(),
-            100,
-            true,
-            bae_core::playback::AudioFocus::Unshared,
-        )
-        .await
-        .expect("start playback");
+    library_manager.settle_playback_queue(true).await.expect("settle the playback queue");
+    let playback_handle = bae_core::playback::PlaybackService::start(
+        library_manager.clone(),
+        bae_core::db::PlaybackQueueTables::new(database.clone()),
+        bae_core::db::PlaybackNowRow::new(database.clone()),
+        bae_core::db::PlaybackTimelineRow::new(database.clone()),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        100,
+        true,
+        std::sync::Arc::new(bae_core::playback::WallPlaybackClock::new(std::sync::Arc::new(
+            coven::SystemClock,
+        ))),
+        bae_core::playback::AudioFocus::Unshared,
+    );
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());
@@ -310,19 +316,21 @@ fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
 /// Import the 3-track CUE/FLAC fixture (storageless) under `temp_root` and return
 /// the library manager and the imported release id. Shared by the CUE/FLAC tests
 /// whose only common setup is this import.
-async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
+async fn import_cue_flac_fixture(
+    temp_root: &Path,
+) -> (LibraryManager, bae_core::db::Database, String) {
     let album_dir = temp_root.join("album");
     let db_dir = temp_root.join("db");
     std::fs::create_dir_all(&album_dir).expect("album dir");
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_flac_fixture_with_seektable(&album_dir);
-    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
+    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
     let release_id_key =
         seed_discogs_test_release(catalogs.providers(), create_test_discogs_release());
     let release_id =
-        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
+        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)
             .await;
-    (library_manager, release_id)
+    (library_manager, database, release_id)
 }
 
 // ============================================================================
@@ -340,7 +348,7 @@ impl CueFlacCaptureFixture {
     /// The 3-track CUE/FLAC album, imported and playing through a full-speed
     /// capture sink.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, _, imported) = support::imported_release_setup(
+        let ((library_manager, database, ..), imported) = support::imported_release_setup(
             create_test_discogs_release(),
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -348,9 +356,12 @@ impl CueFlacCaptureFixture {
         )
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
-        let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture)
-                .await;
+        let (playback_handle, capture_stream_rx) = support::start_capture_playback(
+            &library_manager,
+            &database,
+            support::TestAudioDevice::Capture,
+        )
+        .await;
         Ok(Self {
             playback_handle,
             track_ids: imported.track_ids,
@@ -381,7 +392,7 @@ async fn test_cue_flac_export_single_track() {
     tracing_init();
 
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let (library_manager, _, release_id) = import_cue_flac_fixture(temp_root.path()).await;
 
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -436,7 +447,7 @@ async fn test_cue_flac_gapless_track_boundary() {
 
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let (library_manager, _, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
@@ -552,24 +563,24 @@ impl bae_audio::DecodedSink for CollectedDecode {
 #[tokio::test]
 async fn test_served_decode_starts_with_the_generated_pregap() {
     const SAMPLE_RATE: usize = 44_100;
-    let (library_manager, _, imported) = support::imported_release_setup(
-        DiscogsRelease {
-            master_id: Some("pregap-album-master".to_string()),
-            ..support::discogs_test_release(
-                "pregap-album-release",
-                "Pregap Album",
-                &[("Pregap One", "0:05"), ("Pregap Two", "0:05")],
-            )
-        },
-        "test",
-        uuid::Uuid::new_v4().to_string(),
-        generate_generated_pregap_album,
-    )
-    .await
-    .expect("import the PREGAP album");
-    let services = bae_core::library::AppServices::for_test(library_manager)
+    let ((library_manager, database, catalogs, closing), imported) =
+        support::imported_release_setup(
+            DiscogsRelease {
+                master_id: Some("pregap-album-master".to_string()),
+                ..support::discogs_test_release(
+                    "pregap-album-release",
+                    "Pregap Album",
+                    &[("Pregap One", "0:05"), ("Pregap Two", "0:05")],
+                )
+            },
+            "test",
+            uuid::Uuid::new_v4().to_string(),
+            generate_generated_pregap_album,
+        )
         .await
-        .expect("start the app services");
+        .expect("import the PREGAP album");
+    let services =
+        bae_test_support::start_test_services(library_manager, database, catalogs, closing).await;
     let audio =
         services.resolve_track_audio(&imported.track_ids[1]).await.expect("resolve track 2");
     let decode = services.open_track_decode(&audio);

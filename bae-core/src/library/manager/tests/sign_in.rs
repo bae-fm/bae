@@ -44,22 +44,16 @@ async fn manager_signing_in_with(
             .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    let library = TestLibrary::open_with(
         database,
         app_dir,
+        crate::catalog_model::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs,
-    );
+    )
+    .await;
+    let manager = LibraryManager::clone(&library);
     (manager, storage, temp_dir)
 }
 

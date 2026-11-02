@@ -112,15 +112,24 @@ fn queue_entry_precomputes_duration_clock() {
 
 /// A handle over a fresh, empty library, built the way the app builds one.
 pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
-    let (runtime, manager, root) = fresh_test_library(test_name);
-    (start_test_handle(runtime, manager), root)
+    let (runtime, library, root) = fresh_test_library(test_name);
+    (start_test_handle(runtime, library), root)
 }
 
 /// A fresh library opened in a directory named for `test_name`, on the
 /// runtime a handle over it runs on.
 pub(super) fn fresh_test_library(
     test_name: &str,
-) -> (tokio::runtime::Runtime, bae_core::library::LibraryManager, std::path::PathBuf) {
+) -> (
+    tokio::runtime::Runtime,
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
+    std::path::PathBuf,
+) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -140,49 +149,26 @@ pub(super) fn fresh_test_library(
                 .create_store("Test Library"),
         )
         .expect("test store");
-    let manager =
-        runtime
-            .block_on(bae_core::library::LibraryManager::open(
-                bae_core::db::Database::from_handle(
-                    handle,
-                    Arc::new(coven::SystemClock),
-                    Arc::new(coven::UuidIds),
-                ),
-                app_dir,
-                Arc::new(coven::SystemClock),
-                Arc::new(coven::UuidIds),
-                bae_core::diagnostics::Diagnostics::noop(),
-                runtime.handle().clone(),
-                bae_catalogs::remote_image::RemoteImageCache::for_test(
-                    bae_util::http::Http::for_test(),
-                ),
-                bae_core::catalog_model::providers::Providers::offline(),
-            ))
-            .expect("open test library");
-    (runtime, manager, root)
+    let library = runtime.block_on(bae_test_support::test_library_from_handle(
+        handle,
+        &root,
+        bae_core::catalog_model::providers::Providers::offline(),
+    ));
+    (runtime, library, root)
 }
 
-/// Start a handle over `manager` on `runtime`, as the app starts one.
+/// Start a handle over `library` on `runtime`, as the app starts one.
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
-    manager: bae_core::library::LibraryManager,
+    (manager, database, catalogs, closing): (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
 ) -> Arc<super::AppHandle> {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .expect("start test app services");
-    #[cfg(any(target_os = "ios", target_os = "android"))]
-    let services = {
-        let playback = runtime
-            .block_on(manager.start_playback_service(
-                runtime.handle().clone(),
-                50,
-                true,
-                bae_core::playback::AudioFocus::Unshared,
-            ))
-            .expect("start playback");
-        bae_core::library::AppServices::new(manager, playback)
-    };
+        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     Arc::new(
         super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
             .expect("the bridge handle starts"),
@@ -680,10 +666,11 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .build()
         .expect("test runtime");
     let directory = tempfile::TempDir::new().expect("library directory");
-    let (manager, database, _, storage) = runtime.block_on(bae_test_support::storage_library(
-        directory.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    ));
+    let ((manager, database, catalogs, closing), storage) =
+        runtime.block_on(bae_test_support::storage_library(
+            directory.path(),
+            bae_core::catalog_model::providers::Providers::offline(),
+        ));
     runtime.block_on(async {
         bae_test_support::connect_storage(&manager, &storage).await;
         manager.set_sync_paused(false).await.expect("resume sync");
@@ -694,9 +681,12 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         })
         .await;
     });
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .expect("start test app services");
+    let services = runtime.block_on(bae_test_support::start_test_services(
+        manager,
+        database.clone(),
+        catalogs,
+        closing,
+    ));
     let app =
         super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
             .expect("the bridge handle starts");

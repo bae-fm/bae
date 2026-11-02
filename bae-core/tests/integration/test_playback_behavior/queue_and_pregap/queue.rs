@@ -445,8 +445,8 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
 
 #[tokio::test]
 async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
-    let (library_manager, runtime_handle, _temp) = empty_test_library().await;
-    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle).await;
+    let (library_manager, database, runtime_handle, _temp) = empty_test_library().await;
+    let (handle, _capture_rx) = start_capture_service(library_manager, &database, runtime_handle).await;
     let mut progress = handle.subscribe_progress();
     handle.play_library_shuffled();
     let played = wait_for_state_on(
@@ -758,7 +758,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let b_first = b_tracks[0].clone();
 
     let (handle, _capture_rx) =
-        start_capture_service(lib.library_manager.clone(), lib.runtime_handle.clone()).await;
+        start_capture_service(lib.library_manager.clone(), &lib.database, lib.runtime_handle.clone()).await;
     let mut progress = handle.subscribe_progress();
 
     handle.play(first.clone());

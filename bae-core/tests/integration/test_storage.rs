@@ -41,12 +41,12 @@ async fn test_local_import() {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
 
-    let (library_manager, database, catalogs) = open_test_library(&db_dir).await;
+    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
+    let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -138,12 +138,12 @@ async fn test_local_delete_preserves_files() {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
 
-    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
+    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
+    let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -196,12 +196,12 @@ async fn run_import_with_cover_test() {
     fs::create_dir_all(&db_dir).expect("Failed to create db dir");
     let file_data = generate_test_files(&album_dir);
     info!("Generated {} test files", file_data.len());
-    let (library_manager, database, catalogs) = open_test_library(&db_dir).await;
+    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone(), &catalogs).await;
+    let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
     let selected_cover = "scans/back.jpg".to_string();
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle

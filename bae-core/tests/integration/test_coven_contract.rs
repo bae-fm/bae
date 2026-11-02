@@ -78,11 +78,12 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     .create_store("Upload Test")
     .await
     .unwrap();
-    let (manager, database, _) = bae_test_support::test_library_from_handle(
+    let (manager, database, ..) = bae_test_support::test_library_from_handle(
         handle.clone(),
         directory.path(),
         bae_core::catalog_model::providers::Providers::offline(),
-    );
+    )
+    .await;
     let artist = bae_core::db::DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Artist".into(),

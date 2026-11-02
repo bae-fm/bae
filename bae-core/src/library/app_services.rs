@@ -101,9 +101,9 @@ struct AppServicesInner {
     /// extraction feeding it: one of each per library, reached through it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     import: ImportServiceHandle,
-    /// Queue-wide identification. Built here rather than handed in, so that a
-    /// library cannot exist without one: the queue runs whether or not anyone
-    /// has the Import section open, and opening a view is not what starts it.
+    /// Queue-wide identification, started as the library's services start:
+    /// the queue runs whether or not anyone has the Import section open, and
+    /// opening a view is not what starts it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     identification: IdentificationHandle,
     /// What each library release being identified again asks about, by its
@@ -155,9 +155,9 @@ impl AppServices {
         manager: LibraryManager,
         playback: PlaybackHandle,
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
-    ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let identification = import.start_identification_queue();
+        identification: IdentificationHandle,
+    ) -> Self {
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
@@ -247,20 +247,6 @@ impl AppServices {
             .map_err(|failed| self.inner.manager.bug(failed))?;
         }
         Ok(())
-    }
-
-    #[cfg(all(feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-    pub async fn for_test(manager: LibraryManager) -> Result<Self, crate::library::LibraryError> {
-        let playback = manager
-            .start_playback_service_with_audio_device(
-                tokio::runtime::Handle::current(),
-                50,
-                false,
-                Box::new(crate::playback::audio_output::FailingAudioDevice),
-            )
-            .await?;
-        let import = manager.start_import_service(tokio::runtime::Handle::current()).await?;
-        Ok(Self::new(manager, playback, import))
     }
 
     /// The library's preferences as the settings screens read them: the

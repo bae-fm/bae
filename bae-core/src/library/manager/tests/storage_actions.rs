@@ -33,7 +33,7 @@ async fn until<Value, Error: std::fmt::Debug>(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_transition_reaches_the_reads_from_its_row() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
+    let services = manager.library.start_services().await.unwrap();
     let album_detail = services.subscribe_album_detail();
     album_detail.set(Some(album.id.clone())).unwrap();
     let release_detail = services.subscribe_release_detail();

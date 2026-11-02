@@ -19,11 +19,14 @@ pub struct PlaybackNowRow {
     db: Database,
 }
 
-impl Database {
-    pub fn playback_now_row(&self) -> PlaybackNowRow {
-        PlaybackNowRow { db: self.clone() }
+impl PlaybackNowRow {
+    /// The row over `db`.
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
+}
 
+impl Database {
     /// Follow what playback is doing as its screens show it. `None` while
     /// the row names a track the library no longer holds: the track was
     /// deleted, and playback has yet to move off it.

@@ -181,12 +181,12 @@ impl CueFlacTestFixture {
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, _, imported) =
+        let ((library_manager, database, ..), imported) =
             imported_release_setup(album, "test", uuid::Uuid::new_v4().to_string(), generate_files)
                 .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, device).await;
+            support::start_capture_playback(&library_manager, &database, device).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -242,7 +242,7 @@ impl SidePauseTestFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIds::new();
         let import_id = import_ids.new_id().to_string();
-        let (library_manager, _, imported) = imported_release_setup(
+        let ((library_manager, database, ..), imported) = imported_release_setup(
             create_side_pause_test_album(format, positions),
             "side-pause",
             import_id,
@@ -261,8 +261,7 @@ impl SidePauseTestFixture {
         // the track's boundary.
         let clock =
             Arc::new(bae_core::playback::ManualPlaybackClock::new(side_pause_clock_start()));
-        let (playback_handle, capture_stream_rx) = support::start_capture_playback_with_clock(
-            &library_manager,
+        let (playback_handle, capture_stream_rx) = support::start_capture_playback_with_clock(&library_manager, &database,
             support::TestAudioDevice::RealtimeCapture,
             clock.clone(),
         )

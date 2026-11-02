@@ -17,9 +17,9 @@ use tempfile::TempDir;
 /// A library at `dir` with automatic identification off, so nothing but the
 /// test acts on the candidates.
 async fn open(dir: &Path) -> AppServices {
-    let (manager, _db, _) = support::open_test_library(dir).await;
+    let (manager, database, catalogs, closing) = support::open_test_library(dir).await;
     manager.set_identify_automatically(false).await.unwrap();
-    AppServices::for_test(manager).await.unwrap()
+    bae_test_support::start_test_services(manager, database, catalogs, closing).await
 }
 
 /// `count` one-track albums under `collection`, watched and scanned. Each

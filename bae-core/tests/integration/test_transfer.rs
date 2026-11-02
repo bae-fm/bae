@@ -11,9 +11,7 @@ use bae_core::db::{
     DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter, StorageSortCriterion,
     StorageSortField,
 };
-use bae_core::library::{
-    AppServices, CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView,
-};
+use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
 use bae_core::storage::transfer::{TransferProgress, TransferService};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
@@ -29,14 +27,21 @@ async fn setup(tmp: &TempDir) -> LibraryManager {
     support::open_test_library(tmp.path()).await.0
 }
 
-async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
-    let (manager, _, _, storage) = support::storage_library(
+async fn setup_with_cloud(
+    tmp: &TempDir,
+) -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+) {
+    let (library, storage) = support::storage_library(
         tmp.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     )
     .await;
-    support::connect_storage(&manager, &storage).await;
-    manager
+    support::connect_storage(&library.0, &storage).await;
+    library
 }
 
 /// Insert a Local release: its originals under `source_dir`, one `DbFile` per
@@ -157,7 +162,7 @@ async fn expect_storage_state(
 async fn uploads_are_counted_before_drain() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, ..) = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (_album_id, release_id, named) = create_local_release(
         &mgr,
@@ -266,7 +271,7 @@ async fn a_release_detail_says_where_its_download_stands() {
     use bae_core::album_detail::ReleaseDownloadStatus;
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, ..) = setup_with_cloud(&tmp).await;
     let release_id =
         create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
     let status = |mgr: LibraryManager, release_id: String| async move {
@@ -295,7 +300,7 @@ async fn a_release_detail_says_where_its_download_stands() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, ..) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &mgr,
         &tmp.path().join("src"),
@@ -346,7 +351,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 async fn the_detail_views_follow_a_releases_pin() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let release_id =
         create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"follow-bytes")]).await;
     let album_id = mgr
@@ -355,7 +360,8 @@ async fn the_detail_views_follow_a_releases_pin() {
         .unwrap()
         .expect("the library holds the release")
         .album_id;
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     let release = services.subscribe_release_detail();
     release.set(Some(release_id.clone())).unwrap();
     let album = services.subscribe_album_detail();
@@ -404,7 +410,7 @@ async fn the_detail_views_follow_a_releases_pin() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, ..) = setup_with_cloud(&tmp).await;
     let release_id =
         create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")]).await;
 
@@ -461,11 +467,12 @@ async fn test_missing_external_source_maps_to_error() {
 async fn transition_completions_deliver_storage_values() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     let values = services.subscribe_storage_browse(StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -497,7 +504,7 @@ async fn transition_completions_deliver_storage_values() {
 async fn selected_releases_leave_the_local_list_with_their_upload() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let (_a, first, _) =
         create_local_release(&mgr, &tmp.path().join("first"), &[("a.flac", b"first")]).await;
     let (_b, second, _) =
@@ -505,7 +512,8 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     mgr.upload_release(&first, false).await.unwrap();
     mgr.upload_release(&second, false).await.unwrap();
 
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
     let values = services.subscribe_storage_browse(StorageBrowseView {
@@ -569,7 +577,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
 async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let pinned =
         create_remote_release(&mgr, &tmp.path().join("pinned"), &[("a.flac", b"pinned")]).await;
     let unpinned =
@@ -580,7 +588,8 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         .await
         .expect("pin task completes");
 
-    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let services =
+        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
     let view = |selected: &[&String]| StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,

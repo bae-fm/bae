@@ -12,7 +12,7 @@ use bae_test_support::{connect_storage, requested_profile, storage_library};
 #[tokio::test]
 async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, database, _, storage) =
+    let ((manager, database, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     connect_storage(&manager, &storage).await;

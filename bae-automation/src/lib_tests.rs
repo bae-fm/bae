@@ -798,18 +798,19 @@ mod release_album {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
-        let (manager, catalogs, imported) = bae_test_support::imported_release_setup(
-            bae_test_support::discogs_test_release(
-                "album-set-moved",
-                "Moved Album",
-                &[("Track One", "0:10")],
-            ),
-            "moved",
-            "album-set-moved-import".to_string(),
-            one_track,
-        )
-        .await
-        .expect("import the release that moves");
+        let ((manager, database, catalogs, closing), imported) =
+            bae_test_support::imported_release_setup(
+                bae_test_support::discogs_test_release(
+                    "album-set-moved",
+                    "Moved Album",
+                    &[("Track One", "0:10")],
+                ),
+                "moved",
+                "album-set-moved-import".to_string(),
+                one_track,
+            )
+            .await
+            .expect("import the release that moves");
         let picked_dir = imported.temp_dir.path().join("picked");
         std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
         one_track(&picked_dir);
@@ -821,9 +822,14 @@ mod release_album {
                 &[("Track One", "0:10")],
             ),
         );
-        let picked_release =
-            bae_test_support::import_folder_and_wait(&manager, &catalogs, &picked_dir, picked_key)
-                .await;
+        let picked_release = bae_test_support::import_folder_and_wait(
+            &database,
+            &catalogs,
+            &closing,
+            &picked_dir,
+            picked_key,
+        )
+        .await;
         let picked_album =
             manager.get_album_id_for_release(&picked_release).await.expect("the picked album");
         let moved_from = manager
@@ -831,7 +837,9 @@ mod release_album {
             .await
             .expect("the release's own album");
         assert_ne!(moved_from, picked_album);
-        let services = AppServices::for_test(manager.clone()).await.expect("the services start");
+        let services =
+            bae_test_support::start_test_services(manager.clone(), database, catalogs, closing)
+                .await;
         let automation = Automation::new(services, &tokio::runtime::Handle::current());
 
         automation

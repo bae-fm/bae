@@ -332,8 +332,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         tracks.push(track.id);
     }
     finish_bound_uploads(&manager).await;
-    manager
-        .playback_queue_tables()
+    crate::db::PlaybackQueueTables::new(manager.database.clone())
         .add_manual(tracks.clone(), crate::db::ManualPlace::End)
         .await
         .unwrap();

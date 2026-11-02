@@ -11,10 +11,7 @@ async fn a_write_that_panics_fails_its_caller_and_is_reported() {
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (manager, _, _tmp) = setup_test_manager_reporting_to(diagnostics).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .expect("start the import service");
+    let handle = manager.start_import().await.expect("start the import service");
 
     let result: Result<(), ImportError> = handle
         .committed(async {

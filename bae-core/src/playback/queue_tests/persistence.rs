@@ -13,7 +13,7 @@ async fn test_restore_takes_up_the_stored_order() {
     let lane = f.context_order().await;
     let value = f.value().await;
 
-    let mut restored = PlaybackQueue::new(f.db.playback_queue_tables());
+    let mut restored = PlaybackQueue::new(crate::db::PlaybackQueueTables::new(f.db.clone()));
     restored.restore(current.clone()).await.unwrap();
     f.queue = restored;
 

@@ -16,6 +16,7 @@ const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track
 const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
 
 use super::*;
+use crate::app::test_library::TestLibrary;
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
     LibraryImageType, NewReleaseFile,
@@ -28,14 +29,14 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 struct TestManager {
-    library: LibraryManager,
+    library: TestLibrary,
     storage: Arc<MemoryStorage>,
     installation: coven::TestCoven,
 }
 
 impl std::ops::Deref for TestManager {
-    type Target = LibraryManager;
-    fn deref(&self) -> &LibraryManager {
+    type Target = TestLibrary;
+    fn deref(&self) -> &TestLibrary {
         &self.library
     }
 }
@@ -76,22 +77,15 @@ async fn setup_test_manager_with(
         .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        diagnostics.clone(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    let manager = TestLibrary::open_with(
         database,
         app_dir,
+        crate::catalog_model::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
         diagnostics,
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs,
-    );
+    )
+    .await;
 
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {

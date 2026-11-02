@@ -306,7 +306,7 @@ async fn rows_until(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
     let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
-    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
+    let services = manager.library.start_services().await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release.id.clone())).unwrap();
     use crate::library::storage_inspector::StorageInspectorTransfer;
@@ -342,7 +342,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[tokio::test]
 async fn the_inspector_shows_the_error_an_upload_met() {
     let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
-    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
+    let services = manager.library.start_services().await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release.id.clone())).unwrap();
     manager
@@ -385,7 +385,7 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
         .await;
 
-    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
+    let services = manager.library.start_services().await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(cloud.clone())).unwrap();
     manager.set_downloads_paused(true).await.unwrap();

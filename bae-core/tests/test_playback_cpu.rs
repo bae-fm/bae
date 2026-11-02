@@ -269,7 +269,7 @@ impl PlaybackTestFixture {
         expected_tracks: usize,
         source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, _, imported) = support::imported_release_setup(
+        let ((library_manager, database, ..), imported) = support::imported_release_setup(
             discogs_release,
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -285,15 +285,13 @@ impl PlaybackTestFixture {
 
         // Real-time probe sink: drives the real decode + drain at real time and
         // discards the samples, so playback CPU is measured with no device.
-        let playback_handle = library_manager
-            .start_playback_service_with_audio_device(
-                tokio::runtime::Handle::current(),
-                100,
-                true,
-                Box::new(bae_core::playback::RealtimeProbeDevice),
-            )
-            .await
-            .expect("start playback");
+        let playback_handle = support::start_playback_on(
+            &library_manager,
+            &database,
+            Box::new(bae_core::playback::RealtimeProbeDevice),
+            support::wall_playback_clock(),
+        )
+        .await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {

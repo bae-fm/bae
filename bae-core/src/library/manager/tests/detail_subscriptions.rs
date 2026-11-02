@@ -53,21 +53,8 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         }
     }));
 
-    let playback = manager
-        .start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            50,
-            false,
-            // No hardware behind it: this test never plays anything.
-            Box::new(crate::playback::audio_output::FailingAudioDevice),
-        )
-        .await
-        .expect("start playback");
-    let import = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .expect("start the import service");
-    let services = crate::library::AppServices::new(manager.clone(), playback, import);
+    // Playback on no hardware: this test never plays anything.
+    let services = manager.start_services().await.expect("start the services");
 
     let values = services.subscribe_album_detail();
     values.set(Some(album.id.clone())).unwrap();
@@ -111,7 +98,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         insert_release(&manager, &create_test_release(&album.id)).await;
         albums.push(album);
     }
-    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
+    let services = manager.start_services().await.unwrap();
     let values = services.subscribe_album_detail();
     let next_for = |id: Option<String>| {
         let values = &values;
@@ -155,7 +142,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
+    let services = manager.library.start_services().await.unwrap();
     let values = services.subscribe_release_detail();
     values.set(Some(release.id.clone())).unwrap();
     let actions_until = |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {

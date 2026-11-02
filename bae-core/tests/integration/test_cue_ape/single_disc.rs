@@ -66,11 +66,11 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_ape_fixture(&album_dir);
 
-    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
+    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
     let release_id_key =
         seed_discogs_test_release(catalogs.providers(), create_test_discogs_release());
     let release_id =
-        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)
 }
 
@@ -261,7 +261,7 @@ impl CueApeTestFixture {
     /// The 3-track CUE/APE album, imported and playing through a full-speed
     /// capture sink.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, _, imported) = support::imported_release_setup(
+        let ((library_manager, database, ..), imported) = support::imported_release_setup(
             create_test_discogs_release(),
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -270,7 +270,7 @@ impl CueApeTestFixture {
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture)
+            support::start_capture_playback(&library_manager, &database, support::TestAudioDevice::Capture)
                 .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {

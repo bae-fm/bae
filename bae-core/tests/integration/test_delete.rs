@@ -50,7 +50,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 
 #[tokio::test]
 async fn test_delete_album_integration() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
@@ -79,7 +79,7 @@ async fn test_delete_album_integration() {
 
 #[tokio::test]
 async fn test_delete_release_integration() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -118,7 +118,7 @@ async fn test_delete_release_integration() {
 
 #[tokio::test]
 async fn test_delete_last_release_empties_album() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
 
@@ -155,7 +155,7 @@ async fn primary_release_of(
 /// same write: nothing points at the release that went.
 #[tokio::test]
 async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -188,7 +188,7 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
 
 #[tokio::test]
 async fn test_deleting_another_release_keeps_the_primary() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -215,7 +215,7 @@ async fn test_deleting_another_release_keeps_the_primary() {
 /// Making a release primary that is not one of the album's is refused.
 #[tokio::test]
 async fn test_a_release_of_another_album_cannot_be_made_primary() {
-    let (library_manager, database, _, _temp_dir) = support::setup_test_library().await;
+    let ((library_manager, database, ..), _temp_dir) = support::setup_test_library().await;
     let album = create_test_album();
     let other = create_test_album();
     let release = create_test_release(&album.id);

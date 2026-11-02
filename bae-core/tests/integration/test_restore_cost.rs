@@ -14,7 +14,7 @@
 //! an older library; the others restore from the first slot.
 
 use bae_core::config::AppDir;
-use bae_core::library::{FixtureAlbum, LibraryFixture, LibraryManager};
+use bae_core::library::{FixtureAlbum, LibraryFixture};
 use coven::{Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncStatus, TestCoven};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -117,22 +117,28 @@ async fn restore_cost(library: Library) {
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
     );
+    let providers = bae_core::catalog_model::providers::Providers::offline();
+    let remote_images =
+        bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
     let catalogs = bae_core::import::CatalogSessions::new(
-        bae_core::catalog_model::providers::Providers::offline(),
+        providers,
         database.clone(),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let manager = LibraryManager::new(
+    let manager = bae_core::app::open_library_manager(
         database,
+        catalogs,
+        bae_core::library::CancellationToken::new(),
         app_dir.clone(),
         clock.clone(),
         Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs,
-    );
+        remote_images,
+    )
+    .await
+    .unwrap();
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {
         manager.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();

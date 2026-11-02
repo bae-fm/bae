@@ -55,16 +55,17 @@ pub use files::{
 };
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,
-    imported_release_setup, start_test_import, try_wait_for_import_complete,
+    imported_release_setup, start_import_service, start_test_import, try_wait_for_import_complete,
     wait_for_import_complete, wait_for_import_end, DraftSource, ImportedRelease,
 };
 pub use library::{
     multi_thread_runtime, open_test_library, open_test_library_with, runtime_with_services,
-    setup_fresh_library, setup_test_library, setup_test_library_with_album_dir, temp_test_db,
-    test_library_from_handle, test_uuid, tracing_init,
+    setup_fresh_library, setup_test_library, setup_test_library_with_album_dir,
+    start_test_services, temp_test_db, test_library_from_handle, test_uuid, tracing_init,
 };
 pub use musicbrainz::{mb_medium, mb_release, mb_track, seed_mb_release};
 pub use playback::{
     next_capture_stream, next_matching, start_capture_playback, start_capture_playback_with_clock,
-    wait_for_seek, wait_until_playing, CaptureStreamRx, TestAudioDevice,
+    start_playback_on, wait_for_seek, wait_until_playing, wall_playback_clock, CaptureStreamRx,
+    TestAudioDevice,
 };

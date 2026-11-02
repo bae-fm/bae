@@ -29,17 +29,20 @@ impl ExportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (mgr, _, _, cloud) = support::storage_library(
+        let ((mgr, database, catalogs, closing), cloud) = support::storage_library(
             &db_dir,
             bae_core::catalog_model::providers::Providers::offline(),
         )
         .await;
         support::connect_storage(&mgr, &cloud).await;
 
-        let handle = mgr
-            .start_import_service(tokio::runtime::Handle::current())
-            .await
-            .expect("import service starts");
+        let handle = support::start_import_service(
+            tokio::runtime::Handle::current(),
+            &database,
+            &catalogs,
+            &closing,
+        )
+        .await;
 
         Self { mgr, handle, cloud, _temp: temp }
     }

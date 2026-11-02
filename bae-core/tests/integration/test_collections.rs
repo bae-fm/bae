@@ -5,7 +5,7 @@ use bae_test_support::{connect_storage, made_profile, storage_library, test_uuid
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let (manager, db, _, storage) =
+    let ((manager, db, ..), storage) =
         storage_library(directory.path(), bae_core::catalog_model::providers::Providers::offline())
             .await;
     connect_storage(&manager, &storage).await;

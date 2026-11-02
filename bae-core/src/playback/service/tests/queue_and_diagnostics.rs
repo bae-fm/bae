@@ -3,10 +3,14 @@ const RELEASE_ONE_TRACK: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
 
 /// What a multi-release play put in the context lane: its source and every
 /// track of the lane in order.
-async fn context_lane(service: &PlaybackService) -> (ContextSource, Vec<String>) {
+async fn context_lane(
+    service: &PlaybackService,
+    database: &crate::db::Database,
+) -> (ContextSource, Vec<String>) {
     let value = service.library_manager.queue_value().await.unwrap();
     let source = value.context.expect("a context lane").source;
-    let order = service.library_manager.playback_queue_tables().context_order().await.unwrap();
+    let order =
+        crate::db::PlaybackQueueTables::new(database.clone()).context_order().await.unwrap();
     (source, order)
 }
 
@@ -14,7 +18,7 @@ async fn context_lane(service: &PlaybackService) -> (ContextSource, Vec<String>)
 /// releases were chosen, and reports the releases that contributed as the source.
 #[tokio::test]
 async fn play_releases_concatenates_tracks_in_input_order() {
-    let (_home, mut service, _rx) = seeded_playback_service(&[
+    let (_home, library) = seeded_library_manager(&[
         (
             RELEASE_TWO_TRACKS,
             &["5634d119-43be-4435-8432-575baddc4705", "5634ce19-43be-4f1c-8432-545baddc41ec"],
@@ -22,6 +26,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
     ])
     .await;
+    let (mut service, _rx) = playback_service_over(&library);
 
     service
         .playback_queue
@@ -33,7 +38,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
         .unwrap();
 
     assert_eq!(
-        context_lane(&service).await,
+        context_lane(&service, library.database()).await,
         (
             ContextSource::Releases,
             vec![
@@ -49,11 +54,12 @@ async fn play_releases_concatenates_tracks_in_input_order() {
 /// releases still play in order.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
-    let (_home, mut service, _rx) = seeded_playback_service(&[
+    let (_home, library) = seeded_library_manager(&[
         (RELEASE_TWO_TRACKS, &["5634d119-43be-4435-8432-575baddc4705"]),
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B]),
     ])
     .await;
+    let (mut service, _rx) = playback_service_over(&library);
 
     service
         .playback_queue
@@ -66,7 +72,7 @@ async fn play_releases_skips_a_release_without_tracks() {
         .unwrap();
 
     assert_eq!(
-        context_lane(&service).await,
+        context_lane(&service, library.database()).await,
         (
             ContextSource::Releases,
             vec![
@@ -529,7 +535,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
         diagnostics.clone(),
     )
     .await;
-    let (mut service, _progress_rx) = playback_service_over(manager);
+    let (mut service, _progress_rx) = playback_service_over(&manager);
 
     // Queue the play command and a shutdown, then let the real loop drain both:
     // it emits the command telemetry, runs the play, then breaks on shutdown.
@@ -575,7 +581,7 @@ async fn previous_ships_track_started() {
         diagnostics.clone(),
     )
     .await;
-    let (mut service, _progress_rx) = playback_service_over(manager);
+    let (mut service, _progress_rx) = playback_service_over(&manager);
 
     // A two-track context playing from t1, so Previous steps back to t0.
     service
@@ -635,7 +641,7 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
         diagnostics.clone(),
     )
     .await;
-    let (mut service, _progress_rx) = playback_service_over(manager);
+    let (mut service, _progress_rx) = playback_service_over(&manager);
 
     // A track must be active for the completion to mark its phase.
     let buffer = create_sparse_buffer(1_024);

@@ -13,7 +13,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         use std::time::Duration;
         let household = Household::new().await;
         let dir = tempfile::tempdir().unwrap();
-        let manager = household.owners_manager(dir.path());
+        let manager = household.owners_manager(dir.path()).await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();

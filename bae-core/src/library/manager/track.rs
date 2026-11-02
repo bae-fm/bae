@@ -44,11 +44,6 @@ impl LibraryManager {
         Ok(track_ids)
     }
 
-    /// The playback queue's tables, which the playback service changes.
-    pub(crate) fn playback_queue_tables(&self) -> crate::db::PlaybackQueueTables {
-        self.database.playback_queue_tables()
-    }
-
     /// Follow the queue as its screens show it.
     pub(crate) fn subscribe_queue_value(
         &self,
@@ -133,17 +128,6 @@ impl LibraryManager {
             .track_display(track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
-    }
-
-    /// The row playback writes what it is doing into.
-    pub(crate) fn playback_now_row(&self) -> crate::db::PlaybackNowRow {
-        self.database.playback_now_row()
-    }
-
-    /// The row playback writes where it is into, for the surfaces that move
-    /// the position on themselves.
-    pub(crate) fn playback_timeline_row(&self) -> crate::db::PlaybackTimelineRow {
-        self.database.playback_timeline_row()
     }
 
     /// Follow where playback is, as the surfaces that move the position on

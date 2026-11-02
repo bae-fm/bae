@@ -24,7 +24,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         "Close Test Album",
         &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
     );
-    let (manager, _, imported) = support::imported_release_setup(
+    let ((manager, database, catalogs, closing), imported) = support::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),
@@ -33,21 +33,25 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     .await
     .expect("import the release");
     let (device, _capture) = bae_core::playback::RealtimeCaptureAudioDevice::new();
-    let playback = manager
-        .start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            100,
-            false,
-            Box::new(device),
-        )
-        .await
-        .expect("start playback");
-    let mut progress = playback.subscribe_progress();
-    let import = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .expect("start the import service");
-    let services = bae_core::library::AppServices::new(manager, playback, import);
+    let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
+    let services = bae_core::app::start_library_services(
+        manager,
+        database,
+        catalogs.clone(),
+        closing,
+        clock.clone(),
+        std::sync::Arc::new(coven::UuidIds),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(catalogs.providers().http().clone()),
+        100,
+        false,
+        std::sync::Arc::new(bae_core::playback::WallPlaybackClock::new(clock)),
+        bae_core::app::PlaybackOutput::Device(Box::new(device)),
+    )
+    .await
+    .expect("start the library's services");
+    let mut progress = services.subscribe_playback_progress();
 
     services.playback_play_release(imported.release_id.clone(), None, false);
     assert!(

@@ -3,82 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Start playback over the system's audio output. `audio_focus` is how
-    /// the platform shares the speaker between apps. `restore_playback`
-    /// ("Restore on launch") keeps the stored queue and resumes its track;
-    /// off, the queue and the resume point are forgotten before the service
-    /// starts, so no screen reads a queue the library is about to drop.
-    pub async fn start_playback_service(
-        &self,
-        runtime_handle: tokio::runtime::Handle,
-        position_update_interval_ms: u32,
-        restore_playback: bool,
-        audio_focus: crate::playback::AudioFocus,
-    ) -> Result<crate::playback::PlaybackHandle, LibraryError> {
-        self.settle_playback_queue(restore_playback).await?;
-        Ok(crate::playback::PlaybackService::start(
-            self.clone(),
-            self.diagnostics.clone(),
-            runtime_handle,
-            position_update_interval_ms,
-            restore_playback,
-            self.playback_clock(),
-            audio_focus,
-        ))
-    }
-
-    /// The playback service's time source over this library's injected wall
-    /// clock.
-    fn playback_clock(&self) -> crate::playback::PlaybackClockRef {
-        Arc::new(crate::playback::WallPlaybackClock::new(self.clock.clone()))
-    }
-
-    /// Start playback over a caller-supplied audio device instead of the
-    /// system's: every output the service opens — the main player's and any
-    /// preview's — comes from it, so a test drives playback without touching
-    /// audio hardware.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn start_playback_service_with_audio_device(
-        &self,
-        runtime_handle: tokio::runtime::Handle,
-        position_update_interval_ms: u32,
-        restore_playback: bool,
-        audio_device: Box<dyn crate::playback::audio_output::AudioOutputDevice>,
-    ) -> Result<crate::playback::PlaybackHandle, LibraryError> {
-        self.start_playback_service_with_clock(
-            runtime_handle,
-            position_update_interval_ms,
-            restore_playback,
-            audio_device,
-            self.playback_clock(),
-        )
-        .await
-    }
-
-    /// [`Self::start_playback_service_with_audio_device`] with the service's
-    /// time source supplied too, so a test decides when a side-pause countdown
-    /// runs out.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn start_playback_service_with_clock(
-        &self,
-        runtime_handle: tokio::runtime::Handle,
-        position_update_interval_ms: u32,
-        restore_playback: bool,
-        audio_device: Box<dyn crate::playback::audio_output::AudioOutputDevice>,
-        clock: crate::playback::PlaybackClockRef,
-    ) -> Result<crate::playback::PlaybackHandle, LibraryError> {
-        self.settle_playback_queue(restore_playback).await?;
-        Ok(crate::playback::PlaybackService::start_with_audio_device(
-            self.clone(),
-            self.diagnostics.clone(),
-            runtime_handle,
-            position_update_interval_ms,
-            restore_playback,
-            audio_device,
-            clock,
-        ))
-    }
-
     pub(crate) fn create_audio_reader(
         &self,
         file_id: &str,
@@ -132,7 +56,7 @@ impl LibraryManager {
     /// Settle the playback queue for starting playback: kept when it will be
     /// resumed (`resume`, and a resume row stored), emptied with the resume
     /// row otherwise.
-    async fn settle_playback_queue(&self, resume: bool) -> Result<(), LibraryError> {
+    pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), LibraryError> {
         Ok(self.database.settle_playback_queue(resume).await?)
     }
 

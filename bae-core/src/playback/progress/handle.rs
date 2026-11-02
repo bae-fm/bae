@@ -135,8 +135,8 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now())),
-            db.playback_now_row(),
-            db.playback_timeline_row(),
+            crate::db::PlaybackNowRow::new(db.clone()),
+            crate::db::PlaybackTimelineRow::new(db.clone()),
             crate::diagnostics::Diagnostics::noop(),
         );
         (handle, progress_tx, db, tmp)

@@ -31,7 +31,7 @@ fn unreachable_s3_config() -> S3ConfigData {
 #[test]
 fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (lm, _tmp) = setup_fresh_library(&runtime);
+    let ((lm, ..), _tmp) = setup_fresh_library(&runtime);
 
     // Nothing listens on port 1, so the probe fails with connection-refused
     // before `save_s3_config` reaches any of its persisting steps.
@@ -56,7 +56,7 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
 fn save_s3_config_survives_a_narrow_host_stack() {
     in_own_process("test_save_s3_config::save_s3_config_survives_a_narrow_host_stack", || {
         let runtime = tokio::runtime::Runtime::new().expect("build test runtime");
-        let (manager, _library) = setup_fresh_library(&runtime);
+        let ((manager, ..), _library) = setup_fresh_library(&runtime);
         std::thread::scope(|scope| {
             std::thread::Builder::new()
                 .name("narrow-s3-host".to_string())

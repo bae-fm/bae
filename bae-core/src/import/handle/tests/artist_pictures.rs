@@ -12,7 +12,7 @@ struct DiscogsPick {
     handle: ImportServiceHandle,
     /// The library the import writes the pictures into, whose stored bytes
     /// a test reads.
-    manager: LibraryManager,
+    manager: TestLibrary,
     tmp: TempDir,
     key: crate::import::CandidateKey,
     images: bae_test_support::RemoteImageHost,

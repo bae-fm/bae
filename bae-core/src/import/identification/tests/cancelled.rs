@@ -227,17 +227,9 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     // command goes through; the fixture's own queue is never started.
     let services = crate::library::AppServices::new(
         fixture.manager.clone(),
-        fixture
-            .manager
-            .start_playback_service_with_audio_device(
-                tokio::runtime::Handle::current(),
-                50,
-                false,
-                Box::new(crate::playback::audio_output::FailingAudioDevice),
-            )
-            .await
-            .expect("start playback"),
+        fixture.manager.start_playback().await,
         fixture.import.clone(),
+        fixture.import.start_identification_queue(),
     );
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
     let waiting =

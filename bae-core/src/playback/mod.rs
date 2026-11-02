@@ -42,7 +42,7 @@ pub use audio_output::{
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use clock::ManualPlaybackClock;
-pub(crate) use clock::WallPlaybackClock;
+pub use clock::WallPlaybackClock;
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::ContextSource;
 pub(crate) use error::read_failure_reason;

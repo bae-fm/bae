@@ -41,7 +41,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     }
 
     let import_handle =
-        manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+        manager.start_import().await.unwrap();
     let (gate, held, reached) = crate::test_gate::closed();
     let analyzer = std::sync::Arc::new(HeldAnalyzer { calls: AtomicUsize::new(0), held });
     import_handle.register_artwork_analyzer(analyzer.clone());
@@ -127,7 +127,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     let tables = crate::import::tables::ImportTables::new(database);
     let root = crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     // A row under `Collection`, so the decision the removal races is one the
     // list offers.
     let folder = root.join("Collection").join("Album");

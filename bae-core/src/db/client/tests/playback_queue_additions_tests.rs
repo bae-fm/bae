@@ -13,7 +13,7 @@ use crate::queue::QueueAddition;
 #[tokio::test]
 async fn each_addition_counts_once_with_its_tracks() {
     let (db, _tmp, tracks) = release_db(3).await;
-    let queue = db.playback_queue_tables();
+    let queue = crate::db::PlaybackQueueTables::new(db.clone());
     assert_eq!(db.queue_addition().await.unwrap(), None);
 
     queue
@@ -43,7 +43,7 @@ async fn each_addition_counts_once_with_its_tracks() {
 #[tokio::test]
 async fn starting_playback_forgets_the_additions() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let queue = db.playback_queue_tables();
+    let queue = crate::db::PlaybackQueueTables::new(db.clone());
     for resume in [true, false] {
         queue.add_manual(vec![tracks[0].clone()], ManualPlace::End).await.unwrap();
         assert!(db.queue_addition().await.unwrap().is_some());
@@ -76,7 +76,7 @@ async fn the_schema_refuses_a_count_without_an_addition() {
 #[tokio::test]
 async fn the_live_query_delivers_each_addition() {
     let (db, _tmp, tracks) = release_db(2).await;
-    let queue = db.playback_queue_tables();
+    let queue = crate::db::PlaybackQueueTables::new(db.clone());
     let mut additions = db.subscribe_queue_addition();
     assert_eq!(next(&mut additions).await, None);
 

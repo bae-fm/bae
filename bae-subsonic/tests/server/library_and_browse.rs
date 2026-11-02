@@ -86,14 +86,18 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
     Resp { status, content_type, content_length, content_range, body }
 }
 
-async fn new_manager() -> (LibraryManager, TempDir) {
-    let (manager, _database, _catalogs, temp) = support::setup_test_library().await;
-    (manager, temp)
+async fn new_manager() -> ((
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    bae_core::import::CatalogSessions,
+    bae_core::library::CancellationToken,
+), TempDir) {
+    support::setup_test_library().await
 }
 
 async fn new_services() -> (AppServices, TempDir) {
-    let (manager, temp) = new_manager().await;
-    let services = AppServices::for_test(manager).await.expect("app services");
+    let ((manager, database, catalogs, closing), temp) = new_manager().await;
+    let services = bae_test_support::start_test_services(manager, database, catalogs, closing).await;
     (services, temp)
 }
 
@@ -128,7 +132,7 @@ struct Library {
 /// Import a two-track file-per-track release (with a folder cover) and a
 /// three-track single-file CUE release into one manager.
 async fn seed_library() -> Library {
-    let (manager, _database, catalogs, db_temp) = support::setup_test_library().await;
+    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library().await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
@@ -159,7 +163,7 @@ async fn seed_library() -> Library {
     support::write_cover_png(&pt_dir.join("cover.png"));
 
     let import =
-        support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
+        support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let import_id = "pt".to_string();
     import
         .send_command(ImportCommand {
@@ -191,7 +195,7 @@ async fn seed_library() -> Library {
     let discogs_key =
         support::seed_discogs_test_release(catalogs.providers(), cue_discogs_release());
     let cue_import =
-        support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
+        support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let cue_id = "cue".to_string();
     cue_import
         .send_command(ImportCommand {
@@ -219,7 +223,7 @@ async fn seed_library() -> Library {
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
 
-    let services = AppServices::for_test(manager.clone()).await.expect("app services");
+    let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
     Library {
         services,
         manager,

@@ -63,10 +63,12 @@ impl Fixture {
 
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
-    let (manager, database, _) = bae_test_support::open_test_library(tmp.path()).await;
-    let services = AppServices::for_test(manager).await.expect("the services start");
+    let (manager, database, catalogs, closing) =
+        bae_test_support::open_test_library(tmp.path()).await;
+    let tables = bae_core::import::tables::ImportTables::new(database.clone());
+    let services =
+        bae_test_support::start_test_services(manager, database, catalogs, closing).await;
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
-    let tables = bae_core::import::tables::ImportTables::new(database);
     Fixture { automation, tables, services, tmp }
 }
 

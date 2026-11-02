@@ -37,13 +37,15 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         .build()
         .unwrap();
     // A library with its storage, which making a profile needs.
-    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
-        root.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    ));
+    let ((manager, database, catalogs, closing), storage) =
+        runtime.block_on(bae_test_support::storage_library(
+            root.path(),
+            bae_core::catalog_model::providers::Providers::offline(),
+        ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
     let syncing = manager.clone();
-    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
+    let services = runtime
+        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
             .unwrap(),
@@ -110,12 +112,14 @@ fn the_sync_status_follows_a_disconnect() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
-        root.path(),
-        bae_core::catalog_model::providers::Providers::offline(),
-    ));
+    let ((manager, database, catalogs, closing), storage) =
+        runtime.block_on(bae_test_support::storage_library(
+            root.path(),
+            bae_core::catalog_model::providers::Providers::offline(),
+        ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
-    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
+    let services = runtime
+        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
             .unwrap(),

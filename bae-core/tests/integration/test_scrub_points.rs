@@ -229,7 +229,7 @@ struct Imported {
 
 /// Import `release` from the folder `write_files` fills.
 async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imported {
-    let (library_manager, _, imported) = support::imported_release_setup(
+    let ((library_manager, ..), imported) = support::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),

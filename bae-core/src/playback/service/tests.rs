@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::test_library::TestLibrary;
 use crate::playback::audio_output::{
     audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender,
     AudioOutputControls, AudioState, AudioStream,
@@ -157,14 +158,14 @@ async fn fill_test_release(service: &mut PlaybackService, release_id: &str) {
     );
 }
 
-async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, LibraryManager) {
+async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, TestLibrary) {
     seeded_library_manager_with_diagnostics(releases, crate::diagnostics::Diagnostics::noop()).await
 }
 
 async fn seeded_library_manager_with_diagnostics(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
-) -> (TempDir, LibraryManager) {
+) -> (TempDir, TestLibrary) {
     seeded_library_manager_with_track_length(releases, diagnostics, 180_000).await
 }
 
@@ -172,7 +173,7 @@ async fn seeded_library_manager_with_track_length(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
     track_length_ms: u64,
-) -> (TempDir, LibraryManager) {
+) -> (TempDir, TestLibrary) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
@@ -181,23 +182,16 @@ async fn seeded_library_manager_with_track_length(
             .unwrap();
     seed_test_releases(&database, releases, track_length_ms).await;
 
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        diagnostics.clone(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    let library = TestLibrary::open_with(
         database,
         crate::config::AppDir::under_home(home.path()).unwrap(),
+        crate::catalog_model::providers::Providers::offline(),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),
         diagnostics,
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs,
-    );
-    (home, manager)
+    )
+    .await;
+    (home, library)
 }
 
 async fn test_playback_service(
@@ -240,22 +234,24 @@ fn recording_diagnostics(
 async fn seeded_playback_service(
     releases: &[(&str, &[&str])],
 ) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
-    let (home, library_manager) = seeded_library_manager(releases).await;
-    let (service, progress_rx) = playback_service_over(library_manager);
+    let (home, library) = seeded_library_manager(releases).await;
+    let (service, progress_rx) = playback_service_over(&library);
     (home, service, progress_rx)
 }
 
-/// Assemble a directly-drivable `PlaybackService` over a given manager (with a
+/// Assemble a directly-drivable `PlaybackService` over a given library (with a
 /// stub audio output), for tests that call its handlers without the actor loop.
 fn playback_service_over(
-    library_manager: LibraryManager,
+    library: &TestLibrary,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+    let library_manager = LibraryManager::clone(library);
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let diagnostics = crate::diagnostics::Diagnostics::noop();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
-    let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
+    let playback_queue =
+        PlaybackQueue::new(crate::db::PlaybackQueueTables::new(library.database().clone()));
     let staged_sides = advance::staged_sides_follow(&library_manager, &diagnostics);
     let service = PlaybackService {
         library_manager,

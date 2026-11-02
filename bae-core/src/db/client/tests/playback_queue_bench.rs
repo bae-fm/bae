@@ -148,7 +148,7 @@ async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
 /// A library play through bae's writes: into an empty lane, replacing a full
 /// one, and the two writes that empty it.
 async fn bae_writes(db: &Database, label: &str) {
-    let tables = db.playback_queue_tables();
+    let tables = crate::db::PlaybackQueueTables::new(db.clone());
     let mut runs: [Vec<f64>; 4] = Default::default();
     for _ in 0..RUNS {
         let start = Instant::now();
@@ -311,7 +311,10 @@ async fn playback_queue_bench_library_play() {
         &into_unindexed,
         false,
     );
-    db.playback_queue_tables().fill(ContextFill::LibraryShuffled).await.unwrap();
+    crate::db::PlaybackQueueTables::new(db.clone())
+        .fill(ContextFill::LibraryShuffled)
+        .await
+        .unwrap();
     let copy_lane = format!(
         "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, position, track_id, unshuffled FROM playback_context;"
     );

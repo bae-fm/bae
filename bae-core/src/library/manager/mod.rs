@@ -695,8 +695,7 @@ pub struct LibraryManager {
     clock: ClockRef,
     ids: IdSourceRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id
-    /// sources. The sync-failure path emits through it; the playback and import
-    /// services read it back off this manager for their own events.
+    /// sources. The sync-failure path emits through it.
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     /// The manager's own background tasks (queue workers, the sync status,
@@ -735,9 +734,6 @@ pub struct LibraryManager {
     /// hold too.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     catalogs: crate::import::CatalogSessions,
-    /// The one writer of import candidates' stored state.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    preparations: crate::import::CandidatePreparations,
     /// Held by every edit session's save and every field edit of a release,
     /// so a save compares the release with what its session opened on and
     /// writes with no other of them on this device between the two.

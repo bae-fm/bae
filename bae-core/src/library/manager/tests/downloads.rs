@@ -334,18 +334,15 @@ async fn opening_a_library_empties_its_transfer_queues() {
     .unwrap();
     left.set_release_queue_paused::<()>(true).await.unwrap();
 
-    let manager = LibraryManager::open(
+    let manager = TestLibrary::open_with(
         Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),
         app_dir,
+        crate::catalog_model::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
     )
-    .await
-    .unwrap();
+    .await;
 
     let queue = manager.download_snapshot().await.unwrap();
     assert!(queue.rows.is_empty(), "{queue:?}");

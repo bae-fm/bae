@@ -45,22 +45,14 @@ async fn setup_import_service() -> TestService {
         tables.clone(),
         crate::diagnostics::Diagnostics::noop(),
     );
-    let catalogs = crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = LibraryManager::new(
+    let library = crate::app::test_library::TestLibrary::open(
         database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        catalogs.clone(),
-    );
+        crate::catalog_model::providers::Providers::offline(),
+    )
+    .await;
+    let catalogs = library.catalogs().clone();
+    let manager = LibraryManager::clone(&library);
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::import::ImportEventBus::new(runtime.clone());
     TestService {

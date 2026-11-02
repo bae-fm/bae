@@ -5,7 +5,7 @@ impl ImportService {
     /// Start the import service worker: one task that drains the import queue
     /// sequentially, never concurrently. The returned handle is cloneable and
     /// is how the rest of the app submits import requests.
-    pub(crate) async fn start(
+    pub async fn start(
         runtime_handle: tokio::runtime::Handle,
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,

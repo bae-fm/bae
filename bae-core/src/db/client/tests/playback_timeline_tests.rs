@@ -33,7 +33,7 @@ fn nothing() -> PlaybackTimeline {
 async fn the_row_holds_each_line_as_written() {
     let (db, _tmp) = super::temp_db().await;
     assert_eq!(db.playback_timeline().await.unwrap(), nothing());
-    let row = db.playback_timeline_row();
+    let row = crate::db::PlaybackTimelineRow::new(db.clone());
 
     row.write(&timeline()).await.unwrap();
     assert_eq!(db.playback_timeline().await.unwrap(), timeline());
@@ -56,7 +56,7 @@ async fn the_row_holds_each_line_as_written() {
 async fn starting_playback_leaves_no_line() {
     let (db, _tmp) = super::temp_db().await;
     for resume in [true, false] {
-        db.playback_timeline_row().write(&timeline()).await.unwrap();
+        crate::db::PlaybackTimelineRow::new(db.clone()).write(&timeline()).await.unwrap();
         db.settle_playback_queue(resume).await.unwrap();
         assert_eq!(db.playback_timeline().await.unwrap(), nothing(), "resume: {resume}");
     }

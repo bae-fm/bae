@@ -599,9 +599,14 @@ impl PlaybackService {
     /// immediately, and active playback writes it at most once a second.
     /// `clock` is the service's time source for side-pause countdowns;
     /// production passes one over the library's wall clock. `audio_focus` is
-    /// how the platform shares the speaker, asked before every start.
-    pub(crate) fn start(
+    /// how the platform shares the speaker, asked before every start. Playback
+    /// changes the queue through `queue_tables` and writes what it is doing
+    /// and where it is into `now_row` and `timeline_row`.
+    pub fn start(
         library_manager: LibraryManager,
+        queue_tables: crate::db::PlaybackQueueTables,
+        now_row: crate::db::PlaybackNowRow,
+        timeline_row: crate::db::PlaybackTimelineRow,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -611,6 +616,9 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            queue_tables,
+            now_row,
+            timeline_row,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -625,8 +633,11 @@ impl PlaybackService {
     /// — both the main player's output and any preview's come from it, so a test
     /// touches no audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn start_with_audio_device(
+    pub fn start_with_audio_device(
         library_manager: LibraryManager,
+        queue_tables: crate::db::PlaybackQueueTables,
+        now_row: crate::db::PlaybackNowRow,
+        timeline_row: crate::db::PlaybackTimelineRow,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -636,6 +647,9 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            queue_tables,
+            now_row,
+            timeline_row,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -649,6 +663,9 @@ impl PlaybackService {
 
     pub(super) fn start_inner(
         library_manager: LibraryManager,
+        queue_tables: crate::db::PlaybackQueueTables,
+        now_row: crate::db::PlaybackNowRow,
+        timeline_row: crate::db::PlaybackTimelineRow,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -665,11 +682,11 @@ impl PlaybackService {
             progress_rx,
             runtime_handle.clone(),
             clock.clone(),
-            library_manager.playback_now_row(),
-            library_manager.playback_timeline_row(),
+            now_row,
+            timeline_row,
             diagnostics.clone(),
         );
-        let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
+        let playback_queue = PlaybackQueue::new(queue_tables);
         // Taken before the service runs, so no deletion lands unheard between.
         let track_deletions = library_manager.subscribe_track_deletions();
         let progress_handle_for_completion = progress_handle.clone();

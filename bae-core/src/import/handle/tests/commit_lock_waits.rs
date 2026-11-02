@@ -130,7 +130,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     reader.hold(&slow_root);
     let _opens = OpensOnDrop(reader.clone());
     let handle = manager
-        .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
+        .start_import_reading_tags_with(reader.clone());
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
     handle.add_watched_folder(slow_root.clone()).await.unwrap();
     tokio::time::timeout(HANG_GUARD, entered.recv())
@@ -173,7 +173,7 @@ async fn two_candidates() -> (
     let (_, edited_key, _) = picked_candidate(&tables, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
     let handle = manager
-        .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
+        .start_import_reading_tags_with(reader.clone());
     handle.select_candidate_file_tags(edited_key.clone()).await.unwrap();
     (handle, reader, entered, (held_key, held_candidate.path), edited_key, [tmp, other])
 }

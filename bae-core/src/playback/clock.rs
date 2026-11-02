@@ -27,12 +27,12 @@ pub type PlaybackClockRef = Arc<dyn PlaybackClock>;
 /// for the wait. The wait is measured once, when it starts, as the time left
 /// until the deadline, so a wall-clock correction during a countdown doesn't
 /// stretch or cut it.
-pub(crate) struct WallPlaybackClock {
+pub struct WallPlaybackClock {
     wall: coven::ClockRef,
 }
 
 impl WallPlaybackClock {
-    pub(crate) fn new(wall: coven::ClockRef) -> Self {
+    pub fn new(wall: coven::ClockRef) -> Self {
         Self { wall }
     }
 }

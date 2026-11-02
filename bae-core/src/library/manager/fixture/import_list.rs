@@ -176,7 +176,8 @@ impl LibraryManager {
                     .draft
                     .release_edit();
                 draft.album_title = candidate.name.clone();
-                self.preparations
+                let preparations = crate::import::CandidatePreparations::new(self.database.clone());
+                preparations
                     .replace_metadata(
                         &content_hash,
                         &candidate.key(),
@@ -188,7 +189,7 @@ impl LibraryManager {
                         std::slice::from_ref(&release),
                     )
                     .await?;
-                self.preparations
+                preparations
                     .replace_link(
                         &content_hash,
                         Some(&crate::import::ReleaseLink::Pressing(
@@ -226,8 +227,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         verdict: TerminalVerdict,
     ) -> Result<(), LibraryFixtureError> {
-        let stored = self
-            .preparations
+        let stored = crate::import::CandidatePreparations::new(self.database.clone())
             .store_verdict(&crate::import::tables::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,

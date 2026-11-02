@@ -37,7 +37,7 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
 }
 
 async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> {
-    db.playback_queue_tables().clear_manual().await.unwrap();
+    crate::db::PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
     let items = super::queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
     items[0].display.cover_image.clone()

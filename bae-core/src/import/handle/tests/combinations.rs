@@ -16,7 +16,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .chain(second.files.release_files())
         .map(|file| file.path.clone())
         .collect::<Vec<_>>();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     // Combining takes the selection, not an order: core plays the folders in
     // key order and names the release after the first of them.
     let mut ordered = [first_key.clone(), second_key.clone()];
@@ -146,7 +146,7 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     let second_root = TempDir::new().unwrap();
     let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
     let (_, second_key, _) = picked_candidate(&tables, &second_root, "Volume B").await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     let before = pane(&handle, &first_key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(pending(&handle).await.len(), 2);
 
@@ -190,7 +190,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     }
     let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     assert_eq!(
         pending(&handle).await,
@@ -249,7 +249,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
     }
     let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let key_of = |live: &str| crate::import::CandidateKey::folder(&root.join("Artist").join(live));
 

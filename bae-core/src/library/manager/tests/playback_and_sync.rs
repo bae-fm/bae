@@ -15,7 +15,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         .await
         .unwrap();
 
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),
@@ -33,7 +33,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use bae_catalogs::discogs::client::DiscogsError;
 
     let (manager, _temp_dir) = setup_test_manager().await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
 
     let outcome = handle
         .save_discogs_token("discogs-test-key")
@@ -115,7 +115,7 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
 async fn test_library_play_unshuffles_into_the_library_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let (rel1, _rel2) = seed_two_release_library(&manager).await;
-    let tables = manager.playback_queue_tables();
+    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
     let library_order = [
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
         "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
@@ -252,7 +252,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
 
 /// Play the seeded release from its first track.
 async fn play_seeded(manager: &LibraryManager, first_track: &str) {
-    let tables = manager.playback_queue_tables();
+    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
     let release_id =
         manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
@@ -283,8 +283,7 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 110).await;
     let manual_count = 103;
-    manager
-        .playback_queue_tables()
+    crate::db::PlaybackQueueTables::new(manager.database.clone())
         .add_manual(track_ids[..manual_count].to_vec(), crate::db::ManualPlace::End)
         .await
         .unwrap();
@@ -302,7 +301,7 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
 async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 3).await;
-    let tables = manager.playback_queue_tables();
+    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
     let mut queued = track_ids.clone();
     queued.push(track_ids[0].clone());
     tables.add_manual(queued, crate::db::ManualPlace::End).await.unwrap();

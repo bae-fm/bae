@@ -8,8 +8,15 @@ use std::{sync::Arc, time::Instant};
 
 use tracing::{info, warn};
 
+mod assembly;
+#[cfg(test)]
+pub(crate) mod test_library;
+
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::library::AppServices;
+pub use assembly::{
+    open_library_manager, start_library_services, PlaybackOutput, ServicesStartError,
+};
 use coven::{ClockRef, SystemClock};
 use coven::{IdSourceRef, UuidIds};
 
@@ -399,26 +406,41 @@ where
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let providers = crate::catalog_model::providers::Providers::new(http.clone());
 
+    // The library's store, opened once; each part of the open library is
+    // built from it here, once, and handed to what holds it.
+    let database = timing
+        .stage(&library_id, "open the library's store", || {
+            runtime.block_on(open_store(builder, Arc::clone(&clock), ids.clone()))
+        })
+        .map_err(classify_open_error)?;
+    let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
+        &app_dir.registered_library(&library_id),
+        http,
+    );
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    let catalogs = crate::import::CatalogSessions::new(
+        providers,
+        database.clone(),
+        diagnostics.clone(),
+        runtime.handle().clone(),
+    );
+    // Closing the library ends what runs while it is open: the manager's
+    // tasks and the import service's.
+    let closing = crate::library::CancellationToken::new();
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
-            runtime.block_on(async {
-                let database = open_store(builder, Arc::clone(&clock), ids.clone()).await?;
-                crate::library::LibraryManager::open(
-                    database,
-                    app_dir.clone(),
-                    Arc::clone(&clock),
-                    ids,
-                    diagnostics.clone(),
-                    runtime.handle().clone(),
-                    bae_catalogs::remote_image::RemoteImageCache::new(
-                        &app_dir.registered_library(&library_id),
-                        http,
-                    ),
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                    providers,
-                )
-                .await
-            })
+            runtime.block_on(open_library_manager(
+                database.clone(),
+                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                catalogs.clone(),
+                closing.clone(),
+                app_dir.clone(),
+                Arc::clone(&clock),
+                ids.clone(),
+                diagnostics.clone(),
+                runtime.handle().clone(),
+                remote_images.clone(),
+            ))
         })
         .map_err(classify_open_error)?;
 
@@ -468,35 +490,33 @@ where
                 .map_err(|error| BootstrapError::Internal(error.to_string()))?,
         }
 
-        // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
-        // iOS, AAudio on Android.
-        let playback_handle = timing
-            .stage(&library_id, "start playback service", || {
-                runtime.block_on(library_manager.start_playback_service(
+        // The in-core cpal/ffmpeg audio engine (cpal drives the sink on
+        // desktop and iOS, AAudio on Android) and, on desktop, the import
+        // pipeline, under the one owner of the opened library.
+        let app_services = timing
+            .stage(&library_id, "start library services", || {
+                runtime.block_on(start_library_services(
+                    library_manager,
+                    database,
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    catalogs,
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    closing,
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    Arc::clone(&clock),
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    ids,
+                    diagnostics.clone(),
                     runtime.handle().clone(),
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    remote_images,
                     position_update_interval_ms,
                     restore_playback,
-                    audio_focus,
+                    Arc::new(crate::playback::WallPlaybackClock::new(Arc::clone(&clock))),
+                    PlaybackOutput::System(audio_focus),
                 ))
             })
-            .map_err(|e| BootstrapError::Database(e.to_string()))?;
-
-        // The import pipeline (scanning, transcoding, identify) is desktop-only.
-        // Mobile is a sync/playback client, so its `AppServices` carries just the
-        // library manager and the in-core player.
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let app_services = {
-            let import_handle = timing
-                .stage(&library_id, "start import service", || {
-                    runtime.block_on(library_manager.start_import_service(runtime.handle().clone()))
-                })
-                .map_err(|error| BootstrapError::Database(error.to_string()))?;
-
-            AppServices::new(library_manager, playback_handle, import_handle)
-        };
-
-        #[cfg(any(target_os = "ios", target_os = "android"))]
-        let app_services = AppServices::new(library_manager, playback_handle);
+            .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
         info!("Application services initialized for library '{library_id}'");
         diagnostics.event(TelemetryEvent::AppStarted {});

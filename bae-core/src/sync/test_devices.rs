@@ -187,7 +187,7 @@ impl Library {
             .test_sync_status()
             .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
             .await;
-        Self { first: device(dir, app, handle, installation, storage.clone()), storage }
+        Self { first: device(dir, app, handle, installation, storage.clone()).await, storage }
     }
 
     /// The device that created the library.
@@ -218,7 +218,7 @@ impl Library {
         )
         .await
         .unwrap();
-        let device = device(dir, app, handle, installation, storage);
+        let device = device(dir, app, handle, installation, storage).await;
         device.database().start_sync().await.unwrap();
         device
     }
@@ -365,7 +365,7 @@ impl TestDevice {
             .open(store, |_| ())
             .await
             .expect("open the device's store again");
-        self.library = RunningLibrary::new(self.app.clone(), handle);
+        self.library = RunningLibrary::new(self.app.clone(), handle).await;
         self.database().start_sync().await.unwrap();
     }
 
@@ -410,7 +410,7 @@ fn record_cycles(
     (cycles, watcher)
 }
 
-fn device(
+async fn device(
     dir: TempDir,
     app: AppDir,
     handle: coven::CovenHandle,
@@ -418,7 +418,7 @@ fn device(
     storage: Arc<coven::MemoryStorage>,
 ) -> TestDevice {
     TestDevice {
-        library: RunningLibrary::new(app.clone(), handle),
+        library: RunningLibrary::new(app.clone(), handle).await,
         installation,
         app,
         storage,
@@ -427,26 +427,16 @@ fn device(
 }
 
 impl RunningLibrary {
-    fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
-        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-        let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
-        let database = Database::from_handle(handle, clock.clone(), ids.clone());
-        let catalogs = crate::import::CatalogSessions::new(
-            crate::catalog_model::providers::Providers::offline(),
-            database.clone(),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-        );
-        let manager = LibraryManager::new(
+    async fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
+        let database =
+            Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds));
+        let library = crate::app::test_library::TestLibrary::open(
             database.clone(),
             app_dir,
-            clock,
-            ids,
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            catalogs,
-        );
+            crate::catalog_model::providers::Providers::offline(),
+        )
+        .await;
+        let manager = LibraryManager::clone(&library);
         let (cycles, watcher) = record_cycles(&database);
         Self { manager, database, cycles, _watcher: watcher }
     }

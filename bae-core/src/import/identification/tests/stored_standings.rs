@@ -185,7 +185,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
     assert_eq!(tables.load_candidate_standings().await.unwrap().len(), 2);
 
     let reopened =
-        fixture.manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+        fixture.manager.start_import().await.unwrap();
 
     assert!(tables.load_candidate_standings().await.unwrap().is_empty());
     tokio::task::spawn_blocking(move || reopened.stop_and_join())

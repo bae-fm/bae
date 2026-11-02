@@ -64,18 +64,15 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let other = TempDir::new().unwrap();
     let (_, shown_key, _) = picked_candidate(&tables, &tmp, "Shown Album").await;
     let (_, importing_key, _) = picked_candidate(&tables, &other, "Importing Album").await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
-    let playback = manager
-        .start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            50,
-            false,
-            // No hardware behind it: this test never plays anything.
-            Box::new(crate::playback::audio_output::FailingAudioDevice),
-        )
-        .await
-        .expect("start playback");
-    let services = crate::library::AppServices::new(manager.clone(), playback, handle.clone());
+    let handle = manager.start_import().await.unwrap();
+    // No hardware behind it: this test never plays anything.
+    let playback = manager.start_playback().await;
+    let services = crate::library::AppServices::new(
+        manager.clone(),
+        playback,
+        handle.clone(),
+        handle.start_identification_queue(),
+    );
     importable(&handle, &shown_key).await;
     importable(&handle, &importing_key).await;
     let mut events = handle.every_event();

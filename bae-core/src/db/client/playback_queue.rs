@@ -103,11 +103,14 @@ pub struct PlaybackQueueTables {
     db: Database,
 }
 
-impl Database {
-    pub fn playback_queue_tables(&self) -> PlaybackQueueTables {
-        PlaybackQueueTables { db: self.clone() }
+impl PlaybackQueueTables {
+    /// The tables over `db`.
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
+}
 
+impl Database {
     /// Empty the queue and the resume row unless the resume row is kept: what
     /// starting playback with a library does when it will not resume what it
     /// played. A library with nothing to resume opens with an empty queue,

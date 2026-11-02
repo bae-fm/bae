@@ -10,7 +10,7 @@ struct HighSampleRateTestFixture {
 
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, catalogs, album_dir, temp_dir) =
+        let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
             support::setup_test_library_with_album_dir().await;
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -32,7 +32,7 @@ impl HighSampleRateTestFixture {
         let release_id_key =
             seed_discogs_test_release(catalogs.providers(), discogs_release);
 
-        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
 
         let albums = library_manager.get_albums(&[]).await?;
         let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
@@ -52,7 +52,7 @@ impl HighSampleRateTestFixture {
         );
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), runtime_handle).await;
+            start_capture_service(library_manager.clone(), &database, runtime_handle).await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
@@ -321,14 +321,15 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 
 /// The three-track FLAC album imported into a fresh library with no playback
 /// service started — the arrange for the tests below, which each decide when
-/// their own service comes up. The `TempDir` owns the library's files.
-async fn imported_library_without_playback() -> (LibraryManager, TempDir) {
-    let (library_manager, catalogs, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
+/// their own service comes up — beside the library's store. The `TempDir` owns
+/// the library's files.
+async fn imported_library_without_playback() -> (LibraryManager, bae_core::db::Database, TempDir) {
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         seed_discogs_test_release(catalogs.providers(), create_test_album());
-    support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
-    (library_manager, temp_dir)
+    support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+    (library_manager, database, temp_dir)
 }
 
 /// Restoring playback state on service start must emit the restored position
@@ -348,7 +349,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     tracing_init();
 
     // Build a library + import tracks, but do NOT start a playback service.
-    let (library_manager, _temp_dir) = imported_library_without_playback().await;
+    let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
@@ -363,7 +364,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
-    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle).await;
+    let (handle, _capture_rx) = start_capture_service(library_manager, &database, runtime_handle).await;
     let mut progress_rx = handle.subscribe_progress();
 
     let landed = wait_for_seeked_on(&mut progress_rx, Duration::from_secs(20)).await;
@@ -385,7 +386,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
 async fn test_play_persists_then_stop_clears_playback_state() {
     tracing_init();
 
-    let (library_manager, _temp_dir) = imported_library_without_playback().await;
+    let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let release_id = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
@@ -397,7 +398,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         library_manager.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
     let (handle, _capture_rx) =
-        start_capture_service(library_manager.clone(), runtime_handle).await;
+        start_capture_service(library_manager.clone(), &database, runtime_handle).await;
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
@@ -490,6 +491,10 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
 /// restore without racing a fixture's service for the row.
 struct RestoreTestLibrary {
     library_manager: LibraryManager,
+    /// The library's store and closing token, which a test's own playback
+    /// and import services run over.
+    database: bae_core::db::Database,
+    closing: bae_core::library::CancellationToken,
     /// The catalog sessions the library was built over, for a test that
     /// imports again.
     catalogs: bae_core::import::CatalogSessions,

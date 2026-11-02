@@ -185,7 +185,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     playback.playback_handle.shutdown().await;
 
     let (handle, _capture_rx) =
-        start_capture_service(playback.library_manager.clone(), playback.runtime_handle.clone())
+        start_capture_service(playback.library_manager.clone(), &playback.database, playback.runtime_handle.clone())
             .await;
     let mut progress_rx = handle.subscribe_progress();
 
@@ -237,6 +237,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     // Relaunch with the preference off.
     let (handle, _capture_rx) = start_capture_service_with_restore(
         playback.library_manager.clone(),
+        &playback.database,
         playback.runtime_handle.clone(),
         false,
     )
@@ -293,6 +294,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
 
     let (handle, _capture_rx) = start_capture_service_with_restore(
         playback.library_manager.clone(),
+        &playback.database,
         playback.runtime_handle.clone(),
         true,
     )

@@ -94,7 +94,7 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 }
 
 async fn import_a_box_set_under_a_lowered_limit() {
-    let (library_manager, catalogs, album_dir, _temp) =
+    let ((library_manager, database, catalogs, closing), album_dir, _temp) =
         support::setup_test_library_with_album_dir().await;
     write_box_set(&album_dir);
 
@@ -115,8 +115,9 @@ async fn import_a_box_set_under_a_lowered_limit() {
     let release_key = support::seed_discogs_test_release(catalogs.providers(), release);
     let import_handle = support::start_test_import(
         tokio::runtime::Handle::current(),
-        library_manager.clone(),
+        &database,
         &catalogs,
+        &closing,
     )
     .await;
 

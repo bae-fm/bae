@@ -13,23 +13,43 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
     }
 }
 
-/// Start an [`ImportService`] over a test library manager, with the Discogs
-/// key stored through `catalogs`, the sessions the manager was built over —
+/// [`start_import_service`] with the Discogs key stored through `catalogs` —
 /// the shared setup every import/playback test binary needs, so none of them
-/// keep a private copy that can drift from the others. The cover-art client
-/// comes off the manager, which builds a hermetic one.
-///
-/// [`ImportService`]: bae_core::import::ImportService
+/// keep a private copy that can drift from the others.
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
-    library_manager: bae_core::library::LibraryManager,
+    database: &bae_core::db::Database,
     catalogs: &bae_core::import::CatalogSessions,
+    closing: &bae_core::library::CancellationToken,
 ) -> bae_core::import::ImportServiceHandle {
     configure_test_discogs(catalogs).await;
-    library_manager
-        .start_import_service(runtime_handle.clone())
-        .await
-        .expect("test import service starts")
+    start_import_service(runtime_handle, database, catalogs, closing).await
+}
+
+/// Start an [`ImportService`] over a test library's store, asking the catalogs
+/// through `catalogs`, the sessions the library was opened with. The
+/// library's `closing` token ends the service with the library.
+///
+/// [`ImportService`]: bae_core::import::ImportService
+pub async fn start_import_service(
+    runtime_handle: tokio::runtime::Handle,
+    database: &bae_core::db::Database,
+    catalogs: &bae_core::import::CatalogSessions,
+    closing: &bae_core::library::CancellationToken,
+) -> bae_core::import::ImportServiceHandle {
+    bae_core::import::ImportService::start(
+        runtime_handle,
+        database.clone(),
+        catalogs.clone(),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(catalogs.providers().http().clone()),
+        bae_core::diagnostics::Diagnostics::noop(),
+        bae_core::import::CandidatePreparations::new(database.clone()),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+        closing.child_token(),
+    )
+    .await
+    .expect("test import service starts")
 }
 
 /// Store the Discogs key seeded Discogs fixtures are asked for with, through
@@ -164,16 +184,16 @@ pub fn folder_import(
 /// (release_id, album_id). The service is started here and dropped on return —
 /// by then the import has landed everything it writes.
 async fn send_folder_import_and_wait(
-    library_manager: &bae_core::library::LibraryManager,
+    database: &bae_core::db::Database,
     catalogs: &bae_core::import::CatalogSessions,
+    closing: &bae_core::library::CancellationToken,
     album_dir: std::path::PathBuf,
     release_id_key: String,
     candidate_key: &str,
     import_id: String,
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), catalogs)
-            .await;
+        start_test_import(tokio::runtime::Handle::current(), database, catalogs, closing).await;
     import_handle
         .send_command(bae_core::import::ImportCommand {
             candidate_key: bae_core::import::CandidateKey::from_bytes(
@@ -191,14 +211,16 @@ async fn send_folder_import_and_wait(
 /// under candidate key `"test"` and a fresh import id, and return the release id
 /// the import landed. Panics if the import fails.
 pub async fn import_folder_and_wait(
-    library_manager: &bae_core::library::LibraryManager,
+    database: &bae_core::db::Database,
     catalogs: &bae_core::import::CatalogSessions,
+    closing: &bae_core::library::CancellationToken,
     album_dir: impl Into<std::path::PathBuf>,
     release_id_key: String,
 ) -> String {
     let (release_id, _album_id) = send_folder_import_and_wait(
-        library_manager,
+        database,
         catalogs,
+        closing,
         album_dir.into(),
         release_id_key,
         "test",
@@ -209,9 +231,9 @@ pub async fn import_folder_and_wait(
     release_id
 }
 
-/// What an import landed, beside the library manager it landed through. Holds
-/// no service of its own, so a fixture can keep it whole while handing the
-/// manager to whatever it starts.
+/// What an import landed, beside the library it landed in. Holds no service of
+/// its own, so a fixture can keep it whole while handing the library's parts
+/// to whatever it starts.
 pub struct ImportedRelease {
     pub track_ids: Vec<String>,
     pub release_id: String,
@@ -222,7 +244,7 @@ pub struct ImportedRelease {
 }
 
 /// Import one Discogs-identified release from a folder, on the calling test's
-/// runtime: open a fresh library, seed `release` for the fake Discogs
+/// runtime, and return the library beside what it landed: open a fresh library, seed `release` for the fake Discogs
 /// endpoint, write the audio with `generate_files`, run the import to
 /// completion, and read back the tracks it landed. The arrange every playback
 /// test binary starts from.
@@ -232,21 +254,30 @@ pub async fn imported_release_setup<G>(
     import_id: String,
     generate_files: G,
 ) -> Result<
-    (bae_core::library::LibraryManager, bae_core::import::CatalogSessions, ImportedRelease),
+    (
+        (
+            bae_core::library::LibraryManager,
+            bae_core::db::Database,
+            bae_core::import::CatalogSessions,
+            bae_core::library::CancellationToken,
+        ),
+        ImportedRelease,
+    ),
     Box<dyn std::error::Error>,
 >
 where
     G: FnOnce(&std::path::Path),
 {
-    let (library_manager, catalogs, album_dir, temp_dir) =
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
         setup_test_library_with_album_dir().await;
 
     let release_id_key = seed_discogs_test_release(catalogs.providers(), release);
     generate_files(&album_dir);
 
     let (release_id, _album_id) = send_folder_import_and_wait(
-        &library_manager,
+        &database,
         &catalogs,
+        &closing,
         album_dir.clone(),
         release_id_key,
         candidate_key,
@@ -256,5 +287,8 @@ where
     let tracks = library_manager.get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
-    Ok((library_manager, catalogs, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))
+    Ok((
+        (library_manager, database, catalogs, closing),
+        ImportedRelease { track_ids, release_id, album_dir, temp_dir },
+    ))
 }

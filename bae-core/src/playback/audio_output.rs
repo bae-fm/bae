@@ -730,12 +730,12 @@ impl AudioOutput for CaptureAudioOutput {
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) struct FailingAudioOutput(AudioOutputControls);
 
-/// A device with no hardware behind it: every output it opens is a
-/// [`FailingAudioOutput`]. What the actor-level tests hand the service — they
+/// A device with no hardware behind it: every output it opens fails to create
+/// a stream. What the actor-level tests hand the service — they
 /// drive its queue/command behavior and never play, so neither the main player
 /// nor a preview may reach for a real device.
 #[cfg(any(test, feature = "test-utils"))]
-pub(crate) struct FailingAudioDevice;
+pub struct FailingAudioDevice;
 
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutputDevice for FailingAudioDevice {

@@ -137,7 +137,7 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
         track_length_ms,
     )
     .await;
-    let (mut service, _rx) = playback_service_over(library_manager);
+    let (mut service, _rx) = playback_service_over(&library_manager);
     // Two seconds of generated silence at 44.1 kHz.
     seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
     fill_test_release(&mut service, RELEASE).await;

@@ -118,7 +118,7 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     let copy = twin_of(&original, "Copy");
     let copy_key = crate::import::CandidateKey::folder(&copy.path);
     rescan_all_into(&tables, &[original, copy]).await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     // Each folder's own tags are read; the draft they share is then given its
     // artist. Nothing changes it once an import is asked for.
     for key in [&original_key, &copy_key] {
@@ -194,7 +194,7 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     )
     .unwrap();
     rescan_all_into(&tables, &[original, copy, other]).await;
-    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let handle = manager.start_import().await.unwrap();
     let (unsettled, _) = sheet_disc_of(&handle, &other_key).await;
 
     handle
