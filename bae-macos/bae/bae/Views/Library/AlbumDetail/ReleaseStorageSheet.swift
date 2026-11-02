@@ -242,6 +242,7 @@ struct ReleaseStorageSheet: View {
             )
         )
         .environment(OutboxStore(uploadsPaused: false))
+        .environment(DownloadStore())
         .preferredColorScheme(.dark)
     }
 #endif
