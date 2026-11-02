@@ -13,14 +13,16 @@ struct ImportConfirmationCardAction: View {
     let onConfirmImport: () -> Void
 
     var body: some View {
+        Button(Self.title(importStatus)) { onConfirmImport() }
+            .buttonStyle(PrimaryButtonStyle())
+    }
+
+    /// The action's words: Retry Import once an attempt failed, else Import.
+    static func title(_ importStatus: BridgeCandidateImportStatus?) -> String {
         if case .error = importStatus {
-            Button("Retry Import") { onConfirmImport() }
-                .buttonStyle(PrimaryButtonStyle())
+            return String(localized: "Retry Import")
         }
-        else {
-            Button("Import") { onConfirmImport() }
-                .buttonStyle(PrimaryButtonStyle())
-        }
+        return String(localized: "Import")
     }
 }
 

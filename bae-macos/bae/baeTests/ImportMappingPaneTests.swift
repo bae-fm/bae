@@ -607,14 +607,15 @@ extension ImportMappingPaneTests {
     }
 }
 
-/// What the pane states beside Import.
+/// What the pane states beside Import: the values the commit bar draws
+/// from. How it lays them out is the `import-metadata-draft` shot's.
 @Suite("Import commit controls")
 struct ImportCommitControlsTests {
     // A folder check the found release failed is stated beside the Import it
     // bears on, and only then: a candidate that failed none states nothing.
     @MainActor
     @Test("the folder check a candidate failed is stated beside Import")
-    func theFailedFolderCheckIsStatedBesideImport() async throws {
+    func theFailedFolderCheckIsStatedBesideImport() throws {
         var candidate = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable
@@ -624,41 +625,27 @@ struct ImportCommitControlsTests {
             folderCheck: .sourceTracksUnknown,
             records: []
         )
-        let unchecked =
-            try await SnapshotTestSupport.recognizedText(
-                in: captureMappingPane(candidate: candidate, runtime: nil),
-                languages: ["en-US"]
-            )
-            .map(\.text)
-        #expect(unchecked.carrying("The release lists no tracks"))
+        let stated = try #require(candidate.folderCheck?.localizedText)
+        #expect(stated.contains("The release lists no tracks"))
 
         candidate.placement = .pending(folderCheck: nil, records: [])
-        let ready =
-            try await SnapshotTestSupport.recognizedText(
-                in: captureMappingPane(candidate: candidate, runtime: nil),
-                languages: ["en-US"]
-            )
-            .map(\.text)
-        #expect(!ready.carrying("lists no tracks"))
+        #expect(candidate.folderCheck == nil)
     }
 
     /// The pane is shown only before an import runs or after one fails, so
     /// its commit bar offers Import, or Retry Import after a failed attempt.
     @MainActor
     @Test("the commit bar offers Import, and Retry Import after a failure")
-    func theCommitBarOffersImportOrRetry() async throws {
+    func theCommitBarOffersImportOrRetry() {
         var candidate = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
-        let fresh =
-            try await SnapshotTestSupport.recognizedText(
-                in: captureMappingPane(candidate: candidate, runtime: nil),
-                languages: ["en-US"]
-            )
-            .map(\.text)
-        #expect(!fresh.carrying("Retry Import"))
+        #expect(
+            ImportConfirmationCardAction.title(candidate.importStatus)
+                == "Import"
+        )
 
         candidate.detail?.importStatus = .error(
             error: .Diagnostic(
@@ -666,12 +653,9 @@ struct ImportCommitControlsTests {
                 detail: "the disc would not read"
             )
         )
-        let failed =
-            try await SnapshotTestSupport.recognizedText(
-                in: captureMappingPane(candidate: candidate, runtime: nil),
-                languages: ["en-US"]
-            )
-            .map(\.text)
-        #expect(failed.carrying("Retry Import"))
+        #expect(
+            ImportConfirmationCardAction.title(candidate.importStatus)
+                == "Retry Import"
+        )
     }
 }

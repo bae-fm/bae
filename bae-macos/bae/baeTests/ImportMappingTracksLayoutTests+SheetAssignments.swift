@@ -6,7 +6,9 @@ import Testing
 @testable import bae
 
 // The sheet caption's audio assignments: which references are listed, and
-// where a bound one is changed.
+// where a bound one is changed. The listing is the binding layout's, and
+// the menus it draws are AppKit pop-up buttons; the words are the
+// `import-mapping-cue-wide` shot's.
 extension ImportMappingTracksLayoutTests {
     /// With every reference bound, the summary's menu has a submenu per
     /// reference, each holding only that reference's choices.
@@ -46,13 +48,6 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(sheet, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let text = try await SnapshotTestSupport.recognizedText(in: png)
-                .map { $0.text.replacingOccurrences(of: " ", with: "") }
-            #expect(text.carrying("Second.wav"))
-            #expect(!text.carrying("First.wav"))
-            #expect(!text.carrying("First.flac"))
-            #expect(!text.carrying("Second.flac"))
             let menus = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSPopUpButton }
             #expect(menus.count == 2, "the summary, then the missing row")
@@ -171,19 +166,14 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(group, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let text = try await SnapshotTestSupport.recognizedText(in: png)
-                .map { $0.text.replacingOccurrences(of: " ", with: "") }
-            #expect(text.carrying("Collection.cue"))
-            #expect(!text.carrying("First.wav"))
-            #expect(!text.carrying("First.flac"))
-            #expect(!text.carrying("Second.wav"))
-            #expect(!text.carrying("Second.flac"))
             let menus = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSPopUpButton }
             try #require(menus.count == 1, "the summary is the one menu")
             #expect(menus[0].isEnabled)
         }
+        let layout = ImportSheetBindingLayout(sheet: group)
+        #expect(layout.summary == .submenus(references))
+        #expect(layout.unbound.isEmpty)
     }
 }
 
