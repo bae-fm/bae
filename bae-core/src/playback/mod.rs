@@ -30,14 +30,15 @@ pub mod timeline;
 mod track_buffered;
 
 pub use audio_focus::{AudioFocus, AudioFocusRefused, AudioFocusSystem};
-#[cfg(feature = "test-utils")]
-pub use audio_output::{
-    wait_for_samples, CaptureAudioDevice, CaptureAudioOutput, RealtimeCaptureAudioDevice,
-    RealtimeCaptureAudioOutput, RealtimeProbeDevice, RealtimeProbeOutput,
-};
 pub use audio_output::{
     AudioError, AudioOutput, AudioOutputDevice, AudioState, AudioStream, CompletionEvent,
     PositionEvent,
+};
+#[cfg(feature = "test-utils")]
+pub use audio_output::{
+    CaptureAudioDevice, CaptureAudioOutput, CapturedStream, CapturedStreams,
+    RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutput, RealtimeProbeDevice,
+    RealtimeProbeOutput,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use clock::ManualPlaybackClock;

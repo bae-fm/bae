@@ -233,7 +233,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Seek to 5s into track 2
     let seek_position_ms: u64 = 5000;
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
@@ -254,7 +254,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
         .await
         .expect("Track 2 should report decode stats");
 
-    let captured_snapshot: Vec<f32> = captured.lock().unwrap().clone();
+    let captured_snapshot: Vec<f32> = captured.samples();
 
     // Decode reference and compare at the seek position
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");

@@ -282,7 +282,7 @@ impl CueApeTestFixture {
         })
     }
 
-    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
+    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
@@ -308,7 +308,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
 
         let track_id = fixture.track_ids[track_index].clone();
         fixture.playback_handle.play(track_id.clone());
-        let captured = fixture.next_capture_stream().await;
+        let mut captured = fixture.next_capture_stream().await;
 
         // Wait for playback to start.
         let started = support::wait_until_playing(
@@ -334,7 +334,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let max_alignment = sample_rate as usize * channels * 2;
         let needed = max_alignment + 500 * channels;
         let captured_snapshot =
-            bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60))
+            captured.wait_for_samples(needed + 1, Duration::from_secs(60))
                 .await;
         assert!(
             captured_snapshot.len() > needed,
@@ -384,7 +384,7 @@ async fn test_cue_ape_seek() {
 
     // Seek to 27s — capture the new stream and wait for new audio post-seek
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(27)));
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
@@ -402,7 +402,7 @@ async fn test_cue_ape_seek() {
 
     let needed_for_seek = sample_rate as usize * channels;
     let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed_for_seek, Duration::from_secs(60))
+        captured.wait_for_samples(needed_for_seek, Duration::from_secs(60))
             .await;
 
     assert!(
@@ -522,7 +522,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // auto-advances into track 2 within this same stream. This buffer therefore
     // holds track 1's 28s→30s tail followed by track 2.
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(28)));
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.
     let track2_started =
@@ -551,7 +551,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let max_alignment = sample_rate as usize * channels * 5;
     let needed = max_alignment + 500 * channels;
     let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
+        captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() > needed,
         "not enough captured samples after 60s: {} (needed {needed})",

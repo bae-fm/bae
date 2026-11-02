@@ -413,8 +413,8 @@ pub trait AudioOutput: Send + 'static {
     /// Called after the persistent output's `PlaybackSource` is swapped in place
     /// (`PlaybackSource::replace`) for a same-format track transition — the stream
     /// keeps running, only what its callback reads changed. Real devices don't
-    /// care (the default no-op); the test capture sinks rotate their capture
-    /// buffer so each non-gapless transition still yields one buffer.
+    /// care (the default no-op); the test capture sinks start a new captured
+    /// stream so each non-gapless transition still yields one stream.
     fn on_source_replaced(&mut self) {}
 
     /// The playback through this output ended: it stopped, or moved to a
@@ -462,10 +462,9 @@ pub trait AudioOutputDevice: Send {
 /// Captures raw f32 samples for ground-truth comparison in tests.
 ///
 /// Each non-gapless transition — a `create_stream` (rebuild) or an
-/// `on_source_replaced` (same-format swap) — mints a fresh capture buffer, and
-/// the receiver from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
-/// order. Volume is NOT applied: samples land exactly as the decoder produced
-/// them.
+/// `on_source_replaced` (same-format swap) — starts a new [`CapturedStream`],
+/// and the receiver from `new()` yields one per transition in order. Volume is
+/// NOT applied: samples land exactly as the decoder produced them.
 #[cfg(feature = "test-utils")]
 pub struct CaptureAudioOutput {
     core: CaptureOutputCore,
@@ -477,50 +476,100 @@ pub struct RealtimeCaptureAudioOutput {
     core: CaptureOutputCore,
 }
 
+/// Where a capture output sends the samples it pulls: the current
+/// transition's stream.
+#[cfg(feature = "test-utils")]
+type CaptureSender = tokio::sync::mpsc::UnboundedSender<Vec<f32>>;
+
+/// The streams of a capture output's transitions, in order, as the test
+/// receives them.
+#[cfg(feature = "test-utils")]
+pub type CapturedStreams = tokio::sync::mpsc::UnboundedReceiver<CapturedStream>;
+
+/// One non-gapless transition's samples, as a test receives them: the capture
+/// thread sends each run it pulls, and the test keeps its own copy, so nothing
+/// the output holds is shared with the test.
+#[cfg(feature = "test-utils")]
+pub struct CapturedStream {
+    runs: tokio::sync::mpsc::UnboundedReceiver<Vec<f32>>,
+    samples: Vec<f32>,
+}
+
+#[cfg(feature = "test-utils")]
+impl CapturedStream {
+    /// Every sample this transition has sent so far.
+    pub fn samples(&mut self) -> Vec<f32> {
+        while let Ok(run) = self.runs.try_recv() {
+            self.samples.extend(run);
+        }
+        self.samples.clone()
+    }
+
+    /// Checks every 50 ms until at least `at_least` samples have arrived or
+    /// `timeout` elapses, and returns what arrived, so the caller can assert
+    /// against whatever was captured.
+    pub async fn wait_for_samples(
+        &mut self,
+        at_least: usize,
+        timeout: std::time::Duration,
+    ) -> Vec<f32> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            let samples = self.samples();
+            if samples.len() >= at_least || std::time::Instant::now() >= deadline {
+                return samples;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }
+}
+
 #[cfg(feature = "test-utils")]
 struct CaptureOutputCore {
     controls: AudioOutputControls,
-    notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
-    /// The buffer the capture thread currently extends. A `create_stream` or an
-    /// `on_source_replaced` mints a new inner buffer and publishes it here, so
-    /// each non-gapless transition captures into its own — the one-buffer-per-
+    notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
+    /// Where the capture thread sends what it pulls. A `create_stream` or an
+    /// `on_source_replaced` starts a new stream and points this at it, so each
+    /// non-gapless transition is captured on its own — the one-stream-per-
     /// transition contract the fixtures await via `next_capture_stream`.
-    active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
+    active: Arc<Mutex<CaptureSender>>,
 }
 
 #[cfg(feature = "test-utils")]
 impl CaptureOutputCore {
-    fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
+    fn new() -> (Self, CapturedStreams) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
         (Self::publishing_to(notify_tx), notify_rx)
     }
 
-    /// A core publishing its buffers to an existing receiver, so every output a
-    /// capture device opens reports into the one receiver the test holds.
-    fn publishing_to(notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>) -> Self {
+    /// A core publishing its streams to an existing receiver, so every output
+    /// a capture device opens reports into the one receiver the test holds.
+    fn publishing_to(notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>) -> Self {
+        // Nothing is captured before the first transition starts a stream.
+        let (before_first, _) = tokio::sync::mpsc::unbounded_channel();
         Self {
             controls: AudioOutputControls::new(1.0),
             notify_tx,
-            active: Arc::new(Mutex::new(Arc::new(Mutex::new(Vec::new())))),
+            active: Arc::new(Mutex::new(before_first)),
         }
     }
 
-    /// Mint a fresh capture buffer, make it the active one the capture thread
-    /// extends, and publish it to the receiver `new()` handed back.
+    /// Start a new stream, point the capture thread at it, and publish it to
+    /// the receiver `new()` handed back.
     fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
-        let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
-        *self.active.lock().unwrap() = captured.clone();
+        let (runs_tx, runs) = tokio::sync::mpsc::unbounded_channel();
+        *self.active.lock().unwrap() = runs_tx;
         self.notify_tx
-            .send(captured)
+            .send(CapturedStream { runs, samples: Vec::new() })
             .map_err(|error| AudioError::Unexpected(format!("capture receiver dropped: {error}")))
     }
 
-    /// The one capture thread keeps running across a same-format swap; rotate
-    /// to a fresh buffer so this transition's samples are captured separately,
-    /// as the fixtures' one-buffer-per-transition await expects.
+    /// The one capture thread keeps running across a same-format swap; start
+    /// a new stream so this transition's samples are captured separately, as
+    /// the fixtures' one-stream-per-transition await expects.
     fn on_source_replaced(&self) {
         if let Err(e) = self.rotate_capture_buffer() {
-            tracing::warn!("capture buffer rotation failed on source replace: {e}");
+            tracing::warn!("starting a capture stream failed on source replace: {e}");
         }
     }
 }
@@ -528,7 +577,7 @@ impl CaptureOutputCore {
 #[cfg(feature = "test-utils")]
 fn spawn_capture_stream<F>(
     controls: AudioOutputControls,
-    active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
+    active: Arc<Mutex<CaptureSender>>,
     source: Arc<Mutex<PlaybackSource>>,
     audio_events: AudioEventSender,
     position_update_interval_ms: u32,
@@ -559,14 +608,13 @@ where
                     continue;
                 }
                 DrainStatus::Samples { read } => {
-                    // Re-read the active buffer each iteration: a same-format
+                    // Re-read the active stream each iteration: a same-format
                     // source replace rotates it under us, so post-swap samples
-                    // land in the new track's buffer.
-                    let captured = active.lock().unwrap().clone();
-                    if let Ok(mut guard) = captured.lock() {
-                        guard.extend_from_slice(&buf[..read]);
-                    } else {
-                        break;
+                    // land in the new track's stream.
+                    let sent = active.lock().unwrap().send(buf[..read].to_vec());
+                    if sent.is_err() {
+                        // The test let go of this transition's stream, so no
+                        // one reads these samples; playback drains on.
                     }
 
                     after_samples(read);
@@ -582,19 +630,19 @@ where
 macro_rules! impl_capture_output_constructor {
     ($type:ty) => {
         impl $type {
-            /// Returns the output and a receiver that yields one buffer per
+            /// Returns the output and a receiver that yields one stream per
             /// non-gapless transition (a `create_stream` rebuild or an
             /// `on_source_replaced` swap), in order.
-            pub fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
+            pub fn new() -> (Self, CapturedStreams) {
                 let (core, notify_rx) = CaptureOutputCore::new();
                 (Self { core }, notify_rx)
             }
 
-            /// An output reporting its buffers to an existing receiver — how a
+            /// An output reporting its streams to an existing receiver — how a
             /// capture device opens each output it hands out, so the main
             /// player's and the preview player's land on one receiver.
             fn publishing_to(
-                notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+                notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
             ) -> Self {
                 Self { core: CaptureOutputCore::publishing_to(notify_tx) }
             }
@@ -604,17 +652,17 @@ macro_rules! impl_capture_output_constructor {
 
 /// Define a capture *device*: what a test hands the playback service in place of
 /// the system's audio device. Every output it opens captures into the one
-/// receiver `new()` returns, which yields one buffer per non-gapless transition
+/// receiver `new()` returns, which yields one stream per non-gapless transition
 /// across all of them, in order.
 #[cfg(feature = "test-utils")]
 macro_rules! impl_capture_audio_device {
     ($device:ident, $output:ident) => {
         pub struct $device {
-            notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+            notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
         }
 
         impl $device {
-            pub fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
+            pub fn new() -> (Self, CapturedStreams) {
                 let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
                 (Self { notify_tx }, notify_rx)
             }
@@ -753,30 +801,6 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
     /// without gain.
     fn controls(&self) -> &AudioOutputControls {
         &self.core.controls
-    }
-}
-
-/// Polls `buffer` every 50 ms until it holds at least `at_least` samples or
-/// `timeout` elapses. Returns the snapshot at exit so the caller can assert
-/// against whatever was captured.
-#[cfg(feature = "test-utils")]
-pub async fn wait_for_samples(
-    buffer: &Arc<Mutex<Vec<f32>>>,
-    at_least: usize,
-    timeout: std::time::Duration,
-) -> Vec<f32> {
-    let deadline = std::time::Instant::now() + timeout;
-    loop {
-        {
-            let guard = buffer.lock().unwrap();
-            if guard.len() >= at_least {
-                return guard.clone();
-            }
-        }
-        if std::time::Instant::now() >= deadline {
-            return buffer.lock().unwrap().clone();
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 }
 

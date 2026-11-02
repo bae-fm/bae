@@ -15,7 +15,7 @@ use crate::playback::audio_output::audio_event_channel;
 impl PlaybackService {
     /// Attach `track_stream` to the output: if a stream for this format is already
     /// live, swap the callback's source in place (`PlaybackSource::replace`) and
-    /// notify the sink so a capture buffer rotates; otherwise drop the old stream
+    /// notify the sink so a capture sink starts a new stream; otherwise drop the old stream
     /// (releasing the device / stopping the old capture thread) and build a fresh
     /// one for this format. On a build failure the just-wrapped source is
     /// cancelled and the error returned — the caller owns the decoder's token and
@@ -47,8 +47,9 @@ impl PlaybackService {
                     while out.audio_events.pop().is_some() {}
                 }
                 // A same-format swap keeps the one device stream; tell the sink so
-                // a capture buffer rotates, preserving "one buffer per non-gapless
-                // transition" for the test capture sinks (a no-op on real devices).
+                // a capture sink starts a new stream, preserving "one stream per
+                // non-gapless transition" for the test capture sinks (a no-op on
+                // real devices).
                 self.audio_output.on_source_replaced();
                 return Ok(());
             }

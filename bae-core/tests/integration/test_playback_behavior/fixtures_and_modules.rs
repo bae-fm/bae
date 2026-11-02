@@ -197,8 +197,8 @@ impl CueFlacTestFixture {
         })
     }
 
-    /// The next stream's capture buffer, in the order streams were created.
-    async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
+    /// The next transition's captured stream, in the order streams were created.
+    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
@@ -308,7 +308,7 @@ impl SidePauseTestFixture {
         settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
 
-    async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
+    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 

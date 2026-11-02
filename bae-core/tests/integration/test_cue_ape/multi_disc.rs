@@ -25,7 +25,7 @@ async fn test_cue_ape_next_track() {
 
     // Press Next — track 2's stream replaces track 1's.
     fixture.playback_handle.next();
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start
     let track2_started =
@@ -76,9 +76,7 @@ async fn test_cue_ape_next_track() {
         track2_sample_count,
     );
 
-    let captured_snapshot = bae_core::playback::wait_for_samples(
-        &captured,
-        track2_sample_count,
+    let captured_snapshot = captured.wait_for_samples(track2_sample_count,
         Duration::from_secs(60),
     )
     .await;

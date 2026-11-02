@@ -146,7 +146,7 @@ async fn test_cue_flac_seek() {
     assert!(started.is_some(), "Playback should start");
 
     fixture.playback_handle.seek(TrackTime::from_millis(3_000));
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
@@ -163,7 +163,7 @@ async fn test_cue_flac_seek() {
     // One second of samples.
     let target_samples = sample_rate as usize * channels;
     let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, target_samples, Duration::from_secs(60))
+        captured.wait_for_samples(target_samples, Duration::from_secs(60))
             .await;
 
     assert!(!captured_snapshot.is_empty(), "No samples captured after seek",);
@@ -293,7 +293,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     // finish before its Playing state is reported; the audio it captures is
     // what shows where playback started.
     fixture.playback_handle.play(track_id);
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     // XLD splits at INDEX 01, so the reference has no pregap.
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
@@ -309,7 +309,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     // Two seconds of samples.
     let target_samples = sample_rate as usize * channels * 2;
     let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, target_samples, Duration::from_secs(60))
+        captured.wait_for_samples(target_samples, Duration::from_secs(60))
             .await;
 
     // Had the pregap played, the start of the reference would not be found

@@ -386,7 +386,7 @@ struct PlaybackTestFixture {
     /// Lets tests read the device-local `playback_state` row directly.
     library_manager: LibraryManager,
     /// Dropping this receiver would make stream creation fail.
-    _capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+    _capture_stream_rx: bae_core::playback::CapturedStreams,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {

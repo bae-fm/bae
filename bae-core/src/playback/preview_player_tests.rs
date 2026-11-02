@@ -91,13 +91,13 @@ async fn preview_plays_only_the_requested_sample_window() {
     }
     assert_eq!(playing, Some((target, 1_000)));
 
-    let captured = capture_rx.recv().await.expect("preview capture");
+    let mut captured = capture_rx.recv().await.expect("preview capture");
     let completed = tokio::time::timeout(Duration::from_secs(10), command_rx.recv())
         .await
         .expect("bounded preview completes within the timeout")
         .expect("bounded preview sends its completion command");
     assert!(matches!(completed, PlaybackCommand::PreviewCompleted));
-    let captured = captured.lock().expect("preview capture lock").clone();
+    let captured = captured.samples();
     assert_eq!(
         captured.len(),
         probe.sample_rate as usize * probe.channels as usize,
@@ -146,14 +146,9 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let _initial_capture = capture_rx.recv().await.expect("initial preview capture");
 
     player.seek_by_ratio(0.5, &device).await;
-    let seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
+    let mut seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
     player.toggle_pause();
-    let captured = crate::playback::audio_output::wait_for_samples(
-        &seeked_capture,
-        1_000,
-        Duration::from_secs(10),
-    )
-    .await;
+    let captured = seeked_capture.wait_for_samples(1_000, Duration::from_secs(10)).await;
 
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
@@ -252,9 +247,8 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let device = FailingAudioDevice;
 
     assert!(player.play(target, &device).await.started());
-    let first_capture = capture_rx.recv().await.expect("the first stream's capture");
-    crate::playback::audio_output::wait_for_samples(&first_capture, 4_000, Duration::from_secs(10))
-        .await;
+    let mut first_capture = capture_rx.recv().await.expect("the first stream's capture");
+    first_capture.wait_for_samples(4_000, Duration::from_secs(10)).await;
     player.toggle_pause();
 
     *report.lock().unwrap() = Some("the default device changed".to_string());
@@ -263,7 +257,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     assert!(player.take_output_invalidation().is_none(), "a report is taken once");
     player.restart_on_current_device(&device).await;
 
-    let second_capture = capture_rx.recv().await.expect("a new stream");
+    let mut second_capture = capture_rx.recv().await.expect("a new stream");
     let restarted_at = player.active.as_ref().expect("the preview plays on").pipeline.position();
     assert!(
         restarted_at > crate::playback::StreamPosition::START,
@@ -276,12 +270,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     );
 
     player.toggle_pause();
-    let captured = crate::playback::audio_output::wait_for_samples(
-        &second_capture,
-        1_000,
-        Duration::from_secs(10),
-    )
-    .await;
+    let captured = second_capture.wait_for_samples(1_000, Duration::from_secs(10)).await;
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
     let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);

@@ -202,7 +202,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
 
     // Play track 2 (direct play skips pregap, starts at INDEX 01)
     fixture.playback_handle.play(track_id.clone());
-    let captured = fixture.next_capture_stream().await;
+    let mut captured = fixture.next_capture_stream().await;
 
     // Decode XLD reference for track 2 (white noise)
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
@@ -219,8 +219,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     // second of alignment search is plenty.
     let max_alignment = sample_rate as usize * channels / 10;
     let needed = max_alignment + 500 * channels;
-    let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() > needed,
         "not enough captured samples after 60s: {} (needed {needed})",
@@ -360,7 +359,7 @@ impl CueFlacCaptureFixture {
         })
     }
 
-    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
+    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }

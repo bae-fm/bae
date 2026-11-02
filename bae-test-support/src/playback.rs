@@ -71,11 +71,10 @@ pub async fn wait_for_seek(
     assert!(seeked.is_some(), "Should receive Seeked event");
 }
 
-/// The capture sink's stream buffers, minted one per `create_stream`. Holding
+/// The capture sink's streams, one per non-gapless transition. Holding
 /// the receiver is what lets stream creation succeed, so a fixture keeps it for
 /// the playback service's lifetime even when it never inspects the samples.
-pub type CaptureStreamRx =
-    tokio::sync::mpsc::UnboundedReceiver<std::sync::Arc<std::sync::Mutex<Vec<f32>>>>;
+pub type CaptureStreamRx = bae_core::playback::CapturedStreams;
 
 /// Which stand-in audio device a test's playback service runs on.
 pub enum TestAudioDevice {
@@ -92,7 +91,7 @@ pub enum TestAudioDevice {
 
 /// Start a playback service over `library_manager` on the calling test's
 /// runtime, backed by a capture sink standing in for the audio device, and
-/// return its handle beside the sink's capture buffers.
+/// return its handle beside the sink's captured streams.
 ///
 /// A tuple rather than a fixture struct: a struct retaining a playback handle
 /// is an owner, and `scripts/owner-dependency-boundary.sh` refuses to let a
@@ -151,14 +150,14 @@ fn capture_device(
     }
 }
 
-/// Awaits the next capture buffer minted by `create_stream`. Buffers are
+/// Awaits the next captured stream a transition started. Streams are
 /// yielded in creation order; tests that exercise auto-advance, seek, or next
 /// call this once per stream they want to inspect.
 pub async fn next_capture_stream(
     capture_stream_rx: &mut CaptureStreamRx,
-) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
+) -> bae_core::playback::CapturedStream {
     match tokio::time::timeout(std::time::Duration::from_secs(5), capture_stream_rx.recv()).await {
-        Ok(Some(buffer)) => buffer,
+        Ok(Some(stream)) => stream,
         Ok(None) => panic!("capture stream channel closed before a stream was created"),
         Err(_) => panic!("no capture stream created within 5s"),
     }
