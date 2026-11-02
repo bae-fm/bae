@@ -1,10 +1,12 @@
-//! Libraries still closing after their handle was released on their runtime.
+//! Stores still closing after their library's handle was released on its
+//! runtime, or the `OpenedLibrary` holding them was released unopened.
 
 use std::sync::{Mutex, PoisonError};
 use std::thread::JoinHandle;
 
-/// Each library whose handle was released on its own runtime, closing on a
-/// thread of its own until it has. A call that opens or removes one of them
+/// Each store whose library's handle was released on its own runtime, or
+/// whose `OpenedLibrary` was released unopened, closing on a thread of its
+/// own until it has. A call that opens or removes one of them
 /// waits for its thread first, so it never finds the store still held.
 ///
 /// Nothing done while the list is locked can panic — a push, or a take, split

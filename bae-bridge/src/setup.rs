@@ -132,32 +132,68 @@ pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
     )
 }
 
-/// The live handle and the runtime holding its session custody stay together.
+/// A store a create, restore, join or device reset left open, held until an
+/// open hands it to the library it opens. Released before that, its store is
+/// closed on a thread the host waits for before opening or removing the store
+/// again, as a released [`crate::AppHandle`]'s is.
 #[derive(uniffi::Object)]
 pub struct OpenedLibrary {
-    handle: coven::CovenHandle,
+    store: coven::StoreId,
+    /// The open store, until an open takes it; a failed open leaves it here.
+    handle: std::sync::Mutex<Option<coven::CovenHandle>>,
     host: Arc<BridgeHost>,
 }
 impl OpenedLibrary {
     pub(crate) fn new(handle: coven::CovenHandle, host: Arc<BridgeHost>) -> Self {
-        Self { handle, host }
+        Self {
+            store: handle.store_id(),
+            handle: std::sync::Mutex::new(Some(handle)),
+            host,
+        }
     }
 }
 #[uniffi::export]
 impl OpenedLibrary {
     pub fn library_id(&self) -> String {
-        self.handle.store_id().to_string()
+        self.store.to_string()
     }
+
+    /// Open the library on the store, which the library then owns. Once one
+    /// open has, the store is no longer this object's to open again.
     pub fn open(
         &self,
         position_update_interval_ms: u32,
         restore_playback: bool,
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-        self.host.open_prepared(
-            self.handle.clone(),
+        let mut held = self
+            .handle
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let handle = held.as_ref().ok_or_else(|| {
+            BridgeError::from(bae_core::library::LibraryError::Internal(
+                "this library was already opened".to_string(),
+            ))
+        })?;
+        let opened = self.host.open_prepared(
+            handle.clone(),
             position_update_interval_ms,
             restore_playback,
-        )
+        )?;
+        *held = None;
+        Ok(opened)
+    }
+}
+
+impl Drop for OpenedLibrary {
+    fn drop(&mut self) {
+        let held = self
+            .handle
+            .get_mut()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+        if let Some(handle) = held {
+            self.host.close_released(handle);
+        }
     }
 }
 

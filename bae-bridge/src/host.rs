@@ -50,8 +50,9 @@ impl BridgeHost {
         self.audio_focus.clone()
     }
 
-    /// Record `closing`, the thread closing `store`'s library after its handle
-    /// was released on the library's own runtime.
+    /// Record `closing`, the thread closing `store` after its library's handle
+    /// was released on the library's own runtime, or after the
+    /// [`crate::OpenedLibrary`] holding it was released unopened.
     pub(crate) fn library_closing(
         &self,
         store: coven::StoreId,
@@ -60,9 +61,41 @@ impl BridgeHost {
         self.closing_libraries.add(store, closing);
     }
 
-    /// Wait until `store`'s library has closed, if its handle was released
-    /// on its runtime and it is still closing, before a call opens or removes
-    /// the store. Blocks, so it runs off any async runtime.
+    /// Close `handle`, a store an [`crate::OpenedLibrary`] held and was
+    /// released with, on a thread of its own, recorded so a call that opens or
+    /// removes the store waits for it. Dropping the handle alone would leave
+    /// the store closing on this host's runtime with nothing to wait on, and
+    /// a removal that followed would find it still held. A close that fails
+    /// is reported as a bug: no caller is left to hear it.
+    pub(crate) fn close_released(self: &Arc<Self>, handle: coven::CovenHandle) {
+        let store = handle.store_id();
+        let host = Arc::clone(self);
+        let started = std::thread::Builder::new()
+            .name("bae-store-close".to_string())
+            .spawn(move || {
+                let runtime = host
+                    .runtime
+                    .as_ref()
+                    .expect("a host that is still referenced holds its runtime")
+                    .handle()
+                    .clone();
+                if let Err(error) = runtime.block_on(handle.close()) {
+                    host.diagnostics
+                        .report_bug("close the store a released library held", &error);
+                }
+            });
+        match started {
+            Ok(thread) => self.library_closing(store, thread),
+            Err(error) => self.diagnostics.report_bug(
+                "close the store a released library held",
+                &format!("its thread could not start: {error}"),
+            ),
+        }
+    }
+
+    /// Wait until `store` has closed, if its library's handle was released on
+    /// its runtime, or the [`crate::OpenedLibrary`] holding it was released,
+    /// and it is still closing, before a call opens or removes the store. Blocks, so it runs off any async runtime.
     pub(crate) fn wait_for_closing(&self, store: coven::StoreId) {
         self.closing_libraries.wait(store);
     }

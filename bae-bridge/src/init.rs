@@ -232,6 +232,12 @@ impl BridgeDiagnostics {
         self.inner.bug(failed)
     }
 
+    /// Report a failure of `operation` that no caller is left to hear as a
+    /// bug, to the log and the platform's crash reporter.
+    pub(crate) fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
+        self.inner.report_bug(operation, error);
+    }
+
     /// Where the bridge's calls run on `runtime`, reporting their panics to
     /// this sink.
     pub(crate) fn operations(

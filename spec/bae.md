@@ -3639,9 +3639,13 @@ release's or track's id as UTF-8, or a candidate's key.
   reported as one and fails the close, and the steps after it still run, the
   store's close among them. A handle released on the library's own runtime
   closes it on a thread of its own, and opening, resetting, restoring or
-  removing that library waits for the close first. A close that panics is
-  reported as a bug, as a failed one is, and never fails the open or removal
-  that waited for it. After a removal deleted
+  removing that library waits for the close first. A store that a create,
+  restore, join or device reset left open, released before any open took it,
+  is closed the same way, on a thread the same calls wait for; a removal that
+  followed it at once would otherwise find the store still held. Once an open
+  has taken the store, the library owns it and it can't be opened from there
+  again. A close that panics is reported as a bug, as a failed one is, and
+  never fails the open or removal that waited for it. After a removal deleted
   the store, only the runtime is left to end. An open that fails after the
   library started closes it the same way before its runtime ends.
   A close the app shows reports each step as it starts, through a stream of
