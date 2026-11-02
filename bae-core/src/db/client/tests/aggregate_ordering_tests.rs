@@ -233,14 +233,14 @@ pub(crate) async fn insert_file(
     db.insert_file_for_test(&file, &original).await.unwrap();
 }
 
-/// A release's files come back in natural order of their names, case aside,
-/// from the read itself, which SQLite orders by walking the index of each
-/// release's files in that order: the release's file list, its detail and the
-/// read under both all show it.
-#[tokio::test]
-async fn release_files_are_read_in_case_insensitive_natural_order() {
-    let (db, tmp) = release_detail_db().await;
-    // Inserted out of order, mixed case, with a two-digit number.
+/// The names `insert_files_out_of_natural_order` seeds, in natural order,
+/// case aside.
+pub(crate) const FILES_IN_NATURAL_ORDER: [&str; 5] =
+    ["album.cue", "Back.jpg", "cover.jpg", "Track 2.flac", "Track 10.flac"];
+
+/// Seed `RELEASE_A` with the files of `FILES_IN_NATURAL_ORDER`, inserted out
+/// of order, mixed case, with a two-digit number.
+pub(crate) async fn insert_files_out_of_natural_order(db: &Database, dir: &std::path::Path) {
     for (i, name) in
         ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "album.cue"].iter().enumerate()
     {
@@ -252,8 +252,8 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
             "image/jpeg"
         };
         insert_file(
-            &db,
-            tmp.path(),
+            db,
+            dir,
             NewReleaseFile {
                 id: bae_test_support::test_uuid(&format!("ordering-file-{i}")),
                 release_id: RELEASE_A.to_string(),
@@ -266,22 +266,25 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         )
         .await;
     }
-    let expected = vec!["album.cue", "Back.jpg", "cover.jpg", "Track 2.flac", "Track 10.flac"];
+}
+
+/// A release's files come back in natural order of their names, case aside,
+/// from the read itself, which SQLite orders by walking the index of each
+/// release's files in that order: the release's file list and the read under
+/// it both show it.
+#[tokio::test]
+async fn release_files_are_read_in_case_insensitive_natural_order() {
+    let (db, tmp) = release_detail_db().await;
+    insert_files_out_of_natural_order(&db, tmp.path()).await;
     let names = |files: &[DbFile]| -> Vec<String> {
         files.iter().map(|f| f.original_filename.clone()).collect()
     };
 
     let read =
         db.read(|sql| super::super::read::get_files_for_release_on(&sql, RELEASE_A)).await.unwrap();
-    assert_eq!(names(&read), expected, "the read");
+    assert_eq!(names(&read), FILES_IN_NATURAL_ORDER, "the read");
     let listed = db.get_files_for_release(RELEASE_A).await.unwrap();
-    assert_eq!(names(&listed), expected, "the release's file list");
-    let detail = crate::library::views::LibraryViews::new(db.clone())
-        .find_db_release_detail(RELEASE_A)
-        .await
-        .unwrap()
-        .expect("release detail");
-    assert_eq!(names(&detail.files), expected, "the release's detail");
+    assert_eq!(names(&listed), FILES_IN_NATURAL_ORDER, "the release's file list");
 
     let plan = db
         .read(|sql| {
@@ -297,25 +300,6 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
     assert!(
         plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order")),
         "the read walks the index: {plan:?}"
-    );
-    let detail_plan = db
-        .read(|sql| {
-            sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    crate::library::views::storage_inspector::INSPECTOR_FILES
-                ),
-                [RELEASE_A],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
-    assert!(
-        detail_plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order"))
-            && !detail_plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the detail's files walk the index with their pins and uploads: {detail_plan:?}"
     );
     assert!(
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),

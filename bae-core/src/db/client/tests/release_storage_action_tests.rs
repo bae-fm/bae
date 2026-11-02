@@ -1,9 +1,8 @@
 //! `release_storage_action`: a release is in one storage transition at a
-//! time, its reads show it, and opening the library ends every one.
+//! time, and its reads show it.
 
 use super::super::*;
 use super::*;
-use crate::library::release_queue::ReleaseQueueEntry;
 use bae_types::release_storage::ReleaseStorageAction;
 
 const LIBRARY: &str = "
@@ -53,33 +52,18 @@ async fn a_release_is_in_one_transition_at_a_time() {
 #[tokio::test]
 async fn the_active_download_reads_as_a_pin() {
     let (db, _tmp) = library().await;
-    let entries =
-        vec![ReleaseQueueEntry { release_id: RELEASE_B.to_string(), created_at: 7, payload: () }];
-    db.call(move |sql| crate::library::queued_releases::tables::enqueue_releases_on(sql, &entries))
-        .await
-        .unwrap();
+    exec(
+        &db,
+        "INSERT INTO download_queue (release_id, created_at, state) VALUES (?1, 7, 'queued')",
+        &[RELEASE_B],
+    )
+    .await;
     assert_eq!(db.release_transfer_action(RELEASE_B).await.unwrap(), None);
 
-    assert!(db
-        .call(|sql| crate::library::queued_releases::tables::activate_queued_release_on::<()>(
-            sql, RELEASE_B
-        ))
-        .await
-        .unwrap());
+    exec(&db, "UPDATE download_queue SET state = 'active' WHERE release_id = ?1", &[RELEASE_B])
+        .await;
     assert_eq!(
         db.release_transfer_action(RELEASE_B).await.unwrap(),
         Some(ReleaseStorageAction::Pin)
     );
-}
-
-/// Opening the library ends every transition: none outlives the process
-/// that ran it.
-#[tokio::test]
-async fn opening_ends_every_transition() {
-    let (db, _tmp) = library().await;
-    db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap();
-
-    db.call(crate::library::queued_releases::tables::clear_transfers_on).await.unwrap();
-
-    assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
 }

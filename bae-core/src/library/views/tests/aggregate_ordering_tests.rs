@@ -126,6 +126,43 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
     assert!(detail.tracks[1].artists.is_empty());
 }
 
+/// A release's detail lists its files in natural order of their names, case
+/// aside, and the read under it walks the index of each release's files in
+/// that order, with their pins and uploads.
+#[tokio::test]
+async fn release_detail_files_are_in_case_insensitive_natural_order() {
+    let (db, tmp) = release_detail_db().await;
+    insert_files_out_of_natural_order(&db, tmp.path()).await;
+
+    let detail = crate::library::views::LibraryViews::new(db.clone())
+        .find_db_release_detail(RELEASE_A)
+        .await
+        .unwrap()
+        .expect("release detail");
+    let names: Vec<&str> = detail.files.iter().map(|f| f.original_filename.as_str()).collect();
+    assert_eq!(names, FILES_IN_NATURAL_ORDER, "the release's detail");
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::library::views::storage_inspector::INSPECTOR_FILES
+                ),
+                [RELEASE_A],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order"))
+            && !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the detail's files walk the index with their pins and uploads: {plan:?}"
+    );
+}
+
 /// A release's files come back in each order the Storage sheet sorts them
 /// by — name, size, or kind, each forward or backward, ties by name and then
 /// id — from the read itself, which walks that order's index either way. The

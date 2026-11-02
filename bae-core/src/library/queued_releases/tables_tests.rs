@@ -273,6 +273,28 @@ async fn opening_leaves_the_queues_empty_and_running() {
     assert!(!release_queue::<OutputRequest>(&db).await.unwrap().paused);
 }
 
+/// Opening the library ends every storage transition: none outlives the
+/// process that ran it.
+#[tokio::test]
+async fn opening_ends_every_transition() {
+    let (db, _tmp) = temp_db().await;
+    exec_batch(
+        &db,
+        &format!(
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('{ALBUM_A}', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0);"
+        ),
+    )
+    .await;
+    db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap();
+
+    clear_transfers(&db).await.unwrap();
+
+    assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
+}
+
 /// The worker's lookups use the table's keys, and the pane's read joins
 /// each row to its release by key.
 #[tokio::test]
