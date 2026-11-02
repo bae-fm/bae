@@ -400,12 +400,9 @@ impl BridgeHost {
         redirects: crate::BridgeOAuthRedirects,
         callback: Box<dyn crate::OAuthPresenterCallback>,
     ) {
-        *self.presenter.lock().expect(HOST_LOCK) =
-            Some(Arc::new(crate::oauth::NativeOAuthPresenter {
-                redirects,
-                callback,
-                diagnostics: self.diagnostics.clone(),
-            }));
+        *self.presenter.lock().expect(HOST_LOCK) = Some(Arc::new(
+            crate::oauth::NativeOAuthPresenter::new(redirects, callback, self.diagnostics.clone()),
+        ));
     }
 }
 

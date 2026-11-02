@@ -48,10 +48,21 @@ pub struct BridgeOAuthRedirects {
 
 #[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
 pub(crate) struct NativeOAuthPresenter {
-    pub(crate) redirects: BridgeOAuthRedirects,
-    pub(crate) callback: Box<dyn OAuthPresenterCallback>,
+    redirects: BridgeOAuthRedirects,
+    callback: Box<dyn OAuthPresenterCallback>,
     /// Where a throw the callback doesn't declare is reported.
-    pub(crate) diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+    diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+}
+
+#[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
+impl NativeOAuthPresenter {
+    pub(crate) fn new(
+        redirects: BridgeOAuthRedirects,
+        callback: Box<dyn OAuthPresenterCallback>,
+        diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+    ) -> Self {
+        Self { redirects, callback, diagnostics }
+    }
 }
 
 #[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
@@ -108,14 +119,14 @@ mod tests {
     }
     #[tokio::test]
     async fn native_presentation_preserves_redirects_and_cancellation() {
-        let presenter = NativeOAuthPresenter {
-            redirects: BridgeOAuthRedirects {
+        let presenter = NativeOAuthPresenter::new(
+            BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),
                 onedrive: "bae://onedrive".into(),
             },
-            callback: Box::new(Cancelled),
-            diagnostics: crate::BridgeDiagnostics::noop(),
-        };
+            Box::new(Cancelled),
+            crate::BridgeDiagnostics::noop(),
+        );
         assert_eq!(presenter.redirect_uri(coven::CloudProvider::Dropbox), "bae://dropbox");
         assert_eq!(presenter.redirect_uri(coven::CloudProvider::OneDrive), "bae://onedrive");
         assert!(matches!(
@@ -132,14 +143,14 @@ mod tests {
     }
     #[tokio::test]
     async fn native_presentation_returns_the_complete_redirect_to_coven() {
-        let presenter = NativeOAuthPresenter {
-            redirects: BridgeOAuthRedirects {
+        let presenter = NativeOAuthPresenter::new(
+            BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),
                 onedrive: "bae://onedrive".into(),
             },
-            callback: Box::new(Redirect),
-            diagnostics: crate::BridgeDiagnostics::noop(),
-        };
+            Box::new(Redirect),
+            crate::BridgeDiagnostics::noop(),
+        );
         let redirect = presenter.present("https://example.test/authorize").await.unwrap();
         assert_eq!(redirect.as_str(), "bae://dropbox?code=authorization-code&state=request-state");
     }
@@ -158,14 +169,14 @@ mod tests {
     #[tokio::test]
     async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
         let bugs = std::sync::Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
-        let presenter = NativeOAuthPresenter {
-            redirects: BridgeOAuthRedirects {
+        let presenter = NativeOAuthPresenter::new(
+            BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),
                 onedrive: "bae://onedrive".into(),
             },
-            callback: Box::new(Throwing),
-            diagnostics: crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
-        };
+            Box::new(Throwing),
+            crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
+        );
         assert!(matches!(
             presenter.present("https://example.test/authorize").await,
             Err(coven::OAuthError::Presentation(_))
