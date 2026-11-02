@@ -77,6 +77,8 @@ mod import_commit_tests;
 mod import_list_live_query_tests;
 mod import_list_placement_tests;
 mod import_list_tests;
+mod import_list_window_cost;
+mod import_list_window_tests;
 mod label_identity_choice_tests;
 mod release_grouping_tests;
 mod source_release_tests;

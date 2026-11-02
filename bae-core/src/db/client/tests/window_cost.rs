@@ -18,13 +18,13 @@ use std::time::{Duration, Instant};
 
 /// The sizes the lists are measured at, each reached by adding rows to the
 /// library the size before it built.
-const SIZES: [u64; 3] = [20_000, 50_000, 100_000];
+pub(crate) const SIZES: [u64; 3] = [20_000, 50_000, 100_000];
 
 /// How many rows one window holds: the macOS list's page.
-const LIMIT: u64 = 50;
+pub(crate) const LIMIT: u64 = 50;
 
 /// How many times each window is read; the median is reported.
-const RUNS: usize = 15;
+pub(crate) const RUNS: usize = 15;
 
 /// A library row's id: a UUID naming its table by `kind` and its row by `i`,
 /// as an SQL expression over `i`.
@@ -135,11 +135,11 @@ where
 
 /// The window offsets measured in a list of `total` rows: its top, its middle
 /// and its last window.
-fn offsets(total: u64) -> [(&'static str, u64); 3] {
+pub(crate) fn offsets(total: u64) -> [(&'static str, u64); 3] {
     [("top", 0), ("middle", total / 2), ("end", total.saturating_sub(LIMIT))]
 }
 
-fn report(
+pub(crate) fn report(
     list: &str,
     order: &str,
     reach: &str,
@@ -423,104 +423,6 @@ async fn measure_queues(db: &Database, n: u64) {
     }
 }
 
-/// Scan `start..end` more folders into the import list, each its own album
-/// folder under one of 100 artist folders, in a watched folder of their own.
-pub(super) async fn grow_import_list(
-    db: &Database,
-    tmp: &std::path::Path,
-    start: u64,
-    end: u64,
-) -> Duration {
-    let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = tmp.join(format!("watched-{start}"));
-    std::fs::create_dir_all(&root).unwrap();
-    let root = std::fs::canonicalize(&root).unwrap().to_str().unwrap().to_string();
-    let started = Instant::now();
-    tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
-    let generation = tables
-        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    for i in start..end {
-        let name = format!("Artist {:03}/Album {:06}", (i * 7) % 100, (i * 16807) % 999_983);
-        let candidate = crate::import::tables::tests::candidate(std::path::Path::new(&root), &name);
-        tables
-            .save_folder_scan_item(
-                std::path::Path::new(&root),
-                generation,
-                &crate::import::folder_scanner::ScanItem::Valid(candidate),
-            )
-            .await
-            .unwrap()
-            .unwrap();
-    }
-    tables
-        .finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap()
-        .unwrap();
-    started.elapsed()
-}
-
-/// One read of the import list's Found tab with one window, at each measured
-/// offset, in each order, through the list's live query: the counts, the
-/// window's items and their rows. A jump moves the window between the offset
-/// and one far from it, so no read knows a row beside its window; a scroll
-/// moves it between the offset and the window after it.
-async fn measure_import_list(db: &Database, n: u64) {
-    let tables = crate::import::tables::ImportTables::new(db.clone());
-    use crate::import::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
-    for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
-        let list = tables
-            .open_import_list(ImportListView {
-                tab: crate::import::TriageTab::Pending,
-                filter_text: String::new(),
-                pending_filter: PendingFilter::All,
-                order,
-            })
-            .await
-            .unwrap();
-        let request = |offset| ImportListRequest {
-            list,
-            windows: crate::library::LibraryPageWindows::from([
-                crate::library::LibraryPageWindow { offset, limit: LIMIT },
-            ]),
-        };
-        for (at, offset) in offsets(n) {
-            let away = if offset >= n / 2 { offset - n / 4 } else { offset + n / 4 };
-            let next = if offset + 2 * LIMIT <= n { offset + LIMIT } else { offset - LIMIT };
-            for (reach, other) in [("jump", away), ("scroll", next)] {
-                let mut query = tables.subscribe_import_list(request(other));
-                query.next().await.unwrap().result.unwrap();
-                let requests = query.requests();
-                let mut runs = Vec::with_capacity(RUNS);
-                let mut rows = 0;
-                for run in 0..2 * RUNS {
-                    let target = if run % 2 == 0 { offset } else { other };
-                    let started = Instant::now();
-                    requests.set(request(target)).unwrap();
-                    let read = query.next().await.unwrap().result.unwrap();
-                    if target == offset {
-                        runs.push(started.elapsed());
-                        rows = read.windows[0].items.len();
-                    }
-                }
-                runs.sort();
-                report(
-                    "import_list",
-                    &format!("{order:?}"),
-                    reach,
-                    at,
-                    offset,
-                    n,
-                    (runs[RUNS / 2], rows),
-                );
-            }
-        }
-        tables.close_import_list(list).await.unwrap();
-    }
-}
-
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "measurement: run in release with --ignored --nocapture"]
 async fn window_cost() {
@@ -529,8 +431,6 @@ async fn window_cost() {
     for n in SIZES {
         let took = grow_to(&db, &tmp.path().join("originals"), held, n).await;
         eprintln!("WINDOW_COST seeded n={n} in {:.1} s", took.as_secs_f64());
-        let took = grow_import_list(&db, tmp.path(), held, n).await;
-        eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());
         held = n;
         measure_albums(&db, n).await;
         measure_artists(&db, n).await;
@@ -540,6 +440,5 @@ async fn window_cost() {
             measure_storage_search(&db, n).await;
         }
         measure_queues(&db, n).await;
-        measure_import_list(&db, n).await;
     }
 }

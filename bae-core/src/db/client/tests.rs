@@ -235,7 +235,7 @@ mod release_medium_tests;
 mod release_list_rows_tests;
 
 #[cfg(test)]
-mod window_cost;
+pub(crate) mod window_cost;
 
 #[cfg(test)]
 mod list_window_tests;
