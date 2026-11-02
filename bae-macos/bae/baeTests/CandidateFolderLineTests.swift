@@ -1,50 +1,15 @@
-import AppKit
-import SwiftUI
 import XCTest
 
 @testable import bae
 
+/// The folder line names the queue tab the folder is on, in a chip a folder
+/// on no tab does not draw. How the chip looks is the import-metadata-draft
+/// and import-pane-queued shots'.
 final class CandidateFolderLineTests: XCTestCase {
     @MainActor
-    func testHeaderStatesCurrentPlacement() async throws {
-        let size = NSSize(width: 520, height: 80)
-        try await SnapshotTestSupport.withHostedWindow(
-            CandidateFolderLine(
-                tab: .pending,
-                folderName: "Release Folder",
-                folderPaths: [Data("/library/release-folder".utf8)],
-                onNavigateToPlacement: {}
-            )
-            .padding()
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, placedHost in
-            try await SnapshotTestSupport.withHostedWindow(
-                CandidateFolderLine(
-                    tab: nil,
-                    folderName: "Release Folder",
-                    folderPaths: [Data("/library/release-folder".utf8)],
-                    onNavigateToPlacement: {}
-                )
-                .padding()
-                .frame(width: size.width, height: size.height),
-                size: size
-            ) { _, unplacedHost in
-
-                XCTAssertEqual(
-                    CandidateFolderLine.label(for: .pending),
-                    "Found"
-                )
-                let placed = try await SnapshotTestSupport.capturePNG(
-                    placedHost,
-                    size: size
-                )
-                let unplaced = try await SnapshotTestSupport.capturePNG(
-                    unplacedHost,
-                    size: size
-                )
-                XCTAssertNotEqual(placed, unplaced)
-            }
-        }
+    func testHeaderStatesCurrentPlacement() {
+        XCTAssertEqual(CandidateFolderLine.label(for: .pending), "Found")
+        XCTAssertEqual(CandidateFolderLine.label(for: .done), "Imported")
+        XCTAssertEqual(CandidateFolderLine.label(for: .skipped), "Skipped")
     }
 }
