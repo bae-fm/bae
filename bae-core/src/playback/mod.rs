@@ -24,7 +24,6 @@ pub mod progress;
 mod queue;
 mod repeat_mode;
 mod resampling_drain;
-mod scrub_points;
 pub mod service;
 pub mod source;
 mod storage_wait;
@@ -63,7 +62,6 @@ pub use progress::{
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;
-pub use scrub_points::ScrubPoints;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,

@@ -21,6 +21,7 @@ mod artist_identity;
 mod images;
 mod label_identity;
 mod query;
+mod scrub_points;
 // Only an import and an edit applying a catalog's release write a release
 // whole, and the mobile builds do neither.
 #[cfg(desktop)]
@@ -36,6 +37,7 @@ pub use label_identity::{ExistingLabel, LabelIdentityConflict};
 pub use query::*;
 #[cfg(desktop)]
 pub use release_rows::{ReleaseRows, TrackRow, WorkGraphRows};
+pub use scrub_points::ScrubPoints;
 
 /// Whether two statements of one catalog id agree: an absent id makes no
 /// claim; two present ids must be equal.

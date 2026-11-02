@@ -483,7 +483,7 @@ pub struct ResolvedTrackAudioSegment {
     /// Where this segment sits inside its backing file, in samples and bytes.
     pub span: crate::db::SegmentSpan,
     /// The frames a scrub inside this segment jumps to by byte.
-    pub scrub_points: crate::playback::ScrubPoints,
+    pub scrub_points: crate::db::ScrubPoints,
 }
 
 /// All resolved data needed to set up a playback reader for a track.
@@ -530,7 +530,7 @@ impl ResolvedTrackAudio {
                 file_id: entry.segment.file_id.clone(),
                 file_size: entry.file_size,
                 span: entry.segment.span(),
-                scrub_points: crate::playback::ScrubPoints::new(entry.scrub_points.clone()),
+                scrub_points: crate::db::ScrubPoints::new(entry.scrub_points.clone()),
             })
             .collect();
         Self {

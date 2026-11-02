@@ -241,7 +241,7 @@ struct PreparedAudioSegment {
     /// Where this segment sits inside its backing file, in samples and bytes.
     span: crate::db::SegmentSpan,
     /// The frames a decode inside this segment starts at.
-    scrub_points: crate::playback::ScrubPoints,
+    scrub_points: crate::db::ScrubPoints,
 }
 
 impl PreparedAudioSegment {

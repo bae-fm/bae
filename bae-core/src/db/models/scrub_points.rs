@@ -1,6 +1,6 @@
-//! A segment's stored scrub points, as playback looks them up.
+//! A segment's stored scrub points, as a decode looks them up.
 
-use crate::db::ScrubPoint;
+use super::ScrubPoint;
 
 /// The frames a scrub can start its decode at in one segment's file, in
 /// sample order. Import stores them for a FLAC whose seektable is missing or
