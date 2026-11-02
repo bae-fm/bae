@@ -429,9 +429,8 @@ impl ImportServiceHandle {
         &self,
         token: &str,
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
-        let check = DiscogsCheck::of(
-            self.library_manager.try_discogs_key(token, CallPriority::Interactive).await,
-        );
+        let check =
+            DiscogsCheck::of(self.catalogs.try_discogs_key(token, CallPriority::Interactive).await);
         let validation = crate::config::DiscogsValidation::of(&check);
         match check {
             DiscogsCheck::Valid => {

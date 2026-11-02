@@ -16,6 +16,8 @@ pub(crate) mod candidate_runtime;
 pub mod candidate_search;
 #[cfg(desktop)]
 pub(crate) mod candidates;
+#[cfg(desktop)]
+mod catalog_sessions;
 /// Reading a catalog release against a candidate's audio, once.
 #[cfg(desktop)]
 pub mod cover_art;
@@ -187,6 +189,8 @@ pub(crate) struct ImportServices {
     library_manager: crate::library::LibraryManager,
     /// The library's store, which import reads and writes directly.
     database: crate::db::Database,
+    /// The catalogs as this library may ask them.
+    catalogs: CatalogSessions,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
@@ -213,6 +217,7 @@ impl ImportServices {
         event_tx: handle::ImportEventBus,
         library_manager: crate::library::LibraryManager,
         database: crate::db::Database,
+        catalogs: CatalogSessions,
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -222,6 +227,7 @@ impl ImportServices {
             event_tx,
             library_manager,
             database,
+            catalogs,
             preparations,
             clock,
             ids,
@@ -252,6 +258,8 @@ pub use candidates::{
     IdentificationInFlight, IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight,
     ImportedRelease, SaveFailure, SavingAnswer, WatchedFolderScanStatus,
 };
+#[cfg(desktop)]
+pub use catalog_sessions::{CatalogSessionError, CatalogSessions};
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;

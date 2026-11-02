@@ -449,6 +449,7 @@ impl CoordinatorHarness {
             crate::import::ImportServices {
                 event_tx: service.event_tx,
                 library_manager: service.library_manager.clone(),
+                catalogs: test_catalogs(&database),
                 database,
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
@@ -578,6 +579,16 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 
 /// Scan dependencies over the test service's library, with a folder-state
 /// commit lock of their own.
+/// The catalogs a test's scan asks: none, over the test's library.
+fn test_catalogs(database: &crate::db::Database) -> crate::import::CatalogSessions {
+    crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    )
+}
+
 fn test_scan_services(
     service: &ImportService,
     database: &crate::db::Database,
@@ -592,6 +603,7 @@ fn test_scan_services(
             event_tx,
             library_manager: service.library_manager.clone(),
             database: database.clone(),
+            catalogs: test_catalogs(database),
             preparations: preparations.clone(),
             clock: service.clock.clone(),
             ids: service.ids.clone(),

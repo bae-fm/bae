@@ -86,6 +86,8 @@ pub struct IdentifyServiceHandle {
 
 struct IdentifyServiceInner {
     library_manager: LibraryManager,
+    /// The catalogs a run's lookups ask.
+    catalogs: crate::import::CatalogSessions,
     runtime_handle: tokio::runtime::Handle,
     event_tx: ImportEventBus,
     /// What each run publishes is recorded here, and a folder candidate's
@@ -136,6 +138,7 @@ impl IdentifyServiceHandle {
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
         library_manager: LibraryManager,
+        catalogs: crate::import::CatalogSessions,
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
@@ -143,6 +146,7 @@ impl IdentifyServiceHandle {
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
+            catalogs,
             runtime_handle,
             event_tx,
             candidates,
@@ -638,18 +642,17 @@ fn dispatch_effect(
         // Each provider is asked on its own task and answers for itself, so
         // one landing never waits on the other.
         Effect::LookupBarcode { source, barcode } => {
-            let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let query = SearchQuery::Barcode { barcode: barcode.clone() };
                 let lookup = async {
-                    let session =
-                        library_manager.search_session(source).await.map_err(|error| {
-                            crate::import::ImportError::from(error).failure(&format!(
-                                "asking {} a search for {:?}",
-                                source.as_str(),
-                                &query
-                            ))
-                        })?;
+                    let session = catalogs.search_session(source).await.map_err(|error| {
+                        crate::import::ImportError::from(error).failure(&format!(
+                            "asking {} a search for {:?}",
+                            source.as_str(),
+                            &query
+                        ))
+                    })?;
                     crate::catalog_model::search::search_source(&session, source, &query, priority)
                         .await
                 }
@@ -667,21 +670,20 @@ fn dispatch_effect(
         // come back with nothing — the same query the Search section's General
         // tab sends.
         Effect::SearchTitle { source, query } => {
-            let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let search = SearchQuery::General {
                     artist: query.artist.clone(),
                     album: query.album.clone(),
                 };
                 let lookup = async {
-                    let session =
-                        library_manager.search_session(source).await.map_err(|error| {
-                            crate::import::ImportError::from(error).failure(&format!(
-                                "asking {} a search for {:?}",
-                                source.as_str(),
-                                &search
-                            ))
-                        })?;
+                    let session = catalogs.search_session(source).await.map_err(|error| {
+                        crate::import::ImportError::from(error).failure(&format!(
+                            "asking {} a search for {:?}",
+                            source.as_str(),
+                            &search
+                        ))
+                    })?;
                     crate::catalog_model::search::search_source(&session, source, &search, priority)
                         .await
                 }
@@ -723,6 +725,7 @@ fn dispatch_effect(
         // catalog number is searched on the one catalog.
         Effect::LookupPressing { source, key } => {
             let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let lookup = match &key {
                     PressingKey::Link { release } => {
@@ -746,7 +749,7 @@ fn dispatch_effect(
                         let query = SearchQuery::Barcode { barcode: barcode.clone() };
                         async {
                             let session =
-                                library_manager.search_session(source).await.map_err(|error| {
+                                catalogs.search_session(source).await.map_err(|error| {
                                     crate::import::ImportError::from(error).failure(&format!(
                                         "asking {} a search for {:?}",
                                         source.as_str(),
@@ -768,7 +771,7 @@ fn dispatch_effect(
                         };
                         async {
                             let session =
-                                library_manager.search_session(source).await.map_err(|error| {
+                                catalogs.search_session(source).await.map_err(|error| {
                                     crate::import::ImportError::from(error).failure(&format!(
                                         "asking {} a search for {:?}",
                                         source.as_str(),
@@ -814,7 +817,7 @@ fn dispatch_effect(
         // and never under a label: the catalog searched may spell the label
         // otherwise than the release that carries the number.
         Effect::LookupCatalog { source, catalog, artist } => {
-            let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let query = CatalogNumberSearch {
                     number: catalog.clone(),
@@ -822,14 +825,13 @@ fn dispatch_effect(
                     label: None,
                 };
                 let lookup = async {
-                    let session =
-                        library_manager.search_session(source).await.map_err(|error| {
-                            crate::import::ImportError::from(error).failure(&format!(
-                                "asking {} a search for {:?}",
-                                source.as_str(),
-                                &query
-                            ))
-                        })?;
+                    let session = catalogs.search_session(source).await.map_err(|error| {
+                        crate::import::ImportError::from(error).failure(&format!(
+                            "asking {} a search for {:?}",
+                            source.as_str(),
+                            &query
+                        ))
+                    })?;
                     crate::catalog_model::search::search_source(&session, source, &query, priority)
                         .await
                 }

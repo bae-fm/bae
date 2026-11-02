@@ -344,6 +344,18 @@ impl LibraryError {
 
 /// Work run apart from its caller gave no result: it panicked (a bug the
 /// caller has reported), or its runtime is shutting down under it.
+/// A catalog session that could not be had failed on the library's own
+/// store: its preferences or its keyring.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl From<crate::import::CatalogSessionError> for LibraryError {
+    fn from(error: crate::import::CatalogSessionError) -> Self {
+        match error {
+            crate::import::CatalogSessionError::Preferences(error) => Self::Database(error),
+            crate::import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
+        }
+    }
+}
+
 impl From<TaskFailed> for LibraryError {
     fn from(failed: TaskFailed) -> Self {
         Self::Internal(failed.to_string())
@@ -732,13 +744,10 @@ pub struct LibraryManager {
     /// The services releases are looked up in, built once by the app.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     providers: crate::catalog_model::providers::Providers,
-    /// The Discogs client for the key this library stores, built on first use
-    /// and dropped when the key is set or cleared, so every Discogs call
-    /// shares one key read and one client. Held under one lock with the key's
-    /// own writes, so no client outlives the key it was built with.
+    /// The catalogs as this library may ask them, which import's services
+    /// hold too.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    discogs_client:
-        Arc<tokio::sync::Mutex<Option<Arc<bae_catalogs::discogs::client::DiscogsClient>>>>,
+    catalogs: crate::import::CatalogSessions,
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,

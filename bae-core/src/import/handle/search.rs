@@ -95,7 +95,7 @@ impl ImportServiceHandle {
         source: LookupCatalog,
         run: SearchRun,
     ) {
-        let library_manager = self.library_manager.clone();
+        let catalogs = self.catalogs.clone();
         let runtime = self.runtime.clone();
         let diagnostics = self.diagnostics.clone();
         self.diagnostics.spawn_reported(
@@ -105,14 +105,13 @@ impl ImportServiceHandle {
                 // A lookup that panics lands as failed, so its source stops
                 // showing a search under way.
                 let found = match bae_util::task_failure::caught("ask one source a search", async {
-                    let session =
-                        library_manager.search_session(source).await.map_err(|error| {
-                            crate::import::ImportError::from(error).failure(&format!(
-                                "asking {} a search for {:?}",
-                                source.as_str(),
-                                &query
-                            ))
-                        })?;
+                    let session = catalogs.search_session(source).await.map_err(|error| {
+                        crate::import::ImportError::from(error).failure(&format!(
+                            "asking {} a search for {:?}",
+                            source.as_str(),
+                            &query
+                        ))
+                    })?;
                     crate::catalog_model::search::search_source(
                         &session,
                         source,
@@ -167,7 +166,7 @@ impl ImportServiceHandle {
         use crate::db::LibraryCheck;
 
         let results = crate::catalog_model::search::search_provider(
-            &self.library_manager.search_session(source).await?,
+            &self.catalogs.search_session(source).await?,
             source,
             &query,
             CallPriority::Interactive,

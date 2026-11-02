@@ -252,6 +252,12 @@ pub enum ImportError {
     #[error("folder watch failed: {detail}")]
     Watch { detail: String },
 
+    /// The session a catalog is asked with could not be had: the library's
+    /// preferences or its keyring could not be read.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    CatalogSession(#[from] crate::import::CatalogSessionError),
+
     /// Config/keyring plumbing failed (Discogs key store/read).
     #[cfg(desktop)]
     #[error("configuration error: {detail}")]
@@ -365,6 +371,12 @@ impl ImportError {
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
             Self::Db(error) => error.category(),
+            #[cfg(desktop)]
+            Self::CatalogSession(crate::import::CatalogSessionError::Preferences(_)) => C::Database,
+            #[cfg(desktop)]
+            Self::CatalogSession(crate::import::CatalogSessionError::Keyring(error)) => {
+                crate::diagnostics::key_category(error)
+            }
             #[cfg(desktop)]
             Self::ImportWriting => C::Import,
             #[cfg(desktop)]

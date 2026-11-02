@@ -136,13 +136,18 @@ impl LibraryManager {
         let manager = LibraryManager {
             #[cfg(desktop)]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
+            #[cfg(desktop)]
+            catalogs: crate::import::CatalogSessions::new(
+                providers.clone(),
+                database.clone(),
+                diagnostics.clone(),
+                runtime_handle.clone(),
+            ),
             database,
             app_dir,
             remote_images,
             #[cfg(desktop)]
             providers,
-            #[cfg(desktop)]
-            discogs_client: Arc::new(tokio::sync::Mutex::new(None)),
             clock,
             ids,
             diagnostics,

@@ -13,6 +13,12 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let database =
         Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -27,6 +33,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let event_tx = ImportEventBus::new(candidates.clone());
     let handle = IdentifyServiceHandle::new(
         manager,
+        catalogs,
         tokio::runtime::Handle::current(),
         event_tx,
         candidates,

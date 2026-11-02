@@ -327,6 +327,8 @@ pub struct ImportServiceHandle {
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
     library_manager: LibraryManager,
+    /// The catalogs as this library may ask them.
+    catalogs: crate::import::CatalogSessions,
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
     ids: coven::IdSourceRef,
@@ -463,6 +465,7 @@ impl ImportServiceHandle {
             event_tx,
             library_manager,
             database,
+            catalogs,
             preparations,
             clock: _,
             ids,
@@ -474,6 +477,7 @@ impl ImportServiceHandle {
         } = services;
         let identify = crate::import::IdentifyServiceHandle::new(
             library_manager.clone(),
+            catalogs.clone(),
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),
@@ -489,6 +493,7 @@ impl ImportServiceHandle {
         Ok(Self {
             worker,
             library_manager,
+            catalogs,
             preparations,
             ids,
             file_tags,
