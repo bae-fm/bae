@@ -56,7 +56,7 @@ impl BridgeLibraryRemoval {
 
 impl BridgeUnfinishedRemoval {
     pub(crate) fn new(
-        category: bae_core::ui::UiErrorCategory,
+        category: bae_core::diagnostics::UiErrorCategory,
         why: &dyn std::fmt::Display,
         files_remain: bool,
     ) -> Self {

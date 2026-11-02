@@ -148,7 +148,9 @@ fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
     assert!(matches!(
         status.failure(),
         Some(UiError::Diagnostic {
-            category: crate::ui::UiErrorCategory::Storage(coven::StorageFailure::PermissionDenied),
+            category: crate::diagnostics::UiErrorCategory::Storage(
+                coven::StorageFailure::PermissionDenied
+            ),
             ..
         })
     ));
@@ -195,7 +197,10 @@ fn with_nothing_pending_the_line_names_the_status() {
     assert_eq!(
         indicator(
             synced(),
-            Some(UiError::diagnostic(crate::ui::UiErrorCategory::Internal, "start failed"))
+            Some(UiError::diagnostic(
+                crate::diagnostics::UiErrorCategory::Internal,
+                "start failed"
+            ))
         ),
         SyncIndicator::Failed
     );
@@ -209,7 +214,7 @@ fn failed(failure: coven::StatusFailure) -> SyncStatusSnapshot {
     alone(failed_status(failure))
 }
 
-fn category(snapshot: &SyncStatusSnapshot) -> crate::ui::UiErrorCategory {
+fn category(snapshot: &SyncStatusSnapshot) -> crate::diagnostics::UiErrorCategory {
     let Some(UiError::Diagnostic { category, .. }) = snapshot.failure() else {
         panic!("the failed pass is the status's failure");
     };
@@ -223,7 +228,7 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
     assert_eq!(pending_action(&record(coven::PendingReason::Removed), None), PendingAction::Review);
     assert_eq!(
         category(&failed(coven::StatusFailure::Removed)),
-        crate::ui::UiErrorCategory::DeviceRemoved
+        crate::diagnostics::UiErrorCategory::DeviceRemoved
     );
 }
 
@@ -243,7 +248,7 @@ fn replaced_member_keys_offer_restoring_from_the_code() {
 fn another_copy_of_this_device_is_answered_by_a_reset() {
     assert_eq!(
         category(&failed(coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced))),
-        crate::ui::UiErrorCategory::DeviceResetRequired
+        crate::diagnostics::UiErrorCategory::DeviceResetRequired
     );
 }
 
@@ -274,7 +279,7 @@ fn connection_record(failure: coven::StorageFailure) -> coven::PendingRecord {
 /// cause kept, and a removed device says so.
 #[test]
 fn a_failed_retry_answers_with_the_failure_the_status_shows() {
-    use crate::ui::UiErrorCategory as C;
+    use crate::diagnostics::UiErrorCategory as C;
     let offline =
         SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Offline {
             error: unreachable_s3(),
@@ -338,7 +343,7 @@ fn an_offline_status_names_every_layer_of_its_cause() {
     assert_eq!(
         alone(offline()).failure(),
         Some(UiError::Diagnostic {
-            category: crate::ui::UiErrorCategory::Network,
+            category: crate::diagnostics::UiErrorCategory::Network,
             detail: UNREACHABLE_S3.to_string(),
         })
     );
@@ -391,7 +396,7 @@ fn a_new_sync_failure_is_logged_once() {
     let failed = alone(offline());
     let logged = failed.failure_to_log(Some(&syncing)).expect("the new failure is logged");
     let UiError::Diagnostic { category, detail } = &logged;
-    assert_eq!(*category, crate::ui::UiErrorCategory::Network);
+    assert_eq!(*category, crate::diagnostics::UiErrorCategory::Network);
     assert_eq!(detail, UNREACHABLE_S3);
     assert_eq!(failed.failure_to_log(Some(&failed)), None);
     let listed = snapshot(
@@ -422,7 +427,7 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
     assert_eq!(
         blocked(Some(UNREACHABLE_S3)).failure(),
         Some(UiError::Diagnostic {
-            category: crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network),
+            category: crate::diagnostics::UiErrorCategory::Storage(coven::StorageFailure::Network),
             detail: UNREACHABLE_S3.to_string(),
         })
     );

@@ -2,11 +2,11 @@
 //! the typed-search form, and the last command that failed.
 
 use super::*;
+use crate::diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
 use crate::import::{
     CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
     SearchForm, SearchTab,
 };
-use crate::ui::{GroupingBlockReason, UiError, UiErrorCategory};
 
 fn presentation_column(presentation: MetadataPresentation) -> &'static str {
     match presentation {

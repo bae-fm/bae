@@ -182,8 +182,8 @@ impl From<coven::CovenError> for ProfileError {
 }
 
 impl ProfileError {
-    pub fn category(&self) -> crate::ui::UiErrorCategory {
-        use crate::ui::UiErrorCategory as C;
+    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+        use crate::diagnostics::UiErrorCategory as C;
         match self {
             Self::NotRegistered
             | Self::Missing

@@ -526,7 +526,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
                  has an unresolved foreign-key dependency";
     let snapshot = bae_core::library::SyncStatusSnapshot {
-        error: Some(bae_core::ui::UiError::internal(fault)),
+        error: Some(bae_core::diagnostics::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,

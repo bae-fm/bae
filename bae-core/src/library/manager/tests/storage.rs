@@ -501,7 +501,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
 
         assert_eq!(
             error.category(),
-            crate::ui::UiErrorCategory::Storage(failure),
+            crate::diagnostics::UiErrorCategory::Storage(failure),
             "{failure:?}: {error}"
         );
     }
@@ -535,7 +535,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
 
     assert_eq!(
         error.category(),
-        crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network),
+        crate::diagnostics::UiErrorCategory::Storage(coven::StorageFailure::Network),
         "{error}"
     );
 }
@@ -550,7 +550,7 @@ async fn making_a_release_remote_without_storage_requires_configuration() {
         ReleaseStorageAction::Upload,
     );
     let error = transfer.start().await.expect_err("storage must be configured");
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::Config, "{error}");
+    assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::Config, "{error}");
 }
 
 #[cfg(feature = "test-utils")]

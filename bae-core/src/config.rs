@@ -246,12 +246,12 @@ pub enum ConfigError {
 impl ConfigError {
     /// The class the person is shown: a row that can't be read or written
     /// is the database's failure, not a setting to fix.
-    pub fn category(&self) -> crate::ui::UiErrorCategory {
+    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
         match self {
             Self::Config(_) | Self::Io(_) | Self::File(_) | Self::Stores(_) | Self::Storage(_) => {
-                crate::ui::UiErrorCategory::Config
+                crate::diagnostics::UiErrorCategory::Config
             }
-            Self::Database(_) => crate::ui::UiErrorCategory::Database,
+            Self::Database(_) => crate::diagnostics::UiErrorCategory::Database,
         }
     }
 }
@@ -370,7 +370,7 @@ pub enum LibraryState {
     /// It opens: stored at its cloud home, or on this device only (`None`).
     Openable(Option<StorageConfig>),
     /// Its storage settings can't be read, which keeps it from opening.
-    Unreadable(crate::ui::UiError),
+    Unreadable(crate::diagnostics::UiError),
     /// A reset or a restore of this device's copy put the new copy in place
     /// of the old one but stopped before it finished. The library opens once
     /// the call named here runs again and finishes it; coven refuses the
@@ -416,10 +416,9 @@ impl Config {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
-                        let error = crate::library::LibraryError::CloudHome(error);
-                        LibraryState::Unreadable(crate::ui::UiError::diagnostic(
-                            error.category(),
-                            error,
+                        LibraryState::Unreadable(crate::diagnostics::UiError::diagnostic(
+                            crate::diagnostics::cloud_home_category(&error),
+                            format_args!("Cloud home error: {error}"),
                         ))
                     }
                 },

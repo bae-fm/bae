@@ -23,8 +23,8 @@ pub struct ImportFailureReason {
 }
 
 impl ImportFailureReason {
-    pub fn ui_error(&self) -> crate::ui::UiError {
-        crate::ui::UiError::import(&self.detail)
+    pub fn ui_error(&self) -> crate::diagnostics::UiError {
+        crate::diagnostics::UiError::import(&self.detail)
     }
 }
 

@@ -3,7 +3,7 @@
 //! storage failure coven's reason with what that reason names.
 
 use super::*;
-use crate::ui::{UiError, UiErrorCategory};
+use crate::diagnostics::{UiError, UiErrorCategory};
 use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure};
 
 /// A failed start's class in `sync_start_failure`'s columns.

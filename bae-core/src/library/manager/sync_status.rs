@@ -2,24 +2,24 @@
 
 use super::{PendingItem, SyncIndicator, SyncStatusSnapshot};
 use crate::db::PendingRow;
-use crate::ui::UiError;
+use crate::diagnostics::UiError;
 
 /// The category a whole-pass sync failure shows under.
-fn sync_failure_category(error: &coven::SyncFailure) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
+fn sync_failure_category(error: &coven::SyncFailure) -> crate::diagnostics::UiErrorCategory {
+    use crate::diagnostics::UiErrorCategory as C;
     match error {
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
         coven::SyncFailure::Removed => C::DeviceRemoved,
-        coven::SyncFailure::Storage(error) => super::error_category::cloud_home_category(error),
+        coven::SyncFailure::Storage(error) => crate::diagnostics::cloud_home_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
     }
 }
 
 /// The category a whole-pass failure the status keeps shows under, as
 /// [`sync_failure_category`] classes the failure it was.
-fn status_failure_category(failure: &coven::StatusFailure) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
+fn status_failure_category(failure: &coven::StatusFailure) -> crate::diagnostics::UiErrorCategory {
+    use crate::diagnostics::UiErrorCategory as C;
     match failure {
         coven::StatusFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::StatusFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
@@ -60,7 +60,7 @@ impl From<coven::RetryOutcome> for SyncRetryOutcome {
 /// would show it. A slot blocked since before this process opened has no
 /// error of its own, so its reason is the detail.
 fn pass_failure(failure: &coven::PassFailure) -> UiError {
-    use crate::ui::UiErrorCategory as C;
+    use crate::diagnostics::UiErrorCategory as C;
     match failure {
         coven::PassFailure::Offline { error } => UiError::diagnostic(C::Network, error),
         coven::PassFailure::Failed { error } => {
@@ -79,7 +79,7 @@ fn blocked_failure(
     reason: &coven::PendingReason,
     error: Option<&str>,
 ) -> UiError {
-    let category = super::error_category::pending_reason_category(reason);
+    let category = crate::diagnostics::pending_reason_category(reason);
     match error {
         Some(error) => UiError::diagnostic(category, error),
         None => UiError::diagnostic(category, format!("slot {slot:?} cannot apply: {reason:?}")),
@@ -189,7 +189,7 @@ impl SyncStatusSnapshot {
         if let Some(error) = &self.error {
             return Some(error.clone());
         }
-        use crate::ui::UiErrorCategory as C;
+        use crate::diagnostics::UiErrorCategory as C;
         match &self.status {
             coven::SyncStatus::Offline { error, .. } => {
                 Some(UiError::diagnostic(C::Network, error))

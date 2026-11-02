@@ -314,8 +314,8 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         );
         assert_eq!(
             error.ui_error(),
-            bae_core::ui::UiError::Diagnostic {
-                category: bae_core::ui::UiErrorCategory::MetadataTrackCount {
+            bae_core::diagnostics::UiError::Diagnostic {
+                category: bae_core::diagnostics::UiErrorCategory::MetadataTrackCount {
                     folder_tracks: 12,
                     release_tracks: release_tracks as u32,
                 },

@@ -34,9 +34,9 @@ pub enum LibraryRemovalError {
 }
 
 impl LibraryRemovalError {
-    pub fn category(&self) -> crate::ui::UiErrorCategory {
+    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
         match self {
-            Self::Store(error) => super::manager::deletion_category(error),
+            Self::Store(error) => crate::diagnostics::deletion_category(error),
             Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
                 source.category()
             }
@@ -105,8 +105,8 @@ impl UnfinishedRemoval {
         !self.files_remain.is_empty()
     }
 
-    pub fn category(&self) -> crate::ui::UiErrorCategory {
-        crate::ui::UiErrorCategory::Config
+    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+        crate::diagnostics::UiErrorCategory::Config
     }
 }
 

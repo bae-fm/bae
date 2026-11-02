@@ -3,7 +3,7 @@
 //! host's failure, and what bae met on its own side is bae's.
 
 use super::*;
-use crate::ui::UiErrorCategory;
+use crate::diagnostics::UiErrorCategory;
 
 fn transport(error: reqwest::Error) -> RemoteImageError {
     RemoteImageError::Transport { context: "Failed to fetch image", error }

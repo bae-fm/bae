@@ -72,7 +72,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id })
         .await
         .expect_err("bytes that are no image make no cover");
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::ImportData, "{error}");
+    assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::ImportData, "{error}");
     assert!(manager
         .get_library_image(&release.id, &LibraryImageType::Cover)
         .await

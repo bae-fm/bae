@@ -5,15 +5,15 @@
 //! the wrong line.
 #![deny(clippy::wildcard_enum_match_arm)]
 
-use crate::ui::UiErrorCategory as C;
+use super::UiErrorCategory as C;
 
 /// A storage failure keeps coven's exact reason: the line says the storage is
 /// full, this device's clock is off, the provider refused the credentials.
-pub(super) fn cloud_home_category(error: &coven::StorageError) -> C {
+pub fn cloud_home_category(error: &coven::StorageError) -> C {
     C::Storage(error.failure())
 }
 
-pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
+pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),
@@ -35,7 +35,7 @@ pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     }
 }
 
-pub(super) fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
+pub fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
     use coven::StoreKeyUnlockError as E;
     match error {
         E::NoStorage => C::Config,
@@ -51,7 +51,7 @@ pub(super) fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
 }
 
 /// The class of the condition that blocked a slot or holds a record.
-pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
+pub fn pending_reason_category(reason: &coven::PendingReason) -> C {
     use coven::PendingReason as R;
     match reason {
         R::Storage { failure, .. } => C::Storage(*failure),
@@ -87,7 +87,7 @@ fn local_failure_category(failure: coven::LocalFailure) -> C {
     }
 }
 
-pub(super) fn sync_category(error: &coven::SyncError) -> C {
+pub fn sync_category(error: &coven::SyncError) -> C {
     use coven::SyncError as E;
     match error {
         E::Pending(record) => pending_reason_category(&record.reason),
@@ -128,7 +128,7 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
     }
 }
 
-pub(super) fn key_category(error: &coven::KeyError) -> C {
+pub fn key_category(error: &coven::KeyError) -> C {
     use coven::KeyError as E;
     match error {
         // A keychain that refused this second is not a broken keyring. It is
@@ -170,7 +170,7 @@ pub(super) fn key_category(error: &coven::KeyError) -> C {
     }
 }
 
-pub(crate) fn creation_category(error: &coven::StoreCreationError) -> C {
+pub fn creation_category(error: &coven::StoreCreationError) -> C {
     use coven::StoreCreationError as E;
     match error {
         E::Store(coven::CovenError::Key(error))
@@ -186,7 +186,7 @@ pub(crate) fn creation_category(error: &coven::StoreCreationError) -> C {
     }
 }
 
-pub(crate) fn deletion_category(error: &coven::StoreDeletionError) -> C {
+pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
     use coven::StoreDeletionError as E;
     match error {
         E::Sync(error) => sync_category(error),
@@ -199,7 +199,7 @@ pub(crate) fn deletion_category(error: &coven::StoreDeletionError) -> C {
     }
 }
 
-pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
+pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {
         // A stale resume, or a cancel that came after the request may have
@@ -243,7 +243,7 @@ fn write_category(error: &coven::CovenError) -> C {
     }
 }
 
-pub(super) fn device_only_category(error: &coven::DeviceOnlyError) -> C {
+pub fn device_only_category(error: &coven::DeviceOnlyError) -> C {
     use coven::DeviceOnlyError as E;
     match error {
         E::Download { error, .. } => file_read_category(error),
@@ -254,7 +254,7 @@ pub(super) fn device_only_category(error: &coven::DeviceOnlyError) -> C {
     }
 }
 
-pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
+pub fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),

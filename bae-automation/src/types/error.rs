@@ -83,7 +83,7 @@ impl From<LibraryError> for AutomationError {
             error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
             error @ LibraryError::MakeLocal(_) => Self::Unavailable(error.to_string()),
             error @ LibraryError::Cleanup { .. } => {
-                bae_core::ui::UiError::diagnostic(error.category(), error).into()
+                bae_core::diagnostics::UiError::diagnostic(error.category(), error).into()
             }
             LibraryError::Playback(e) => Self::Unavailable(e),
             LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
@@ -105,9 +105,9 @@ impl From<LibraryError> for AutomationError {
     }
 }
 
-impl From<bae_core::ui::UiError> for AutomationError {
-    fn from(value: bae_core::ui::UiError) -> Self {
-        use bae_core::ui::{UiError, UiErrorCategory};
+impl From<bae_core::diagnostics::UiError> for AutomationError {
+    fn from(value: bae_core::diagnostics::UiError) -> Self {
+        use bae_core::diagnostics::{UiError, UiErrorCategory};
         let UiError::Diagnostic { category, detail } = value;
         match category {
             UiErrorCategory::Database => Self::Database(detail),
@@ -162,7 +162,8 @@ mod tests {
 
     #[test]
     fn internal_ui_diagnostics_remain_internal() {
-        let error = AutomationError::from(bae_core::ui::UiError::internal("admission invariant"));
+        let error =
+            AutomationError::from(bae_core::diagnostics::UiError::internal("admission invariant"));
         assert!(matches!(
             error,
             AutomationError::Internal(detail) if detail == "admission invariant"

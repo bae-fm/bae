@@ -189,7 +189,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
     assert_eq!(
         error.category(),
-        crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network)
+        crate::diagnostics::UiErrorCategory::Storage(coven::StorageFailure::Network)
     );
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert!(home.directory(id).join("cache").exists());
@@ -331,7 +331,7 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
         remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains("store was removed"), "{error}");
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::Internal);
+    assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::Internal);
     assert_eq!(home.stores().await, 0);
     assert!(home.directory(id).exists());
     assert!(home.record(id).exists());

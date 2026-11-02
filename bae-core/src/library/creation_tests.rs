@@ -61,7 +61,7 @@ async fn failed_creation_removes_the_partial_library() {
     .await
     .err()
     .unwrap();
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::KeyringLocked);
+    assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::KeyringLocked);
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!app_dir.active_library_pointer().exists());
 }
