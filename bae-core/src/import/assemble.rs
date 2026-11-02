@@ -10,11 +10,11 @@
 
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
-    DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
+    DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, ReleaseRows, WorkGraphRows,
 };
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, ReleaseRows,
-    TrackArtistAssignments, TrackBinding, WorkGraphRows,
+    ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, TrackArtistAssignments,
+    TrackBinding,
 };
 use bae_catalogs::catalog::Catalog;
 use chrono::{DateTime, Utc};
@@ -147,7 +147,7 @@ pub(crate) fn assemble_rows<Binding: TrackBinding>(
     let mut track_artist_roles = Vec::new();
     let mut track_works = Vec::new();
     for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
-        let row = crate::import::TrackRow {
+        let row = crate::db::TrackRow {
             id: (keys.track_id)(&track.edit.file),
             release_id: release.id.clone(),
             title: shaped.title.clone(),

@@ -96,14 +96,14 @@ fn file_ids(units: &[AudioFile]) -> Vec<&str> {
 
 /// A blank row over every unit, in the units' order — what the draft commits
 /// when nobody named anything.
-fn rows_for(units: Vec<AudioFile>) -> Vec<(crate::import::TrackRow, AudioFile)> {
+fn rows_for(units: Vec<AudioFile>) -> Vec<(crate::db::TrackRow, AudioFile)> {
     let now = chrono::Utc::now();
     units
         .into_iter()
         .enumerate()
         .map(|(index, unit)| {
             (
-                crate::import::TrackRow {
+                crate::db::TrackRow {
                     id: format!("track-{index}"),
                     release_id: "release-1".to_string(),
                     title: format!("Track Title {}", index + 1),
@@ -277,7 +277,7 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 
     let track_files = resolve_track_files(
         vec![(
-            crate::import::TrackRow {
+            crate::db::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "   ".to_string(),
@@ -405,7 +405,7 @@ fn audio_that_left_the_folder_refuses() {
 
     let err = resolve_track_files(
         vec![(
-            crate::import::TrackRow {
+            crate::db::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "Track Title".to_string(),

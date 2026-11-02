@@ -5,6 +5,7 @@ use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportDestination, ImportProgress};
 
 use {
+    crate::db::WorkGraphRows,
     crate::db::{
         DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
         NewReleaseFile,
@@ -12,7 +13,6 @@ use {
     crate::import::audio_layout::resolve_track_files,
     crate::import::folder_scanner::ScanItem,
     crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
-    crate::import::WorkGraphRows,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -72,7 +72,7 @@ struct PreparedMetadata {
     mediums: Vec<crate::db::DbReleaseMedium>,
     /// The release's tracks, each bound to its audio and measured by the
     /// commit (`resolve_track_files`).
-    track_rows: Vec<crate::import::TrackRow>,
+    track_rows: Vec<crate::db::TrackRow>,
     /// The cover the person picked for this candidate, whatever its source.
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.

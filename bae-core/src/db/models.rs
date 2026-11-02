@@ -25,6 +25,10 @@ mod images;
 mod import;
 mod label_identity;
 mod query;
+// Only an import and an edit applying a catalog's release write a release
+// whole, and the mobile builds do neither.
+#[cfg(desktop)]
+mod release_rows;
 
 pub(crate) use artist_identity::artist_source_ids_are_compatible;
 pub use artist_identity::{
@@ -36,6 +40,8 @@ pub use import::*;
 pub(crate) use label_identity::label_ids_are_compatible;
 pub use label_identity::{ExistingLabel, LabelIdentityConflict};
 pub use query::*;
+#[cfg(desktop)]
+pub use release_rows::{ReleaseRows, TrackRow, WorkGraphRows};
 
 /// Whether two statements of one catalog id agree: an absent id makes no
 /// claim; two present ids must be equal.

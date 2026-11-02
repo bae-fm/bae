@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 
 use super::{ImportService, PreparedMetadata};
+use crate::db::WorkGraphRows;
 use crate::import::handle::remap_links;
-use crate::import::WorkGraphRows;
 
 fn retain_referenced_artists(
     artists: &mut Vec<crate::db::DbArtist>,
@@ -44,12 +44,12 @@ impl ImportService {
     /// the library as it stands when the release is written.
     pub(super) async fn reconcile_prepared_release(
         &self,
-        parsed: crate::import::ReleaseRows,
+        parsed: crate::db::ReleaseRows,
         records: Vec<crate::catalog_model::records::ReleaseRecord>,
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
-        let crate::import::ReleaseRows {
+        let crate::db::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
             mediums,

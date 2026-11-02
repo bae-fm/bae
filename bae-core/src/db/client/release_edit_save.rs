@@ -4,7 +4,6 @@
 
 use super::release::AlbumFields;
 use super::*;
-use crate::import::ReleaseRows;
 
 /// What a save writes over the release's rows.
 #[cfg(desktop)]

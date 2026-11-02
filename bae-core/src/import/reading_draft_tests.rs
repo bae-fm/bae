@@ -60,12 +60,12 @@ fn reading(album: ArtistCredit, tracks: Vec<TrackValues>) -> ReleaseValues {
 }
 
 /// The library artist each of `rows`' artist rows commits as, by row id.
-fn library_artists(rows: &crate::import::ReleaseRows) -> std::collections::HashMap<String, String> {
+fn library_artists(rows: &crate::db::ReleaseRows) -> std::collections::HashMap<String, String> {
     committed_artists(rows)
 }
 
 /// The library artist the album's first credit commits as.
-fn album_artist(rows: &crate::import::ReleaseRows) -> String {
+fn album_artist(rows: &crate::db::ReleaseRows) -> String {
     library_artists(rows)[&rows.album_artists[0].artist_id].clone()
 }
 
