@@ -25,7 +25,8 @@ later. Their records:
 - **Ben's vinyl rip.** A 2×LP vinyl rip of *Double Album Title*, at 96 kHz, one
   FLAC per track, sides A to D.
 
-Names of artists, albums and songs in this document are placeholders.
+Names of artists, albums and songs in this document are placeholders. The
+words bae puts on screen, and what each means, are in [words.md](words.md).
 
 ## Contents
 
