@@ -52,6 +52,9 @@ struct IdentifierBandWaitTests {
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty, "drew \(spinners)")
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            // The pixels the words were read from, kept with the test's
+            // results: a runner can read them differently from this Mac.
+            Attachment.record(png, named: "Identifier band.png")
             let lines = try await SnapshotTestSupport.recognizedText(in: png)
                 .map(\.text)
             for wait in ["Searching", "Waiting", "Reading artwork"] {
@@ -86,6 +89,7 @@ struct IdentifierBandWaitTests {
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty, "drew \(spinners)")
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            Attachment.record(png, named: "Search form.png")
             let lines = try await SnapshotTestSupport.recognizedText(in: png)
                 .map(\.text)
             #expect(
