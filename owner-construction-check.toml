@@ -2,9 +2,7 @@
 # which scripts/owner-dependency-boundary.sh installs at a pinned coven
 # revision and runs on this workspace.
 
-# Today bae holds itself to one rule group: an owner never hands out what it
-# holds. The construction rules follow once the owners built outside the
-# composition root are moved into it.
+# bae holds itself to one rule group: an owner never hands out what it holds.
 rules = ["owner-dependencies"]
 
 # These are retained state and service capabilities, not values passed between
