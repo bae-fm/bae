@@ -1,11 +1,13 @@
 //! Per-import answers to conflicting catalog identities. The source credit
 //! stays intact; only this candidate's writes and previews use the answer.
 
-use super::artist_resolution::{ArtistCredits, ResolvedArtists};
 use super::*;
+use crate::db::client::artist_resolution::{
+    resolve_credit_on, resolve_credits_with, ResolvedArtists,
+};
 use crate::import::ArtistIdentityConflictChoice as Choice;
 
-impl Database {
+impl ImportTables {
     pub(crate) async fn choose_import_artist_identity(
         &self,
         content_hash: &str,
@@ -18,39 +20,43 @@ impl Database {
         }
         let hash = content_hash.to_string();
         let new_id = (choice == Choice::Neither).then(|| ids.new_id().to_string());
-        self.call(move |sql| {
-            require_revision(sql, &hash, metadata_revision)?;
-            let (discogs, musicbrainz, discogs_library, musicbrainz_library): (
-                String,
-                String,
-                String,
-                String,
-            ) = sql.query_row(
-                "SELECT discogs_artist_id, musicbrainz_artist_id, discogs_library_artist_id, \
+        self.database
+            .call(move |sql| {
+                require_revision(sql, &hash, metadata_revision)?;
+                let (discogs, musicbrainz, discogs_library, musicbrainz_library): (
+                    String,
+                    String,
+                    String,
+                    String,
+                ) = sql.query_row(
+                    "SELECT discogs_artist_id, musicbrainz_artist_id, discogs_library_artist_id, \
                  musicbrainz_library_artist_id FROM import_candidate_artist_identity_conflict \
                  WHERE content_hash = ?",
-                [&hash],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )?;
-            let artist_id = match choice {
-                Choice::DiscogsArtist => discogs_library,
-                Choice::MusicBrainzArtist => musicbrainz_library,
-                Choice::Neither => new_id.expect("Neither reserves an artist id"),
-                Choice::ChangeMatch => {
-                    // Going back does not decide the credit or dismiss its failure.
-                    return crate::import::tables::import_state::move_pane_on(
-                        sql,
-                        &hash,
-                        crate::import::PaneMove::FindOnline,
-                    );
-                }
-                Choice::SameArtist => unreachable!("a merge uses the file-aware write"),
-            };
-            record_choice_on(sql, &hash, &discogs, &musicbrainz, choice, &artist_id)?;
-            sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [&hash])?;
-            Ok(())
-        })
-        .await
+                    [&hash],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )?;
+                let artist_id = match choice {
+                    Choice::DiscogsArtist => discogs_library,
+                    Choice::MusicBrainzArtist => musicbrainz_library,
+                    Choice::Neither => new_id.expect("Neither reserves an artist id"),
+                    Choice::ChangeMatch => {
+                        // Going back does not decide the credit or dismiss its failure.
+                        return crate::import::tables::import_state::move_pane_on(
+                            sql,
+                            &hash,
+                            crate::import::PaneMove::FindOnline,
+                        );
+                    }
+                    Choice::SameArtist => unreachable!("a merge uses the file-aware write"),
+                };
+                record_choice_on(sql, &hash, &discogs, &musicbrainz, choice, &artist_id)?;
+                sql.execute(
+                    "DELETE FROM import_candidate_failure WHERE content_hash = ?",
+                    [&hash],
+                )?;
+                Ok(())
+            })
+            .await
     }
 }
 
@@ -156,54 +162,55 @@ fn chosen_artist_on<Q: QueryOne>(
     Ok(Some(selected))
 }
 
-impl ArtistCredits<'_> {
-    pub(crate) fn resolve_for_import_on<Q: QueryOne + QueryRows>(
-        &self,
-        sql: &Q,
-        content_hash: Option<&str>,
-    ) -> Result<ResolvedArtists, IdentityWriteError> {
-        let Some(hash) = content_hash else {
-            return self.resolve_on(sql);
+/// Resolve `credits` as an import of the candidate `content_hash` commits
+/// them: a credit the person answered a conflict for is the artist they
+/// chose, every other one is resolved by the artist rule.
+pub(crate) fn resolve_for_import_on<Q: QueryOne + QueryRows>(
+    credits: &ArtistCredits<'_>,
+    sql: &Q,
+    content_hash: Option<&str>,
+) -> Result<ResolvedArtists, IdentityWriteError> {
+    let Some(hash) = content_hash else {
+        return credits.resolve_on(sql);
+    };
+    let mut ordinary = Vec::new();
+    let mut selected = HashMap::new();
+    let mut new_artists = HashMap::new();
+    for credit in credits.credits {
+        let choice = if credits.picked.contains(&credit.id) {
+            None
+        } else {
+            chosen_artist_on(
+                sql,
+                hash,
+                credit.discogs_artist_id.as_deref(),
+                credit.musicbrainz_artist_id.as_deref(),
+            )?
         };
-        let mut ordinary = Vec::new();
-        let mut selected = HashMap::new();
-        let mut new_artists = HashMap::new();
-        for credit in self.credits {
-            let choice = if self.picked.contains(&credit.id) {
-                None
-            } else {
-                chosen_artist_on(
-                    sql,
-                    hash,
-                    credit.discogs_artist_id.as_deref(),
-                    credit.musicbrainz_artist_id.as_deref(),
-                )?
-            };
-            match choice {
-                None => ordinary.push(credit.clone()),
-                Some(ChosenArtist::Library(artist)) => {
-                    selected.insert(credit.id.clone(), artist.id);
-                }
-                Some(ChosenArtist::New(id)) => {
-                    selected.insert(credit.id.clone(), id.clone());
-                    new_artists.entry(id.clone()).or_insert_with(|| DbArtist {
-                        id,
-                        name: credit.name.clone(),
-                        sort_name: credit.sort_name.clone(),
-                        discogs_artist_id: None,
-                        musicbrainz_artist_id: None,
-                        created_at: credit.created_at,
-                    });
-                }
+        match choice {
+            None => ordinary.push(credit.clone()),
+            Some(ChosenArtist::Library(artist)) => {
+                selected.insert(credit.id.clone(), artist.id);
+            }
+            Some(ChosenArtist::New(id)) => {
+                selected.insert(credit.id.clone(), id.clone());
+                new_artists.entry(id.clone()).or_insert_with(|| DbArtist {
+                    id,
+                    name: credit.name.clone(),
+                    sort_name: credit.sort_name.clone(),
+                    discogs_artist_id: None,
+                    musicbrainz_artist_id: None,
+                    created_at: credit.created_at,
+                });
             }
         }
-        let mut resolved =
-            ArtistCredits { credits: &ordinary, picked: self.picked }.resolve_on(sql)?;
-        selected.extend(resolved.id_map(&ordinary));
-        resolved.ids = self.credits.iter().map(|credit| selected[&credit.id].clone()).collect();
-        resolved.inserts.extend(new_artists.into_values());
-        Ok(resolved)
     }
+    let mut resolved =
+        ArtistCredits { credits: &ordinary, picked: credits.picked }.resolve_on(sql)?;
+    selected.extend(resolved.id_map(&ordinary));
+    resolved.ids = credits.credits.iter().map(|credit| selected[&credit.id].clone()).collect();
+    resolved.inserts.extend(new_artists.into_values());
+    Ok(resolved)
 }
 
 pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
@@ -211,7 +218,7 @@ pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     hash: &str,
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
 ) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
-    super::artist_resolution::resolve_credits_with(credits, |credit| {
+    resolve_credits_with(credits, |credit| {
         Ok(
             match chosen_artist_on(
                 sql,
@@ -223,8 +230,32 @@ pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
                     crate::db::CreditResolution::Library { artist: artist.into() }
                 }
                 Some(ChosenArtist::New(_)) => crate::db::CreditResolution::New,
-                None => super::artist_resolution::resolve_credit_on(sql, credit)?,
+                None => resolve_credit_on(sql, credit)?,
             },
         )
     })
+}
+
+impl ImportTables {
+    /// Resolve `credits` against the library as it stands, without writing:
+    /// what an import of the candidate `content_hash` committing them now
+    /// would link and create.
+    pub(crate) async fn resolve_artists(
+        &self,
+        credits: &[DbArtist],
+        picked: &[String],
+        content_hash: Option<&str>,
+    ) -> Result<ResolvedArtists, IdentityWriteError> {
+        let (credits, picked) = (credits.to_vec(), picked.to_vec());
+        let content_hash = content_hash.map(str::to_string);
+        self.database
+            .read_resolving_identities(move |sql| {
+                resolve_for_import_on(
+                    &ArtistCredits { credits: &credits, picked: &picked },
+                    &sql,
+                    content_hash.as_deref(),
+                )
+            })
+            .await
+    }
 }

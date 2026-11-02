@@ -417,9 +417,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         draft_crediting(devices.b(), &musicbrainz).await;
 
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        devices
-            .a()
-            .database()
+        crate::import::tables::ImportTables::new(devices.a().database().clone())
             .choose_import_artist_identity(
                 "conflict",
                 0,
@@ -451,9 +449,7 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
 
         devices.pause().await;
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        devices
-            .a()
-            .database()
+        crate::import::tables::ImportTables::new(devices.a().database().clone())
             .choose_import_artist_identity(
                 "conflict",
                 0,

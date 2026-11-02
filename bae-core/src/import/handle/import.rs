@@ -365,7 +365,7 @@ impl ImportServiceHandle {
                 }
             })?;
             this.candidate_standing(&key, &candidate).await?.editable()?;
-            this.database
+            this.tables
                 .choose_import_artist_identity(
                     &candidate.files.content_hash(),
                     metadata_revision,
@@ -395,7 +395,7 @@ impl ImportServiceHandle {
                 }
             })?;
             this.candidate_standing(&key, &candidate).await?.editable()?;
-            this.database
+            this.tables
                 .choose_import_label_identity(
                     &candidate.files.content_hash(),
                     metadata_revision,

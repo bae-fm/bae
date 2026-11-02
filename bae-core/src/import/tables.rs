@@ -5,12 +5,15 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod artist_identity_choice;
+mod artist_identity_merge;
 mod candidate_state_rows;
 mod downscaled_copies;
 mod folder_scans;
 mod import_content_hash;
 mod import_list;
 pub(crate) mod import_state;
+mod label_identity_choice;
 mod release_groupings;
 mod source_releases;
 

@@ -47,12 +47,12 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         let tables = crate::import::tables::ImportTables::new(db.clone());
         let credits = [incoming.clone()];
         assert!(
-            db.resolve_artists(&credits, &[], Some(&hash)).await.is_err(),
+            tables.resolve_artists(&credits, &[], Some(&hash)).await.is_err(),
             "a conflict must wait for the person"
         );
-        db.choose_import_artist_identity(&hash, 0, choice, &coven::UuidIds).await.unwrap();
+        tables.choose_import_artist_identity(&hash, 0, choice, &coven::UuidIds).await.unwrap();
         if choice == Choice::ChangeMatch {
-            assert!(db.resolve_artists(&credits, &[], Some(&hash)).await.is_err());
+            assert!(tables.resolve_artists(&credits, &[], Some(&hash)).await.is_err());
             let pane = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
             assert!(pane.failure.is_some());
             assert_eq!(
@@ -63,7 +63,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             assert_eq!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().unwrap(), musicbrainz);
             continue;
         }
-        let resolved = db.resolve_artists(&credits, &[], Some(&hash)).await.unwrap();
+        let resolved = tables.resolve_artists(&credits, &[], Some(&hash)).await.unwrap();
         let chosen = resolved.ids[0].clone();
         match choice {
             Choice::SameArtist | Choice::DiscogsArtist => assert_eq!(chosen, discogs.id),
@@ -80,10 +80,10 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             Choice::ChangeMatch => unreachable!(),
         }
         // A retry and a separate preview read use the same reserved identity.
-        assert_eq!(db.resolve_artists(&credits, &[], Some(&hash)).await.unwrap(), resolved);
+        assert_eq!(tables.resolve_artists(&credits, &[], Some(&hash)).await.unwrap(), resolved);
         if choice != Choice::SameArtist {
             assert!(
-                db.resolve_artists(&credits, &[], Some("another-candidate")).await.is_err(),
+                tables.resolve_artists(&credits, &[], Some("another-candidate")).await.is_err(),
                 "a decision applies only to its own import"
             );
         }
@@ -222,7 +222,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 assert_eq!(actual.musicbrainz_artist_id, None);
             }
         }
-        assert_eq!(db.resolve_artists(&credits, &[], Some(&hash)).await.unwrap().ids, [chosen]);
+        assert_eq!(tables.resolve_artists(&credits, &[], Some(&hash)).await.unwrap().ids, [chosen]);
     }
 }
 
@@ -237,12 +237,12 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
     ] {
         let (db, _tmp, hash, discogs, musicbrainz, incoming) = fixture().await;
         let tables = crate::import::tables::ImportTables::new(db.clone());
-        db.choose_import_artist_identity(&hash, 1, choice, &coven::UuidIds)
+        tables.choose_import_artist_identity(&hash, 1, choice, &coven::UuidIds)
             .await
             .expect_err("an answer to an old draft cannot change this one");
         assert_eq!(db.find_artist_by_id(&discogs.id).await.unwrap().unwrap(), discogs);
         assert_eq!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().unwrap(), musicbrainz);
-        assert!(db.resolve_artists(&[incoming], &[], Some(&hash)).await.is_err());
+        assert!(tables.resolve_artists(&[incoming], &[], Some(&hash)).await.is_err());
         assert!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_some());
     }
 }
@@ -251,7 +251,7 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
 async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
     let (db, _tmp, hash, discogs, _musicbrainz, incoming) = fixture().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    db.choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
+    tables.choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
@@ -259,7 +259,7 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
         .await
         .unwrap();
     assert_eq!(
-        db.resolve_artists(std::slice::from_ref(&incoming), &[], Some(&hash)).await.unwrap().ids,
+        tables.resolve_artists(std::slice::from_ref(&incoming), &[], Some(&hash)).await.unwrap().ids,
         [discogs.id]
     );
     let mut prep = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
@@ -271,16 +271,17 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
     prep.metadata.provenance = Some(crate::import::MetadataProvenance::FileMetadata);
     prep.metadata_revision += 1;
     tables.save_candidate_preparation(prep, expected, Default::default()).await.unwrap();
-    assert!(db.resolve_artists(&[incoming], &[], Some(&hash)).await.is_err());
+    assert!(tables.resolve_artists(&[incoming], &[], Some(&hash)).await.is_err());
 }
 
 #[tokio::test]
 async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picked() {
     let (db, _tmp, hash, discogs, _musicbrainz, incoming) = fixture().await;
-    db.choose_import_artist_identity(&hash, 0, Choice::Neither, &coven::UuidIds).await.unwrap();
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.choose_import_artist_identity(&hash, 0, Choice::Neither, &coven::UuidIds).await.unwrap();
     let repeated =
         DbArtist { id: bae_test_support::test_uuid("repeated-credit"), ..incoming.clone() };
-    let resolved = db
+    let resolved = tables
         .resolve_artists(
             &[incoming.clone(), repeated, discogs.clone()],
             std::slice::from_ref(&discogs.id),
@@ -300,7 +301,7 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
     };
     let preview = db
         .read(move |sql| {
-            crate::db::client::artist_identity_choice::resolve_import_credits_on(
+            crate::import::tables::artist_identity_choice::resolve_import_credits_on(
                 &sql,
                 &hash,
                 [&credit],

@@ -201,7 +201,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     tables.save_import_candidate_failure(&hash, 0, &failure).await.unwrap();
     tables.save_import_candidate_failure(&pending_hash, 0, &failure).await.unwrap();
 
-    db.choose_import_artist_identity(
+    tables.choose_import_artist_identity(
         &hash,
         0,
         crate::import::ArtistIdentityConflictChoice::SameArtist,
@@ -330,7 +330,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(
+    tables.choose_import_artist_identity(
         &hash,
         0,
         crate::import::ArtistIdentityConflictChoice::SameArtist,
@@ -382,7 +382,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(
+    tables.choose_import_artist_identity(
         &hash,
         0,
         crate::import::ArtistIdentityConflictChoice::SameArtist,

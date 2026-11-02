@@ -1,8 +1,9 @@
 //! Atomic consolidation of library artists after a persisted import conflict.
 
 use super::*;
+use crate::db::client::write::update_artist_external_ids_row;
 
-impl Database {
+impl ImportTables {
     /// Consolidate the two library artists named by a candidate's persisted
     /// identity conflict. The absorbed artist is recorded as merged into the
     /// survivor (`artist_merges`), the survivor takes its source ids and image,
@@ -17,8 +18,9 @@ impl Database {
         metadata_revision: u64,
     ) -> Result<(), DbError> {
         let hash = content_hash.to_string();
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.database.now()).to_rfc3339();
         let plan = self
+            .database
             .read(move |sql| {
                 super::artist_identity_choice::require_revision(&sql, &hash, metadata_revision)?;
                 plan_artist_identity_merge(&sql, &hash, &now)
@@ -35,17 +37,18 @@ impl Database {
         &self,
         plan: ArtistIdentityMergePlan,
     ) -> Result<(), DbError> {
-        self.call_sql(move |sql| {
-            let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)?;
-            if current != plan {
-                return Err(DbError::Message(format!(
-                    "artist identity merge plan for {} changed before commit",
-                    plan.content_hash
-                )));
-            }
-            apply_artist_identity_merge(&sql, &plan)
-        })
-        .await
+        self.database
+            .call_sql(move |sql| {
+                let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)?;
+                if current != plan {
+                    return Err(DbError::Message(format!(
+                        "artist identity merge plan for {} changed before commit",
+                        plan.content_hash
+                    )));
+                }
+                apply_artist_identity_merge(&sql, &plan)
+            })
+            .await
     }
 }
 
@@ -125,8 +128,9 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         )));
     }
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
-    let image =
-        |artist_id: &str| super::files::image_file_on(sql, &LibraryImageType::Artist, artist_id);
+    let image = |artist_id: &str| {
+        crate::db::client::files::image_file_on(sql, &LibraryImageType::Artist, artist_id)
+    };
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
 

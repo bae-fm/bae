@@ -199,7 +199,7 @@ pub(super) fn vacate_album_on(conn: &CovenWrite<'_>, album_id: &str) -> Result<b
 
 /// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
 /// of its merges, or itself (`artist_shown_as`).
-pub(super) fn shown_artist_id(artist_id: &str) -> String {
+pub(crate) fn shown_artist_id(artist_id: &str) -> String {
     format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
 }
 

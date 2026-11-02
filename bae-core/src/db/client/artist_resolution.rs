@@ -61,7 +61,7 @@ pub(crate) fn identity_write_failure(error: IdentityWriteError) -> CovenError {
 impl Database {
     /// A write that resolves artist credits: [`Self::call_sql`], with an
     /// [`IdentityWriteError`] the closure fails with handed back as itself.
-    pub(super) async fn write_resolving_identities<R>(
+    pub(crate) async fn write_resolving_identities<R>(
         &self,
         f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
     ) -> Result<R, IdentityWriteError>
@@ -75,25 +75,19 @@ impl Database {
             .map_err(Self::identity_write_error)
     }
 
-    /// Resolve `credits` against the library as it stands, without writing:
-    /// what a write committing them now would link and create. Only an
-    /// import previews its resolution, and the mobile builds do not import.
+    /// A read that resolves artist credits: [`Self::read`], with an
+    /// [`IdentityWriteError`] the closure fails with handed back as itself.
     #[cfg(desktop)]
-    pub(crate) async fn resolve_artists(
+    pub(crate) async fn read_resolving_identities<R>(
         &self,
-        credits: &[DbArtist],
-        picked: &[String],
-        content_hash: Option<&str>,
-    ) -> Result<ResolvedArtists, IdentityWriteError> {
-        let (credits, picked) = (credits.to_vec(), picked.to_vec());
-        let content_hash = content_hash.map(str::to_string);
+        f: impl for<'ctx> FnOnce(SqlReadContext<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
+    ) -> Result<R, IdentityWriteError>
+    where
+        R: Send + 'static,
+    {
         self.inner
             .handle
-            .read(move |sql| {
-                ArtistCredits { credits: &credits, picked: &picked }
-                    .resolve_for_import_on(&sql, content_hash.as_deref())
-                    .map_err(identity_write_failure)
-            })
+            .read(move |sql| f(sql).map_err(identity_write_failure))
             .await
             .map_err(Self::identity_write_error)
     }
@@ -207,7 +201,7 @@ pub(crate) struct ArtistCredits<'a> {
 }
 
 impl ArtistCredits<'_> {
-    pub(super) fn resolve_on<Q: QueryOne + QueryRows>(
+    pub(crate) fn resolve_on<Q: QueryOne + QueryRows>(
         &self,
         sql: &Q,
     ) -> Result<ResolvedArtists, IdentityWriteError> {
@@ -364,7 +358,7 @@ pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
     resolve_credits_with(credits, |credit| resolve_credit_on(sql, credit))
 }
 
-pub(super) fn resolve_credits_with<'a>(
+pub(crate) fn resolve_credits_with<'a>(
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
     mut resolve: impl FnMut(
         &crate::catalog_model::credits::ArtistCredit,

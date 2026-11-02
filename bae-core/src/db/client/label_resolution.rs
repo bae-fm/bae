@@ -38,10 +38,28 @@ pub(crate) struct LabelWrite<'a> {
     fresh_ids: &'a [String],
     /// `created_at` for a new label.
     now: &'a str,
-    /// The import candidate whose answers to label conflicts the write
-    /// follows, for an import's write.
+    /// What a person answered for labels whose two catalog ids two library
+    /// labels held, which an import's write follows.
     #[cfg(desktop)]
-    candidate: Option<&'a str>,
+    answers: &'a [LabelAnswer],
+}
+
+/// A person's answer for a label whose Discogs and MusicBrainz ids two
+/// library labels held: the label a place stating both ids names.
+#[cfg(desktop)]
+pub(crate) struct LabelAnswer {
+    pub discogs_label_id: String,
+    pub musicbrainz_label_id: String,
+    pub label: AnsweredLabel,
+}
+
+/// The label a [`LabelAnswer`] names.
+#[cfg(desktop)]
+pub(crate) enum AnsweredLabel {
+    /// A library label, by the id it shows as.
+    Library(String),
+    /// A new label carrying neither catalog id, made under this id.
+    New(String),
 }
 
 /// The [`LabelWrite`] of a write that gives new labels the ids of `parts`,
@@ -51,18 +69,18 @@ pub(super) fn label_write(parts: &LabelParts) -> LabelWrite<'_> {
         fresh_ids: &parts.fresh_ids,
         now: &parts.now,
         #[cfg(desktop)]
-        candidate: None,
+        answers: &[],
     }
 }
 
-/// The [`label_write`] of an import of `candidate`, which follows its answers
-/// to label conflicts.
+/// The [`label_write`] of an import, which follows `answers` to its label
+/// conflicts.
 #[cfg(desktop)]
 pub(crate) fn import_label_write<'a>(
     parts: &'a LabelParts,
-    candidate: Option<&'a str>,
+    answers: &'a [LabelAnswer],
 ) -> LabelWrite<'a> {
-    LabelWrite { candidate, ..label_write(parts) }
+    LabelWrite { answers, ..label_write(parts) }
 }
 
 /// What a write of labels takes along into its closure: an id for each label
@@ -84,7 +102,7 @@ impl Database {
 
 /// One `labels` row as resolution reads and writes it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct LabelRow {
+pub(crate) struct LabelRow {
     pub id: String,
     pub name: String,
     pub musicbrainz_label_id: Option<String>,
@@ -92,7 +110,7 @@ pub(super) struct LabelRow {
 }
 
 impl LabelRow {
-    pub(super) fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+    pub(crate) fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             name: row.get("name")?,
@@ -120,7 +138,7 @@ impl LabelRow {
         }
     }
 
-    pub(super) fn existing(&self) -> crate::db::ExistingLabel {
+    pub(crate) fn existing(&self) -> crate::db::ExistingLabel {
         crate::db::ExistingLabel {
             label_id: self.id.clone(),
             name: self.name.clone(),
@@ -132,7 +150,7 @@ impl LabelRow {
 
 /// The SQL of the label `label_id` shows as: the end of its merge chain, else
 /// itself.
-pub(super) fn shown_label_id(label_id: &str) -> String {
+pub(crate) fn shown_label_id(label_id: &str) -> String {
     format!(
         "COALESCE((SELECT survivor_id FROM merged_label_survivors \
                    WHERE label_id = {label_id}), {label_id})"
@@ -178,7 +196,7 @@ impl Decided {
 /// Make the release `release_id`'s labels `labels`, in order, each naming the
 /// library label the rule in the module doc decides, inserting the new labels
 /// and filling in the linked ones first.
-pub(super) fn write_release_labels_on(
+pub(crate) fn write_release_labels_on(
     tx: &CovenWrite<'_>,
     release_id: &str,
     labels: &[ReleaseLabel],
@@ -250,7 +268,7 @@ fn resolve_label_on(
     write: &LabelWrite<'_>,
 ) -> Result<String, IdentityWriteError> {
     #[cfg(desktop)]
-    if let Some(id) = import_answer_on(tx, label, name, decided, write)? {
+    if let Some(id) = import_answer(label, name, decided, write) {
         return Ok(id);
     }
 
@@ -365,25 +383,28 @@ fn resolve_label_on(
     Ok(id)
 }
 
-/// The library label the import's answer to a conflict over `label`'s two
-/// catalog ids names, made new where the answer was neither; `None` where the
-/// import answered none for these ids.
+/// The library label the write's answer to a conflict over `label`'s two
+/// catalog ids names, made new where the answer was neither; `None` where it
+/// holds no answer for these ids.
 #[cfg(desktop)]
-fn import_answer_on(
-    tx: &CovenWrite<'_>,
+fn import_answer(
     label: &ReleaseLabel,
     name: &str,
     decided: &mut Decided,
     write: &LabelWrite<'_>,
-) -> Result<Option<String>, IdentityWriteError> {
-    let (Some(hash), Some(musicbrainz), Some(discogs)) =
-        (write.candidate, label.musicbrainz_label_id(), label.discogs_label_id())
+) -> Option<String> {
+    let (Some(musicbrainz), Some(discogs)) =
+        (label.musicbrainz_label_id(), label.discogs_label_id())
     else {
-        return Ok(None);
+        return None;
     };
-    Ok(match super::label_identity_choice::chosen_label_on(tx, hash, discogs, musicbrainz)? {
-        Some(super::label_identity_choice::ChosenLabel::Library(chosen)) => Some(chosen.id),
-        Some(super::label_identity_choice::ChosenLabel::New(id)) => {
+    let answer = write.answers.iter().find(|answer| {
+        answer.discogs_label_id == discogs && answer.musicbrainz_label_id == musicbrainz
+    });
+    match answer.map(|answer| &answer.label) {
+        Some(AnsweredLabel::Library(id)) => Some(id.clone()),
+        Some(AnsweredLabel::New(id)) => {
+            let id = id.clone();
             if !decided.inserts.iter().any(|pending| pending.id == id) {
                 decided.inserts.push(LabelRow {
                     id: id.clone(),
@@ -395,7 +416,7 @@ fn import_answer_on(
             Some(id)
         }
         None => None,
-    })
+    }
 }
 
 fn contradicted(name: &str) -> IdentityWriteError {
@@ -525,4 +546,4 @@ fn replace_release_label_rows(
 
 #[cfg(test)]
 #[path = "label_resolution_tests.rs"]
-mod tests;
+pub(crate) mod tests;

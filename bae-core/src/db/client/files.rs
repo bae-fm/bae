@@ -205,7 +205,7 @@ pub(super) fn image_version_on<Q: QueryOne>(
 }
 
 /// The coven file one image row names, or `None` when there is no such row.
-pub(super) fn image_file_on<Q: QueryOne>(
+pub(crate) fn image_file_on<Q: QueryOne>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,

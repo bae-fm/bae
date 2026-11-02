@@ -748,7 +748,7 @@ impl ImportService {
         picked: &[String],
         content_hash: Option<&str>,
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let resolved = self.database.resolve_artists(credits, picked, content_hash).await?;
+        let resolved = self.tables.resolve_artists(credits, picked, content_hash).await?;
         Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
     }
 
@@ -774,7 +774,7 @@ impl ImportService {
         artist_images: &[crate::import::DiscogsArtistImage],
     ) -> Result<(), crate::import::ImportError> {
         let expected = self
-            .database
+            .tables
             .resolve_artists(rows.artists.credits, rows.artists.picked, guard.content_hash())
             .await?;
         let expected_new_artists: Vec<String> =

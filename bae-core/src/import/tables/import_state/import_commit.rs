@@ -17,6 +17,8 @@ use crate::db::client::write::{
     write_release_records,
 };
 use crate::import::preparation::CommittingCandidate;
+use crate::import::tables::artist_identity_choice::resolve_for_import_on;
+use crate::import::tables::label_identity_choice::label_answers_on;
 use std::collections::BTreeSet;
 
 /// Why an import's commit did not land. Nothing of it was written; the
@@ -400,8 +402,7 @@ impl ImportTables {
                     // before the links below point at them.
                     let credits =
                         ArtistCredits { credits: &artist_credits, picked: &picked_artists };
-                    let resolved = credits
-                        .resolve_for_import_on(tx, guard.content_hash())
+                    let resolved = resolve_for_import_on(&credits, tx, guard.content_hash())
                         .map_err(identity_write_failure)?;
                     let inserted: BTreeSet<String> =
                         resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
@@ -434,12 +435,14 @@ impl ImportTables {
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
                     }
 
-                    insert_release_row(
-                        tx,
-                        &release,
-                        &import_label_write(&labels, guard.content_hash()),
-                    )
-                    .map_err(identity_write_failure)?;
+                    // A test's commit stands for no candidate, which holds
+                    // no answers to label conflicts.
+                    let label_answers = match guard.content_hash() {
+                        Some(hash) => label_answers_on(tx, hash, &release.pressing.labels)?,
+                        None => Vec::new(),
+                    };
+                    insert_release_row(tx, &release, &import_label_write(&labels, &label_answers))
+                        .map_err(identity_write_failure)?;
                     record_import_origin_on(tx, &guard, &release.id)
                         .map_err(import_commit_failure)?;
                     // The credits are resolved above, so the artist decisions

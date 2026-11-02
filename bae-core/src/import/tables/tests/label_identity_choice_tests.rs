@@ -1,0 +1,156 @@
+//! An import's answers to a label's conflicting catalog identities: the
+//! person's answer recorded, the merge "same label" makes, and the import
+//! naming the label the answer names.
+
+use super::super::*;
+use crate::db::client::label_resolution::tests::{
+    add_label, ids_of, label, library, placed, read_labels, stored_label, with_ids, write, RELEASE,
+};
+use crate::db::client::label_resolution::{import_label_write, write_release_labels_on};
+use bae_types::pressing::ReleaseLabel;
+
+const CANDIDATE: &str = "candidate-hash";
+
+/// Write `RELEASE`'s labels as an import of `CANDIDATE` would, following its
+/// answers to label conflicts.
+async fn write_as_import(
+    db: &Database,
+    labels: Vec<ReleaseLabel>,
+) -> Result<(), IdentityWriteError> {
+    let parts = db.label_parts(&labels);
+    db.write_resolving_identities(move |sql| {
+        let answers = crate::import::tables::label_identity_choice::label_answers_on(
+            &sql, CANDIDATE, &labels,
+        )?;
+        write_release_labels_on(&sql, RELEASE, &labels, &import_label_write(&parts, &answers))
+    })
+    .await
+}
+
+/// Record `CANDIDATE`'s failed import stopping on the conflict over
+/// `by-discogs` and `by-musicbrainz`; the first time, the candidate too.
+async fn record_conflict(db: &Database, first: bool) {
+    let candidate = if first {
+        "INSERT INTO import_candidate_state (content_hash, candidate_key) \
+             VALUES ('candidate-hash', CAST('/music/Album' AS BLOB));"
+    } else {
+        ""
+    };
+    let batch = format!(
+        "{candidate} \
+         INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
+             VALUES ('candidate-hash', 'conflict', '2026-01-01T00:00:00Z'); \
+         INSERT INTO import_candidate_label_identity_conflict \
+             (content_hash, incoming_label_name, discogs_label_id, musicbrainz_label_id, \
+              discogs_library_label_id, musicbrainz_library_label_id) \
+             VALUES ('candidate-hash', 'Label Name', '7190', 'mb-label', \
+                     'by-discogs', 'by-musicbrainz');"
+    );
+    db.call(move |sql| {
+        sql.execute_batch(&batch)?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+async fn has_failure(db: &Database) -> bool {
+    db.read(|sql| {
+        Ok(sql
+            .query_row(
+                "SELECT 1 FROM import_candidate_failure WHERE content_hash = ?",
+                [CANDIDATE],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    })
+    .await
+    .unwrap()
+}
+
+fn conflicting() -> ReleaseLabel {
+    with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190"))
+}
+
+/// "Same label" merges the MusicBrainz library label into the Discogs one,
+/// which takes its id; a release naming the absorbed label reads the
+/// survivor; and the import then names the survivor.
+#[tokio::test]
+async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor() {
+    let (db, _tmp) = library().await;
+    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
+    add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
+    write(&db, vec![with_ids(label(Some("Label Name Records"), None), Some("mb-label"), None)])
+        .await
+        .unwrap();
+    record_conflict(&db, true).await;
+
+    ImportTables::new(db.clone())
+        .choose_import_label_identity(
+            CANDIDATE,
+            0,
+            crate::import::LabelIdentityConflictChoice::SameLabel,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
+
+    assert!(!has_failure(&db).await);
+    let survivor = stored_label(&db, "by-discogs").await;
+    assert_eq!(survivor.musicbrainz_label_id.as_deref(), Some("mb-label"));
+    assert_eq!(read_labels(&db).await, vec![label(Some("Label Name"), None)]);
+    let into: String = db
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT into_label_id FROM label_merges WHERE id = 'by-musicbrainz'",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(into, "by-discogs");
+
+    write_as_import(&db, vec![conflicting()]).await.unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
+}
+
+/// "Neither" makes a label carrying neither id, and the import names it;
+/// "It's the Discogs label" names that label and attaches no MusicBrainz id.
+#[tokio::test]
+async fn the_neither_and_one_label_answers_decide_the_import() {
+    let (db, _tmp) = library().await;
+    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
+    add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+    record_conflict(&db, true).await;
+
+    ImportTables::new(db.clone())
+        .choose_import_label_identity(
+            CANDIDATE,
+            0,
+            crate::import::LabelIdentityConflictChoice::Neither,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
+    write_as_import(&db, vec![conflicting()]).await.unwrap();
+    let made = placed(&db).await[0].0.clone().unwrap();
+    assert!(!["by-discogs", "by-musicbrainz"].contains(&made.as_str()));
+    let made = stored_label(&db, &made).await;
+    assert_eq!((made.musicbrainz_label_id, made.discogs_label_id), (None, None));
+
+    record_conflict(&db, false).await;
+    ImportTables::new(db.clone())
+        .choose_import_label_identity(
+            CANDIDATE,
+            1,
+            crate::import::LabelIdentityConflictChoice::DiscogsLabel,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
+    write_as_import(&db, vec![conflicting()]).await.unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
+    assert_eq!(stored_label(&db, "by-discogs").await.musicbrainz_label_id, None);
+}

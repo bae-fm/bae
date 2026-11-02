@@ -700,7 +700,7 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
     })
 }
 
-pub(super) fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {
+pub(crate) fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {
     row_to_artist_with_prefix(row, "")
 }
 

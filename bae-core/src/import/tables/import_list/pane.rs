@@ -143,11 +143,12 @@ fn draft_rows_on(
     let pane_rows = load_pane_rows_on(sql, content_hash)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = crate::db::client::artist_identity_choice::resolve_import_credits_on(
-        sql,
-        content_hash,
-        pane_rows.draft.credits(),
-    )?;
+    let artist_resolutions =
+        crate::import::tables::artist_identity_choice::resolve_import_credits_on(
+            sql,
+            content_hash,
+            pane_rows.draft.credits(),
+        )?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
     let claimed =

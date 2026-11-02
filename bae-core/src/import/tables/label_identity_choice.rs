@@ -2,11 +2,12 @@
 //! merge the "same label" answer makes. The label's statement stays as the
 //! catalogs gave it; only this candidate's writes use the answer.
 
-use super::label_resolution::LabelRow;
 use super::*;
+use crate::db::client::label_resolution::{AnsweredLabel, LabelAnswer, LabelRow};
 use crate::import::LabelIdentityConflictChoice as Choice;
+use bae_types::pressing::ReleaseLabel;
 
-impl Database {
+impl ImportTables {
     /// Record the person's answer to the candidate's label conflict, and
     /// dismiss the failure it stopped on. "Same label" merges the two library
     /// labels; changing the match moves the pane to its release picker and
@@ -20,33 +21,37 @@ impl Database {
     ) -> Result<(), DbError> {
         let hash = content_hash.to_string();
         let new_id = (choice == Choice::Neither).then(|| ids.new_id().to_string());
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
-        self.call(move |sql| {
-            super::artist_identity_choice::require_revision(sql, &hash, metadata_revision)?;
-            if choice == Choice::ChangeMatch {
-                // Going back does not decide the label or dismiss its failure.
-                return crate::import::tables::import_state::move_pane_on(
-                    sql,
-                    &hash,
-                    crate::import::PaneMove::FindOnline,
-                );
-            }
-            let conflict = recorded_conflict_on(sql, &hash)?;
-            let label_id = match choice {
-                Choice::SameLabel => {
-                    merge_labels_on(sql, &conflict, &now)?;
-                    conflict.discogs_library.clone()
+        let now = chrono::DateTime::<chrono::Utc>::from(self.database.now()).to_rfc3339();
+        self.database
+            .call(move |sql| {
+                super::artist_identity_choice::require_revision(sql, &hash, metadata_revision)?;
+                if choice == Choice::ChangeMatch {
+                    // Going back does not decide the label or dismiss its failure.
+                    return crate::import::tables::import_state::move_pane_on(
+                        sql,
+                        &hash,
+                        crate::import::PaneMove::FindOnline,
+                    );
                 }
-                Choice::DiscogsLabel => conflict.discogs_library.clone(),
-                Choice::MusicBrainzLabel => conflict.musicbrainz_library.clone(),
-                Choice::Neither => new_id.expect("Neither reserves a label id"),
-                Choice::ChangeMatch => unreachable!("changing the match returned above"),
-            };
-            record_choice_on(sql, &hash, &conflict, choice, &label_id)?;
-            sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [&hash])?;
-            Ok(())
-        })
-        .await
+                let conflict = recorded_conflict_on(sql, &hash)?;
+                let label_id = match choice {
+                    Choice::SameLabel => {
+                        merge_labels_on(sql, &conflict, &now)?;
+                        conflict.discogs_library.clone()
+                    }
+                    Choice::DiscogsLabel => conflict.discogs_library.clone(),
+                    Choice::MusicBrainzLabel => conflict.musicbrainz_library.clone(),
+                    Choice::Neither => new_id.expect("Neither reserves a label id"),
+                    Choice::ChangeMatch => unreachable!("changing the match returned above"),
+                };
+                record_choice_on(sql, &hash, &conflict, choice, &label_id)?;
+                sql.execute(
+                    "DELETE FROM import_candidate_failure WHERE content_hash = ?",
+                    [&hash],
+                )?;
+                Ok(())
+            })
+            .await
     }
 }
 
@@ -185,21 +190,39 @@ fn merge_labels_on(
     Ok(())
 }
 
-/// A person's answer for one label: a library label, or the id reserved for
-/// a new label carrying neither catalog id.
-pub(super) enum ChosenLabel {
-    Library(LabelRow),
-    New(String),
+/// The answers the candidate `hash` holds for `labels`, each carrying both
+/// catalog ids: what an import of it writes its labels by.
+pub(crate) fn label_answers_on<Q: QueryOne>(
+    sql: &Q,
+    hash: &str,
+    labels: &[ReleaseLabel],
+) -> Result<Vec<LabelAnswer>, DbError> {
+    // Only a label carrying both ids can have stopped an import on a
+    // conflict between them, so only such a label has an answer.
+    let both_ids = labels
+        .iter()
+        .filter_map(|label| Some((label.discogs_label_id()?, label.musicbrainz_label_id()?)));
+    let mut answers = Vec::new();
+    for (discogs, musicbrainz) in both_ids {
+        if let Some(answered) = chosen_label_on(sql, hash, discogs, musicbrainz)? {
+            answers.push(LabelAnswer {
+                discogs_label_id: discogs.to_string(),
+                musicbrainz_label_id: musicbrainz.to_string(),
+                label: answered,
+            });
+        }
+    }
+    Ok(answers)
 }
 
 /// The answer the candidate `hash` holds for a label carrying `discogs` and
-/// `musicbrainz`, the library label shown for it where it names one.
-pub(super) fn chosen_label_on<Q: QueryOne>(
+/// `musicbrainz`, by the library label shown for it where it names one.
+fn chosen_label_on<Q: QueryOne>(
     sql: &Q,
     hash: &str,
     discogs: &str,
     musicbrainz: &str,
-) -> Result<Option<ChosenLabel>, DbError> {
+) -> Result<Option<AnsweredLabel>, DbError> {
     let Some((choice, label_id)) = sql
         .query_row(
             "SELECT choice, label_id FROM import_candidate_label_identity_choice \
@@ -214,9 +237,9 @@ pub(super) fn chosen_label_on<Q: QueryOne>(
     let shown = shown_label_on(sql, &label_id)?;
     Ok(Some(match (choice.as_str(), shown) {
         ("same_label" | "discogs_label" | "musicbrainz_label" | "neither", Some(label)) => {
-            ChosenLabel::Library(label)
+            AnsweredLabel::Library(label.id)
         }
-        ("neither", None) => ChosenLabel::New(label_id),
+        ("neither", None) => AnsweredLabel::New(label_id),
         ("same_label" | "discogs_label" | "musicbrainz_label", None) => {
             return Err(DbError::Message(format!(
                 "the label chosen for candidate {hash}, {label_id}, is not in the library"
@@ -233,7 +256,7 @@ fn shown_label_on<Q: QueryOne>(sql: &Q, label_id: &str) -> Result<Option<LabelRo
     sql.query_row(
         &format!(
             "SELECT * FROM labels WHERE id = {}",
-            super::label_resolution::shown_label_id("?1")
+            crate::db::client::label_resolution::shown_label_id("?1")
         ),
         [label_id],
         LabelRow::from_row,
