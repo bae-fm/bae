@@ -1,14 +1,8 @@
 //! The context's upcoming tail, read through one live subscription whose
 //! windows move as the queue scrolls.
 
-use crate::db::{LibraryPageWindow, LibraryPageWindows};
-
-/// One requested window of the upcoming tail, with the entries in it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct QueueUpcomingWindow {
-    pub window: LibraryPageWindow,
-    pub items: Vec<crate::queue::QueueItem>,
-}
+use crate::db::LibraryPageWindows;
+use crate::playback::QueueUpcomingWindow;
 
 /// Every requested window as of one read. Offsets are into the
 /// not-yet-played tail, the first entry after the playing one at offset 0, and

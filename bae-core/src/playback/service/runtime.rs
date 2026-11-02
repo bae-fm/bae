@@ -235,7 +235,7 @@ impl PlaybackService {
     /// resumes nothing, and the library opened with the queue emptied
     /// (`settle_playback_queue`).
     pub(super) async fn restore_from_cache(&mut self) {
-        match self.database.load_playback_state().await {
+        match crate::playback::tables::load_playback_state(&self.database).await {
             Ok(Some(state)) => self.restore(state).await,
             Ok(None) => {}
             Err(e) => warn!("couldn't load the saved playback state: {e}; resuming nothing"),
@@ -608,9 +608,9 @@ impl PlaybackService {
     pub fn start(
         database: crate::db::Database,
         ids: coven::IdSourceRef,
-        queue_tables: crate::db::PlaybackQueueTables,
-        now_row: crate::db::PlaybackNowRow,
-        timeline_row: crate::db::PlaybackTimelineRow,
+        queue_tables: crate::playback::tables::PlaybackQueueTables,
+        now_row: crate::playback::tables::PlaybackNowRow,
+        timeline_row: crate::playback::tables::PlaybackTimelineRow,
         track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
@@ -643,9 +643,9 @@ impl PlaybackService {
     pub fn start_with_audio_device(
         database: crate::db::Database,
         ids: coven::IdSourceRef,
-        queue_tables: crate::db::PlaybackQueueTables,
-        now_row: crate::db::PlaybackNowRow,
-        timeline_row: crate::db::PlaybackTimelineRow,
+        queue_tables: crate::playback::tables::PlaybackQueueTables,
+        now_row: crate::playback::tables::PlaybackNowRow,
+        timeline_row: crate::playback::tables::PlaybackTimelineRow,
         track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
@@ -675,9 +675,9 @@ impl PlaybackService {
     pub(super) fn start_inner(
         database: crate::db::Database,
         ids: coven::IdSourceRef,
-        queue_tables: crate::db::PlaybackQueueTables,
-        now_row: crate::db::PlaybackNowRow,
-        timeline_row: crate::db::PlaybackTimelineRow,
+        queue_tables: crate::playback::tables::PlaybackQueueTables,
+        now_row: crate::playback::tables::PlaybackNowRow,
+        timeline_row: crate::playback::tables::PlaybackTimelineRow,
         track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,

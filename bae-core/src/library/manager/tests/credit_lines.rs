@@ -90,9 +90,7 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
             .artist_names
             .clone()
     };
-    let queued_featured = manager
-        .database
-        .track_display(&library.featured.id)
+    let queued_featured = crate::playback::tables::track_display(&manager.database, &library.featured.id)
         .await
         .unwrap()
         .expect("the track's display")

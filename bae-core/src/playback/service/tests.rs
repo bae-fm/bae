@@ -262,8 +262,9 @@ fn playback_service_over(
     let diagnostics = library.diagnostics().clone();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
-    let playback_queue =
-        PlaybackQueue::new(crate::db::PlaybackQueueTables::new(library.database().clone()));
+    let playback_queue = PlaybackQueue::new(crate::playback::tables::PlaybackQueueTables::new(
+        library.database().clone(),
+    ));
     let staged_sides = advance::staged_sides_follow(library.database(), &diagnostics);
     let service = PlaybackService {
         database: library.database().clone(),

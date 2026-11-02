@@ -4,7 +4,6 @@
 
 use super::super::*;
 use super::*;
-use crate::db::{ContextFill, ContextFilled, ReleaseStart};
 
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
 pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
@@ -49,8 +48,8 @@ async fn play(db: &Database, start: ReleaseStart) -> crate::playback::QueueEntry
 }
 
 async fn upcoming(db: &Database) -> Vec<String> {
-    let manual = db.queue_value().await.unwrap().manual;
-    manual.into_iter().chain(db.queue_upcoming().await.unwrap()).map(|item| item.track_id).collect()
+    let manual = queue_value(db).await.unwrap().manual;
+    manual.into_iter().chain(queue_upcoming(db).await.unwrap()).map(|item| item.track_id).collect()
 }
 
 async fn rejects(db: &Database, sql: &str) -> bool {
@@ -151,8 +150,8 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
 
     assert_eq!(upcoming(&db).await, vec![tracks[2].clone()]);
-    assert!(db.queue_value().await.unwrap().has_previous);
-    let back = crate::db::PlaybackQueueTables::new(db.clone()).step_back(None).await.unwrap();
+    assert!(queue_value(&db).await.unwrap().has_previous);
+    let back = PlaybackQueueTables::new(db.clone()).step_back(None).await.unwrap();
     assert_eq!(back.map(|entry| entry.track_id), Some(tracks[0].clone()));
 }
 
@@ -177,11 +176,11 @@ async fn context_head(
 async fn the_lane_s_last_track_deleted_clears_the_context() {
     let (db, _tmp, tracks) = release_db(1).await;
     play(&db, ReleaseStart::First).await;
-    assert!(db.queue_value().await.unwrap().context.is_some());
+    assert!(queue_value(&db).await.unwrap().context.is_some());
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
 
-    assert!(db.queue_value().await.unwrap().context.is_none());
+    assert!(queue_value(&db).await.unwrap().context.is_none());
     assert_eq!(context_head(&db).await, (None, None, None, None));
 }
 
@@ -194,7 +193,7 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
     let fill = |release_ids: Vec<String>| {
         let db = db.clone();
         async move {
-            crate::db::PlaybackQueueTables::new(db.clone())
+            PlaybackQueueTables::new(db.clone())
                 .fill(ContextFill::Releases(release_ids))
                 .await
                 .unwrap()
@@ -203,7 +202,7 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
 
     fill(vec![RELEASE_A.to_string(), RELEASE_A.to_string()]).await;
     assert_eq!(context_head(&db).await, (Some("releases".to_string()), None, Some(false), Some(1)));
-    let context = db.queue_value().await.unwrap().context.unwrap();
+    let context = queue_value(&db).await.unwrap().context.unwrap();
     assert_eq!(context.source, crate::playback::ContextSource::Releases);
     assert_eq!(context.source_title, None);
 
@@ -213,7 +212,7 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
         (Some("release".to_string()), Some(RELEASE_A.to_string()), Some(false), Some(1))
     );
     assert_eq!(
-        db.queue_value().await.unwrap().context.unwrap().source,
+        queue_value(&db).await.unwrap().context.unwrap().source,
         crate::playback::ContextSource::Release(RELEASE_A.to_string())
     );
 }
@@ -236,8 +235,8 @@ async fn the_lane_s_tracks_deleted_together_clear_the_context() {
 async fn removing_the_lane_s_last_row_clears_the_context() {
     let (db, _tmp, _tracks) = release_db(2).await;
     let playing = play(&db, ReleaseStart::First).await;
-    let next = db.queue_upcoming().await.unwrap().remove(0);
-    let tables = crate::db::PlaybackQueueTables::new(db.clone());
+    let next = queue_upcoming(&db).await.unwrap().remove(0);
+    let tables = PlaybackQueueTables::new(db.clone());
 
     tables.remove(next.entry_id.parse().unwrap()).await.unwrap().expect("the lane holds it");
     assert_eq!(
@@ -276,19 +275,19 @@ async fn the_context_lane_has_no_trigger() {
 async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     let (db, _tmp, tracks) = release_db(2).await;
     let current = play(&db, ReleaseStart::First).await;
-    let state = DbPlaybackState { current: Some(current.clone()), position_ms: Some(42_000) };
-    db.save_playback_state(&state).await.unwrap();
+    let state = PlaybackResumeRow { current: Some(current.clone()), position_ms: Some(42_000) };
+    save_playback_state(&db, &state).await.unwrap();
 
-    let loaded = db.load_playback_state().await.unwrap().expect("a stored row");
+    let loaded = load_playback_state(&db).await.unwrap().expect("a stored row");
     assert_eq!(loaded.current, Some(current));
     assert_eq!(loaded.position_ms, Some(42_000));
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
-    let forgotten = db.load_playback_state().await.unwrap().expect("the row stays");
+    let forgotten = load_playback_state(&db).await.unwrap().expect("the row stays");
     assert_eq!(forgotten.current, None);
 
-    db.clear_playback_state().await.unwrap();
-    assert!(db.load_playback_state().await.unwrap().is_none());
+    clear_playback_state(&db).await.unwrap();
+    assert!(load_playback_state(&db).await.unwrap().is_none());
 }
 
 /// Opening keeps the queue only when it will be resumed: "restore on launch"
@@ -299,13 +298,13 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
 async fn opening_keeps_the_queue_only_to_resume_it() {
     let (db, _tmp, tracks) = release_db(2).await;
     let current = play(&db, ReleaseStart::First).await;
-    crate::db::PlaybackQueueTables::new(db.clone())
+    PlaybackQueueTables::new(db.clone())
         .set_repeat(crate::playback::RepeatMode::Context)
         .await
         .unwrap();
-    let state = DbPlaybackState { current: Some(current.clone()), position_ms: None };
-    db.save_playback_state(&state).await.unwrap();
-    let now = crate::db::PlaybackNowRow::new(db.clone());
+    let state = PlaybackResumeRow { current: Some(current.clone()), position_ms: None };
+    save_playback_state(&db, &state).await.unwrap();
+    let now = PlaybackNowRow::new(db.clone());
     for change in [
         crate::playback::PlaybackChange::State(crate::playback::PlaybackState::Playing {
             track: crate::playback::PlayingTrack {
@@ -320,26 +319,26 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
         now.apply(&change).await.unwrap();
     }
 
-    db.settle_playback_queue(true).await.unwrap();
+    settle_playback_queue(&db, true).await.unwrap();
     assert_eq!(upcoming(&db).await, vec![tracks[1].clone()], "kept to resume");
-    let resumed = db.now_playing().await.unwrap().expect("nothing to display");
+    let resumed = now_playing(&db).await.unwrap().expect("nothing to display");
     assert_eq!(resumed.playback.state, crate::playback::PlaybackState::Stopped);
     assert_eq!(resumed.failure, None);
-    assert_eq!(db.playback_level().await.unwrap(), (0.5, true), "kept to resume");
+    assert_eq!(playback_level(&db).await.unwrap(), (0.5, true), "kept to resume");
 
-    db.settle_playback_queue(false).await.unwrap();
-    assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
-    assert!(db.queue_value().await.unwrap().context.is_none(), "restore off empties it");
-    assert!(db.load_playback_state().await.unwrap().is_none());
+    settle_playback_queue(&db, false).await.unwrap();
+    assert_eq!(playback_level(&db).await.unwrap(), (1.0, false));
+    assert!(queue_value(&db).await.unwrap().context.is_none(), "restore off empties it");
+    assert!(load_playback_state(&db).await.unwrap().is_none());
     assert_eq!(
-        crate::db::PlaybackQueueTables::new(db.clone()).repeat().await.unwrap(),
+        PlaybackQueueTables::new(db.clone()).repeat().await.unwrap(),
         crate::playback::RepeatMode::Off
     );
 
     play(&db, ReleaseStart::First).await;
-    db.settle_playback_queue(true).await.unwrap();
+    settle_playback_queue(&db, true).await.unwrap();
     assert!(
-        db.queue_value().await.unwrap().context.is_none(),
+        queue_value(&db).await.unwrap().context.is_none(),
         "with no resume row there is nothing to resume"
     );
 }
@@ -403,9 +402,9 @@ async fn a_context_row_is_named_by_its_entry() {
     let (db, _tmp, tracks) = release_db(3).await;
     let queued = super::queue_items(&db, &[&tracks[0]]).await;
     let first = play(&db, ReleaseStart::First).await;
-    let first_upcoming = db.queue_upcoming().await.unwrap();
+    let first_upcoming = queue_upcoming(&db).await.unwrap();
     let second = play(&db, ReleaseStart::First).await;
-    let upcoming = db.queue_upcoming().await.unwrap();
+    let upcoming = queue_upcoming(&db).await.unwrap();
 
     let ids: Vec<String> = [queued[0].entry_id.clone(), first.id.to_string()]
         .into_iter()
@@ -420,7 +419,7 @@ async fn a_context_row_is_named_by_its_entry() {
     numbers.dedup();
     assert_eq!(numbers.len(), 7, "{ids:?}");
 
-    let tables = crate::db::PlaybackQueueTables::new(db.clone());
+    let tables = PlaybackQueueTables::new(db.clone());
     assert_eq!(
         tables.skip_to(first_upcoming[1].entry_id.parse().unwrap()).await.unwrap(),
         None,
@@ -432,7 +431,7 @@ async fn a_context_row_is_named_by_its_entry() {
         .unwrap()
         .expect("the row its entry names");
     assert_eq!(skipped.track_id, tracks[2]);
-    assert!(db.queue_upcoming().await.unwrap().is_empty());
+    assert!(queue_upcoming(&db).await.unwrap().is_empty());
 }
 
 /// Up Next rows are entries of their own, so the same track queued twice is
@@ -443,12 +442,12 @@ async fn an_up_next_row_is_named_by_its_entry() {
     let items = super::queue_items(&db, &[&tracks[0], &tracks[0]]).await;
     assert!(items.iter().all(|item| item.entry_id.starts_with('m')));
     assert_ne!(items[0].entry_id, items[1].entry_id);
-    let removed = crate::db::PlaybackQueueTables::new(db.clone())
+    let removed = PlaybackQueueTables::new(db.clone())
         .remove(items[1].entry_id.parse().unwrap())
         .await
         .unwrap();
     assert!(removed.is_some());
-    assert_eq!(db.queue_value().await.unwrap().manual, items[..1].to_vec());
+    assert_eq!(queue_value(&db).await.unwrap().manual, items[..1].to_vec());
 }
 
 /// A deleted track leaves the queue through a trigger on `tracks`, not a

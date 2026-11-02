@@ -74,7 +74,9 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     (services, track_ids, temp_dir)
 }
 
-async fn queue_value_with_context(services: &AppServices) -> crate::queue::ResolvedQueueSnapshot {
+async fn queue_value_with_context(
+    services: &AppServices,
+) -> crate::playback::ResolvedQueueSnapshot {
     let values = services.subscribe_queue_values();
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())

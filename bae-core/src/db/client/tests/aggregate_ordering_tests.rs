@@ -59,15 +59,6 @@ pub(crate) async fn queue_db() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
-#[tokio::test]
-async fn queue_items_order_track_artist_names_inside_the_aggregate() {
-    let (db, _tmp) = queue_db().await;
-    let items = super::queue_items(&db, &[TRACK_A]).await;
-
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0].display.artist_names, "Track Artist Name First, Track Artist Name Second");
-}
-
 pub(crate) async fn release_detail_db() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
     db.call(|conn| {

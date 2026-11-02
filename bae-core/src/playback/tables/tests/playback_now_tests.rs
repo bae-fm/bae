@@ -13,7 +13,7 @@ use crate::playback::{
 use crate::track_audio::PreviewTarget;
 
 async fn now(db: &Database) -> crate::playback::NowPlayingValues {
-    db.now_playing().await.unwrap().expect("the library holds the track the row names")
+    now_playing(db).await.unwrap().expect("the library holds the track the row names")
 }
 
 /// Each change reads back as it was written, the playing track joined with
@@ -21,7 +21,7 @@ async fn now(db: &Database) -> crate::playback::NowPlayingValues {
 #[tokio::test]
 async fn each_change_reads_back_as_written() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let row = crate::db::PlaybackNowRow::new(db.clone());
+    let row = PlaybackNowRow::new(db.clone());
     let track = PlayingTrack { track_id: tracks[0].clone(), duration_ms: Some(1_000) };
     let unknown_length = PlayingTrack { duration_ms: None, ..track.clone() };
     let resumes_at = chrono::DateTime::from_timestamp_millis(1_800_000_000_000).unwrap();
@@ -99,7 +99,7 @@ async fn each_change_reads_back_as_written() {
 #[tokio::test]
 async fn failures_count_up_and_playing_clears_the_last_one() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let row = crate::db::PlaybackNowRow::new(db.clone());
+    let row = PlaybackNowRow::new(db.clone());
     let failed = PlaybackChange::Failed(PlaybackErrorReason::OriginalMissing);
 
     row.apply(&failed).await.unwrap();
@@ -133,7 +133,7 @@ async fn failures_count_up_and_playing_clears_the_last_one() {
 #[tokio::test]
 async fn a_deleted_playing_track_reads_as_nothing_to_show() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let row = crate::db::PlaybackNowRow::new(db.clone());
+    let row = PlaybackNowRow::new(db.clone());
     row.apply(&PlaybackChange::State(PlaybackState::Playing {
         track: PlayingTrack { track_id: tracks[0].clone(), duration_ms: None },
     }))
@@ -141,7 +141,7 @@ async fn a_deleted_playing_track_reads_as_nothing_to_show() {
     .unwrap();
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
-    assert_eq!(db.now_playing().await.unwrap(), None);
+    assert_eq!(now_playing(&db).await.unwrap(), None);
 
     row.apply(&PlaybackChange::State(PlaybackState::Stopped)).await.unwrap();
     assert_eq!(now(&db).await.playback.state, PlaybackState::Stopped);

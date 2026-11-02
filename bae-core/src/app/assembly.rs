@@ -80,9 +80,9 @@ pub async fn start_library_services(
     playback_output: PlaybackOutput,
 ) -> Result<AppServices, ServicesStartError> {
     manager.settle_playback_queue(restore_playback).await?;
-    let queue_tables = crate::db::PlaybackQueueTables::new(database.clone());
-    let now_row = crate::db::PlaybackNowRow::new(database.clone());
-    let timeline_row = crate::db::PlaybackTimelineRow::new(database.clone());
+    let queue_tables = crate::playback::tables::PlaybackQueueTables::new(database.clone());
+    let now_row = crate::playback::tables::PlaybackNowRow::new(database.clone());
+    let timeline_row = crate::playback::tables::PlaybackTimelineRow::new(database.clone());
     let track_deletions = manager.subscribe_track_deletions();
     let views = crate::library::views::LibraryViews::new(database.clone());
     let playback = match playback_output {

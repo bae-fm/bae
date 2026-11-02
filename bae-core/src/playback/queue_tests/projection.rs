@@ -20,7 +20,7 @@ async fn test_value_keeps_manual_and_context_separate() {
     assert_eq!(manual, names(&["m1", "m2"]));
     let context = value.context.expect("a release is playing");
     assert_eq!(
-        f.db.queue_upcoming()
+        crate::playback::tables::queue_upcoming(&f.db)
             .await
             .unwrap()
             .iter()
@@ -74,7 +74,7 @@ async fn test_offset_windows_read_with_the_tail_length() {
         crate::db::LibraryPageWindow { offset: 100, limit: 20 },
         crate::db::LibraryPageWindow { offset: 125, limit: 20 },
     ]);
-    let mut live = f.db.subscribe_queue_upcoming(windows);
+    let mut live = crate::playback::tables::subscribe_queue_upcoming(&f.db, windows);
     let read = live.next().await.expect("the query stays open").result.unwrap();
     let window_tracks: Vec<Vec<String>> = read
         .windows
@@ -166,8 +166,8 @@ async fn test_reorder_context_to_end() {
 #[tokio::test]
 async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
-    let mut value = f.db.subscribe_queue_value();
-    let mut upcoming = f.db.subscribe_queue_upcoming(crate::db::LibraryPageWindows::from([
+    let mut value = crate::playback::tables::subscribe_queue_value(&f.db);
+    let mut upcoming = crate::playback::tables::subscribe_queue_upcoming(&f.db, crate::db::LibraryPageWindows::from([
         crate::db::LibraryPageWindow { offset: 0, limit: 10 },
     ]));
     let wait = std::time::Duration::from_secs(10);
@@ -204,13 +204,13 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     f.play_from("t1").await;
     upcoming_until!(2);
     f.add(&["m1"]).await;
-    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.manual.len() == 1);
+    value_until!(|read: &crate::playback::ResolvedQueueSnapshot| read.manual.len() == 1);
 
     f.queue.clear_up_next().await.unwrap();
-    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.manual.is_empty()
+    value_until!(|read: &crate::playback::ResolvedQueueSnapshot| read.manual.is_empty()
         && read.context.is_some());
 
     f.queue.clear_playing_from().await.unwrap();
     upcoming_until!(0);
-    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.context.is_none());
+    value_until!(|read: &crate::playback::ResolvedQueueSnapshot| read.context.is_none());
 }

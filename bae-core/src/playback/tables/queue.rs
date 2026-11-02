@@ -110,21 +110,21 @@ impl PlaybackQueueTables {
     }
 }
 
-impl Database {
-    /// Empty the queue and the resume row unless the resume row is kept: what
-    /// starting playback with a library does when it will not resume what it
-    /// played. A library with nothing to resume opens with an empty queue,
-    /// and one opened with "restore on launch" off forgets what it played.
-    /// Either way `playback_now` starts stopped, at the resumed volume or at
-    /// full volume, `playback_timeline` holds no line, and the queue's count
-    /// of additions starts at none. A bulk write, so emptying a library-sized
-    /// lane takes one step.
-    pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), DbError> {
-        self.call_bulk(move |sql| {
+/// Empty the queue and the resume row unless the resume row is kept: what
+/// starting playback with a library does when it will not resume what it
+/// played. A library with nothing to resume opens with an empty queue, and
+/// one opened with "restore on launch" off forgets what it played. Either
+/// way `playback_now` starts stopped, at the resumed volume or at full
+/// volume, `playback_timeline` holds no line, and the queue's count of
+/// additions starts at none. A bulk write, so emptying a library-sized lane
+/// takes one step.
+pub async fn settle_playback_queue(database: &Database, resume: bool) -> Result<(), DbError> {
+    database
+        .call_bulk(move |sql| {
             let stored =
                 sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some();
-            super::playback_now::reset_playback_now_on(sql, resume && stored)?;
-            super::playback_timeline::reset_playback_timeline_on(sql)?;
+            super::now::reset_playback_now_on(sql, resume && stored)?;
+            super::timeline::reset_playback_timeline_on(sql)?;
             // No addition outlives the playback that made it, so a resumed
             // queue confirms none of its earlier ones again.
             sql.execute("UPDATE playback_queue SET additions = 0, added_tracks = NULL", [])?;
@@ -138,7 +138,6 @@ impl Database {
             Ok(())
         })
         .await
-    }
 }
 
 impl PlaybackQueueTables {

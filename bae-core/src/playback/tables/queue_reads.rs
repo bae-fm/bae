@@ -3,66 +3,67 @@
 //! the context lane's upcoming tracks with their length, and the last
 //! addition to Up Next.
 
-use super::playback::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
-use super::playback_queue::repeat_from_column;
+use super::queue::repeat_from_column;
+use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
-use crate::playback::{ContextSource, RepeatMode};
+use crate::playback::{ContextSource, QueueItem, QueueUpcomingWindow, RepeatMode};
 
-impl Database {
-    /// Follow the queue as its screens show it: Up Next whole, what the
-    /// context lane plays from, and whether the transport can step either way.
-    pub(crate) fn subscribe_queue_value(
-        &self,
-    ) -> coven::LiveQuery<crate::queue::ResolvedQueueSnapshot> {
-        self.inner.handle.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
-    }
+/// Follow the queue as its screens show it: Up Next whole, what the context
+/// lane plays from, and whether the transport can step either way.
+pub(crate) fn subscribe_queue_value(
+    database: &Database,
+) -> coven::LiveQuery<crate::playback::ResolvedQueueSnapshot> {
+    database.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
+}
 
-    /// Follow the queue's last addition to Up Next; `None` until there is
-    /// one since playback started with the library.
-    pub(crate) fn subscribe_queue_addition(
-        &self,
-    ) -> coven::LiveQuery<Option<crate::queue::QueueAddition>> {
-        self.inner.handle.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
-    }
+/// Follow the queue's last addition to Up Next; `None` until there is one
+/// since playback started with the library.
+pub(crate) fn subscribe_queue_addition(
+    database: &Database,
+) -> coven::LiveQuery<Option<crate::playback::QueueAddition>> {
+    database.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
+}
 
-    /// The queue's last addition to Up Next, as `subscribe_queue_addition`
-    /// reads it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_addition(&self) -> Result<Option<crate::queue::QueueAddition>, DbError> {
-        self.read(|sql| queue_addition_on(&sql)).await
-    }
+/// The queue's last addition to Up Next, as `subscribe_queue_addition` reads
+/// it.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn queue_addition(
+    database: &Database,
+) -> Result<Option<crate::playback::QueueAddition>, DbError> {
+    database.read(|sql| queue_addition_on(&sql)).await
+}
 
-    /// The queue as its screens show it now.
-    pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, DbError> {
-        self.read(|sql| queue_value_on(&sql)).await
-    }
+/// The queue as its screens show it now.
+pub async fn queue_value(
+    database: &Database,
+) -> Result<crate::playback::ResolvedQueueSnapshot, DbError> {
+    database.read(|sql| queue_value_on(&sql)).await
+}
 
-    /// Every one of the context lane's tracks after the playing one, as the
-    /// queue rows show them.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_upcoming(&self) -> Result<Vec<QueueItem>, DbError> {
-        let all = crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
-            offset: 0,
-            limit: u64::MAX,
-        }]);
-        let read = self.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
-        Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
-    }
+/// Every one of the context lane's tracks after the playing one, as the queue
+/// rows show them.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn queue_upcoming(database: &Database) -> Result<Vec<QueueItem>, DbError> {
+    let all = crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
+        offset: 0,
+        limit: u64::MAX,
+    }]);
+    let read = database.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
+    Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
+}
 
-    /// Follow the windows `initial` names of the context lane's tracks after
-    /// the playing one. The windows change by pointing the same query at new
-    /// ones through its request handle.
-    pub(crate) fn subscribe_queue_upcoming(
-        &self,
-        initial: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, QueueUpcomingRead> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |windows, sql| {
-                queue_upcoming_on(&sql, windows).map_err(CovenError::from)
-            })
-            .process(Ok)
-    }
+/// Follow the windows `initial` names of the context lane's tracks after the
+/// playing one. The windows change by pointing the same query at new ones
+/// through its request handle.
+pub(crate) fn subscribe_queue_upcoming(
+    database: &Database,
+    initial: crate::db::LibraryPageWindows,
+) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, QueueUpcomingRead> {
+    database
+        .subscribe_reconfigurable(initial, |windows, sql| {
+            queue_upcoming_on(&sql, windows).map_err(CovenError::from)
+        })
+        .process(Ok)
 }
 
 /// The rows `rows` picks — a `SELECT entry, track_id, position …` in lane
@@ -125,18 +126,18 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
 
 fn queue_addition_on(
     sql: &SqlReadContext<'_>,
-) -> Result<Option<crate::queue::QueueAddition>, DbError> {
+) -> Result<Option<crate::playback::QueueAddition>, DbError> {
     let (number, added_tracks): (u64, Option<u32>) =
         sql.query_row("SELECT additions, added_tracks FROM playback_queue", [], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?;
     // The table's CHECK sets the count exactly when there was an addition.
-    Ok(added_tracks.map(|tracks| crate::queue::QueueAddition { number, tracks }))
+    Ok(added_tracks.map(|tracks| crate::playback::QueueAddition { number, tracks }))
 }
 
 fn queue_value_on(
     sql: &SqlReadContext<'_>,
-) -> Result<crate::queue::ResolvedQueueSnapshot, DbError> {
+) -> Result<crate::playback::ResolvedQueueSnapshot, DbError> {
     let head = queue_head_on(sql)?;
     // The entry ids are `QueueEntryId`'s text: 'm' for Up Next or 'c' for the
     // context lane, then the entry number.
@@ -167,14 +168,14 @@ fn queue_value_on(
                 ContextSource::Releases | ContextSource::Library => None,
             };
             (
-                Some(crate::queue::ResolvedContext { source, source_title, shuffled }),
+                Some(crate::playback::ResolvedContext { source, source_title, shuffled }),
                 has_upcoming,
                 has_previous,
             )
         }
     };
     let has_next = !manual.is_empty() || has_upcoming || head.repeat != RepeatMode::Off;
-    Ok(crate::queue::ResolvedQueueSnapshot { manual, context, has_next, has_previous })
+    Ok(crate::playback::ResolvedQueueSnapshot { manual, context, has_next, has_previous })
 }
 
 fn queue_upcoming_on(
@@ -198,7 +199,7 @@ fn queue_upcoming_on(
                     ],
                 )?,
             };
-            Ok(crate::library::QueueUpcomingWindow { window: window.clone(), items })
+            Ok(QueueUpcomingWindow { window: window.clone(), items })
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {
@@ -225,5 +226,5 @@ fn upcoming_total_on(sql: &SqlReadContext<'_>, cursor: i64) -> Result<u64, DbErr
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct QueueUpcomingRead {
     pub upcoming_total: u64,
-    pub windows: Vec<crate::library::QueueUpcomingWindow>,
+    pub windows: Vec<QueueUpcomingWindow>,
 }

@@ -8,9 +8,12 @@ async fn pure_reads_use_the_read_connection() {
     let tables = bae_core::import::tables::ImportTables::new(db.clone());
 
     // A device-local write still uses the write connection.
-    db.save_playback_state(&bae_core::db::DbPlaybackState { current: None, position_ms: None })
-        .await
-        .unwrap();
+    bae_core::playback::tables::save_playback_state(
+        &db,
+        &bae_core::playback::tables::PlaybackResumeRow { current: None, position_ms: None },
+    )
+    .await
+    .unwrap();
 
     // At least one read per db/client file.
     db.find_album_by_id("missing").await.unwrap();
@@ -22,9 +25,9 @@ async fn pure_reads_use_the_read_connection() {
     db.get_track_ids_for_release("missing").await.unwrap();
     db.find_release_by_id("missing").await.unwrap();
     db.get_release_records("missing").await.unwrap();
-    db.load_playback_state().await.unwrap();
-    db.queue_value().await.unwrap();
-    let queue = bae_core::db::PlaybackQueueTables::new(db.clone());
+    bae_core::playback::tables::load_playback_state(&db).await.unwrap();
+    bae_core::playback::tables::queue_value(&db).await.unwrap();
+    let queue = bae_core::playback::tables::PlaybackQueueTables::new(db.clone());
     queue.repeat().await.unwrap();
     queue.context_track_count().await.unwrap();
     queue.front().await.unwrap();
@@ -44,8 +47,8 @@ async fn pure_reads_use_the_read_connection() {
     std::fs::create_dir_all(&root).unwrap();
     let root = root.to_str().unwrap();
 
-    db.clear_playback_state().await.unwrap();
-    db.clear_playback_state().await.unwrap();
+    bae_core::playback::tables::clear_playback_state(&db).await.unwrap();
+    bae_core::playback::tables::clear_playback_state(&db).await.unwrap();
     tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
     assert!(!tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap());
     let album = std::path::Path::new(root).join("Album");

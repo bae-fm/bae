@@ -301,7 +301,7 @@ async fn window_cost() {
             measure_storage_search(&db, n).await;
         }
         measure_downloads(&db, n).await;
-        measure_playback_queue(&db, n).await;
+        crate::playback::tables::tests::window_cost::measure_playback_queue(&db, n).await;
     }
 }
 

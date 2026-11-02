@@ -1,10 +1,9 @@
 //! The queue row's count of additions to Up Next: written by the write that
 //! adds the tracks, read by the screens confirming each addition.
 
+use super::super::*;
 use super::playback_queue_tests::release_db;
-use crate::db::DbError;
-use crate::db::ManualPlace;
-use crate::queue::QueueAddition;
+use crate::playback::QueueAddition;
 
 /// Each addition that puts tracks in counts one, with how many it put in,
 /// wherever in Up Next they go; two alike in a row are two values. Tracks the
@@ -13,8 +12,8 @@ use crate::queue::QueueAddition;
 #[tokio::test]
 async fn each_addition_counts_once_with_its_tracks() {
     let (db, _tmp, tracks) = release_db(3).await;
-    let queue = crate::db::PlaybackQueueTables::new(db.clone());
-    assert_eq!(db.queue_addition().await.unwrap(), None);
+    let queue = PlaybackQueueTables::new(db.clone());
+    assert_eq!(queue_addition(&db).await.unwrap(), None);
 
     queue
         .add_manual(
@@ -23,18 +22,18 @@ async fn each_addition_counts_once_with_its_tracks() {
         )
         .await
         .unwrap();
-    assert_eq!(db.queue_addition().await.unwrap(), Some(QueueAddition { number: 1, tracks: 2 }));
+    assert_eq!(queue_addition(&db).await.unwrap(), Some(QueueAddition { number: 1, tracks: 2 }));
 
     queue.add_manual(vec!["not-a-track".to_string()], ManualPlace::Front).await.unwrap();
     assert_eq!(
-        db.queue_addition().await.unwrap().map(|addition| addition.number),
+        queue_addition(&db).await.unwrap().map(|addition| addition.number),
         Some(1),
         "nothing went in"
     );
 
     for (number, place) in [(2, ManualPlace::Front), (3, ManualPlace::At(1))] {
         queue.add_manual(vec![tracks[2].clone(), tracks[0].clone()], place).await.unwrap();
-        assert_eq!(db.queue_addition().await.unwrap(), Some(QueueAddition { number, tracks: 2 }));
+        assert_eq!(queue_addition(&db).await.unwrap(), Some(QueueAddition { number, tracks: 2 }));
     }
 }
 
@@ -43,13 +42,13 @@ async fn each_addition_counts_once_with_its_tracks() {
 #[tokio::test]
 async fn starting_playback_forgets_the_additions() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let queue = crate::db::PlaybackQueueTables::new(db.clone());
+    let queue = PlaybackQueueTables::new(db.clone());
     for resume in [true, false] {
         queue.add_manual(vec![tracks[0].clone()], ManualPlace::End).await.unwrap();
-        assert!(db.queue_addition().await.unwrap().is_some());
+        assert!(queue_addition(&db).await.unwrap().is_some());
 
-        db.settle_playback_queue(resume).await.unwrap();
-        assert_eq!(db.queue_addition().await.unwrap(), None, "resume: {resume}");
+        settle_playback_queue(&db, resume).await.unwrap();
+        assert_eq!(queue_addition(&db).await.unwrap(), None, "resume: {resume}");
     }
 }
 
@@ -76,8 +75,8 @@ async fn the_schema_refuses_a_count_without_an_addition() {
 #[tokio::test]
 async fn the_live_query_delivers_each_addition() {
     let (db, _tmp, tracks) = release_db(2).await;
-    let queue = crate::db::PlaybackQueueTables::new(db.clone());
-    let mut additions = db.subscribe_queue_addition();
+    let queue = PlaybackQueueTables::new(db.clone());
+    let mut additions = subscribe_queue_addition(&db);
     assert_eq!(next(&mut additions).await, None);
 
     queue.set_repeat(crate::playback::RepeatMode::Track).await.unwrap();

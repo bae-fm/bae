@@ -236,7 +236,10 @@ pub(crate) enum PlaybackCommand {
     #[cfg(any(test, feature = "test-utils"))]
     GetQueue(
         oneshot::Sender<
-            Result<(crate::queue::ResolvedQueueSnapshot, Vec<crate::queue::QueueItem>), String>,
+            Result<
+                (crate::playback::ResolvedQueueSnapshot, Vec<crate::playback::QueueItem>),
+                String,
+            >,
         >,
     ),
     /// Save state, reply, then stop the loop.
@@ -481,21 +484,22 @@ impl PlaybackHandle {
     /// The queue as its screens show it, read after every command sent before
     /// this one has changed it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, String> {
+    pub async fn queue_value(&self) -> Result<crate::playback::ResolvedQueueSnapshot, String> {
         Ok(self.queue_read().await?.0)
     }
 
     /// Every one of the context lane's tracks after the playing one, read
     /// after every command sent before this one has changed the queue.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_upcoming(&self) -> Result<Vec<crate::queue::QueueItem>, String> {
+    pub async fn queue_upcoming(&self) -> Result<Vec<crate::playback::QueueItem>, String> {
         Ok(self.queue_read().await?.1)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     async fn queue_read(
         &self,
-    ) -> Result<(crate::queue::ResolvedQueueSnapshot, Vec<crate::queue::QueueItem>), String> {
+    ) -> Result<(crate::playback::ResolvedQueueSnapshot, Vec<crate::playback::QueueItem>), String>
+    {
         let (tx, rx) = oneshot::channel();
         self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await.map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?

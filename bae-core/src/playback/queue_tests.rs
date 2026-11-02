@@ -3,7 +3,8 @@
 //! fixture maps between the two.
 
 use super::*;
-use crate::db::{ContextFill, Database, ReleaseStart};
+use crate::db::Database;
+use crate::playback::tables::{ContextFill, ReleaseStart};
 use crate::playback::ContextSource;
 use std::collections::HashMap;
 
@@ -56,7 +57,7 @@ async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     let names = ids.iter().map(|(name, id)| (id.clone(), name.clone())).collect();
     Fixture {
         _home: home,
-        queue: PlaybackQueue::new(crate::db::PlaybackQueueTables::new(db.clone())),
+        queue: PlaybackQueue::new(crate::playback::tables::PlaybackQueueTables::new(db.clone())),
         db,
         ids,
         names,
@@ -99,7 +100,9 @@ impl Fixture {
 
     async fn play_fill(&mut self, fill: ContextFill) -> String {
         match self.queue.play(fill).await.unwrap() {
-            crate::db::ContextFilled::Playing { current, .. } => self.name(&current.track_id),
+            crate::playback::tables::ContextFilled::Playing { current, .. } => {
+                self.name(&current.track_id)
+            }
             other => panic!("the fill plays nothing: {other:?}"),
         }
     }
@@ -108,14 +111,14 @@ impl Fixture {
         self.queue.add_to_queue(self.ids(tracks)).await.unwrap();
     }
 
-    async fn value(&self) -> crate::queue::ResolvedQueueSnapshot {
-        self.db.queue_value().await.unwrap()
+    async fn value(&self) -> crate::playback::ResolvedQueueSnapshot {
+        crate::playback::tables::queue_value(&self.db).await.unwrap()
     }
 
     /// Up Next's entries then the context lane's upcoming ones.
     async fn upcoming_entries(&self) -> Vec<QueueEntry> {
         let value = self.value().await;
-        let context = self.db.queue_upcoming().await.unwrap();
+        let context = crate::playback::tables::queue_upcoming(&self.db).await.unwrap();
         value
             .manual
             .into_iter()
@@ -146,7 +149,7 @@ impl Fixture {
 
     /// Every track of the context lane, played or not, by name.
     async fn context_order(&self) -> Vec<String> {
-        crate::db::PlaybackQueueTables::new(self.db.clone())
+        crate::playback::tables::PlaybackQueueTables::new(self.db.clone())
             .context_order()
             .await
             .unwrap()
@@ -186,7 +189,7 @@ impl Fixture {
 
     /// Everything the queue screens and the tables show, to tell that an
     /// operation changed nothing.
-    async fn shown(&self) -> (crate::queue::ResolvedQueueSnapshot, Vec<String>, Vec<String>) {
+    async fn shown(&self) -> (crate::playback::ResolvedQueueSnapshot, Vec<String>, Vec<String>) {
         (self.value().await, self.upcoming().await, self.context_order_or_empty().await)
     }
 

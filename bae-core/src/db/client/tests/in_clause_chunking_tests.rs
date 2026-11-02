@@ -1,6 +1,6 @@
 use super::super::*;
 
-async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
+pub(crate) async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = super::temp_db().await;
     let track_count = SQL_MAX_IN_VARS * 45;
     let track_ids: Vec<String> = (0..track_count)
@@ -45,26 +45,4 @@ async fn filter_existing_track_ids_merges_chunks() {
     let mut expected_existing = track_ids;
     expected_existing.sort();
     assert_eq!(existing, expected_existing);
-}
-
-/// Up Next longer than one SQL statement's parameter limit takes every track,
-/// and the queue value shows each with what the track → release → album join
-/// resolved.
-#[tokio::test]
-async fn a_queue_longer_than_one_in_clause_reads_every_track() {
-    let (db, _tmp, track_ids) = chunked_track_db().await;
-    let mut requested = track_ids.clone();
-    requested.insert(SQL_MAX_IN_VARS / 2, bae_test_support::test_uuid("missing-track"));
-
-    let added = crate::db::PlaybackQueueTables::new(db.clone())
-        .add_manual(requested, ManualPlace::End)
-        .await
-        .unwrap();
-    assert_eq!(added, track_ids.len(), "the track the library lacks is left out");
-
-    let items = db.queue_value().await.unwrap().manual;
-    let resolved: Vec<&str> = items.iter().map(|item| item.track_id.as_str()).collect();
-    let expected: Vec<&str> = track_ids.iter().map(String::as_str).collect();
-    assert_eq!(resolved, expected);
-    assert!(items.iter().all(|item| item.display.album_title == "Album Title A"));
 }

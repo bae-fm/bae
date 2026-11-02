@@ -332,8 +332,8 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         tracks.push(track.id);
     }
     finish_bound_uploads(&manager).await;
-    crate::db::PlaybackQueueTables::new(manager.database.clone())
-        .add_manual(tracks.clone(), crate::db::ManualPlace::End)
+    crate::playback::tables::PlaybackQueueTables::new(manager.database.clone())
+        .add_manual(tracks.clone(), crate::playback::tables::ManualPlace::End)
         .await
         .unwrap();
     let coven_files_of = |release_ids: &[&str]| {
@@ -429,7 +429,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         );
     }
     let queued: Vec<String> =
-        manager.database().queue_value().await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
+        crate::playback::tables::queue_value(manager.database()).await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
     assert_eq!(
         queued,
         std::slice::from_ref(&tracks[2]),

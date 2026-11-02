@@ -188,14 +188,15 @@ impl PlaybackService {
     /// entry playing, loaded paused at its saved position. A deleted track
     /// left no entry to resume. A failed read of the queue resumes nothing;
     /// a failed read of the volume resumes at full volume.
-    pub(super) async fn restore(&mut self, state: DbPlaybackState) {
+    pub(super) async fn restore(&mut self, state: PlaybackResumeRow) {
         info!("Restoring playback state: entry={:?}", state.current);
         if let Err(e) = self.playback_queue.restore(state.current).await {
             warn!("couldn't read the queue to resume: {e}; resuming nothing");
             return;
         }
 
-        let (volume, is_muted) = match self.database.playback_level().await {
+        let (volume, is_muted) = match crate::playback::tables::playback_level(&self.database).await
+        {
             Ok(level) => level,
             Err(e) => {
                 warn!("couldn't read the volume to resume: {e}; resuming at full volume");
@@ -262,7 +263,7 @@ impl PlaybackService {
                 PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Completed)
             );
         if nothing_to_resume {
-            if let Err(e) = self.database.clear_playback_state().await {
+            if let Err(e) = crate::playback::tables::clear_playback_state(&self.database).await {
                 warn!("couldn't clear playback state: {e}");
                 self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
             }
@@ -272,8 +273,9 @@ impl PlaybackService {
             PlaybackSlot::Active(cur) => Some(cur.position.as_millis()),
             _ => None,
         };
-        let row = DbPlaybackState { current: self.playback_queue.current().cloned(), position_ms };
-        if let Err(e) = self.database.save_playback_state(&row).await {
+        let row =
+            PlaybackResumeRow { current: self.playback_queue.current().cloned(), position_ms };
+        if let Err(e) = crate::playback::tables::save_playback_state(&self.database, &row).await {
             warn!("couldn't persist playback state (current entry {:?}): {e}", row.current);
             self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
         }

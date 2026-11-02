@@ -26,8 +26,8 @@ impl PlaybackProgressHandle {
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
         clock: crate::playback::PlaybackClockRef,
-        row: crate::db::PlaybackNowRow,
-        timeline_row: crate::db::PlaybackTimelineRow,
+        row: crate::playback::tables::PlaybackNowRow,
+        timeline_row: crate::playback::tables::PlaybackTimelineRow,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
@@ -135,8 +135,8 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now())),
-            crate::db::PlaybackNowRow::new(db.clone()),
-            crate::db::PlaybackTimelineRow::new(db.clone()),
+            crate::playback::tables::PlaybackNowRow::new(db.clone()),
+            crate::playback::tables::PlaybackTimelineRow::new(db.clone()),
             crate::diagnostics::Diagnostics::noop(),
         );
         (handle, progress_tx, db, tmp)
@@ -183,7 +183,7 @@ mod tests {
         next_event(&mut events).await;
         next_event(&mut events).await;
 
-        assert_eq!(db.playback_level().await.unwrap(), (0.25, true));
+        assert_eq!(crate::playback::tables::playback_level(&db).await.unwrap(), (0.25, true));
     }
 
     #[tokio::test]
@@ -244,7 +244,7 @@ mod tests {
             next_event(&mut events).await;
         }
 
-        let timeline = db.playback_timeline().await.unwrap();
+        let timeline = crate::playback::tables::playback_timeline(&db).await.unwrap();
         assert_eq!(
             timeline.library,
             Some(crate::playback::TimelinePoint {
@@ -277,7 +277,7 @@ mod tests {
         let mut positions = handle.subscribe_positions();
         positions.mark_unchanged();
         assert_eq!(
-            db.now_playing().await.unwrap().map(|now| now.playback.state),
+            crate::playback::tables::now_playing(&db).await.unwrap().map(|now| now.playback.state),
             Some(crate::playback::PlaybackState::Stopped)
         );
 
@@ -293,7 +293,7 @@ mod tests {
             .unwrap();
         next_event(&mut events).await;
         assert_eq!(
-            db.now_playing().await.unwrap(),
+            crate::playback::tables::now_playing(&db).await.unwrap(),
             None,
             "the row names track-1, which the library does not hold"
         );
@@ -309,6 +309,6 @@ mod tests {
             .unwrap();
         next_event(&mut events).await;
         assert!(positions.has_changed().unwrap(), "a position tick sends a position");
-        assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
+        assert_eq!(crate::playback::tables::playback_level(&db).await.unwrap(), (1.0, false));
     }
 }

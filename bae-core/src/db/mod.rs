@@ -23,17 +23,12 @@ pub(crate) use client::resolved_in_an_empty_library;
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;
 pub(crate) use client::PendingRow;
-pub(crate) use client::QueueUpcomingRead;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseMetadataRows;
 pub(crate) use client::StoredTransition;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
-pub use client::{
-    ContextFill, ContextFilled, ManualPlace, PlaybackNowRow, PlaybackQueueTables,
-    PlaybackTimelineRow, ReleaseStart, ShuffleChange,
-};
 pub use client::{Database, IdentityWriteError, ReleaseDeletion, StorageSetupSteps};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),

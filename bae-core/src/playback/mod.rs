@@ -21,12 +21,14 @@ mod output_rate;
 mod preview_player;
 pub mod progress;
 mod queue;
+mod queue_values;
 mod repeat_mode;
 mod replay_gain;
 mod resampling_drain;
 pub mod service;
 pub mod source;
 pub mod stream_pipeline;
+pub mod tables;
 pub mod timeline;
 mod track_buffered;
 
@@ -58,6 +60,9 @@ pub use progress::{
     RemoteDevice, RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
+pub use queue_values::{
+    QueueAddition, QueueItem, QueueUpcomingWindow, ResolvedContext, ResolvedQueueSnapshot,
+};
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::replay_gain_linear;
 pub use service::{

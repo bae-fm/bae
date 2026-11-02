@@ -158,7 +158,7 @@ impl Database {
 /// This is that version of the image row `alias` names, as a SQL expression.
 /// SQLite's `hex` of NULL is an empty string, not NULL, so the device's part
 /// is chosen on `coven_file_device` itself.
-pub(super) fn image_version_sql(alias: &str) -> String {
+pub(crate) fn image_version_sql(alias: &str) -> String {
     format!(
         "(SELECT {alias}.file || CASE WHEN coven_file_device(coven.coordinates) IS NULL THEN '' \
            ELSE '@' || lower(hex(coven_file_device(coven.coordinates))) END \

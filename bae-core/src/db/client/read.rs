@@ -447,7 +447,7 @@ pub(crate) fn row_to_album(row: &Row) -> rusqlite::Result<DbAlbum> {
     row_to_album_with_prefix(row, "")
 }
 
-pub(super) fn row_to_track(row: &Row) -> rusqlite::Result<DbTrack> {
+pub(crate) fn row_to_track(row: &Row) -> rusqlite::Result<DbTrack> {
     row_to_track_with_prefix(row, "")
 }
 

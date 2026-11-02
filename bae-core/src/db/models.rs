@@ -9,8 +9,7 @@
 //! The library resolves them: its views (`crate::library::views`) turn them
 //! into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary` and
 //! `SearchResults` of `crate::album_detail`, which is what the bridge and
-//! event payloads carry. (`crate::queue::QueueItem` is
-//! built directly by the queue catalog read — it has no raw counterpart here.)
+//! event payloads carry.
 
 use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
@@ -343,17 +342,6 @@ pub struct DbRelease {
     /// tracks. `None` = not measured. Playback caps the album gain at `1.0/peak`.
     pub album_peak_linear: Option<f64>,
     pub created_at: DateTime<Utc>,
-}
-
-/// The single device-local `playback_state` row: where playback stood, so a
-/// restart resumes it. The queue it plays from is in the queue tables, and
-/// the volume it resumes at in `playback_now`.
-#[derive(Debug, Clone)]
-pub struct DbPlaybackState {
-    /// The queue entry playing, `None` when its track was deleted.
-    pub current: Option<crate::playback::QueueEntry>,
-    /// How far into the current track's stream it had played.
-    pub position_ms: Option<u64>,
 }
 
 /// A single track on a specific release, not on the logical album — track

@@ -11,8 +11,8 @@
 
 use super::super::*;
 use super::*;
-use crate::db::ContextFill;
 use std::time::Instant;
+use ContextFill;
 
 /// The library's tracks, all on one release.
 const TRACKS: i64 = 1_000_000;
@@ -148,7 +148,7 @@ async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
 /// A library play through bae's writes: into an empty lane, replacing a full
 /// one, and the two writes that empty it.
 async fn bae_writes(db: &Database, label: &str) {
-    let tables = crate::db::PlaybackQueueTables::new(db.clone());
+    let tables = PlaybackQueueTables::new(db.clone());
     let mut runs: [Vec<f64>; 4] = Default::default();
     for _ in 0..RUNS {
         let start = Instant::now();
@@ -162,7 +162,7 @@ async fn bae_writes(db: &Database, label: &str) {
         runs[2].push(seconds_since(start));
         tables.fill(ContextFill::LibraryShuffled).await.unwrap();
         let start = Instant::now();
-        db.settle_playback_queue(false).await.unwrap();
+        settle_playback_queue(db, false).await.unwrap();
         runs[3].push(seconds_since(start));
     }
     let names = [
@@ -257,10 +257,14 @@ async fn playback_queue_bench_library_play() {
     bae_writes(&db, "no live queries").await;
 
     // The queue screens open, each following the queue as it changes.
-    let mut value = db.subscribe_queue_value();
-    let mut upcoming = db.subscribe_queue_upcoming(crate::db::LibraryPageWindows::from([
-        crate::db::LibraryPageWindow { offset: 0, limit: 100 },
-    ]));
+    let mut value = subscribe_queue_value(&db);
+    let mut upcoming = subscribe_queue_upcoming(
+        &db,
+        crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
+            offset: 0,
+            limit: 100,
+        }]),
+    );
     value.next().await.unwrap().unwrap();
     upcoming.next().await.unwrap();
     let screens = [
@@ -311,10 +315,7 @@ async fn playback_queue_bench_library_play() {
         &into_unindexed,
         false,
     );
-    crate::db::PlaybackQueueTables::new(db.clone())
-        .fill(ContextFill::LibraryShuffled)
-        .await
-        .unwrap();
+    PlaybackQueueTables::new(db.clone()).fill(ContextFill::LibraryShuffled).await.unwrap();
     let copy_lane = format!(
         "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, position, track_id, unshuffled FROM playback_context;"
     );

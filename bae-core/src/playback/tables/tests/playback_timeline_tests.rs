@@ -32,11 +32,11 @@ fn nothing() -> PlaybackTimeline {
 #[tokio::test]
 async fn the_row_holds_each_line_as_written() {
     let (db, _tmp) = super::temp_db().await;
-    assert_eq!(db.playback_timeline().await.unwrap(), nothing());
-    let row = crate::db::PlaybackTimelineRow::new(db.clone());
+    assert_eq!(playback_timeline(&db).await.unwrap(), nothing());
+    let row = PlaybackTimelineRow::new(db.clone());
 
     row.write(&timeline()).await.unwrap();
-    assert_eq!(db.playback_timeline().await.unwrap(), timeline());
+    assert_eq!(playback_timeline(&db).await.unwrap(), timeline());
 
     let mut ended = timeline();
     ended.library = None;
@@ -47,7 +47,7 @@ async fn the_row_holds_each_line_as_written() {
         moving: true,
     });
     row.write(&ended).await.unwrap();
-    assert_eq!(db.playback_timeline().await.unwrap(), ended);
+    assert_eq!(playback_timeline(&db).await.unwrap(), ended);
 }
 
 /// Starting playback with the library leaves no line and no seek, whether it
@@ -56,9 +56,9 @@ async fn the_row_holds_each_line_as_written() {
 async fn starting_playback_leaves_no_line() {
     let (db, _tmp) = super::temp_db().await;
     for resume in [true, false] {
-        crate::db::PlaybackTimelineRow::new(db.clone()).write(&timeline()).await.unwrap();
-        db.settle_playback_queue(resume).await.unwrap();
-        assert_eq!(db.playback_timeline().await.unwrap(), nothing(), "resume: {resume}");
+        PlaybackTimelineRow::new(db.clone()).write(&timeline()).await.unwrap();
+        settle_playback_queue(&db, resume).await.unwrap();
+        assert_eq!(playback_timeline(&db).await.unwrap(), nothing(), "resume: {resume}");
     }
 }
 

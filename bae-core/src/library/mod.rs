@@ -62,7 +62,7 @@ pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
     OutputProgress, OutputRow, OutputSnapshot, OutputState,
 };
-pub use queue_upcoming::{LiveQueueUpcoming, QueueUpcomingSnapshot, QueueUpcomingWindow};
+pub use queue_upcoming::{LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub(crate) use queued_releases::QueuedReleases;
 #[cfg(desktop)]
 pub use release_files::{

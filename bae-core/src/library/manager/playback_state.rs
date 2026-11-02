@@ -37,6 +37,6 @@ impl LibraryManager {
     /// resumed (`resume`, and a resume row stored), emptied with the resume
     /// row otherwise.
     pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), LibraryError> {
-        Ok(self.database.settle_playback_queue(resume).await?)
+        Ok(crate::playback::tables::settle_playback_queue(&self.database, resume).await?)
     }
 }

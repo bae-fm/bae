@@ -168,20 +168,23 @@ impl LibraryManager {
         track_id: String,
         position_ms: Option<u64>,
     ) -> Result<(), LibraryFixtureError> {
-        let filled = crate::db::PlaybackQueueTables::new(self.database.clone())
-            .fill(crate::db::ContextFill::Release {
+        let filled = crate::playback::tables::PlaybackQueueTables::new(self.database.clone())
+            .fill(crate::playback::tables::ContextFill::Release {
                 release_id: release_id.to_string(),
-                start: crate::db::ReleaseStart::Track(track_id.clone()),
+                start: crate::playback::tables::ReleaseStart::Track(track_id.clone()),
             })
             .await
             .map_err(LibraryError::from)?;
-        let crate::db::ContextFilled::Playing { current, .. } = filled else {
+        let crate::playback::tables::ContextFilled::Playing { current, .. } = filled else {
             return Err(LibraryFixtureError::Invalid(format!(
                 "the playing track {track_id} on release {release_id}"
             )));
         };
-        let row = crate::db::DbPlaybackState { current: Some(current), position_ms };
-        self.database.save_playback_state(&row).await.map_err(LibraryError::from)?;
+        let row =
+            crate::playback::tables::PlaybackResumeRow { current: Some(current), position_ms };
+        crate::playback::tables::save_playback_state(&self.database, &row)
+            .await
+            .map_err(LibraryError::from)?;
         Ok(())
     }
 }

@@ -106,7 +106,7 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            database.subscribe_playback_track_infos(Vec::new()),
+            crate::playback::tables::subscribe_playback_track_infos(&database, Vec::new()),
             Vec::new(),
             "the tracks' sides",
             &crate::diagnostics::Diagnostics::noop(),
@@ -140,7 +140,7 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            database.subscribe_playback_track_infos(Vec::new()),
+            crate::playback::tables::subscribe_playback_track_infos(&database, Vec::new()),
             Vec::new(),
             "the tracks' sides",
             &crate::diagnostics::Diagnostics::noop(),

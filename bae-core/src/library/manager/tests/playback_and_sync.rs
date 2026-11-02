@@ -115,7 +115,7 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
 async fn test_library_play_unshuffles_into_the_library_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let (rel1, _rel2) = seed_two_release_library(&manager).await;
-    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
+    let tables = crate::playback::tables::PlaybackQueueTables::new(manager.database.clone());
     let library_order = [
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
         "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
@@ -124,15 +124,15 @@ async fn test_library_play_unshuffles_into_the_library_order() {
     ];
 
     tables
-        .fill(crate::db::ContextFill::Release {
+        .fill(crate::playback::tables::ContextFill::Release {
             release_id: rel1,
-            start: crate::db::ReleaseStart::First,
+            start: crate::playback::tables::ReleaseStart::First,
         })
         .await
         .unwrap();
     assert_eq!(tables.context_order().await.unwrap(), library_order[..2]);
 
-    tables.fill(crate::db::ContextFill::LibraryShuffled).await.unwrap();
+    tables.fill(crate::playback::tables::ContextFill::LibraryShuffled).await.unwrap();
     tables.set_shuffle(false).await.unwrap();
     let lane = tables.context_order().await.unwrap();
     let playing = lane[0].clone();
@@ -252,11 +252,11 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
 
 /// Play the seeded release from its first track.
 async fn play_seeded(manager: &LibraryManager, first_track: &str) {
-    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
+    let tables = crate::playback::tables::PlaybackQueueTables::new(manager.database.clone());
     let release_id =
         manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
-        .fill(crate::db::ContextFill::Release { release_id, start: crate::db::ReleaseStart::First })
+        .fill(crate::playback::tables::ContextFill::Release { release_id, start: crate::playback::tables::ReleaseStart::First })
         .await
         .unwrap();
 }
@@ -269,10 +269,10 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
     let track_ids = seed_release_tracks(&manager, 151).await;
     play_seeded(&manager, &track_ids[0]).await;
 
-    let value = manager.database().queue_value().await.unwrap();
+    let value = crate::playback::tables::queue_value(manager.database()).await.unwrap();
     assert!(value.context.is_some() && value.has_next);
     let upcoming: Vec<String> =
-        manager.database().queue_upcoming().await.unwrap().into_iter().map(|item| item.track_id).collect();
+        crate::playback::tables::queue_upcoming(manager.database()).await.unwrap().into_iter().map(|item| item.track_id).collect();
     assert_eq!(upcoming, track_ids[1..].to_vec());
 }
 
@@ -283,13 +283,13 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 110).await;
     let manual_count = 103;
-    crate::db::PlaybackQueueTables::new(manager.database.clone())
-        .add_manual(track_ids[..manual_count].to_vec(), crate::db::ManualPlace::End)
+    crate::playback::tables::PlaybackQueueTables::new(manager.database.clone())
+        .add_manual(track_ids[..manual_count].to_vec(), crate::playback::tables::ManualPlace::End)
         .await
         .unwrap();
 
     assert_eq!(
-        manager.database().queue_value().await.unwrap().manual.len(),
+        crate::playback::tables::queue_value(manager.database()).await.unwrap().manual.len(),
         manual_count,
         "the manual lane is never windowed"
     );
@@ -301,13 +301,11 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
 async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 3).await;
-    let tables = crate::db::PlaybackQueueTables::new(manager.database.clone());
+    let tables = crate::playback::tables::PlaybackQueueTables::new(manager.database.clone());
     let mut queued = track_ids.clone();
     queued.push(track_ids[0].clone());
-    tables.add_manual(queued, crate::db::ManualPlace::End).await.unwrap();
-    let entries: Vec<String> = manager
-        .database()
-        .queue_value()
+    tables.add_manual(queued, crate::playback::tables::ManualPlace::End).await.unwrap();
+    let entries: Vec<String> = crate::playback::tables::queue_value(manager.database())
         .await
         .unwrap()
         .manual
@@ -317,9 +315,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let id = |index: usize| entries[index].parse::<crate::playback::QueueEntryId>().unwrap();
     tables.reorder(id(2), Some(id(0))).await.unwrap();
 
-    let shown: Vec<(String, String)> = manager
-        .database()
-        .queue_value()
+    let shown: Vec<(String, String)> = crate::playback::tables::queue_value(manager.database())
         .await
         .unwrap()
         .manual

@@ -87,8 +87,8 @@ fn track_search_result_precomputes_duration_clock() {
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
-fn queue_item(duration_ms: u64) -> bae_core::queue::QueueItem {
-    bae_core::queue::QueueItem {
+fn queue_item(duration_ms: u64) -> bae_core::playback::QueueItem {
+    bae_core::playback::QueueItem {
         entry_id: "entry-1".to_string(),
         track_id: "track-1".to_string(),
         display: bae_core::playback::TrackDisplay {

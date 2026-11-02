@@ -41,24 +41,26 @@ impl LibraryManager {
     /// Follow the queue as its screens show it.
     pub(crate) fn subscribe_queue_value(
         &self,
-    ) -> coven::LiveQuery<crate::queue::ResolvedQueueSnapshot> {
-        self.database.subscribe_queue_value()
+    ) -> coven::LiveQuery<crate::playback::ResolvedQueueSnapshot> {
+        crate::playback::tables::subscribe_queue_value(&self.database)
     }
 
     /// Follow the queue's last addition to Up Next.
     pub(crate) fn subscribe_queue_addition(
         &self,
-    ) -> coven::LiveQuery<Option<crate::queue::QueueAddition>> {
-        self.database.subscribe_queue_addition()
+    ) -> coven::LiveQuery<Option<crate::playback::QueueAddition>> {
+        crate::playback::tables::subscribe_queue_addition(&self.database)
     }
 
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub(crate) fn subscribe_queue_upcoming(
         &self,
         initial: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, crate::db::QueueUpcomingRead>
-    {
-        self.database.subscribe_queue_upcoming(initial)
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::db::LibraryPageWindows,
+        crate::playback::tables::QueueUpcomingRead,
+    > {
+        crate::playback::tables::subscribe_queue_upcoming(&self.database, initial)
     }
 
     /// The file record for a file id — streaming looks the id up on the track's
@@ -103,8 +105,7 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<crate::playback::TrackDisplay, LibraryError> {
-        self.database
-            .track_display(track_id)
+        crate::playback::tables::track_display(&self.database, track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
@@ -114,7 +115,7 @@ impl LibraryManager {
     pub(crate) fn subscribe_playback_timeline(
         &self,
     ) -> coven::LiveQuery<crate::playback::PlaybackTimeline> {
-        self.database.subscribe_playback_timeline()
+        crate::playback::tables::subscribe_playback_timeline(&self.database)
     }
 
     /// Follow what playback is doing as its screens show it; `None` while it
@@ -122,6 +123,6 @@ impl LibraryManager {
     pub(crate) fn subscribe_now_playing(
         &self,
     ) -> coven::LiveQuery<Option<crate::playback::NowPlayingValues>> {
-        self.database.subscribe_now_playing()
+        crate::playback::tables::subscribe_now_playing(&self.database)
     }
 }

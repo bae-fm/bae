@@ -19,18 +19,18 @@ impl PlaybackTimelineRow {
     }
 }
 
-impl Database {
-    /// Follow where playback is, as the surfaces that move the position on
-    /// themselves read it.
-    pub(crate) fn subscribe_playback_timeline(&self) -> coven::LiveQuery<PlaybackTimeline> {
-        self.inner.handle.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
-    }
+/// Follow where playback is, as the surfaces that move the position on
+/// themselves read it.
+pub(crate) fn subscribe_playback_timeline(
+    database: &Database,
+) -> coven::LiveQuery<PlaybackTimeline> {
+    database.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
+}
 
-    /// Where playback is now, as `subscribe_playback_timeline` reads it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn playback_timeline(&self) -> Result<PlaybackTimeline, DbError> {
-        self.read(|sql| playback_timeline_on(&sql)).await
-    }
+/// Where playback is now, as `subscribe_playback_timeline` reads it.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn playback_timeline(database: &Database) -> Result<PlaybackTimeline, DbError> {
+    database.read(|sql| playback_timeline_on(&sql)).await
 }
 
 impl PlaybackTimelineRow {

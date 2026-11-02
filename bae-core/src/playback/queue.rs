@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use tracing::warn;
 
 use super::RepeatMode;
-use crate::db::{
-    ContextFill, ContextFilled, DbError, ManualPlace, PlaybackQueueTables, ShuffleChange,
+use crate::db::DbError;
+use crate::playback::tables::{
+    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ShuffleChange,
 };
 use bae_types::track_time::TrackTime;
 

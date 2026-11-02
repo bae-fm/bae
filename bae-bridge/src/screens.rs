@@ -150,8 +150,8 @@ pulled_values! {
     /// addition, none before the first since playback started with the
     /// library.
     QueueAdditionsSubscription:
-        Option<bae_core::queue::QueueAddition> => crate::types::BridgeQueueAddition,
-    converted by |addition: Option<bae_core::queue::QueueAddition>| {
+        Option<bae_core::playback::QueueAddition> => crate::types::BridgeQueueAddition,
+    converted by |addition: Option<bae_core::playback::QueueAddition>| {
         addition.map(crate::types::BridgeQueueAddition::from_core)
     },
     when present,
@@ -199,7 +199,7 @@ pulled_values! {
 
 pulled_values! {
     /// The queue as its screens show it.
-    QueueSubscription: bae_core::queue::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
+    QueueSubscription: bae_core::playback::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
     converted by crate::types::BridgeQueueSnapshot::from_core,
     built by queue
 }

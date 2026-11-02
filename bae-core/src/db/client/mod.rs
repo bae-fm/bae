@@ -1,6 +1,5 @@
 use crate::db::credits::LibraryCredit;
 use crate::db::models::*;
-use crate::queue::QueueItem;
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, OptionalExtension, Params, Row};
@@ -15,7 +14,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
 use std::sync::Arc;
-use tracing::warn;
 
 /// The columns of a release file row `f` that `row_to_file` reads: its own,
 /// and from coven's record of the file it references, `file_size`, the
@@ -67,18 +65,7 @@ mod collections;
 mod history;
 mod membership;
 mod people;
-mod playback;
-mod playback_now;
 mod profile_request;
-pub use playback_now::PlaybackNowRow;
-mod playback_timeline;
-pub use playback_timeline::PlaybackTimelineRow;
-mod playback_queue;
-pub use playback_queue::{
-    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
-};
-mod playback_queue_reads;
-pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 #[cfg(desktop)]
 pub(crate) use release::release_edit_tracks_on;
@@ -227,7 +214,7 @@ impl Database {
     /// without coven's pre-update hook, so SQLite empties a table in one step
     /// and fills one at its own speed. After it commits, every live query
     /// reading a table it changed runs again once, whichever rows it read.
-    async fn call_bulk<R>(
+    pub(crate) async fn call_bulk<R>(
         &self,
         f: impl for<'conn> FnOnce(&coven::BulkSqlContext<'conn>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>

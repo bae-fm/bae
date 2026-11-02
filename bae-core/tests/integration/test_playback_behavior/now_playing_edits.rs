@@ -66,8 +66,8 @@ async fn now_playing_until(
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
     queue: &bae_core::library::LiveQueueUpcoming,
-    accept: impl Fn(&bae_core::queue::QueueItem) -> bool,
-) -> bae_core::queue::QueueItem {
+    accept: impl Fn(&bae_core::playback::QueueItem) -> bool,
+) -> bae_core::playback::QueueItem {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let value = queue.next().await.expect("the queue's upcoming read resolves");

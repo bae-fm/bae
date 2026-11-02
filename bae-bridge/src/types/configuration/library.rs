@@ -289,7 +289,7 @@ pub struct BridgeQueueAddition {
 }
 
 mirror_struct! {
-    BridgeQueueAddition = bae_core::queue::QueueAddition,
+    BridgeQueueAddition = bae_core::playback::QueueAddition,
     from_core: pub(crate) fn,
     fields: { number, tracks },
 }

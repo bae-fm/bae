@@ -9,7 +9,7 @@ impl AppServices {
     /// after each write that changes it.
     pub fn subscribe_queue_values(
         &self,
-    ) -> crate::live_query::LiveValues<crate::queue::ResolvedQueueSnapshot> {
+    ) -> crate::live_query::LiveValues<crate::playback::ResolvedQueueSnapshot> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_queue_value())
     }
@@ -20,7 +20,7 @@ impl AppServices {
     /// library.
     pub fn subscribe_queue_additions(
         &self,
-    ) -> crate::live_query::LiveValues<Option<crate::queue::QueueAddition>> {
+    ) -> crate::live_query::LiveValues<Option<crate::playback::QueueAddition>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_queue_addition())
     }

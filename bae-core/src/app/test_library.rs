@@ -196,9 +196,9 @@ impl TestLibrary {
         crate::playback::PlaybackService::start_with_audio_device(
             self.database.clone(),
             self.ids.clone(),
-            crate::db::PlaybackQueueTables::new(self.database.clone()),
-            crate::db::PlaybackNowRow::new(self.database.clone()),
-            crate::db::PlaybackTimelineRow::new(self.database.clone()),
+            crate::playback::tables::PlaybackQueueTables::new(self.database.clone()),
+            crate::playback::tables::PlaybackNowRow::new(self.database.clone()),
+            crate::playback::tables::PlaybackTimelineRow::new(self.database.clone()),
             self.manager.subscribe_track_deletions(),
             self.diagnostics.clone(),
             tokio::runtime::Handle::current(),

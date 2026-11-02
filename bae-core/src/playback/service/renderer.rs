@@ -524,7 +524,7 @@ impl PlaybackService {
         // What the device shows is read now, as the library holds it at load,
         // so an edit made while an earlier track played reaches this one. A
         // device keeps what it was loaded with until the next load.
-        let display = match self.database.track_display(track_id).await {
+        let display = match crate::playback::tables::track_display(&self.database, track_id).await {
             Ok(Some(display)) => display,
             Ok(None) => {
                 error!("remote: track {track_id} is gone from the library");

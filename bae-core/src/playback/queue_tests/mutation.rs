@@ -228,7 +228,7 @@ async fn test_play_that_names_nothing_leaves_the_queue() {
         })
         .await
         .unwrap();
-    assert_eq!(missing, crate::db::ContextFilled::StartMissing);
+    assert_eq!(missing, crate::playback::tables::ContextFilled::StartMissing);
     let empty = f
         .queue
         .play(ContextFill::Release {
@@ -237,7 +237,7 @@ async fn test_play_that_names_nothing_leaves_the_queue() {
         })
         .await
         .unwrap();
-    assert_eq!(empty, crate::db::ContextFilled::NoTracks);
+    assert_eq!(empty, crate::playback::tables::ContextFilled::NoTracks);
 
     assert_eq!(f.value().await, before);
     assert_eq!(f.current(), "t1");

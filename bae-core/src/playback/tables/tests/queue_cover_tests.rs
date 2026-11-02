@@ -1,6 +1,11 @@
 use super::super::*;
 use super::*;
 
+const RELEASE_LONELY: &str = "fcf4be32-159f-4790-87a1-697700a74462";
+const RELEASE_OTHER: &str = "ce596bd7-be97-4416-8b6d-47f315bae466";
+const TRACK_LONELY: &str = "03c41035-ce18-4fa0-8e83-c446df26a551";
+const TRACK_OTHER: &str = "69e67928-545a-4dcf-8ae7-ef7778331231";
+
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
 async fn cover_db() -> (Database, tempfile::TempDir) {
@@ -37,7 +42,7 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
 }
 
 async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> {
-    crate::db::PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
+    PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
     let items = super::queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
     items[0].display.cover_image.clone()
@@ -93,7 +98,7 @@ async fn replacing_a_cover_changes_its_version() {
 async fn track_display_names_the_track_s_own_release_not_the_album_s_primary() {
     let (db, _tmp) = cover_db().await;
     let display =
-        db.track_display(TRACK_OTHER).await.unwrap().expect("the library holds the track");
+        track_display(&db, TRACK_OTHER).await.unwrap().expect("the library holds the track");
     assert_eq!(display.album_id, "82a53f44-1b76-435b-89f0-42749371ee15");
     assert_eq!(display.release_id, RELEASE_OTHER);
 }

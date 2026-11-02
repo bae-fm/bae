@@ -2,8 +2,8 @@
 //! of its values changes, and read by the screens' live query with the
 //! playing track's display and the queue's repeat mode.
 
-use super::playback::track_display_on;
-use super::playback_queue::repeat_from_column;
+use super::queue::repeat_from_column;
+use super::track_display::track_display_on;
 use super::*;
 use crate::playback::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::playback::{
@@ -26,29 +26,30 @@ impl PlaybackNowRow {
     }
 }
 
-impl Database {
-    /// Follow what playback is doing as its screens show it. `None` while
-    /// the row names a track the library no longer holds: the track was
-    /// deleted, and playback has yet to move off it.
-    pub(crate) fn subscribe_now_playing(&self) -> coven::LiveQuery<Option<NowPlayingValues>> {
-        self.inner.handle.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
-    }
+/// Follow what playback is doing as its screens show it. `None` while the
+/// row names a track the library no longer holds: the track was deleted, and
+/// playback has yet to move off it.
+pub(crate) fn subscribe_now_playing(
+    database: &Database,
+) -> coven::LiveQuery<Option<NowPlayingValues>> {
+    database.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
+}
 
-    /// What playback is doing now, as `subscribe_now_playing` reads it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn now_playing(&self) -> Result<Option<NowPlayingValues>, DbError> {
-        self.read(|sql| now_playing_on(&sql)).await
-    }
+/// What playback is doing now, as `subscribe_now_playing` reads it.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn now_playing(database: &Database) -> Result<Option<NowPlayingValues>, DbError> {
+    database.read(|sql| now_playing_on(&sql)).await
+}
 
-    /// The volume and mute the row holds, which resuming playback restores.
-    pub async fn playback_level(&self) -> Result<(f32, bool), DbError> {
-        self.read(|sql| {
+/// The volume and mute the row holds, which resuming playback restores.
+pub async fn playback_level(database: &Database) -> Result<(f32, bool), DbError> {
+    database
+        .read(|sql| {
             Ok(sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
                 Ok((row.get("volume")?, row.get("is_muted")?))
             })?)
         })
         .await
-    }
 }
 
 impl PlaybackNowRow {
