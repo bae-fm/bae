@@ -59,7 +59,9 @@ pub struct CatalogSessions {
 }
 
 impl CatalogSessions {
-    pub(crate) fn new(
+    /// The sessions a library asks the catalogs through: `providers`, and the
+    /// Discogs key `database` stores.
+    pub fn new(
         providers: Providers,
         database: Database,
         diagnostics: Diagnostics,

@@ -85,7 +85,7 @@ fn setting_up_s3_storage_writes_its_steps() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
+    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
         root.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     ));

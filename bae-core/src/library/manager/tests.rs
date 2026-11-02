@@ -76,6 +76,12 @@ async fn setup_test_manager_with(
         .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        diagnostics.clone(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database,
         app_dir,
@@ -84,7 +90,7 @@ async fn setup_test_manager_with(
         diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
+        catalogs,
     );
 
     // Insert the test artist that create_test_album() references

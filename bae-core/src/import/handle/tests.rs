@@ -38,6 +38,12 @@ async fn setup_test_manager_over(
         Database::new_test(db_path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
             .await
             .unwrap();
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::for_test(http.clone()),
+        database.clone(),
+        diagnostics.clone(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -46,7 +52,7 @@ async fn setup_test_manager_over(
         diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
-        crate::catalog_model::providers::Providers::for_test(http),
+        catalogs,
     );
     (manager, temp_dir)
 }

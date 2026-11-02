@@ -277,6 +277,9 @@ struct Fixture {
     preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
     provider: FakeProvider,
+    /// The catalog sessions the library and its import ask through, which a
+    /// test stores a Discogs key with.
+    catalogs: crate::import::CatalogSessions,
     /// The services the queue runs on, for the tests that drive one step of it
     /// directly.
     context: Context,
@@ -322,6 +325,14 @@ impl Fixture {
             .serve("api.discogs.com", &provider.base_url);
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
+        let catalogs = crate::import::CatalogSessions::new(
+            // Production request spacing: admission order is part of what these
+            // tests measure.
+            crate::catalog_model::providers::Providers::new(http.clone()),
+            database.clone(),
+            crate::diagnostics::Diagnostics::noop(),
+            tokio::runtime::Handle::current(),
+        );
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
@@ -330,9 +341,7 @@ impl Fixture {
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
-            // Production request spacing: admission order is part of what these
-            // tests measure.
-            crate::catalog_model::providers::Providers::new(http),
+            catalogs.clone(),
         );
 
         let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
@@ -351,6 +360,7 @@ impl Fixture {
             preparations,
             import,
             provider,
+            catalogs,
             context,
             identification: OnceLock::new(),
             root,
@@ -599,8 +609,7 @@ impl Fixture {
 
     /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
-        self.manager
-            .catalogs()
+        self.catalogs
             .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
             .await
             .expect("the fake Discogs key is stored");

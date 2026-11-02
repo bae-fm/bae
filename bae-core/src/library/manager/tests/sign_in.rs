@@ -42,15 +42,23 @@ async fn manager_signing_in_with(
             .create_store("Test Library")
             .await
             .unwrap();
+    let database =
+        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
-        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds)),
+        database,
         app_dir,
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
+        catalogs,
     );
     (manager, storage, temp_dir)
 }

@@ -676,7 +676,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .build()
         .expect("test runtime");
     let directory = tempfile::TempDir::new().expect("library directory");
-    let (manager, database, storage) = runtime.block_on(bae_test_support::storage_library(
+    let (manager, database, _, storage) = runtime.block_on(bae_test_support::storage_library(
         directory.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     ));

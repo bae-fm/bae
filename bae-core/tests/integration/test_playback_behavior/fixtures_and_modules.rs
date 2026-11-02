@@ -181,7 +181,7 @@ impl CueFlacTestFixture {
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, imported) =
+        let (library_manager, _, imported) =
             imported_release_setup(album, "test", uuid::Uuid::new_v4().to_string(), generate_files)
                 .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
@@ -242,7 +242,7 @@ impl SidePauseTestFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIds::new();
         let import_id = import_ids.new_id().to_string();
-        let (library_manager, imported) = imported_release_setup(
+        let (library_manager, _, imported) = imported_release_setup(
             create_side_pause_test_album(format, positions),
             "side-pause",
             import_id,

@@ -63,7 +63,7 @@ impl Fixture {
 
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
-    let (manager, _) = bae_test_support::open_test_library(tmp.path()).await;
+    let (manager, _, _) = bae_test_support::open_test_library(tmp.path()).await;
     let services = AppServices::for_test(manager.clone()).await.expect("the services start");
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
     Fixture { automation, manager, services, tmp }

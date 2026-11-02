@@ -11,7 +11,7 @@ use coven::{MemoryStorage, Storage};
 pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
-) -> (LibraryManager, Database, Arc<MemoryStorage>) {
+) -> (LibraryManager, Database, bae_core::import::CatalogSessions, Arc<MemoryStorage>) {
     let installation = coven::TestCoven::new();
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
@@ -23,9 +23,10 @@ pub async fn storage_library(
     .create_store("Test Library")
     .await
     .unwrap();
-    let (manager, database) = crate::test_library_from_handle(handle, directory, providers);
+    let (manager, database, catalogs) =
+        crate::test_library_from_handle(handle, directory, providers);
     manager.start().unwrap();
-    (manager, database, storage)
+    (manager, database, catalogs, storage)
 }
 
 /// Set up storage, then pause uploads while the caller seeds its queue.

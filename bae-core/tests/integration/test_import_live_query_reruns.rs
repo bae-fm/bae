@@ -101,7 +101,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let temp = tempfile::TempDir::new().unwrap();
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
-    let (manager, db) = bae_test_support::open_test_library(&library).await;
+    let (manager, db, _) = bae_test_support::open_test_library(&library).await;
     manager.set_identify_automatically(false).await.unwrap();
     let services = AppServices::for_test(manager).await.unwrap();
 

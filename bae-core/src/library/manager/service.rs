@@ -80,6 +80,13 @@ impl LibraryManager {
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
         database.record_sync_start_failure(None).await?;
+        #[cfg(desktop)]
+        let catalogs = crate::import::CatalogSessions::new(
+            providers,
+            database.clone(),
+            diagnostics.clone(),
+            runtime_handle.clone(),
+        );
         Ok(Self::assemble(
             database,
             app_dir,
@@ -89,12 +96,14 @@ impl LibraryManager {
             runtime_handle,
             remote_images,
             #[cfg(desktop)]
-            providers,
+            catalogs,
         ))
     }
 
-    /// Create a library manager over an already-open database handle. Production
-    /// uses [`Self::open`]; tests can supply a handle built with `TestCoven`.
+    /// Create a library manager over an already-open database handle, asking
+    /// the catalogs through `catalogs`, which the caller built over the same
+    /// database and may keep. Production uses [`Self::open`]; tests can supply
+    /// a handle built with `TestCoven`.
     pub fn new(
         database: Database,
         app_dir: crate::config::AppDir,
@@ -103,7 +112,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
+        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
     ) -> Self {
         Self::assemble(
             database,
@@ -114,7 +123,7 @@ impl LibraryManager {
             runtime_handle,
             remote_images,
             #[cfg(desktop)]
-            providers,
+            catalogs,
         )
     }
 
@@ -127,7 +136,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
+        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
     ) -> Self {
         let sync = SyncController::new(database.clone(), diagnostics.clone());
         let downloads = crate::library::Downloads::new(database.clone());
@@ -137,12 +146,7 @@ impl LibraryManager {
             #[cfg(desktop)]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
             #[cfg(desktop)]
-            catalogs: crate::import::CatalogSessions::new(
-                providers,
-                database.clone(),
-                diagnostics.clone(),
-                runtime_handle.clone(),
-            ),
+            catalogs,
             database,
             app_dir,
             remote_images,
@@ -699,16 +703,11 @@ impl LibraryManager {
     }
 }
 
-/// The providers a library asks, for a test to seed their answers, and the
-/// catalog sessions, for a test to store a Discogs key no check reaches
-/// Discogs for.
+/// The providers a library asks, for a test to seed their answers, and its
+/// store, for a test that writes rows no operation writes.
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 mod test_access {
     impl super::LibraryManager {
-        pub fn catalogs(&self) -> &crate::import::CatalogSessions {
-            &self.catalogs
-        }
-
         /// The store under the library, for a test that writes rows no
         /// operation writes as it wants them.
         #[cfg(test)]

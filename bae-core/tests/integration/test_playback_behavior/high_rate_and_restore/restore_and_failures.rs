@@ -1,10 +1,10 @@
 async fn restore_test_library() -> RestoreTestLibrary {
-    let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
+    let (library_manager, catalogs, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         seed_discogs_test_release(library_manager.providers(), create_test_album());
-    support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+    support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
@@ -12,7 +12,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
-    RestoreTestLibrary { library_manager, runtime_handle, track_ids, _temp_dir: temp_dir }
+    RestoreTestLibrary { library_manager, catalogs, runtime_handle, track_ids, _temp_dir: temp_dir }
 }
 
 /// A library with no imports, for the empty-library no-op paths. Returns the
@@ -20,7 +20,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
 async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDir) {
     tracing_init();
     let temp_dir = TempDir::new().unwrap();
-    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+    let (library_manager, _database, _) = open_test_library(temp_dir.path()).await;
     (library_manager, tokio::runtime::Handle::current(), temp_dir)
 }
 
@@ -35,7 +35,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let release_key =
         seed_discogs_test_release(lib.library_manager.providers(), create_cue_flac_test_album());
     let import_handle =
-        start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone()).await;
+        start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone(), &lib.catalogs).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
@@ -202,7 +202,7 @@ impl CloudOnlyPlaybackFixture {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let (library_manager, _, cloud) =
+        let (library_manager, _, catalogs, cloud) =
             support::storage_library(temp_dir.path(), bae_core::catalog_model::providers::Providers::offline())
                 .await;
         support::connect_storage(&library_manager, &cloud).await;
@@ -214,7 +214,7 @@ impl CloudOnlyPlaybackFixture {
         generate_test_flac_files(&album_dir);
 
         let import_handle =
-            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
+            start_test_import(runtime_handle.clone(), library_manager.clone(), &catalogs).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {

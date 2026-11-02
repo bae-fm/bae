@@ -135,7 +135,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
-    let (library_manager, _, storage) =
+    let (library_manager, _, catalogs, storage) =
         support::storage_library(&db_dir, bae_core::catalog_model::providers::Providers::offline()).await;
     if let ImportDestination::Remote { .. } = destination {
         support::connect_storage(&library_manager, &storage).await;
@@ -163,7 +163,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     };
     let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), &catalogs).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle

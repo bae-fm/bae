@@ -456,7 +456,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
-    let (manager, db_temp) = new_manager().await;
+    let (manager, _database, catalogs, db_temp) = support::setup_test_library().await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -476,7 +476,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         },
     );
     let import =
-        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
     let import_id = "lossy".to_string();
     import
         .send_command(ImportCommand {

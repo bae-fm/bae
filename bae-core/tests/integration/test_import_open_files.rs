@@ -94,7 +94,8 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 }
 
 async fn import_a_box_set_under_a_lowered_limit() {
-    let (library_manager, album_dir, _temp) = support::setup_test_library_with_album_dir().await;
+    let (library_manager, catalogs, album_dir, _temp) =
+        support::setup_test_library_with_album_dir().await;
     write_box_set(&album_dir);
 
     let release = bae_catalogs::discogs::DiscogsRelease {
@@ -112,9 +113,12 @@ async fn import_a_box_set_under_a_lowered_limit() {
         ..support::discogs_test_release("test-box-set-open-files", "Album Title", &[])
     };
     let release_key = support::seed_discogs_test_release(library_manager.providers(), release);
-    let import_handle =
-        support::start_test_import(tokio::runtime::Handle::current(), library_manager.clone())
-            .await;
+    let import_handle = support::start_test_import(
+        tokio::runtime::Handle::current(),
+        library_manager.clone(),
+        &catalogs,
+    )
+    .await;
 
     let _limit = LoweredFileLimit::to((highest_open_fd() + 1 + headroom()) as libc::rlim_t);
 

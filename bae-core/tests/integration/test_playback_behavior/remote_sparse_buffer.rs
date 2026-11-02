@@ -16,7 +16,7 @@ impl RemoteMultiWindowPlayback {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let (library_manager, _, cloud) =
+        let (library_manager, _, catalogs, cloud) =
             support::storage_library(temp_dir.path(), bae_core::catalog_model::providers::Providers::offline())
                 .await;
         support::connect_storage(&library_manager, &cloud).await;
@@ -24,7 +24,7 @@ impl RemoteMultiWindowPlayback {
         let release_key =
             seed_discogs_test_release(library_manager.providers(), create_multi_window_cue_album());
         let import_handle =
-            start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
+            start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), &catalogs).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {

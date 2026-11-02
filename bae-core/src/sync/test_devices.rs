@@ -432,6 +432,12 @@ impl RunningLibrary {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
         let database = Database::from_handle(handle, clock.clone(), ids.clone());
+        let catalogs = crate::import::CatalogSessions::new(
+            crate::catalog_model::providers::Providers::offline(),
+            database.clone(),
+            crate::diagnostics::Diagnostics::noop(),
+            tokio::runtime::Handle::current(),
+        );
         let manager = LibraryManager::new(
             database.clone(),
             app_dir,
@@ -440,7 +446,7 @@ impl RunningLibrary {
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::catalog_model::providers::Providers::offline(),
+            catalogs,
         );
         let (cycles, watcher) = record_cycles(&database);
         Self { manager, database, cycles, _watcher: watcher }

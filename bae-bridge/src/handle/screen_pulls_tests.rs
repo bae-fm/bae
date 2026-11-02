@@ -37,7 +37,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         .build()
         .unwrap();
     // A library with its storage, which making a profile needs.
-    let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
+    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
         root.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     ));
@@ -110,7 +110,7 @@ fn the_sync_status_follows_a_disconnect() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, _db, storage) = runtime.block_on(bae_test_support::storage_library(
+    let (manager, _db, _, storage) = runtime.block_on(bae_test_support::storage_library(
         root.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     ));

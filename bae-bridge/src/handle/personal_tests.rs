@@ -10,7 +10,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .enable_all()
         .build()
         .unwrap();
-    let (manager, db, storage) = runtime.block_on(bae_test_support::storage_library(
+    let (manager, db, _, storage) = runtime.block_on(bae_test_support::storage_library(
         root.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     ));

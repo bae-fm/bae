@@ -798,7 +798,7 @@ mod release_album {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
-        let (manager, imported) = bae_test_support::imported_release_setup(
+        let (manager, catalogs, imported) = bae_test_support::imported_release_setup(
             bae_test_support::discogs_test_release(
                 "album-set-moved",
                 "Moved Album",
@@ -822,7 +822,8 @@ mod release_album {
             ),
         );
         let picked_release =
-            bae_test_support::import_folder_and_wait(&manager, &picked_dir, picked_key).await;
+            bae_test_support::import_folder_and_wait(&manager, &catalogs, &picked_dir, picked_key)
+                .await;
         let picked_album =
             manager.get_album_id_for_release(&picked_release).await.expect("the picked album");
         let moved_from = manager

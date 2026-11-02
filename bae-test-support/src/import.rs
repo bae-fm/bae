@@ -13,28 +13,29 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
     }
 }
 
-/// Start an [`ImportService`] over a test library manager — the shared setup
-/// every import/playback test binary needs, so none of them keep a private copy
-/// that can drift from the others. The cover-art client comes off the manager,
-/// which builds a hermetic one.
+/// Start an [`ImportService`] over a test library manager, with the Discogs
+/// key stored through `catalogs`, the sessions the manager was built over —
+/// the shared setup every import/playback test binary needs, so none of them
+/// keep a private copy that can drift from the others. The cover-art client
+/// comes off the manager, which builds a hermetic one.
 ///
 /// [`ImportService`]: bae_core::import::ImportService
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
+    catalogs: &bae_core::import::CatalogSessions,
 ) -> bae_core::import::ImportServiceHandle {
-    configure_test_discogs(&library_manager).await;
+    configure_test_discogs(catalogs).await;
     library_manager
         .start_import_service(runtime_handle.clone())
         .await
         .expect("test import service starts")
 }
 
-/// Configure the provider credential used by seeded Discogs fixtures through
-/// the catalog sessions production stores it through.
-pub async fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
-    library_manager
-        .catalogs()
+/// Store the Discogs key seeded Discogs fixtures are asked for with, through
+/// `catalogs`, the sessions the test built its library over.
+pub async fn configure_test_discogs(catalogs: &bae_core::import::CatalogSessions) {
+    catalogs
         .store_discogs_key("test-discogs-token", bae_core::config::DiscogsValidation::Valid)
         .await
         .expect("test Discogs key is stored");
@@ -164,13 +165,15 @@ pub fn folder_import(
 /// by then the import has landed everything it writes.
 async fn send_folder_import_and_wait(
     library_manager: &bae_core::library::LibraryManager,
+    catalogs: &bae_core::import::CatalogSessions,
     album_dir: std::path::PathBuf,
     release_id_key: String,
     candidate_key: &str,
     import_id: String,
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone(), catalogs)
+            .await;
     import_handle
         .send_command(bae_core::import::ImportCommand {
             candidate_key: bae_core::import::CandidateKey::from_bytes(
@@ -189,11 +192,13 @@ async fn send_folder_import_and_wait(
 /// the import landed. Panics if the import fails.
 pub async fn import_folder_and_wait(
     library_manager: &bae_core::library::LibraryManager,
+    catalogs: &bae_core::import::CatalogSessions,
     album_dir: impl Into<std::path::PathBuf>,
     release_id_key: String,
 ) -> String {
     let (release_id, _album_id) = send_folder_import_and_wait(
         library_manager,
+        catalogs,
         album_dir.into(),
         release_id_key,
         "test",
@@ -226,17 +231,22 @@ pub async fn imported_release_setup<G>(
     candidate_key: &str,
     import_id: String,
     generate_files: G,
-) -> Result<(bae_core::library::LibraryManager, ImportedRelease), Box<dyn std::error::Error>>
+) -> Result<
+    (bae_core::library::LibraryManager, bae_core::import::CatalogSessions, ImportedRelease),
+    Box<dyn std::error::Error>,
+>
 where
     G: FnOnce(&std::path::Path),
 {
-    let (library_manager, album_dir, temp_dir) = setup_test_library_with_album_dir().await;
+    let (library_manager, catalogs, album_dir, temp_dir) =
+        setup_test_library_with_album_dir().await;
 
     let release_id_key = seed_discogs_test_release(library_manager.providers(), release);
     generate_files(&album_dir);
 
     let (release_id, _album_id) = send_folder_import_and_wait(
         &library_manager,
+        &catalogs,
         album_dir.clone(),
         release_id_key,
         candidate_key,
@@ -246,5 +256,5 @@ where
     let tracks = library_manager.get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
-    Ok((library_manager, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))
+    Ok((library_manager, catalogs, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))
 }

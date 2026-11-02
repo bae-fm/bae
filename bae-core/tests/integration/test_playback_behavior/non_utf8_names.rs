@@ -9,7 +9,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     let mut album = create_test_album();
     album.id = "non-utf8-name".to_string();
     album.tracklist.truncate(1);
-    let (library_manager, imported) = imported_release_setup(
+    let (library_manager, _, imported) = imported_release_setup(
         album,
         "non-utf8-name",
         uuid::Uuid::new_v4().to_string(),

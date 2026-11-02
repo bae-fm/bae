@@ -269,7 +269,7 @@ impl PlaybackTestFixture {
         expected_tracks: usize,
         source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, imported) = support::imported_release_setup(
+        let (library_manager, _, imported) = support::imported_release_setup(
             discogs_release,
             "test",
             uuid::Uuid::new_v4().to_string(),

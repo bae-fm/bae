@@ -47,7 +47,7 @@ impl ImportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (library_manager, db, storage) = support::storage_library(
+        let (library_manager, db, catalogs, storage) = support::storage_library(
             &db_dir,
             bae_core::catalog_model::providers::Providers::for_test(
                 images.route(bae_util::http::Http::for_test()),
@@ -55,7 +55,7 @@ impl ImportFixture {
         )
         .await;
         let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
-        support::configure_test_discogs(&library_manager).await;
+        support::configure_test_discogs(&catalogs).await;
 
         let handle = library_manager
             .start_import_service(tokio::runtime::Handle::current())

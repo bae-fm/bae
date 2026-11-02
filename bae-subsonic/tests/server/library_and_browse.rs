@@ -87,7 +87,7 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
 }
 
 async fn new_manager() -> (LibraryManager, TempDir) {
-    let (manager, _database, temp) = support::setup_test_library().await;
+    let (manager, _database, _catalogs, temp) = support::setup_test_library().await;
     (manager, temp)
 }
 
@@ -128,7 +128,7 @@ struct Library {
 /// Import a two-track file-per-track release (with a folder cover) and a
 /// three-track single-file CUE release into one manager.
 async fn seed_library() -> Library {
-    let (manager, db_temp) = new_manager().await;
+    let (manager, _database, catalogs, db_temp) = support::setup_test_library().await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
@@ -159,7 +159,7 @@ async fn seed_library() -> Library {
     support::write_cover_png(&pt_dir.join("cover.png"));
 
     let import =
-        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
     let import_id = "pt".to_string();
     import
         .send_command(ImportCommand {
@@ -191,7 +191,7 @@ async fn seed_library() -> Library {
     let discogs_key =
         support::seed_discogs_test_release(manager.providers(), cue_discogs_release());
     let cue_import =
-        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone(), &catalogs).await;
     let cue_id = "cue".to_string();
     cue_import
         .send_command(ImportCommand {

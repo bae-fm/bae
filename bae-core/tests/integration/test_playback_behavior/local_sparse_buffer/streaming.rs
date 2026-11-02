@@ -104,7 +104,7 @@ struct MultiWindowPlayback {
 impl MultiWindowPlayback {
     /// Import this test's release into its own store.
     async fn new(name: &str) -> Self {
-        let (library_manager, imported) = imported_release_setup(
+        let (library_manager, _, imported) = imported_release_setup(
             create_multi_window_cue_album(),
             name,
             uuid::Uuid::new_v4().to_string(),
@@ -618,7 +618,7 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
 async fn stopping_playback_closes_the_files_it_streamed() {
     tracing_init();
     let import_ids = SequentialIds::new();
-    let (library_manager, imported) = imported_release_setup(
+    let (library_manager, _, imported) = imported_release_setup(
         create_test_album(),
         "test",
         import_ids.new_id().to_string(),

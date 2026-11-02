@@ -30,7 +30,7 @@ async fn setup(tmp: &TempDir) -> LibraryManager {
 }
 
 async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
-    let (manager, _, storage) = support::storage_library(
+    let (manager, _, _, storage) = support::storage_library(
         tmp.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     )

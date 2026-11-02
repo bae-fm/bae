@@ -47,13 +47,14 @@ async fn import_single_m4a_fixture(
     let dest = album_dir.join(fixture_name);
     std::fs::copy(&fixture_path, &dest).expect("copy fixture");
 
-    let (library_manager, _database) = open_test_library(&db_dir).await;
+    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
     let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
 
     let release_id =
-        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
+            .await;
     (library_manager, release_id)
 }
 
@@ -216,7 +217,7 @@ async fn import_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
-    let (library_manager, _database) = open_test_library(&db_dir).await;
+    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
 
     let discogs_release = make_discogs_release(
         "test-cue-alac",
@@ -226,7 +227,8 @@ async fn import_cue_alac_pair() {
     let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
 
     let release_id =
-        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
+            .await;
 
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);

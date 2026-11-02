@@ -358,6 +358,12 @@ mod tests {
         )
         .expect("diagnostics starts");
 
+        let catalogs = crate::import::CatalogSessions::new(
+            crate::catalog_model::providers::Providers::offline(),
+            database.clone(),
+            diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+        );
         let manager = LibraryManager::new(
             database,
             crate::config::AppDir::under_home(home.path()).unwrap(),
@@ -366,7 +372,7 @@ mod tests {
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::catalog_model::providers::Providers::offline(),
+            catalogs,
         );
         (manager, diagnostics, transport, home)
     }

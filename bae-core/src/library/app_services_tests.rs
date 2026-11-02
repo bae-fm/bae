@@ -51,6 +51,12 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         track_ids.push(track_id);
     }
 
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -59,7 +65,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
+        catalogs,
     );
 
     // A device with no hardware behind it, not the real cpal sink: this test

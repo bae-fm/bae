@@ -112,19 +112,26 @@ async fn restore_cost(library: Library) {
         .await
         .unwrap();
     handle.start_sync().await.unwrap();
+    let database = bae_core::db::Database::from_handle(
+        handle.clone(),
+        clock.clone(),
+        std::sync::Arc::new(coven::UuidIds),
+    );
+    let catalogs = bae_core::import::CatalogSessions::new(
+        bae_core::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
-        bae_core::db::Database::from_handle(
-            handle.clone(),
-            clock.clone(),
-            std::sync::Arc::new(coven::UuidIds),
-        ),
+        database,
         app_dir.clone(),
         clock.clone(),
         Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        bae_core::catalog_model::providers::Providers::offline(),
+        catalogs,
     );
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {

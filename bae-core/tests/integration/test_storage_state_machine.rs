@@ -25,7 +25,7 @@ use uuid::Uuid;
 // ---------------------------------------------------------------------------
 
 async fn setup_manager(tmp: &TempDir) -> (Database, LibraryManager, Arc<MemoryStorage>) {
-    let (manager, database, storage) = support::storage_library(
+    let (manager, database, _, storage) = support::storage_library(
         tmp.path(),
         bae_core::catalog_model::providers::Providers::offline(),
     )

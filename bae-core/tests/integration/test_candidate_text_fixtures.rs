@@ -174,7 +174,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 /// A throwaway library database over a temp dir, which must outlive it.
 async fn make_database() -> (bae_core::db::Database, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let (_manager, database) = support::open_test_library(tmp.path()).await;
+    let (_manager, database, _) = support::open_test_library(tmp.path()).await;
     (database, tmp)
 }
 

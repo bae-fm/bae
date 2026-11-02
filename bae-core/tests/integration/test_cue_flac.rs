@@ -317,11 +317,12 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     std::fs::create_dir_all(&album_dir).expect("album dir");
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_flac_fixture_with_seektable(&album_dir);
-    let (library_manager, _database) = open_test_library(&db_dir).await;
+    let (library_manager, _database, catalogs) = open_test_library(&db_dir).await;
     let release_id_key =
         seed_discogs_test_release(library_manager.providers(), create_test_discogs_release());
     let release_id =
-        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key)
+            .await;
     (library_manager, release_id)
 }
 
@@ -340,7 +341,7 @@ impl CueFlacCaptureFixture {
     /// The 3-track CUE/FLAC album, imported and playing through a full-speed
     /// capture sink.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, imported) = support::imported_release_setup(
+        let (library_manager, _, imported) = support::imported_release_setup(
             create_test_discogs_release(),
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -552,7 +553,7 @@ impl bae_audio::DecodedSink for CollectedDecode {
 #[tokio::test]
 async fn test_served_decode_starts_with_the_generated_pregap() {
     const SAMPLE_RATE: usize = 44_100;
-    let (library_manager, imported) = support::imported_release_setup(
+    let (library_manager, _, imported) = support::imported_release_setup(
         DiscogsRelease {
             master_id: Some("pregap-album-master".to_string()),
             ..support::discogs_test_release(

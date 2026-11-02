@@ -44,6 +44,12 @@ async fn setup_import_service() -> TestService {
         database.clone(),
         crate::diagnostics::Diagnostics::noop(),
     );
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -52,7 +58,7 @@ async fn setup_import_service() -> TestService {
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
+        catalogs.clone(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::import::ImportEventBus::new(runtime.clone());
@@ -62,7 +68,7 @@ async fn setup_import_service() -> TestService {
             event_tx,
             runtime,
             database: database.clone(),
-            catalogs: test_catalogs(&database),
+            catalogs,
             remote_images: crate::import::RemoteImages::new(
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
                     bae_util::http::Http::for_test(),
@@ -583,16 +589,6 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 
 /// Scan dependencies over the test service's library, with a folder-state
 /// commit lock of their own.
-/// The catalogs a test's scan asks: none, over the test's library.
-fn test_catalogs(database: &crate::db::Database) -> crate::import::CatalogSessions {
-    crate::import::CatalogSessions::new(
-        crate::catalog_model::providers::Providers::offline(),
-        database.clone(),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    )
-}
-
 fn test_scan_services(
     service: &ImportService,
     database: &crate::db::Database,

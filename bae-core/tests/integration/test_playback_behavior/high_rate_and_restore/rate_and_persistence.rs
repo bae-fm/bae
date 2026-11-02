@@ -10,7 +10,7 @@ struct HighSampleRateTestFixture {
 
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library_manager, album_dir, temp_dir) =
+        let (library_manager, catalogs, album_dir, temp_dir) =
             support::setup_test_library_with_album_dir().await;
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -32,7 +32,7 @@ impl HighSampleRateTestFixture {
         let release_id_key =
             seed_discogs_test_release(library_manager.providers(), discogs_release);
 
-        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+        support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
 
         let albums = library_manager.get_albums(&[]).await?;
         let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
@@ -323,11 +323,11 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// service started — the arrange for the tests below, which each decide when
 /// their own service comes up. The `TempDir` owns the library's files.
 async fn imported_library_without_playback() -> (LibraryManager, TempDir) {
-    let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
+    let (library_manager, catalogs, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         seed_discogs_test_release(library_manager.providers(), create_test_album());
-    support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+    support::import_folder_and_wait(&library_manager, &catalogs, album_dir, release_id_key).await;
     (library_manager, temp_dir)
 }
 
@@ -490,6 +490,9 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
 /// restore without racing a fixture's service for the row.
 struct RestoreTestLibrary {
     library_manager: LibraryManager,
+    /// The catalog sessions the library was built over, for a test that
+    /// imports again.
+    catalogs: bae_core::import::CatalogSessions,
     runtime_handle: tokio::runtime::Handle,
     track_ids: Vec<String>,
     _temp_dir: TempDir,

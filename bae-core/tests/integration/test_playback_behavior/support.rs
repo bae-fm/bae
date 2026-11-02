@@ -391,7 +391,7 @@ struct PlaybackTestFixture {
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        let (library_manager, imported) = imported_release_setup(
+        let (library_manager, _, imported) = imported_release_setup(
             create_test_album(),
             "playback",
             uuid::Uuid::new_v4().to_string(),

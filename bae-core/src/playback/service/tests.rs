@@ -181,6 +181,12 @@ async fn seeded_library_manager_with_track_length(
             .unwrap();
     seed_test_releases(&database, releases, track_length_ms).await;
 
+    let catalogs = crate::import::CatalogSessions::new(
+        crate::catalog_model::providers::Providers::offline(),
+        database.clone(),
+        diagnostics.clone(),
+        tokio::runtime::Handle::current(),
+    );
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(home.path()).unwrap(),
@@ -189,7 +195,7 @@ async fn seeded_library_manager_with_track_length(
         diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
+        catalogs,
     );
     (home, manager)
 }
