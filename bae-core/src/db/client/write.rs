@@ -515,8 +515,8 @@ pub(super) fn insert_release_file_row(
         .map_err(|e| DbError::Message(e.to_string()))?;
     let source_audio_layout =
         file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {
-            crate::album_detail::SourceAudioLayout::File => "file",
-            crate::album_detail::SourceAudioLayout::Cue => "cue",
+            crate::db::source_audio::SourceAudioLayout::File => "file",
+            crate::db::source_audio::SourceAudioLayout::Cue => "cue",
         });
     let source_audio_content_type =
         file.source_audio.as_ref().map(|audio| audio.content_type.as_str());

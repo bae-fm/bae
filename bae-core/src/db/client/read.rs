@@ -632,10 +632,10 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
 pub(super) fn source_audio_layout_value(
     layout: &str,
     index: usize,
-) -> rusqlite::Result<crate::album_detail::SourceAudioLayout> {
+) -> rusqlite::Result<crate::db::source_audio::SourceAudioLayout> {
     match layout {
-        "file" => Ok(crate::album_detail::SourceAudioLayout::File),
-        "cue" => Ok(crate::album_detail::SourceAudioLayout::Cue),
+        "file" => Ok(crate::db::source_audio::SourceAudioLayout::File),
+        "cue" => Ok(crate::db::source_audio::SourceAudioLayout::Cue),
         other => Err(rusqlite::Error::FromSqlConversionFailure(
             index,
             rusqlite::types::Type::Text,
@@ -665,7 +665,7 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
             bits_per_sample,
             bitrate_kbps,
             Some(channels),
-        ) => Some(crate::album_detail::SourceAudioFile {
+        ) => Some(crate::db::source_audio::SourceAudioFile {
             layout,
             content_type: ContentType::from_mime(&content_type),
             duration_ms,

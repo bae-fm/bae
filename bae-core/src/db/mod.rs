@@ -3,6 +3,7 @@ mod error;
 pub use error::DbError;
 pub mod identity;
 mod models;
+pub mod source_audio;
 // Only an import names its own artist credits from outside `db`.
 #[cfg(test)]
 pub(crate) use client::resolved_in_an_empty_library;

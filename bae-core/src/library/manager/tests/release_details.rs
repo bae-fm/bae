@@ -217,7 +217,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
-        crate::album_detail::SourceAudioFile {
+        crate::db::source_audio::SourceAudioFile {
             layout: Some(layout),
             content_type,
             duration_ms: 90_000,
@@ -230,9 +230,9 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             },
         }
     };
-    let flac = source(ContentType::Flac, crate::album_detail::SourceAudioLayout::Cue, "FLAC", None);
+    let flac = source(ContentType::Flac, crate::db::source_audio::SourceAudioLayout::Cue, "FLAC", None);
     let mp3 =
-        source(ContentType::Mp3, crate::album_detail::SourceAudioLayout::File, "MP3", Some(320));
+        source(ContentType::Mp3, crate::db::source_audio::SourceAudioLayout::File, "MP3", Some(320));
     for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
         let mut file = NewReleaseFile::new(
             &release.id,
@@ -249,15 +249,15 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
-        Some(crate::album_detail::SourceAudioSummary::Mixed {
+        Some(crate::db::source_audio::SourceAudioSummary::Mixed {
             differences: vec![
-                crate::album_detail::SourceAudioDifference::Layout {
+                crate::db::source_audio::SourceAudioDifference::Layout {
                     layouts: vec![
-                        crate::album_detail::SourceAudioLayout::Cue,
-                        crate::album_detail::SourceAudioLayout::File,
+                        crate::db::source_audio::SourceAudioLayout::Cue,
+                        crate::db::source_audio::SourceAudioLayout::File,
                     ],
                 },
-                crate::album_detail::SourceAudioDifference::Codec {
+                crate::db::source_audio::SourceAudioDifference::Codec {
                     codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],

@@ -397,7 +397,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
         assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
         assert_uniform_source_audio(
             files,
-            crate::album_detail::SourceAudioLayout::File,
+            crate::db::source_audio::SourceAudioLayout::File,
             source_codec,
         );
     }
@@ -429,7 +429,7 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
         assert_uniform_source_audio(
             &candidates[0].files,
-            crate::album_detail::SourceAudioLayout::Cue,
+            crate::db::source_audio::SourceAudioLayout::Cue,
             codec,
         );
     }
@@ -650,7 +650,7 @@ fn test_collect_release_candidate_files_cue_alac_source_audio() {
 
     let files = scan_files(root);
 
-    assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "ALAC");
+    assert_uniform_source_audio(&files, crate::db::source_audio::SourceAudioLayout::Cue, "ALAC");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].sheet.tracks.len(), 8);
@@ -794,7 +794,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 
     let files = scan_files(root);
 
-    assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "APE");
+    assert_uniform_source_audio(&files, crate::db::source_audio::SourceAudioLayout::Cue, "APE");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     let track_count = bound[0].sheet.tracks.len();

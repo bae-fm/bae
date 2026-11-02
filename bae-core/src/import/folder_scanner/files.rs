@@ -544,7 +544,7 @@ pub(crate) fn part_of(parts: &[ReleasePart], relative_path: &str) -> Option<usiz
 /// without copying file identity or probe facts into another type.
 #[derive(Debug)]
 pub struct CandidateSourceAudio<'a> {
-    pub summary: crate::album_detail::SourceAudioSummary,
+    pub summary: crate::db::source_audio::SourceAudioSummary,
     pub files: Vec<&'a ScannedFile>,
 }
 
@@ -558,7 +558,7 @@ impl CategorizedFiles {
     }
 
     pub fn source_audio(&self) -> Option<CandidateSourceAudio<'_>> {
-        use crate::album_detail::{
+        use crate::db::source_audio::{
             SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary, SummarizedAudio,
         };
         let carved_audio: std::collections::HashSet<&str> = self
@@ -597,7 +597,7 @@ impl CategorizedFiles {
         })
     }
 
-    pub fn source_audio_summary(&self) -> Option<crate::album_detail::SourceAudioSummary> {
+    pub fn source_audio_summary(&self) -> Option<crate::db::source_audio::SourceAudioSummary> {
         self.source_audio().map(|source_audio| source_audio.summary)
     }
 

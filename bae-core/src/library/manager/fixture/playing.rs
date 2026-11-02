@@ -119,8 +119,8 @@ impl LibraryManager {
                 added,
             );
             // What the scan read of it, as an import records it.
-            file.source_audio = Some(crate::album_detail::SourceAudioFile {
-                layout: Some(crate::album_detail::SourceAudioLayout::Cue),
+            file.source_audio = Some(crate::db::source_audio::SourceAudioFile {
+                layout: Some(crate::db::source_audio::SourceAudioLayout::Cue),
                 format: scanned.format,
                 content_type: scanned.content_type,
                 duration_ms: scanned.duration_ms,

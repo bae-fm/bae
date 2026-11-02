@@ -463,7 +463,7 @@ pub struct DbFile {
     pub content_type: ContentType,
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
-    pub source_audio: Option<crate::album_detail::SourceAudioFile>,
+    pub source_audio: Option<crate::db::source_audio::SourceAudioFile>,
     /// The coven file the row references.
     pub file: coven::FileId,
     /// Whether coven records the file as stored: its move to the cloud
@@ -483,7 +483,7 @@ pub struct NewReleaseFile {
     pub content_type: ContentType,
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
-    pub source_audio: Option<crate::album_detail::SourceAudioFile>,
+    pub source_audio: Option<crate::db::source_audio::SourceAudioFile>,
     pub created_at: DateTime<Utc>,
 }
 

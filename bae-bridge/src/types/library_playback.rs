@@ -695,19 +695,19 @@ pub enum BridgeSourceAudioDifference {
 }
 
 mirror_enum! {
-    BridgeSourceAudioLayout = bae_core::album_detail::SourceAudioLayout,
+    BridgeSourceAudioLayout = bae_core::db::source_audio::SourceAudioLayout,
     from_core: pub(crate) fn,
     variants: { File, Cue },
 }
 
 mirror_struct! {
-    BridgeSourceAudioDescriptor = bae_core::album_detail::SourceAudioDescriptor,
+    BridgeSourceAudioDescriptor = bae_core::db::source_audio::SourceAudioDescriptor,
     from_core: pub(crate) fn,
     fields: { layout: (BridgeSourceAudioLayout), format: (BridgeAudioFormat) },
 }
 
 mirror_enum! {
-    BridgeSourceAudioSummary = bae_core::album_detail::SourceAudioSummary,
+    BridgeSourceAudioSummary = bae_core::db::source_audio::SourceAudioSummary,
     from_core: pub(crate) fn,
     variants: {
         Uniform { descriptor: (BridgeSourceAudioDescriptor) },
@@ -716,7 +716,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSourceAudioDifference = bae_core::album_detail::SourceAudioDifference,
+    BridgeSourceAudioDifference = bae_core::db::source_audio::SourceAudioDifference,
     from_core: pub(crate) fn,
     variants: {
         Layout { layouts: (each BridgeSourceAudioLayout) },
@@ -733,15 +733,15 @@ mod source_audio_bridge_tests {
 
     #[test]
     fn mixed_source_audio_crosses_with_every_difference() {
-        let summary = bae_core::album_detail::SourceAudioSummary::Mixed {
+        let summary = bae_core::db::source_audio::SourceAudioSummary::Mixed {
             differences: vec![
-                bae_core::album_detail::SourceAudioDifference::Layout {
+                bae_core::db::source_audio::SourceAudioDifference::Layout {
                     layouts: vec![
-                        bae_core::album_detail::SourceAudioLayout::Cue,
-                        bae_core::album_detail::SourceAudioLayout::File,
+                        bae_core::db::source_audio::SourceAudioLayout::Cue,
+                        bae_core::db::source_audio::SourceAudioLayout::File,
                     ],
                 },
-                bae_core::album_detail::SourceAudioDifference::Codec {
+                bae_core::db::source_audio::SourceAudioDifference::Codec {
                     codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],

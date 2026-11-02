@@ -408,7 +408,7 @@ mod conversion_roundtrip {
                                 sources: vec![bae_core::album_detail::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
-                                    layout: bae_core::album_detail::SourceAudioLayout::File,
+                                    layout: bae_core::db::source_audio::SourceAudioLayout::File,
                                 }],
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),

@@ -1,7 +1,7 @@
 async fn add_track_audio_sources(
     manager: &LibraryManager,
     track: &crate::db::DbTrack,
-    sources: &[(&str, crate::album_detail::SourceAudioLayout)],
+    sources: &[(&str, crate::db::source_audio::SourceAudioLayout)],
 ) -> Vec<NewReleaseFile> {
     let now = Utc::now();
     let mut files = Vec::with_capacity(sources.len());
@@ -13,7 +13,7 @@ async fn add_track_audio_sources(
             Uuid::new_v4().to_string(),
             now,
         );
-        file.source_audio = Some(crate::album_detail::SourceAudioFile {
+        file.source_audio = Some(crate::db::source_audio::SourceAudioFile {
             layout: Some(*layout),
             format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
@@ -73,7 +73,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", crate::album_detail::SourceAudioLayout::File)],
+        &[("track.flac", crate::db::source_audio::SourceAudioLayout::File)],
     )
     .await;
 
@@ -207,15 +207,15 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     add_track_audio_sources(
         &manager,
         &first,
-        &[("first.flac", crate::album_detail::SourceAudioLayout::File)],
+        &[("first.flac", crate::db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     add_track_audio_sources(
         &manager,
         &second,
         &[
-            ("second-a.flac", crate::album_detail::SourceAudioLayout::Cue),
-            ("second-b.flac", crate::album_detail::SourceAudioLayout::Cue),
+            ("second-a.flac", crate::db::source_audio::SourceAudioLayout::Cue),
+            ("second-b.flac", crate::db::source_audio::SourceAudioLayout::Cue),
         ],
     )
     .await;
@@ -236,7 +236,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
-    assert_eq!(first_context.sources[0].layout, crate::album_detail::SourceAudioLayout::File);
+    assert_eq!(first_context.sources[0].layout, crate::db::source_audio::SourceAudioLayout::File);
     // A track playing two files is no sheet's run, though a sheet carves both.
     let crate::album_detail::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("a track over two files is a run of its own");
@@ -248,7 +248,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     );
     assert!(matches!(
         seed.display.source_audio,
-        Some(crate::album_detail::SourceAudioSummary::Mixed { .. })
+        Some(crate::db::source_audio::SourceAudioSummary::Mixed { .. })
     ));
 }
 
@@ -264,7 +264,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", crate::album_detail::SourceAudioLayout::File)],
+        &[("track.flac", crate::db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let identity = crate::catalog_model::records::ReleaseRecord::new(

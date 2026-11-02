@@ -327,7 +327,7 @@ pub struct DbReleaseEditSegment {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditSourceFile {
     pub name: String,
-    pub layout: Option<crate::album_detail::SourceAudioLayout>,
+    pub layout: Option<crate::db::source_audio::SourceAudioLayout>,
 }
 
 /// One file of a release as the Storage Manager's inspector reads it: the

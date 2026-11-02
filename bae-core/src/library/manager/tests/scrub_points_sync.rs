@@ -19,7 +19,7 @@ async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDev
     add_track_audio_sources(
         manager,
         &track,
-        &[("Album Title.flac", crate::album_detail::SourceAudioLayout::File)],
+        &[("Album Title.flac", crate::db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let format = manager

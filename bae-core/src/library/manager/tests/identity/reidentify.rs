@@ -53,7 +53,7 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
         add_track_audio_sources(
             manager,
             track,
-            &[(&format!("{index:02}.flac"), crate::album_detail::SourceAudioLayout::File)],
+            &[(&format!("{index:02}.flac"), crate::db::source_audio::SourceAudioLayout::File)],
         )
         .await;
     }

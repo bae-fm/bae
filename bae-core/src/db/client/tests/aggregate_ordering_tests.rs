@@ -413,8 +413,8 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
 #[tokio::test]
 async fn release_file_source_audio_facts_round_trip_without_track_rows() {
     let (db, tmp) = release_detail_db().await;
-    let source_audio = crate::album_detail::SourceAudioFile {
-        layout: Some(crate::album_detail::SourceAudioLayout::Cue),
+    let source_audio = crate::db::source_audio::SourceAudioFile {
+        layout: Some(crate::db::source_audio::SourceAudioLayout::Cue),
         content_type: bae_util::content_type::ContentType::Flac,
         duration_ms: 187_654,
         format: bae_types::audio_format::AudioFormat {

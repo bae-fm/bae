@@ -30,6 +30,7 @@
 //! (covers, pin state, cloud-home presence) and hands that in, so the derivation
 //! lives with the type it produces.
 
+use crate::db::source_audio::{SourceAudioFile, SourceAudioLayout, SourceAudioSummary};
 use crate::db::{cover_ref, ImageRef};
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
@@ -41,7 +42,6 @@ mod file_kind;
 mod playability;
 mod release;
 mod search;
-mod source_audio;
 mod storage;
 
 pub use album::*;
@@ -52,7 +52,6 @@ pub(crate) use playability::release_playability;
 pub use playability::{OtherDevice, ReleasePlayability};
 pub use release::*;
 pub use search::*;
-pub use source_audio::*;
 pub use storage::*;
 
 /// What a release is called where a list of an album's releases names it.

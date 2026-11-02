@@ -20,16 +20,16 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
 
 fn assert_uniform_source_audio(
     files: &CategorizedFiles,
-    layout: crate::album_detail::SourceAudioLayout,
+    layout: crate::db::source_audio::SourceAudioLayout,
     codec: &str,
 ) {
     let summary = files.source_audio_summary().expect("candidate has source audio");
     match summary {
-        crate::album_detail::SourceAudioSummary::Uniform { descriptor } => {
+        crate::db::source_audio::SourceAudioSummary::Uniform { descriptor } => {
             assert_eq!(descriptor.layout, layout);
             assert_eq!(descriptor.format.codec, codec);
         }
-        crate::album_detail::SourceAudioSummary::Mixed { differences } => {
+        crate::db::source_audio::SourceAudioSummary::Mixed { differences } => {
             panic!("expected uniform source audio, got {differences:?}")
         }
     }
@@ -53,7 +53,7 @@ fn source_audio_keeps_every_physical_file_in_release_order() {
     );
     assert!(matches!(
         source_audio.summary,
-        crate::album_detail::SourceAudioSummary::Uniform { .. }
+        crate::db::source_audio::SourceAudioSummary::Uniform { .. }
     ));
 }
 

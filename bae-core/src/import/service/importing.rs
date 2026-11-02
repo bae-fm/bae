@@ -426,11 +426,11 @@ impl ImportService {
         for track_file in tracks_to_files {
             let (file_paths, layout): (Vec<&Path>, _) = match &track_file.audio {
                 TrackAudio::Standalone { file_path, .. } => {
-                    (vec![file_path.as_path()], crate::album_detail::SourceAudioLayout::File)
+                    (vec![file_path.as_path()], crate::db::source_audio::SourceAudioLayout::File)
                 }
                 TrackAudio::CueBacked { cue_pair, .. } => (
                     cue_pair.audio_files.iter().map(|audio| audio.path.as_path()).collect(),
-                    crate::album_detail::SourceAudioLayout::Cue,
+                    crate::db::source_audio::SourceAudioLayout::Cue,
                 ),
             };
             for file_path in file_paths {
@@ -537,7 +537,7 @@ impl ImportService {
                 files_now,
             );
             db_file.source_audio =
-                file.source_audio.as_ref().map(|audio| crate::album_detail::SourceAudioFile {
+                file.source_audio.as_ref().map(|audio| crate::db::source_audio::SourceAudioFile {
                     layout: source_audio_layouts.get(file.path.as_path()).copied(),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
