@@ -7,16 +7,17 @@ file states what it calls things.
 
 ## The library and where it lives
 
-- **Library.** One catalog and its files. A synced library is kept in the
-  cloud and is the same on every device that has it; a library not synced yet
+- **Library.** One catalog and its files. A synced library is kept in
+  storage and is the same on every device that has it; a library not synced yet
   lives only on the Mac that made it. Say "the library", never "the cloud
   library" or "your local library": there is one library, wherever its copies
   are.
-- **Synced / not synced.** Whether the library is kept in the cloud. A library
+- **Synced / not synced.** Whether the library is kept in storage. A library
   starts not synced and becomes synced when sync is set up for it.
-- **The cloud.** Where the library is stored: the Dropbox or OneDrive folder,
-  the iCloud container, or the S3-compatible bucket it syncs through. "The
-  library will remain in the cloud and on your other devices."
+- **Storage.** Where a synced library is kept: the Dropbox or OneDrive
+  folder, the iCloud container, or the S3-compatible bucket it syncs through.
+  Always "storage" on screen, never "the cloud" or "cloud home". "The library
+  will remain in storage and on your other devices."
 - **This device's copy.** What the library has on this phone or Mac: its
   catalog and the files downloaded here. Removing the library from this device
   deletes this copy; the library itself is untouched.
@@ -24,15 +25,15 @@ file states what it calls things.
 ## Sync
 
 - **Sync.** The page and the Library row about keeping this device's copy and
-  the cloud in step. On screen it is "Sync", never "Cloud home".
-- **Signed out.** This device has no working sign-in for the cloud: none is
+  storage in step. On screen it is "Sync", never "Cloud home".
+- **Signed out.** This device has no working sign-in for storage: none is
   saved, or the one it had expired. Fixed with Sign In.
 - **Storage access was denied.** This device is signed in, but that account
-  isn't allowed into the cloud folder or bucket. Signing in again doesn't fix
+  isn't allowed into the storage folder or bucket. Signing in again doesn't fix
   it; the person who manages the storage does.
 - **Sync failed.** Sync stopped on an error. The Sync row says only that; the
   Sync page says what went wrong and offers the fix where there is one.
-- **Last synced.** When this device's copy last matched the cloud. Shown only
+- **Last synced.** When this device's copy last matched storage. Shown only
   on the Sync page, on its own line under the status.
 
 ## People and devices
