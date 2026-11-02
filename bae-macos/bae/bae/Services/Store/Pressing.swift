@@ -34,7 +34,7 @@ struct Pressing: Equatable, Identifiable {
     /// read from decides what the row shows, never what order its names read
     /// in, so a row and the card above it say the same thing.
     var sources: [BridgeCatalog] {
-        bridgeLookupCatalogs()
+        bridgeCatalogs()
             .filter { source in
                 releases.contains { $0.source == source }
             }

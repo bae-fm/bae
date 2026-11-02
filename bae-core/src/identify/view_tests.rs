@@ -7,12 +7,12 @@ use crate::identify::state::{
 use crate::identify::{Findings, IdentifyFailure, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::signals::SourcedValue;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
-pub(super) const MB: Catalog = Catalog::MusicBrainz;
-const DG: Catalog = Catalog::Discogs;
+pub(super) const MB: LookupCatalog = LookupCatalog::MusicBrainz;
+const DG: LookupCatalog = LookupCatalog::Discogs;
 
-fn result(source: Catalog, release_id: &str) -> MetadataResult {
+fn result(source: impl Into<Catalog>, release_id: &str) -> MetadataResult {
     MetadataResult::for_test(source, release_id, Some("g"))
 }
 
@@ -47,7 +47,7 @@ fn context() -> SignalsContext {
 }
 
 /// One code's lookup, with each provider's state as given.
-fn code(value: &str, providers: Vec<(Catalog, LookupState)>) -> ValueLookup {
+fn code(value: &str, providers: Vec<(LookupCatalog, LookupState)>) -> ValueLookup {
     ValueLookup {
         value: value.to_string(),
         providers: providers
@@ -382,7 +382,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         settled,
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
-                release: crate::catalog_model::records::MetadataRef::new(MB, "mb-1"),
+                release: crate::catalog_model::records::MetadataRef::new(MB.catalog(), "mb-1"),
                 document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },

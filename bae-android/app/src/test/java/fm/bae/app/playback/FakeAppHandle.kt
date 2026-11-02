@@ -20,7 +20,6 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
-import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
@@ -38,6 +37,7 @@ import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
@@ -522,7 +522,7 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun setMetadataSourceEnabled(
-        source: BridgeCatalog,
+        source: BridgeLookupCatalog,
         enabled: Boolean,
     ) {
         unfaked("setMetadataSourceEnabled")

@@ -4,6 +4,7 @@
 //! independent: one decides which runs start, the other what any run's
 //! unattended pick goes on to do.
 
+use bae_catalogs::catalog::LookupCatalog;
 use serde::{Deserialize, Serialize};
 
 /// Everything a person decides about identification.
@@ -35,7 +36,7 @@ impl Default for IdentificationPreferences {
 }
 
 /// Which catalogs this library asks. One flag per
-/// [`Catalog::LOOKUP`](bae_catalogs::catalog::Catalog::LOOKUP) member, all on by
+/// [`LookupCatalog`](bae_catalogs::catalog::LookupCatalog), all on by
 /// default.
 ///
 /// The row has a column per catalog, so the fields are named — but nothing
@@ -54,19 +55,17 @@ pub struct LookupCatalogPreferences {
 }
 
 impl LookupCatalogPreferences {
-    pub fn enabled(&self, catalog: bae_catalogs::catalog::Catalog) -> bool {
+    pub fn enabled(&self, catalog: LookupCatalog) -> bool {
         match catalog {
-            bae_catalogs::catalog::Catalog::MusicBrainz => self.musicbrainz,
-            bae_catalogs::catalog::Catalog::Discogs => self.discogs,
-            other => unreachable!("{} answers no lookups", other.as_str()),
+            LookupCatalog::MusicBrainz => self.musicbrainz,
+            LookupCatalog::Discogs => self.discogs,
         }
     }
 
-    pub fn set(&mut self, catalog: bae_catalogs::catalog::Catalog, enabled: bool) {
+    pub fn set(&mut self, catalog: LookupCatalog, enabled: bool) {
         match catalog {
-            bae_catalogs::catalog::Catalog::MusicBrainz => self.musicbrainz = enabled,
-            bae_catalogs::catalog::Catalog::Discogs => self.discogs = enabled,
-            other => unreachable!("{} answers no lookups", other.as_str()),
+            LookupCatalog::MusicBrainz => self.musicbrainz = enabled,
+            LookupCatalog::Discogs => self.discogs = enabled,
         }
     }
 }

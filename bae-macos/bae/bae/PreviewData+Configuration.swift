@@ -40,7 +40,7 @@
             let asked = [musicBrainz, discogs].filter { $0 == .on }
             let onlyAsked = asked.count == 1
             func setting(
-                _ catalog: BridgeCatalog,
+                _ catalog: BridgeLookupCatalog,
                 _ availability: BridgeSourceAvailability
             ) -> BridgeLookupCatalogSetting {
                 BridgeLookupCatalogSetting(

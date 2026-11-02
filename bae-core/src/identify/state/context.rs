@@ -20,7 +20,7 @@ use crate::import::LookupChoices;
 use crate::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]
@@ -370,7 +370,7 @@ impl SearchEvidence {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
     /// The catalogs this run asks, fixed when it starts.
-    pub providers: Vec<Catalog>,
+    pub providers: Vec<LookupCatalog>,
     /// Where the artwork pass has got to, from the latest snapshot.
     pub artwork: ArtworkScan,
     /// What the candidate's files say about where its audio came from.
@@ -445,7 +445,7 @@ impl SignalsContext {
 
     /// The context a run starts with, before its first snapshot.
     pub(super) fn started(
-        providers: Vec<Catalog>,
+        providers: Vec<LookupCatalog>,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     ) -> Self {

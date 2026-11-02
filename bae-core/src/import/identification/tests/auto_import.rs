@@ -307,7 +307,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
                 .and_then(|runtime| runtime.search)
                 .is_some_and(|search| {
                     matches!(
-                        search.source(bae_catalogs::catalog::Catalog::MusicBrainz),
+                        search.source(bae_catalogs::catalog::LookupCatalog::MusicBrainz),
                         Some(crate::import::SourceSearch::Done { .. })
                     )
                 });

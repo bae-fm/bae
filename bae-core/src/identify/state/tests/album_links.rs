@@ -28,15 +28,15 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
 /// itself, filed under `master`.
 fn linking_document(linked: &str, master: &str) -> ReleaseDocument {
     ReleaseDocument {
-        links: vec![MetadataRef::new(DG, linked)],
-        album_links: AlbumLinks::Read(vec![MetadataRef::new(DG, master)]),
+        links: vec![MetadataRef::new(DG.catalog(), linked)],
+        album_links: AlbumLinks::Read(vec![MetadataRef::new(DG.catalog(), master)]),
         ..plain_document(&[])
     }
 }
 
 /// A release on `group` in `packaging`.
 fn packed_in(
-    source: Catalog,
+    source: impl Into<Catalog>,
     release_id: &str,
     group: &str,
     packaging: bae_types::pressing::Packaging,
@@ -49,7 +49,7 @@ fn packed_in(
 #[derive(Debug, Default)]
 struct Asked {
     reads: Vec<Vec<MetadataRef>>,
-    pressings: Vec<(Catalog, PressingKey)>,
+    pressings: Vec<(LookupCatalog, PressingKey)>,
 }
 
 /// Answer every read of documents and every pressing lookup `step` asks for:
@@ -59,7 +59,7 @@ struct Asked {
 fn answer_rounds(
     (mut state, mut effects): (IdentifyState, Vec<Effect>),
     document: impl Fn(&MetadataRef) -> ReleaseDocument,
-    pressing: impl Fn(Catalog, &PressingKey) -> Vec<MetadataResult>,
+    pressing: impl Fn(LookupCatalog, &PressingKey) -> Vec<MetadataResult>,
 ) -> (IdentifyState, Vec<Effect>, Asked) {
     let mut asked = Asked::default();
     while let Some(at) = effects.iter().position(|effect| {
@@ -174,20 +174,20 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
 
     assert_eq!(
         asked.reads[0],
-        vec![MetadataRef::new(MB, "mb-1"), MetadataRef::new(MB, "mb-2")],
+        vec![MetadataRef::new(MB.catalog(), "mb-1"), MetadataRef::new(MB.catalog(), "mb-2")],
         "the offered records are read first"
     );
     assert_eq!(
         asked.pressings,
         vec![
-            (DG, PressingKey::Link { release: MetadataRef::new(DG, "dg-1") }),
-            (DG, PressingKey::Link { release: MetadataRef::new(DG, "dg-2") }),
+            (DG, PressingKey::Link { release: MetadataRef::new(DG.catalog(), "dg-1") }),
+            (DG, PressingKey::Link { release: MetadataRef::new(DG.catalog(), "dg-2") }),
         ],
         "then each row by the release its page names"
     );
     assert_eq!(
         asked.reads[1..],
-        [vec![MetadataRef::new(DG, "dg-1"), MetadataRef::new(DG, "dg-2")]],
+        [vec![MetadataRef::new(DG.catalog(), "dg-1"), MetadataRef::new(DG.catalog(), "dg-2")]],
         "then the releases found, now on the offered rows"
     );
 
@@ -206,7 +206,7 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
         assert!(named_by_disc_id && !linked_by_disc_id);
         assert_eq!(
             named.album_links,
-            AlbumLinks::Read(vec![MetadataRef::new(DG, "7")]),
+            AlbumLinks::Read(vec![MetadataRef::new(DG.catalog(), "7")]),
             "the group is every album its read releases' documents name, each \
              once"
         );
@@ -215,7 +215,7 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     assert_eq!(
         effects,
         vec![Effect::KeepAlbumLinks {
-            kept: vec![("g-1".to_string(), vec![MetadataRef::new(DG, "7")])],
+            kept: vec![("g-1".to_string(), vec![MetadataRef::new(DG.catalog(), "7")])],
         }]
     );
 }
@@ -254,7 +254,7 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     assert_eq!(
         findings.named_notes,
         vec![crate::identify::NamedNote {
-            release: MetadataRef::new(DG, "dg-2"),
+            release: MetadataRef::new(DG.catalog(), "dg-2"),
             note: "Pressed by Plantname".to_string(),
         }]
     );
@@ -295,7 +295,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         },
         |_, _| Vec::new(),
     );
-    let joined = MetadataRef::new(DG, "7");
+    let joined = MetadataRef::new(DG.catalog(), "7");
     assert_eq!(
         effects,
         vec![Effect::KeepAlbumLinks { kept: vec![("g-1".to_string(), vec![joined.clone()])] }]

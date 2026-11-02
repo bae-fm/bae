@@ -1,4 +1,5 @@
 use super::super::*;
+use bae_catalogs::catalog::LookupCatalog;
 use crate::identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
@@ -27,7 +28,7 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
 /// release.
 fn sample_ledger() -> IdentifyRunView {
     IdentifyRunView {
-        providers: vec![Catalog::MusicBrainz],
+        providers: vec![LookupCatalog::MusicBrainz],
         disc_id: DiscIdStepView::Read {
             discs: vec![crate::identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
@@ -491,7 +492,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     let (state, _) = identify_step(
         IdentifyState::Idle,
         IdentifyEvent::Started {
-            providers: vec![bae_catalogs::catalog::Catalog::MusicBrainz],
+            providers: vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz],
             choices: crate::import::LookupChoices::default(),
             title_search: None,
         },

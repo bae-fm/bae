@@ -76,7 +76,7 @@ private struct ImportOperations: Sendable {
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
-        @MainActor @Sendable (BridgeCatalog, Bool) async throws -> Void
+        @MainActor @Sendable (BridgeLookupCatalog, Bool) async throws -> Void
     let setImportWhenIdentified:
         @MainActor @Sendable (Bool) async throws -> Void
     let setImportToCloud: @MainActor @Sendable (Bool) async throws -> Void
@@ -427,7 +427,7 @@ final class Importer: Sendable, Observable {
             },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
-                BridgeCatalog, Bool
+                BridgeLookupCatalog, Bool
             ) async throws -> Void = { _, _ in },
         setImportWhenIdentified:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
@@ -823,7 +823,7 @@ extension Importer {
     /// refuses, which is when it would leave nothing to ask.
     @MainActor
     func setMetadataSourceEnabled(
-        _ source: BridgeCatalog,
+        _ source: BridgeLookupCatalog,
         _ enabled: Bool
     ) async throws {
         try await operations.setMetadataSourceEnabled(source, enabled)

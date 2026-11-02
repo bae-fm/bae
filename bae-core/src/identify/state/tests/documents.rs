@@ -314,7 +314,7 @@ fn a_document_s_barcode_joins_its_result_s() {
     };
     let mut result = first_label_only("dg-1");
     result.barcodes = vec!["0 12345 67890 5".to_string()];
-    let release = crate::catalog_model::records::MetadataRef::new(DG, "dg-1");
+    let release = crate::catalog_model::records::MetadataRef::new(DG.catalog(), "dg-1");
     for (barcode, expected) in [
         ("012345678905", vec!["0 12345 67890 5"]),
         ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
@@ -382,7 +382,7 @@ fn look_alike_rows_listed_once_are_read() {
     let (_, releases) = reading_documents(tied);
     assert_eq!(
         releases,
-        vec![crate::catalog_model::records::MetadataRef::new(DG, "dg-1")],
+        vec![crate::catalog_model::records::MetadataRef::new(DG.catalog(), "dg-1")],
         "the look-alike kept, the lowest id, is read"
     );
 }

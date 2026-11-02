@@ -153,7 +153,7 @@ mirror_enum! {
 mirror_struct! {
     BridgeProviderCell = bae_core::identify::ProviderCell,
     from_core: fn,
-    fields: { source: (BridgeCatalog), lookup: (BridgeLookupState) },
+    fields: { source: (BridgeLookupCatalog), lookup: (BridgeLookupState) },
 }
 
 mirror_struct! {
@@ -255,7 +255,7 @@ impl BridgeIdentifyRun {
             search,
         } = run;
         Self {
-            providers: providers.into_iter().map(BridgeCatalog::from_core).collect(),
+            providers: providers.into_iter().map(BridgeLookupCatalog::from_core).collect(),
             disc_id: BridgeDiscIdStep::from_core(disc_id, rate),
             barcode: BridgeBarcodeStep::from_core(barcode),
             catalog: BridgeCatalogStep::from_core(catalog),
@@ -507,7 +507,7 @@ fn identify_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
     use bae_core::catalog_model::LookupFailure;
     use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
@@ -524,7 +524,7 @@ mod tests {
             isrc: bae_core::identify::IsrcProgress::Skipped,
             search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
-                providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+                providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 origin: bae_core::catalog_model::AudioOrigin::default(),
                 disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
@@ -574,9 +574,12 @@ mod tests {
             codes: vec![ValueLookup {
                 value: "0123456789012".to_string(),
                 providers: vec![
-                    ProviderLookup { source: Catalog::MusicBrainz, state: LookupState::LookingUp },
                     ProviderLookup {
-                        source: Catalog::Discogs,
+                        source: LookupCatalog::MusicBrainz,
+                        state: LookupState::LookingUp,
+                    },
+                    ProviderLookup {
+                        source: LookupCatalog::Discogs,
                         state: LookupState::Failed {
                             failure: LookupFailure::Provider { status: Some(500) },
                         },
@@ -591,9 +594,9 @@ mod tests {
         assert_eq!(rows[0].value, "0123456789012");
         assert!(!rows[0].excluded);
         assert_eq!(rows[0].cells.len(), 2);
-        assert_eq!(rows[0].cells[0].source, BridgeCatalog::MusicBrainz);
+        assert_eq!(rows[0].cells[0].source, BridgeLookupCatalog::MusicBrainz);
         assert!(matches!(rows[0].cells[0].lookup, BridgeLookupState::LookingUp));
-        assert_eq!(rows[0].cells[1].source, BridgeCatalog::Discogs);
+        assert_eq!(rows[0].cells[1].source, BridgeLookupCatalog::Discogs);
         assert!(matches!(
             &rows[0].cells[1].lookup,
             BridgeLookupState::Failed {

@@ -30,7 +30,7 @@
 
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 /// What a record's catalog says its album is on the other lookup catalog.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -213,7 +213,7 @@ impl Found {
 /// Whether a page of `catalog` names an album this reading joins: one of
 /// another lookup catalog's.
 pub(crate) fn names_other_album(catalog: Catalog) -> bool {
-    catalog != Catalog::MusicBrainz && Catalog::LOOKUP.contains(&catalog)
+    catalog.lookup().is_some_and(|lookup| lookup != LookupCatalog::MusicBrainz)
 }
 
 #[path = "album_links/on_list.rs"]

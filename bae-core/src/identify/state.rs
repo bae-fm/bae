@@ -24,7 +24,7 @@ use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::catalog_model::{InternalFailure, LookupFailure};
 use crate::import::LookupChoices;
 use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.
@@ -264,7 +264,7 @@ pub enum IdentifyEvent {
     /// Begin a run. Its catalogs, choices and title are fixed here; a
     /// different one is a different run.
     Started {
-        providers: Vec<Catalog>,
+        providers: Vec<LookupCatalog>,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     },
@@ -287,7 +287,7 @@ pub enum IdentifyEvent {
 
     /// One provider answered about one barcode.
     BarcodeLookupAnswered {
-        source: Catalog,
+        source: LookupCatalog,
         for_barcode: String,
         outcome: LookupOutcome,
     },
@@ -295,7 +295,7 @@ pub enum IdentifyEvent {
     /// One provider answered the search of one catalog number in effect
     /// under `artist`.
     CatalogLookupAnswered {
-        source: Catalog,
+        source: LookupCatalog,
         for_catalog: String,
         artist: Option<String>,
         outcome: LookupOutcome,
@@ -308,13 +308,13 @@ pub enum IdentifyEvent {
 
     /// One provider answered the title search.
     SearchAnswered {
-        source: Catalog,
+        source: LookupCatalog,
         outcome: LookupOutcome,
     },
 
     /// One catalog answered the lookup of an offered row's pressing.
     PressingLookupAnswered {
-        source: Catalog,
+        source: LookupCatalog,
         key: PressingKey,
         outcome: LookupOutcome,
     },
@@ -338,12 +338,12 @@ pub enum Effect {
         disc_id: String,
     },
     LookupBarcode {
-        source: Catalog,
+        source: LookupCatalog,
         barcode: String,
     },
     /// Search `source` for `catalog`, naming `artist` where it is `Some`.
     LookupCatalog {
-        source: Catalog,
+        source: LookupCatalog,
         catalog: String,
         artist: Option<String>,
     },
@@ -353,7 +353,7 @@ pub enum Effect {
     },
     /// Ask one provider for the title.
     SearchTitle {
-        source: Catalog,
+        source: LookupCatalog,
         query: TitleSearch,
     },
     /// Ask `source` for an offered row's pressing by `key`: read the
@@ -361,7 +361,7 @@ pub enum Effect {
     /// number. What it returns is checked against the library as every
     /// lookup's answer is.
     LookupPressing {
-        source: Catalog,
+        source: LookupCatalog,
         key: PressingKey,
     },
     /// Read and store these records' documents, each from where it says,

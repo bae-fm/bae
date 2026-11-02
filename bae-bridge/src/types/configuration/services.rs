@@ -126,7 +126,7 @@ pub enum BridgeSourceAvailability {
 /// surface draws it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLookupCatalogSetting {
-    pub catalog: BridgeCatalog,
+    pub catalog: BridgeLookupCatalog,
     pub availability: BridgeSourceAvailability,
     /// Whether this switch can be moved at all. Core's answer, covering both
     /// reasons it cannot: the catalog needs a credential this library does not

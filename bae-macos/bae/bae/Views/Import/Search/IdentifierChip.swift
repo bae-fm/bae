@@ -84,13 +84,13 @@ extension IdentifierChip where Trailing == EmptyView {
 
 /// One provider's name and its lookup's glyph, inside a value's chip.
 struct ProviderCapsule: View {
-    let source: BridgeCatalog
+    let source: BridgeLookupCatalog
     let lookup: BridgeLookupState
     let onRetry: () -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
-            Text(bridgeCatalogName(catalog: source))
+            Text(bridgeLookupCatalogName(catalog: source))
                 .themeText(.chip)
                 .foregroundStyle(StatusTone.neutral.color)
                 .fixedSize()

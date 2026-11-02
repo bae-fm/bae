@@ -1,4 +1,5 @@
 use super::*;
+use bae_catalogs::catalog::LookupCatalog;
 
 /// A stored verdict reads back exactly, its ledger included.
 #[tokio::test]
@@ -427,7 +428,7 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     let left_out = LookupView::NotAsked { reason: NotAskedReason::LeftOut };
     let cell = |source, lookup| ProviderCell { source, lookup };
     let ledger = IdentifyRunView {
-        providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+        providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
         disc_id: DiscIdStepView::Read {
             discs: vec![
                 DiscIdRow { disc_id: "disc-1".to_string(), lookup: found(&[&offered, &set_aside]) },
@@ -444,9 +445,9 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
                     value: "012345678905".to_string(),
                     excluded: false,
                     cells: vec![
-                        cell(Catalog::MusicBrainz, found(&[&ruled_out, &offered])),
+                        cell(LookupCatalog::MusicBrainz, found(&[&ruled_out, &offered])),
                         cell(
-                            Catalog::Discogs,
+                            LookupCatalog::Discogs,
                             LookupView::Failed {
                                 failure: LookupFailure::Provider { status: Some(503) },
                             },
@@ -457,8 +458,8 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
                     value: "5051961234567".to_string(),
                     excluded: true,
                     cells: vec![
-                        cell(Catalog::MusicBrainz, left_out.clone()),
-                        cell(Catalog::Discogs, left_out.clone()),
+                        cell(LookupCatalog::MusicBrainz, left_out.clone()),
+                        cell(LookupCatalog::Discogs, left_out.clone()),
                     ],
                 },
             ],
@@ -470,16 +471,16 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
                     value: "CAT-1".to_string(),
                     excluded: false,
                     cells: vec![
-                        cell(Catalog::MusicBrainz, LookupView::NoMatch),
-                        cell(Catalog::Discogs, found(&[&catalogued])),
+                        cell(LookupCatalog::MusicBrainz, LookupView::NoMatch),
+                        cell(LookupCatalog::Discogs, found(&[&catalogued])),
                     ],
                 },
                 SignalValueRow {
                     value: "CAT-2".to_string(),
                     excluded: true,
                     cells: vec![
-                        cell(Catalog::MusicBrainz, left_out.clone()),
-                        cell(Catalog::Discogs, left_out),
+                        cell(LookupCatalog::MusicBrainz, left_out.clone()),
+                        cell(LookupCatalog::Discogs, left_out),
                     ],
                 },
             ],
@@ -570,7 +571,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
     use bae_catalogs::catalog::Catalog;
 
     let quiet = IdentifyRunView {
-        providers: vec![Catalog::MusicBrainz],
+        providers: vec![LookupCatalog::MusicBrainz],
         disc_id: DiscIdStepView::NotCdAudio,
         barcode: BarcodeStepView::NoCodes,
         catalog: CatalogStepView::NoneFound,
@@ -589,16 +590,16 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
         },
         track_count: 11,
         ledger: Some(IdentifyRunView {
-            providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+            providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
             disc_id: DiscIdStepView::Absent,
             barcode: BarcodeStepView::Absent,
             search: SearchStepView::Searched {
                 album: "Album".to_string(),
                 artist: String::new(),
                 cells: vec![
-                    ProviderCell { source: Catalog::MusicBrainz, lookup: LookupView::NoMatch },
+                    ProviderCell { source: LookupCatalog::MusicBrainz, lookup: LookupView::NoMatch },
                     ProviderCell {
-                        source: Catalog::Discogs,
+                        source: LookupCatalog::Discogs,
                         lookup: LookupView::answered(&vec![searched]),
                     },
                 ],

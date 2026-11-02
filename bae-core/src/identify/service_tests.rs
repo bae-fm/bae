@@ -2,6 +2,7 @@ use super::*;
 use crate::db::Database;
 use crate::identify::IdentifyState;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_catalogs::catalog::Catalog;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 

@@ -161,7 +161,7 @@ struct FindOnlineSourceSwitchTests {
 @MainActor
 private final class SourceSwitchRecorder {
     struct Write {
-        let source: BridgeCatalog
+        let source: BridgeLookupCatalog
         let enabled: Bool
     }
 

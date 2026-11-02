@@ -97,7 +97,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     let search = crate::import::CandidateSearch::started(
         crate::catalog_model::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
         &[crate::config::CatalogAvailability {
-            catalog: bae_catalogs::catalog::Catalog::Discogs,
+            catalog: bae_catalogs::catalog::LookupCatalog::Discogs,
             state: crate::config::SourceAvailability::On,
         }],
     );
@@ -105,7 +105,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     assert!(db
         .land_candidate_search(
             run,
-            bae_catalogs::catalog::Catalog::Discogs,
+            bae_catalogs::catalog::LookupCatalog::Discogs,
             Ok(vec![crate::catalog_model::search::MetadataResult::for_test(
                 bae_catalogs::catalog::Catalog::Discogs,
                 "dg-1",

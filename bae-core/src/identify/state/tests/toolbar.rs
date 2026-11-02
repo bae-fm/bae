@@ -3,7 +3,7 @@
 
 /// A run whose disc ID found two releases of one group, settled `Found` with
 /// "LBL 001" offered but not chosen.
-fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
+fn state_with_catalog_offered(providers: Vec<LookupCatalog>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
         signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]),
@@ -22,7 +22,7 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
 }
 
 /// The same run started with "LBL 001" chosen, with the effects it dispatched.
-fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effect>) {
+fn run_with_catalog_chosen(providers: Vec<LookupCatalog>) -> (IdentifyState, Vec<Effect>) {
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
     let mut folder = signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]);
     folder.text_pool = vec![crate::signals::TextLine {
@@ -365,7 +365,7 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
             assert_eq!(
                 failures,
                 &vec![crate::identify::IdentifyFailure::Catalog(SourceFailure {
-                    source: DG,
+                    source: DG.catalog(),
                     failure: LookupFailure::Timeout,
                 })]
             );

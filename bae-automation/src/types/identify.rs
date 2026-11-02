@@ -52,7 +52,7 @@ pub enum AutomationMediumConflict {
 /// Mirrors bae-core's `identify::ProviderCell`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationProviderCell {
-    pub source: AutomationCatalog,
+    pub source: AutomationLookupCatalog,
     pub lookup: AutomationLookupState,
 }
 
@@ -135,7 +135,7 @@ pub enum AutomationSearchStep {
 /// Mirrors bae-core's `identify::IdentifyRunView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
-    pub providers: Vec<AutomationCatalog>,
+    pub providers: Vec<AutomationLookupCatalog>,
     pub disc_id: AutomationDiscIdStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,

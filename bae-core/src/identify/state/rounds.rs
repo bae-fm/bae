@@ -21,7 +21,7 @@ use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::pressing::ReleaseLabel;
 
 /// Take the round the results in hand call for: `catalog` with the numbers
@@ -142,7 +142,7 @@ fn catalog_searches_due(
     context: &SignalsContext,
     catalog: &CatalogProgress,
     rows: &[Vec<MetadataResult>],
-) -> Vec<(String, Option<String>, Vec<Catalog>)> {
+) -> Vec<(String, Option<String>, Vec<LookupCatalog>)> {
     let answers = context.lookup_results();
     let facts = FolderFacts::of(&context.text, answers.all());
     let mut numbers: Vec<String> = context.catalog.confirmed.clone();
@@ -158,7 +158,7 @@ fn catalog_searches_due(
         }
     }
     let album = album_artists(rows);
-    let mut due: Vec<(String, Option<String>, Vec<Catalog>)> = Vec::new();
+    let mut due: Vec<(String, Option<String>, Vec<LookupCatalog>)> = Vec::new();
     for number in &numbers {
         let lookup = catalog.lookups().iter().find(|lookup| &lookup.value == number);
         for &source in &context.providers {
@@ -204,7 +204,7 @@ fn album_artists(rows: &[Vec<MetadataResult>]) -> Vec<Option<String>> {
     artists.into_iter().map(Some).collect()
 }
 
-fn asked_of(providers: &[super::ProviderLookup], source: Catalog) -> bool {
+fn asked_of(providers: &[super::ProviderLookup], source: LookupCatalog) -> bool {
     providers.iter().any(|provider| provider.source == source)
 }
 

@@ -3,7 +3,7 @@
 //! Two of them answer questions — a search, a disc ID, a barcode — and the
 //! rest are reached only by following a link one of those two states. Both
 //! kinds publish metadata, but an album page does not name a particular
-//! pressing. [`Catalog::LOOKUP`] names the catalogs the application can query.
+//! pressing. [`LookupCatalog`] names the catalogs the application can query.
 
 use serde::{Deserialize, Serialize};
 
@@ -40,24 +40,10 @@ impl Catalog {
         Self::Wikidata,
     ];
 
-    /// The catalogs that answer a search, a disc ID, or a barcode, in the order
-    /// surfaces list them and runs ask them. The one list behind "an entry per
-    /// source": a preference, an availability, a typed search's per-source
-    /// part, a ledger column. Neither is the main one.
-    ///
-    /// The others hold pages a record links out to; nothing asks them
-    /// anything, so nothing enumerates them as something to ask.
-    pub const LOOKUP: [Catalog; 2] = [Self::MusicBrainz, Self::Discogs];
-
-    /// The one catalog that answers a disc ID. Disc IDs are a MusicBrainz
-    /// identifier, so no other catalog has an endpoint to ask; with this one
-    /// not asked, a disc ID read off a LOG or CUE stands with nothing looked
-    /// up against it.
-    pub const DISC_ID_CATALOG: Catalog = Self::MusicBrainz;
-
-    /// The one catalog bae asks about ISRCs: MusicBrainz lists the codes each
-    /// recording is registered under, and Discogs has no way to ask by one.
-    pub const ISRC_CATALOG: Catalog = Self::MusicBrainz;
+    /// The catalog this is, when it answers questions.
+    pub fn lookup(self) -> Option<LookupCatalog> {
+        LookupCatalog::ALL.into_iter().find(|lookup| lookup.catalog() == self)
+    }
 
     /// The catalog's place in [`Self::ALL`], the order surfaces list
     /// catalogs in.
@@ -177,6 +163,72 @@ impl std::str::FromStr for Catalog {
 }
 
 impl std::fmt::Display for Catalog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// A catalog that answers questions: a search, a disc ID, a barcode. The
+/// others hold pages a record links out to; nothing asks them anything, so
+/// none of them can be named as something to ask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum LookupCatalog {
+    MusicBrainz,
+    Discogs,
+}
+
+impl LookupCatalog {
+    /// Every catalog that answers questions, in the order surfaces list them
+    /// and runs ask them. The one list behind "an entry per source": a
+    /// preference, an availability, a typed search's per-source part, a
+    /// ledger column. Neither is the main one.
+    pub const ALL: [LookupCatalog; 2] = [Self::MusicBrainz, Self::Discogs];
+
+    /// The one catalog that answers a disc ID. Disc IDs are a MusicBrainz
+    /// identifier, so no other catalog has an endpoint to ask; with this one
+    /// not asked, a disc ID read off a LOG or CUE stands with nothing looked
+    /// up against it.
+    pub const DISC_ID: LookupCatalog = Self::MusicBrainz;
+
+    /// The one catalog bae asks about ISRCs: MusicBrainz lists the codes each
+    /// recording is registered under, and Discogs has no way to ask by one.
+    pub const ISRC: LookupCatalog = Self::MusicBrainz;
+
+    pub fn catalog(self) -> Catalog {
+        match self {
+            Self::MusicBrainz => Catalog::MusicBrainz,
+            Self::Discogs => Catalog::Discogs,
+        }
+    }
+
+    /// The stored `catalog` column value.
+    pub fn as_str(self) -> &'static str {
+        self.catalog().as_str()
+    }
+
+    /// The catalog's own name.
+    pub fn display_name(self) -> &'static str {
+        self.catalog().display_name()
+    }
+}
+
+impl From<LookupCatalog> for Catalog {
+    fn from(lookup: LookupCatalog) -> Self {
+        lookup.catalog()
+    }
+}
+
+impl std::str::FromStr for LookupCatalog {
+    type Err = String;
+
+    /// The lookup catalog a stored `catalog` value names; an error for a
+    /// catalog that answers no questions as for one bae does not know.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Catalog::from_str(s)?.lookup().ok_or_else(|| format!("{s} answers no lookups"))
+    }
+}
+
+impl std::fmt::Display for LookupCatalog {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
     }

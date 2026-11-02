@@ -150,11 +150,13 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn search_session(
         &self,
-        catalog: bae_catalogs::catalog::Catalog,
+        catalog: bae_catalogs::catalog::LookupCatalog,
     ) -> Result<CatalogSession, LibraryError> {
         match catalog {
-            bae_catalogs::catalog::Catalog::Discogs => self.catalog_session().await,
-            _ => Ok(CatalogSession::new(None, self.providers.clone())),
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz => {
+                Ok(CatalogSession::new(None, self.providers.clone()))
+            }
+            bae_catalogs::catalog::LookupCatalog::Discogs => self.catalog_session().await,
         }
     }
 

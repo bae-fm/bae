@@ -2,6 +2,7 @@ use super::*;
 use crate::catalog_model::search::MetadataResult;
 use crate::import::release_group::{group_results, unranked};
 use crate::import::{AudioFile, CandidateTrack, RawPressingEdit, RawTrackEdit};
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{MediaCount, Medium, PressingFacts};
 
 fn release(catalog: Catalog, release_id: &str, album: Option<&str>, year: i32) -> MetadataResult {

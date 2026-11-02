@@ -8,7 +8,7 @@ use crate::catalog_model::providers::CatalogSession;
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::CatalogError;
 use crate::catalog_model::{Failure, InternalFailure, LookupFailure};
-use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage, LookupCatalog};
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use bae_catalogs::rate_limiter::CallPriority;
@@ -184,9 +184,13 @@ impl MetadataResult {
     /// group it belongs to — the three things identify's tests vary. Every
     /// other field is the empty value, so a test that cares about one of them
     /// sets it with struct-update syntax.
-    pub fn for_test(source: Catalog, release_id: &str, source_group_id: Option<&str>) -> Self {
+    pub fn for_test(
+        source: impl Into<Catalog>,
+        release_id: &str,
+        source_group_id: Option<&str>,
+    ) -> Self {
         Self {
-            source,
+            source: source.into(),
             release_id: release_id.to_string(),
             title: "Album".to_string(),
             artist: None,
@@ -764,16 +768,15 @@ fn barcode_query(barcode: &str) -> String {
 /// caller that reports the provider's error as it is.
 pub async fn search_provider(
     session: &CatalogSession,
-    source: Catalog,
+    source: LookupCatalog,
     query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, CatalogError> {
     let mut results = match source {
-        Catalog::MusicBrainz => {
+        LookupCatalog::MusicBrainz => {
             session.search_musicbrainz(query.musicbrainz_params(), priority).await?
         }
-        Catalog::Discogs => session.search_discogs(query.discogs_params(), priority).await?,
-        other => unreachable!("{} answers no searches", other.as_str()),
+        LookupCatalog::Discogs => session.search_discogs(query.discogs_params(), priority).await?,
     };
     query.keep_answers(&mut results);
     Ok(results)
@@ -783,7 +786,7 @@ pub async fn search_provider(
 /// the per-source primitive a candidate's manual search is built from.
 pub async fn search_source(
     session: &CatalogSession,
-    source: Catalog,
+    source: LookupCatalog,
     query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> SourceLookup {

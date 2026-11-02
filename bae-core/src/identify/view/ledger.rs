@@ -238,7 +238,7 @@ fn lookup_view(state: &LookupState) -> LookupView {
 /// A number's row: one cell per provider it was searched on, standing for
 /// every search of it there — one per artist it was searched under.
 fn catalog_row(lookup: &CatalogLookup) -> SignalValueRow {
-    let mut sources: Vec<Catalog> = Vec::new();
+    let mut sources: Vec<LookupCatalog> = Vec::new();
     for provider in lookup.searches.iter().flat_map(|search| &search.providers) {
         if !sources.contains(&provider.source) {
             sources.push(provider.source);

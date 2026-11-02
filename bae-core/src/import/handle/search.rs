@@ -2,6 +2,7 @@ use super::*;
 use crate::catalog_model::search::SearchQuery;
 use crate::import::candidate_search::{CandidateSearch, SearchRun};
 use crate::import::cover_art::RemoteCoverGallery;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
@@ -78,7 +79,10 @@ impl ImportServiceHandle {
     ///
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
-    pub async fn stop_asking_source(&self, source: Catalog) -> Result<(), crate::db::DbError> {
+    pub async fn stop_asking_source(
+        &self,
+        source: LookupCatalog,
+    ) -> Result<(), crate::db::DbError> {
         self.runtime.switch_source_off(source).await
     }
 
@@ -88,7 +92,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
-        source: Catalog,
+        source: LookupCatalog,
         run: SearchRun,
     ) {
         let library_manager = self.library_manager.clone();
@@ -158,7 +162,7 @@ impl ImportServiceHandle {
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
-        source: Catalog,
+        source: LookupCatalog,
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
@@ -280,37 +284,32 @@ impl ImportServiceHandle {
         records: &[crate::catalog_model::records::ReleaseRecord],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
-        for record in records.iter().filter(|record| Catalog::LOOKUP.contains(&record.catalog())) {
-            let gallery = match record {
-                crate::catalog_model::records::ReleaseRecord::Pressing {
-                    release,
-                    album_key,
-                    ..
-                } => match release.catalog {
-                    Catalog::MusicBrainz => {
-                        self.library_manager
-                            .musicbrainz_gallery(&release.key, album_key.as_deref())
-                            .await?
-                    }
-                    Catalog::Discogs => {
-                        self.library_manager
-                            .fetch_discogs_release_covers(&release.key, CallPriority::Interactive)
-                            .await?
-                    }
-                    other => unreachable!("{} serves no artwork", other.as_str()),
-                },
-                crate::catalog_model::records::ReleaseRecord::Album { album } => {
-                    match album.catalog {
-                        Catalog::MusicBrainz => {
-                            self.library_manager.musicbrainz_group_gallery(&album.key).await?
-                        }
-                        Catalog::Discogs => {
-                            self.library_manager
-                                .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
-                                .await?
-                        }
-                        other => unreachable!("{} serves no artwork", other.as_str()),
-                    }
+        for record in records {
+            use crate::catalog_model::records::ReleaseRecord;
+            let Some(catalog) = record.catalog().lookup() else {
+                continue;
+            };
+            let gallery = match (record, catalog) {
+                (
+                    ReleaseRecord::Pressing { release, album_key, .. },
+                    LookupCatalog::MusicBrainz,
+                ) => {
+                    self.library_manager
+                        .musicbrainz_gallery(&release.key, album_key.as_deref())
+                        .await?
+                }
+                (ReleaseRecord::Pressing { release, .. }, LookupCatalog::Discogs) => {
+                    self.library_manager
+                        .fetch_discogs_release_covers(&release.key, CallPriority::Interactive)
+                        .await?
+                }
+                (ReleaseRecord::Album { album }, LookupCatalog::MusicBrainz) => {
+                    self.library_manager.musicbrainz_group_gallery(&album.key).await?
+                }
+                (ReleaseRecord::Album { album }, LookupCatalog::Discogs) => {
+                    self.library_manager
+                        .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
+                        .await?
                 }
             };
             for cover in gallery {
@@ -446,7 +445,7 @@ async fn land_source_search(
     diagnostics: &crate::diagnostics::Diagnostics,
     candidate_key: &crate::import::CandidateKey,
     run: SearchRun,
-    source: Catalog,
+    source: LookupCatalog,
     found: crate::catalog_model::search::SourceLookup,
 ) {
     match runtime.land_search(run, source, found).await {

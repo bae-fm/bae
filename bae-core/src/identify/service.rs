@@ -13,7 +13,7 @@ use crate::import::candidate_runtime::RunSubject;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -36,7 +36,7 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// this one.
 async fn run_providers(
     library_manager: &LibraryManager,
-) -> Result<Vec<Catalog>, crate::db::DbError> {
+) -> Result<Vec<LookupCatalog>, crate::db::DbError> {
     Ok(crate::config::asked_sources(&library_manager.metadata_sources().await?))
 }
 
@@ -294,7 +294,7 @@ async fn run_driver(
     // superseded cannot deregister its successor.
     generation: u64,
     priority: CallPriority,
-    providers: Vec<Catalog>,
+    providers: Vec<LookupCatalog>,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
     token: CancellationToken,

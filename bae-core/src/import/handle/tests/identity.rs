@@ -250,6 +250,7 @@ async fn test_new_artist_inserts() {
 
 use crate::db::{DbAlbum, DbRelease, DbTrack};
 use crate::catalog_model::records::ReleaseRecord;
+use bae_catalogs::catalog::Catalog;
 
 /// Set up a manager with a single test artist that the helpers below
 /// reference for inserted albums.

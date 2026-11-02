@@ -63,7 +63,7 @@ forward! { async this => {
 
     /// Ask, or stop asking, one metadata source. Refused when it would leave
     /// nothing to ask — the error carries the sentence to show.
-    fn set_metadata_source_enabled(source: crate::types::BridgeCatalog, enabled: bool) -> () {
+    fn set_metadata_source_enabled(source: crate::types::BridgeLookupCatalog, enabled: bool) -> () {
         Ok(this
             .services
             .set_metadata_source_enabled(source.into_core(), enabled)

@@ -146,6 +146,15 @@ pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
     catalog.name().to_string()
 }
 
+/// The name of a catalog that answers questions — "MusicBrainz",
+/// "Discogs".
+///
+/// A brand name, so it is not translated and needs no catalog key.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_lookup_catalog_name(catalog: crate::types::BridgeLookupCatalog) -> String {
+    catalog.into_core().display_name().to_string()
+}
+
 /// Every catalog, in the one order surfaces list them in.
 ///
 /// A surface that names the catalogs describing something reads them in this
@@ -153,14 +162,6 @@ pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
     bae_catalogs::catalog::Catalog::ALL.map(crate::types::BridgeCatalog::from_core).to_vec()
-}
-
-/// The catalogs bae asks — a search, a disc ID, a barcode — in the order
-/// surfaces list them. The others hold pages a record links out to; nothing
-/// asks them anything, so nothing offers them as something to switch on.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
-    bae_catalogs::catalog::Catalog::LOOKUP.map(crate::types::BridgeCatalog::from_core).to_vec()
 }
 
 /// One file of a candidate, with its role.

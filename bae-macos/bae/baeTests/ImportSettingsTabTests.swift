@@ -229,7 +229,7 @@ struct ImportSettingsTabTests {
 @MainActor
 private final class ImportSettingRecorder {
     var identifyWrites: [Bool] = []
-    var sourceWrites: [(source: BridgeCatalog, enabled: Bool)] = []
+    var sourceWrites: [(source: BridgeLookupCatalog, enabled: Bool)] = []
     var importWhenIdentifiedWrites: [Bool] = []
 
     var importer: Importer {

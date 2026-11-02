@@ -128,7 +128,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(bae_catalogs::catalog::Catalog::Discogs, false)
+        .set_metadata_source_enabled(bae_catalogs::catalog::LookupCatalog::Discogs, false)
         .await
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.identification().rerun_identify(key.clone());

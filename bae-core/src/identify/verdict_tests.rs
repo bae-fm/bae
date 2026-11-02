@@ -7,6 +7,7 @@ use crate::identify::state::{LookupState, ProviderLookup, ValueLookup};
 use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
 use crate::identify::CatalogProgress;
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 fn mk_result(release_id: &str) -> MetadataResult {
     MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("group-1"))
@@ -86,7 +87,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     let mut context = mk_context(9);
     context.barcode.had_source = true;
     context.barcode.codes = vec![crate::signals::SourcedValue::new("012345".to_string())];
-    context.providers = vec![Catalog::MusicBrainz];
+    context.providers = vec![LookupCatalog::MusicBrainz];
     let (settled, _) = step(
         IdentifyState::Triangulating {
             discid: DiscidProgress::Skipped,
@@ -94,7 +95,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
                 codes: vec![ValueLookup {
                     value: "012345".to_string(),
                     providers: vec![ProviderLookup {
-                        source: Catalog::MusicBrainz,
+                        source: LookupCatalog::MusicBrainz,
                         state: LookupState::LookingUp,
                     }],
                 }],
@@ -105,7 +106,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             context,
         },
         IdentifyEvent::BarcodeLookupAnswered {
-            source: Catalog::MusicBrainz,
+            source: LookupCatalog::MusicBrainz,
             for_barcode: "012345".to_string(),
             outcome: Ok(vec![mk_result("rel-1")]),
         },

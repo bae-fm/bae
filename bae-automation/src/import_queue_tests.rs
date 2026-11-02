@@ -17,6 +17,10 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
+    pub(super) fn automation(&self) -> &Automation {
+        &self.automation
+    }
+
     pub(super) async fn list_candidates(&self) -> Vec<AutomationCandidate> {
         self.automation.list_candidates().await.expect("the list reads")
     }

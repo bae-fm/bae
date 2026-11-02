@@ -2,7 +2,7 @@
 
 /// A run that reads a title off the candidate's draft, with nothing chosen or
 /// excluded.
-fn started_searching(providers: Vec<Catalog>, album: &str, artist: &str) -> IdentifyState {
+fn started_searching(providers: Vec<LookupCatalog>, album: &str, artist: &str) -> IdentifyState {
     let (state, effects) = step(
         IdentifyState::Idle,
         IdentifyEvent::Started {
@@ -15,18 +15,18 @@ fn started_searching(providers: Vec<Catalog>, album: &str, artist: &str) -> Iden
     state
 }
 
-fn search_title(source: Catalog, album: &str, artist: &str) -> Effect {
+fn search_title(source: LookupCatalog, album: &str, artist: &str) -> Effect {
     Effect::SearchTitle {
         source,
         query: TitleSearch { album: album.to_string(), artist: artist.to_string() },
     }
 }
 
-fn search_answered(source: Catalog, results: Vec<MetadataResult>) -> IdentifyEvent {
+fn search_answered(source: LookupCatalog, results: Vec<MetadataResult>) -> IdentifyEvent {
     IdentifyEvent::SearchAnswered { source, outcome: Ok(results) }
 }
 
-fn search_failed(source: Catalog, failure: LookupFailure) -> IdentifyEvent {
+fn search_failed(source: LookupCatalog, failure: LookupFailure) -> IdentifyEvent {
     IdentifyEvent::SearchAnswered { source, outcome: Err(failure) }
 }
 
@@ -120,12 +120,12 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
             assert_eq!(
                 failures,
                 vec![IdentifyFailure::Search(SourceFailure {
-                    source: MB,
+                    source: MB.catalog(),
                     failure: LookupFailure::Timeout,
                 })]
             );
             assert_eq!(matches.len(), 1, "Discogs's match still stands");
-            assert_eq!(matches[0].source, DG);
+            assert_eq!(matches[0].source, DG.catalog());
         }
         other => panic!("expected Failed with the surviving match, got {other:?}"),
     }
@@ -177,7 +177,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
     };
     assert_eq!(
         failures,
-        &vec![IdentifyFailure::Search(SourceFailure { source: MB, failure: busy })]
+        &vec![IdentifyFailure::Search(SourceFailure { source: MB.catalog(), failure: busy })]
     );
     assert_eq!(findings.releases().count(), 3, "every release Discogs returned is kept");
 

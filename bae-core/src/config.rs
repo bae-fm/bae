@@ -198,7 +198,7 @@ impl Preferences {
     }
 
     /// Which metadata sources this library asks, one entry per
-    /// [`Catalog`](bae_catalogs::catalog::Catalog).
+    /// [`LookupCatalog`](bae_catalogs::catalog::LookupCatalog).
     ///
     /// The one answer every place that asks the sources together reads — a
     /// run's provider list, a typed search's per-source parts, the switches a
@@ -212,7 +212,7 @@ impl Preferences {
     /// lives here: the bridge builds the list a surface renders out of the
     /// same value it reads every other setting off.
     pub fn metadata_sources(&self) -> Vec<CatalogAvailability> {
-        bae_catalogs::catalog::Catalog::LOOKUP
+        bae_catalogs::catalog::LookupCatalog::ALL
             .into_iter()
             .map(|catalog| CatalogAvailability {
                 catalog,
@@ -231,11 +231,12 @@ impl Preferences {
     /// MusicBrainz's API is open, so it needs none; Discogs needs a key it has
     /// not rejected. Total over the asked catalogs, so a new one has to state
     /// what it needs.
-    fn source_is_configured(&self, catalog: bae_catalogs::catalog::Catalog) -> bool {
+    fn source_is_configured(&self, catalog: bae_catalogs::catalog::LookupCatalog) -> bool {
         match catalog {
-            bae_catalogs::catalog::Catalog::MusicBrainz => true,
-            bae_catalogs::catalog::Catalog::Discogs => self.discogs_token_status().is_usable(),
-            other => unreachable!("{} answers no lookups", other.as_str()),
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz => true,
+            bae_catalogs::catalog::LookupCatalog::Discogs => {
+                self.discogs_token_status().is_usable()
+            }
         }
     }
 }

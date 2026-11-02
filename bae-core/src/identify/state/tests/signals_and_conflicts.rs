@@ -3,13 +3,13 @@ use crate::identify::IdentifyFailure;
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::import::LookupChoices;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(Catalog::MusicBrainz, release_id, group_id)
 }
 
-fn mk_result_from(source: Catalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
+fn mk_result_from(source: impl Into<Catalog>, release_id: &str, group_id: Option<&str>) -> MetadataResult {
     MetadataResult::for_test(source, release_id, group_id)
 }
 
@@ -22,8 +22,8 @@ fn discogs_pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(Catalog::Discogs, release_id, group_id)
 }
 
-const MB: Catalog = Catalog::MusicBrainz;
-const DG: Catalog = Catalog::Discogs;
+const MB: LookupCatalog = LookupCatalog::MusicBrainz;
+const DG: LookupCatalog = LookupCatalog::Discogs;
 
 /// A run started with MusicBrainz as its only provider, waiting for signals.
 fn started() -> IdentifyState {
@@ -31,7 +31,7 @@ fn started() -> IdentifyState {
 }
 
 /// A run started with `providers`, nothing chosen or left out.
-fn started_with(providers: Vec<Catalog>) -> IdentifyState {
+fn started_with(providers: Vec<LookupCatalog>) -> IdentifyState {
     let (state, effects) = started_with_choices(providers, LookupChoices::default());
     assert!(effects.is_empty(), "with nothing chosen, Started dispatches no effects");
     state
@@ -56,7 +56,7 @@ fn ledger_of(state: &IdentifyState) -> crate::identify::IdentifyRunView {
 
 /// A run started with `choices`, with the chosen numbers' lookups as effects.
 fn started_with_choices(
-    providers: Vec<Catalog>,
+    providers: Vec<LookupCatalog>,
     choices: LookupChoices,
 ) -> (IdentifyState, Vec<Effect>) {
     step(IdentifyState::Idle, IdentifyEvent::Started { providers, choices, title_search: None })
@@ -114,7 +114,7 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
 }
 
 /// One provider matched `barcode`.
-fn barcode_matched(source: Catalog, barcode: &str, results: Vec<MetadataResult>) -> IdentifyEvent {
+fn barcode_matched(source: LookupCatalog, barcode: &str, results: Vec<MetadataResult>) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -123,12 +123,12 @@ fn barcode_matched(source: Catalog, barcode: &str, results: Vec<MetadataResult>)
 }
 
 /// One provider knew nothing about `barcode`.
-fn barcode_missed(source: Catalog, barcode: &str) -> IdentifyEvent {
+fn barcode_missed(source: LookupCatalog, barcode: &str) -> IdentifyEvent {
     barcode_matched(source, barcode, Vec::new())
 }
 
 /// One provider's lookup of `barcode` failed.
-fn barcode_failed(source: Catalog, barcode: &str, failure: LookupFailure) -> IdentifyEvent {
+fn barcode_failed(source: LookupCatalog, barcode: &str, failure: LookupFailure) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -136,7 +136,7 @@ fn barcode_failed(source: Catalog, barcode: &str, failure: LookupFailure) -> Ide
     }
 }
 
-fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
+fn lookup_barcode(source: LookupCatalog, barcode: &str) -> Effect {
     Effect::LookupBarcode { source, barcode: barcode.to_string() }
 }
 
@@ -568,7 +568,7 @@ fn barcode_lookup_failure_settles_failed() {
     assert!(effects.contains(&lookup_barcode(MB, "B")));
 
     let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure { source: MB, failure: failure.clone() };
+    let source_failure = SourceFailure { source: MB.catalog(), failure: failure.clone() };
     let (state, effects) = step(state, barcode_failed(MB, "A", failure));
     assert!(effects.is_empty());
     let (state, _) = step(state, barcode_missed(MB, "B"));
@@ -602,7 +602,7 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
             assert_eq!(
                 failures,
                 vec![crate::identify::IdentifyFailure::Barcode(SourceFailure {
-                    source: DG,
+                    source: DG.catalog(),
                     failure: LookupFailure::Timeout,
                 })]
             );
@@ -685,7 +685,7 @@ fn cancellation_returns_to_idle() {
 /// with nothing else to go on offers manual search.
 #[test]
 fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
-    let state = started_with(vec![Catalog::Discogs]);
+    let state = started_with(vec![LookupCatalog::Discogs]);
     let (next, effects) = update(state, disc_only(&[]));
 
     assert!(
@@ -693,7 +693,7 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
         "no source was asked about the disc ID: {effects:?}"
     );
     let context = next.context().expect("a started run carries its context");
-    assert_eq!(context.providers, vec![Catalog::Discogs]);
+    assert_eq!(context.providers, vec![LookupCatalog::Discogs]);
     assert!(
         matches!(next, IdentifyState::ManualOnly { .. }),
         "nobody was asked anything, got {next:?}"

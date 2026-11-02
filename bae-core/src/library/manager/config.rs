@@ -182,7 +182,7 @@ impl LibraryManager {
     /// job — this layer owns config and knows nothing about what is running.
     pub async fn set_metadata_source_enabled(
         &self,
-        source: bae_catalogs::catalog::Catalog,
+        source: bae_catalogs::catalog::LookupCatalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.update_preferences(move |prefs| {

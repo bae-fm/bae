@@ -3,6 +3,7 @@
 
 use super::super::*;
 use crate::identify::TerminalVerdict;
+use bae_catalogs::catalog::LookupCatalog;
 
 use super::{candidate, exec, fixed_now, watched_root};
 use crate::catalog_model::records::PayloadSource;
@@ -453,7 +454,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .matches
         .clone();
     let ledger = crate::identify::IdentifyRunView {
-        providers: vec![Catalog::MusicBrainz],
+        providers: vec![LookupCatalog::MusicBrainz],
         disc_id: crate::identify::DiscIdStepView::Read {
             discs: vec![crate::identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
@@ -479,7 +480,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
     assert_eq!(run, ledger);
-    assert_eq!(run.providers, vec![Catalog::MusicBrainz]);
+    assert_eq!(run.providers, vec![LookupCatalog::MusicBrainz]);
     let crate::identify::DiscIdStepView::Read { discs } = run.disc_id else {
         panic!("the disc ID the run read");
     };

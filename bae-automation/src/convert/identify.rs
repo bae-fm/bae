@@ -47,7 +47,7 @@ mirror_struct! {
     #[cfg(desktop)]
     AutomationProviderCell = bae_core::identify::ProviderCell,
     from_core: pub(crate) fn,
-    fields: { source: (into), lookup: (AutomationLookupState) },
+    fields: { source: (AutomationLookupCatalog), lookup: (AutomationLookupState) },
 }
 
 mirror_struct! {
@@ -143,7 +143,7 @@ mirror_struct! {
     AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: pub(crate) fn,
     fields: {
-        providers: (each into),
+        providers: (each AutomationLookupCatalog),
         disc_id: (AutomationDiscIdStep),
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),

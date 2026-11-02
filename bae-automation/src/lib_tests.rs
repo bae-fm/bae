@@ -349,7 +349,7 @@ mod identify_mirrors {
         };
         use bae_core::import::release_group::{group_results, unranked};
         IdentifyRunView {
-            providers: vec![Catalog::MusicBrainz],
+            providers: vec![LookupCatalog::MusicBrainz],
             disc_id: DiscIdStepView::Read {
                 discs: vec![DiscIdRow {
                     disc_id: "disc-1".to_string(),
@@ -470,11 +470,11 @@ mod identify_mirrors {
                         value: "0123456789012".to_string(),
                         providers: vec![
                             ProviderLookup {
-                                source: Catalog::MusicBrainz,
+                                source: LookupCatalog::MusicBrainz,
                                 state: LookupState::Done { results: Vec::new() },
                             },
                             ProviderLookup {
-                                source: Catalog::Discogs,
+                                source: LookupCatalog::Discogs,
                                 state: LookupState::Done {
                                     results: vec![printing(
                                         metadata_result("rel-dg", "group-1"),
@@ -488,11 +488,11 @@ mod identify_mirrors {
                         value: "9999999999999".to_string(),
                         providers: vec![
                             ProviderLookup {
-                                source: Catalog::MusicBrainz,
+                                source: LookupCatalog::MusicBrainz,
                                 state: LookupState::LookingUp,
                             },
                             ProviderLookup {
-                                source: Catalog::Discogs,
+                                source: LookupCatalog::Discogs,
                                 state: LookupState::Done { results: Vec::new() },
                             },
                         ],
@@ -503,7 +503,7 @@ mod identify_mirrors {
             isrc: bae_core::identify::IsrcProgress::Skipped,
             search: bae_core::identify::SearchProgress::Pending,
             context: SignalsContext {
-                providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+                providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
                         discs: vec![bae_core::signals::ComputedDiscId {
@@ -868,5 +868,47 @@ mod release_album {
             .await
             .expect_err("an album the library does not hold cannot be picked");
         assert_eq!(refused.kind(), "import");
+    }
+}
+
+/// `import_search` asks one source, and only a catalog that answers searches
+/// can be named as it.
+mod import_search_source {
+    use super::import_queue::automation_over;
+    use super::*;
+
+    #[tokio::test]
+    async fn a_catalog_that_answers_no_searches_is_refused() {
+        let fixture = automation_over().await;
+        let refused = fixture
+            .automation()
+            .call_tool(
+                AutomationTool::ImportSearch,
+                serde_json::json!({
+                    "kind": "general",
+                    "artist": "Artist Name",
+                    "album": "Album Title",
+                    "source": "spotify",
+                }),
+            )
+            .await
+            .expect_err("a catalog that answers no searches cannot be asked one");
+        assert_eq!(refused.kind(), "validation");
+    }
+
+    /// The tool's schema offers the catalogs a search can be asked of, and
+    /// no other.
+    #[test]
+    fn the_schema_offers_only_the_catalogs_that_answer_searches() {
+        let schema = Value::Object(AutomationTool::ImportSearch.input_schema()).to_string();
+        for asked in ["music_brainz", "discogs"] {
+            assert!(schema.contains(&format!("\"{asked}\"")), "{asked} is offered: {schema}");
+        }
+        for linked in ["spotify", "wikidata", "all_music"] {
+            assert!(
+                !schema.contains(&format!("\"{linked}\"")),
+                "{linked} is not offered: {schema}"
+            );
+        }
     }
 }

@@ -1,8 +1,8 @@
 #[cfg(desktop)]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeCastTranscodeFormat, BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus,
-    BridgeImportStorage, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
+    BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportStorage,
+    BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
     BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
     BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
 };
@@ -18,7 +18,7 @@ impl BridgeLookupCatalogSetting {
         let bae_core::config::LookupCatalogSetting { availability, can_change } = entry;
         let bae_core::config::CatalogAvailability { catalog, state } = availability;
         Self {
-            catalog: BridgeCatalog::from_core(catalog),
+            catalog: BridgeLookupCatalog::from_core(catalog),
             availability: BridgeSourceAvailability::from_core(state),
             can_change,
         }

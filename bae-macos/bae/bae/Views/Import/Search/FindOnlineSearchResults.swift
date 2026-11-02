@@ -65,7 +65,7 @@ struct FindOnlineSearchResults: View {
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             ForEach(search.sources, id: \.source) { entry in
-                let name = bridgeCatalogName(catalog: entry.source)
+                let name = bridgeLookupCatalogName(catalog: entry.source)
                 switch entry.state {
                 case .searching:
                     HStack(spacing: ThemeSpace.compact) {

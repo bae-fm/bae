@@ -78,7 +78,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
     use crate::identify::{LookupState, ProviderLookup, ValueLookup};
     use bae_catalogs::catalog::Catalog;
     let mut context = signals_context(9);
-    context.providers = vec![Catalog::MusicBrainz, Catalog::Discogs];
+    context.providers = vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs];
     context.artwork = crate::signals::ArtworkScan::Reading {
         current: Some("back.jpg".to_string()),
         position: 1,
@@ -96,7 +96,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                 value: "0123456789012".to_string(),
                 providers: vec![
                     ProviderLookup {
-                        source: Catalog::MusicBrainz,
+                        source: LookupCatalog::MusicBrainz,
                         state: LookupState::Done {
                             results: vec![crate::catalog_model::search::MetadataResult::for_test(
                                 Catalog::MusicBrainz,
@@ -105,7 +105,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                             )],
                         },
                     },
-                    ProviderLookup { source: Catalog::Discogs, state: LookupState::LookingUp },
+                    ProviderLookup { source: LookupCatalog::Discogs, state: LookupState::LookingUp },
                 ],
             }],
         },
@@ -119,7 +119,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
 /// A run whose clues named nothing, its title search waiting to go out.
 fn search_waiting() -> crate::identify::IdentifyState {
     let mut context = signals_context(9);
-    context.providers = vec![bae_catalogs::catalog::Catalog::MusicBrainz];
+    context.providers = vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz];
     context.search.query = crate::identify::TitleSearch::of("Kind of Blue", "Miles Davis");
     crate::identify::IdentifyState::Triangulating {
         discid: crate::identify::DiscidProgress::Skipped,

@@ -422,7 +422,7 @@ impl AppServices {
     /// throw away an answer the person is reading.
     pub async fn set_metadata_source_enabled(
         &self,
-        source: bae_catalogs::catalog::Catalog,
+        source: bae_catalogs::catalog::LookupCatalog,
         enabled: bool,
     ) -> Result<(), MetadataSourceSwitchError> {
         self.inner.manager.set_metadata_source_enabled(source, enabled).await?;

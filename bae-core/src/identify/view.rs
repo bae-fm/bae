@@ -22,7 +22,7 @@ use crate::import::release_group::{
 };
 use crate::import::shared_album::SharedAlbum;
 use crate::signals::{ArtworkScan, DiscIdSignal};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 /// One provider's lookup of one value: a cell of the ledger.
 #[derive(Debug, Clone, PartialEq)]
@@ -47,7 +47,7 @@ pub enum LookupView {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProviderCell {
-    pub source: Catalog,
+    pub source: LookupCatalog,
     pub lookup: LookupView,
 }
 
@@ -63,7 +63,7 @@ pub struct SignalValueRow {
 }
 
 /// The disc IDs, read off the LOGs and CUEs and each looked up on
-/// [`Catalog::DISC_ID_CATALOG`] alone, so each has one lookup and no cells.
+/// [`LookupCatalog::DISC_ID`] alone, so each has one lookup and no cells.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
@@ -125,7 +125,7 @@ pub enum CatalogStepView {
 }
 
 /// The ISRCs the audio's tags carry, looked up together on
-/// [`Catalog::ISRC_CATALOG`] alone, so the step has one lookup and no cells.
+/// [`LookupCatalog::ISRC`] alone, so the step has one lookup and no cells.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IsrcStepView {
     /// Extraction has not reported yet.
@@ -159,7 +159,7 @@ pub enum SearchStepView {
 #[derive(Debug, Clone, PartialEq)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in cell order.
-    pub providers: Vec<Catalog>,
+    pub providers: Vec<LookupCatalog>,
     pub disc_id: DiscIdStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
@@ -189,7 +189,8 @@ impl IdentifyRunView {
         let in_cells =
             |cells: &[ProviderCell], failed: &crate::catalog_model::search::SourceFailure| {
                 cells.iter().any(|cell| {
-                    cell.source == failed.source && failed_as(&cell.lookup, &failed.failure)
+                    cell.source.catalog() == failed.source
+                        && failed_as(&cell.lookup, &failed.failure)
                 })
             };
         let in_rows =

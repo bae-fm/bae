@@ -4253,7 +4253,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `watched_folders_list`, `watched_folder_add`, `watched_folder_remove`, `watched_folders_scan` | manage and scan watched folders |
 | `import_candidates_list`, `import_candidate_get` | read the import list and a candidate |
 | `import_candidate_skip_set` | skip or restore a candidate |
-| `import_search` | search the catalogs |
+| `import_search` | search MusicBrainz or Discogs; its input names no other catalog |
 | `import_candidate_release_select` | link a candidate to a catalog release and read its draft from it |
 | `import_candidate_file_tags_read` | read a candidate's draft from its tags, keeping its link |
 | `import_candidate_edit_field_set` | type one album field |

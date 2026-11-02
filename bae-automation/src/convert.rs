@@ -150,18 +150,25 @@ fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str 
 }
 
 /// Split a single-source request into the query and the source to ask.
-pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalog) {
+pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, LookupCatalog) {
     match query {
         AutomationSearchQuery::General { artist, album, source } => {
-            (SearchQuery::General { artist, album }, source.into())
+            (SearchQuery::General { artist, album }, source.into_core())
         }
         AutomationSearchQuery::CatalogNumber { catalog_number, source } => {
-            (SearchQuery::CatalogNumber { catalog_number }, source.into())
+            (SearchQuery::CatalogNumber { catalog_number }, source.into_core())
         }
         AutomationSearchQuery::Barcode { barcode, source } => {
-            (SearchQuery::Barcode { barcode }, source.into())
+            (SearchQuery::Barcode { barcode }, source.into_core())
         }
     }
+}
+
+mirror_enum! {
+    AutomationLookupCatalog = LookupCatalog,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { MusicBrainz, Discogs },
 }
 
 mirror_struct! {

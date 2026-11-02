@@ -2,14 +2,14 @@
 // and `album_links.rs`.
 
 /// A release of `source` by "Artist Name" printing `number` under `label`.
-fn labelled(source: Catalog, release_id: &str, label: &str, number: &str) -> MetadataResult {
+fn labelled(source: impl Into<Catalog>, release_id: &str, label: &str, number: &str) -> MetadataResult {
     credited(source, release_id, "Artist Name", label, number)
 }
 
 /// A release of `source` credited to `artist`, printing `number` under
 /// `label`.
 fn credited(
-    source: Catalog,
+    source: impl Into<Catalog>,
     release_id: &str,
     artist: &str,
     label: &str,
@@ -52,12 +52,12 @@ fn disc_run_of_text(
 /// The search of `catalog` on `source` a round asks for a release by
 /// "Artist Name", the artist [`labelled`] credits: as it stands on
 /// MusicBrainz, under the artist on Discogs.
-fn catalog_lookup(source: Catalog, catalog: &str) -> Effect {
+fn catalog_lookup(source: LookupCatalog, catalog: &str) -> Effect {
     let artist = (source == DG).then_some("Artist Name");
     catalog_lookup_under(source, catalog, artist)
 }
 
-fn catalog_lookup_under(source: Catalog, catalog: &str, artist: Option<&str>) -> Effect {
+fn catalog_lookup_under(source: LookupCatalog, catalog: &str, artist: Option<&str>) -> Effect {
     Effect::LookupCatalog {
         source,
         catalog: catalog.to_string(),
@@ -230,7 +230,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
             ..plain_document(&[])
         },
         |source, _| match source {
-            Catalog::Discogs => vec![
+            LookupCatalog::Discogs => vec![
                 labelled(DG, "dg-1", "Label One Records", "XY-100"),
                 labelled(DG, "dg-2", "Other Label", "XY-100"),
             ],
@@ -303,7 +303,7 @@ fn a_failed_pressing_lookup_fails_the_run() {
     assert_eq!(
         failures,
         &vec![IdentifyFailure::Pressing(SourceFailure {
-            source: DG,
+            source: DG.catalog(),
             failure: LookupFailure::Timeout,
         })]
     );
@@ -597,7 +597,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
 /// answer lands on the search still waiting on the catalog that answered.
 #[test]
 fn an_answer_lands_on_the_search_waiting_on_its_catalog() {
-    let waiting = |source: Catalog| crate::identify::state::CatalogSearch {
+    let waiting = |source: LookupCatalog| crate::identify::state::CatalogSearch {
         artist: None,
         providers: vec![crate::identify::state::ProviderLookup {
             source,
@@ -649,7 +649,7 @@ fn a_release_the_disc_id_answered_is_read_from_its_answer() {
         vec![
             crate::identify::documents::ReleaseToRead::DiscIdAnswer(answered),
             crate::identify::documents::ReleaseToRead::ReleaseLookup(MetadataRef::new(
-                MB, "mb-other"
+                MB.catalog(), "mb-other"
             )),
         ]
     );

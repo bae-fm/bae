@@ -19,7 +19,7 @@ use crate::identify::{
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
     SignalValueRow,
 };
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
@@ -180,7 +180,7 @@ pub(super) fn store_ledger(
         for (position, value_row) in rows.iter().enumerate() {
             row(step, position, Some(&value_row.value), value_row.excluded)?;
             for (at, provider) in value_row.cells.iter().enumerate() {
-                cell(step, position, at, Some(provider.source), &provider.lookup)?;
+                cell(step, position, at, Some(provider.source.catalog()), &provider.lookup)?;
             }
         }
         Ok::<_, DbError>(())
@@ -220,7 +220,7 @@ pub(super) fn store_ledger(
     if let SearchStepView::Searched { cells, .. } = &ledger.search {
         row(STEP_SEARCH, 0, None, false)?;
         for (at, provider) in cells.iter().enumerate() {
-            cell(STEP_SEARCH, 0, at, Some(provider.source), &provider.lookup)?;
+            cell(STEP_SEARCH, 0, at, Some(provider.source.catalog()), &provider.lookup)?;
         }
     }
     Ok(())
@@ -498,7 +498,9 @@ impl StoredLedger {
                                 "a stored lookup of {content_hash} names no catalog"
                             ))
                         })
-                        .and_then(|catalog| Catalog::from_str(catalog).map_err(DbError::Message))?;
+                        .and_then(|catalog| {
+                            LookupCatalog::from_str(catalog).map_err(DbError::Message)
+                        })?;
                     Ok(ProviderCell { source, lookup: lookup(cell)? })
                 })
                 .collect::<Result<Vec<_>, DbError>>()
@@ -644,7 +646,7 @@ impl StoredLedger {
         let ledger = IdentifyRunView {
             providers: providers
                 .iter()
-                .map(|catalog| Catalog::from_str(catalog).map_err(DbError::Message))
+                .map(|catalog| LookupCatalog::from_str(catalog).map_err(DbError::Message))
                 .collect::<Result<_, _>>()?,
             disc_id,
             barcode,

@@ -246,7 +246,7 @@ impl BridgeSearchStatus {
 /// them reads it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSourceSearchEntry {
-    pub source: BridgeCatalog,
+    pub source: BridgeLookupCatalog,
     pub state: BridgeSourceSearch,
 }
 
@@ -288,7 +288,7 @@ impl BridgeCandidateSearch {
             sources: sources
                 .into_iter()
                 .map(|(source, state)| BridgeSourceSearchEntry {
-                    source: BridgeCatalog::from_core(source),
+                    source: BridgeLookupCatalog::from_core(source),
                     state: BridgeSourceSearch::from_core(state),
                 })
                 .collect(),

@@ -22,7 +22,7 @@ use crate::import::release_group::ReleaseGroup;
 use crate::import::{
     AlbumLink, CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments,
 };
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::text_match;
 
 /// The offered rows of a list that are several pressings of one album.
@@ -50,7 +50,7 @@ impl SharedAlbum {
             return None;
         }
         let mut albums = Vec::new();
-        for catalog in Catalog::LOOKUP {
+        for catalog in LookupCatalog::ALL.map(LookupCatalog::catalog) {
             let mut named = rows
                 .iter()
                 .flat_map(|row| &row.releases)

@@ -5,7 +5,6 @@ use crate::import::folder_scanner::{
 use crate::import::types::{ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::LibraryManager;
-use bae_catalogs::catalog::Catalog;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::path::Path;

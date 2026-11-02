@@ -262,7 +262,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
 #[tokio::test]
 async fn the_last_source_being_asked_cannot_be_switched_off() {
     use crate::config::SourceAvailability;
-    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
@@ -277,13 +277,13 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
     assert_eq!(
         states,
         vec![
-            (Catalog::MusicBrainz, SourceAvailability::On),
-            (Catalog::Discogs, SourceAvailability::NotConfigured),
+            (LookupCatalog::MusicBrainz, SourceAvailability::On),
+            (LookupCatalog::Discogs, SourceAvailability::NotConfigured),
         ]
     );
 
     let refused = manager
-        .set_metadata_source_enabled(Catalog::MusicBrainz, false)
+        .set_metadata_source_enabled(LookupCatalog::MusicBrainz, false)
         .await
         .expect_err("the only source being asked cannot be switched off");
     assert!(refused.to_string().contains("MusicBrainz"), "the refusal names the source: {refused}");
@@ -301,12 +301,12 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 #[tokio::test]
 async fn an_unreachable_source_keeps_the_switch_underneath_it() {
     use crate::config::SourceAvailability;
-    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
     manager
-        .set_metadata_source_enabled(Catalog::Discogs, false)
+        .set_metadata_source_enabled(LookupCatalog::Discogs, false)
         .await
         .expect("switching off a source nothing is asking is allowed");
     assert_eq!(
@@ -315,7 +315,7 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
         "no credential still beats the switch"
     );
     assert!(
-        !manager.preferences().await.unwrap().identification.catalogs.enabled(Catalog::Discogs),
+        !manager.preferences().await.unwrap().identification.catalogs.enabled(LookupCatalog::Discogs),
         "the switch is kept where the person left it"
     );
 }

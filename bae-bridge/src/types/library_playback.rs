@@ -84,6 +84,22 @@ mirror_enum! {
     },
 }
 
+/// A catalog that answers questions — a search, a disc ID, a barcode — and
+/// so the one a switch, a run's provider, or a search's part names. Mirrors
+/// `bae_catalogs::catalog::LookupCatalog`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLookupCatalog {
+    MusicBrainz,
+    Discogs,
+}
+
+mirror_enum! {
+    BridgeLookupCatalog = bae_catalogs::catalog::LookupCatalog,
+    from_core: pub fn,
+    into_core: pub fn,
+    variants: { MusicBrainz, Discogs },
+}
+
 /// One catalog's key for an entity, whose kind is stated by its containing field. Mirrors
 /// `bae_core::catalog_model::records::MetadataRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate bae_mirror;
 
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::RemoteCover;
 use bae_core::album_detail::{
     FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail, ReleaseStorageState,

@@ -97,13 +97,13 @@ fn subsonic_config_allows_disabled_without_username() {
 #[test]
 fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
     let mut prefs = LookupCatalogPreferences::default();
-    for catalog in bae_catalogs::catalog::Catalog::LOOKUP {
+    for catalog in bae_catalogs::catalog::LookupCatalog::ALL {
         assert!(prefs.enabled(catalog), "every asked catalog starts asked");
     }
 
-    prefs.set(bae_catalogs::catalog::Catalog::Discogs, false);
-    assert!(prefs.enabled(bae_catalogs::catalog::Catalog::MusicBrainz));
-    assert!(!prefs.enabled(bae_catalogs::catalog::Catalog::Discogs));
+    prefs.set(bae_catalogs::catalog::LookupCatalog::Discogs, false);
+    assert!(prefs.enabled(bae_catalogs::catalog::LookupCatalog::MusicBrainz));
+    assert!(!prefs.enabled(bae_catalogs::catalog::LookupCatalog::Discogs));
 }
 
 /// The availability list folds two questions that are not the same — whether
@@ -114,7 +114,7 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
     use crate::config::SourceAvailability;
-    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
 
     let mut prefs = Preferences::default();
     assert_eq!(
@@ -124,14 +124,14 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
             .map(|entry| (entry.catalog, entry.state))
             .collect::<Vec<_>>(),
         vec![
-            (Catalog::MusicBrainz, SourceAvailability::On),
-            (Catalog::Discogs, SourceAvailability::NotConfigured),
+            (LookupCatalog::MusicBrainz, SourceAvailability::On),
+            (LookupCatalog::Discogs, SourceAvailability::NotConfigured),
         ],
         "a fresh library has no Discogs key, so it cannot ask Discogs"
     );
 
     prefs.discogs = Some(DiscogsValidation::Valid);
-    prefs.identification.catalogs.set(Catalog::Discogs, false);
+    prefs.identification.catalogs.set(LookupCatalog::Discogs, false);
     assert_eq!(
         prefs.metadata_sources()[1].state,
         SourceAvailability::Off,
@@ -151,19 +151,19 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 #[test]
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
     use crate::config::is_the_only_asked_source;
-    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
 
     let mut prefs = Preferences::default();
     let sources = prefs.metadata_sources();
-    assert!(is_the_only_asked_source(&sources, Catalog::MusicBrainz));
+    assert!(is_the_only_asked_source(&sources, LookupCatalog::MusicBrainz));
     assert!(
-        !is_the_only_asked_source(&sources, Catalog::Discogs),
+        !is_the_only_asked_source(&sources, LookupCatalog::Discogs),
         "a source nothing is asking is not the last one asked"
     );
 
     prefs.discogs = Some(DiscogsValidation::Valid);
     let sources = prefs.metadata_sources();
-    for catalog in Catalog::LOOKUP {
+    for catalog in LookupCatalog::ALL {
         assert!(
             !is_the_only_asked_source(&sources, catalog),
             "with both asked, neither is the last"

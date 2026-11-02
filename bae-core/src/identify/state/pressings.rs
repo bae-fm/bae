@@ -14,7 +14,7 @@
 use super::{LookupOutcome, LookupState};
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SourceFailure};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::text_match::{catalog_key, same_label_name};
 
 /// What an offered row's pressing is asked for by on one catalog.
@@ -36,7 +36,7 @@ pub enum PressingKey {
 /// One catalog's lookup of one offered row's pressing.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PressingLookup {
-    pub source: Catalog,
+    pub source: LookupCatalog,
     pub key: PressingKey,
     pub state: LookupState,
 }
@@ -75,7 +75,7 @@ impl PressingLookup {
     pub(super) fn failure(&self) -> Option<SourceFailure> {
         match &self.state {
             LookupState::Failed { failure } => {
-                Some(SourceFailure { source: self.source, failure: failure.clone() })
+                Some(SourceFailure { source: self.source.catalog(), failure: failure.clone() })
             }
             LookupState::LookingUp | LookupState::Done { .. } => None,
         }
@@ -95,17 +95,17 @@ fn prints_under(result: &MetadataResult, number: &str, label: &str) -> bool {
 /// catalogs it has no record of, where it states anything to ask by.
 pub(super) fn keys_of(
     row: &[MetadataResult],
-    providers: &[Catalog],
-) -> Vec<(Catalog, PressingKey)> {
-    Catalog::LOOKUP
+    providers: &[LookupCatalog],
+) -> Vec<(LookupCatalog, PressingKey)> {
+    LookupCatalog::ALL
         .into_iter()
         .filter(|catalog| providers.contains(catalog))
-        .filter(|catalog| !row.iter().any(|record| record.source == *catalog))
+        .filter(|catalog| !row.iter().any(|record| record.source == catalog.catalog()))
         .filter_map(|catalog| {
             let link = row
                 .iter()
                 .flat_map(|record| &record.links)
-                .find(|release| release.catalog == catalog)
+                .find(|release| release.catalog == catalog.catalog())
                 .map(|release| PressingKey::Link { release: release.clone() });
             let barcode = || {
                 row.iter()

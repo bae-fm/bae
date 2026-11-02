@@ -86,7 +86,7 @@ struct ImportSettingsTab: View {
         Toggle(
             String(
                 localized:
-                    "Search \(bridgeCatalogName(catalog: setting.catalog))"
+                    "Search \(bridgeLookupCatalogName(catalog: setting.catalog))"
             ),
             isOn: Binding(
                 get: { setting.availability == .on },

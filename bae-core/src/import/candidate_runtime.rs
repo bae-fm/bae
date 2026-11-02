@@ -41,7 +41,7 @@ use crate::catalog_model::Failure;
 use crate::db::{Database, DbError};
 use crate::identify::{IdentifyRunId, IdentifyState, RunOutcome};
 use crate::signals::Signals;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -264,14 +264,14 @@ impl CandidateRuntime {
     pub(super) async fn retry_search(
         &self,
         key: &CandidateKey,
-    ) -> Result<Option<(SearchRun, SearchQuery, Vec<Catalog>)>, DbError> {
+    ) -> Result<Option<(SearchRun, SearchQuery, Vec<LookupCatalog>)>, DbError> {
         self.database.retry_candidate_search(key).await
     }
 
     /// Stop asking `source` on every search. Each keeps its run, so the
     /// other source's answer still lands; the dropped source's is refused
     /// because that part is no longer searching.
-    pub(super) async fn switch_source_off(&self, source: Catalog) -> Result<(), DbError> {
+    pub(super) async fn switch_source_off(&self, source: LookupCatalog) -> Result<(), DbError> {
         self.database.switch_search_source_off(source).await
     }
 
@@ -289,7 +289,7 @@ impl CandidateRuntime {
     pub(super) async fn land_search(
         &self,
         run: SearchRun,
-        source: Catalog,
+        source: LookupCatalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
         self.database.land_candidate_search(run, source, outcome).await

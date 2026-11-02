@@ -8,7 +8,7 @@ use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::catalog_model::LookupFailure;
 use crate::identify::NotAskedReason;
 use crate::signals::DiscIdSignal;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<MetadataResult>;
@@ -167,7 +167,7 @@ impl IsrcProgress {
 /// One provider's part of a lookup.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderLookup {
-    pub source: Catalog,
+    pub source: LookupCatalog,
     pub state: LookupState,
 }
 
@@ -293,8 +293,8 @@ impl ValueLookup {
     /// Ask every provider about `value`, each through the effect `ask` makes.
     fn started(
         value: &str,
-        providers: &[Catalog],
-        ask: impl Fn(Catalog, String) -> Effect,
+        providers: &[LookupCatalog],
+        ask: impl Fn(LookupCatalog, String) -> Effect,
         effects: &mut Vec<Effect>,
     ) -> Self {
         Self {
@@ -304,7 +304,7 @@ impl ValueLookup {
     }
 
     /// Land `source`'s answer, where it is still being waited for.
-    pub(super) fn answer(&mut self, source: Catalog, outcome: LookupOutcome) {
+    pub(super) fn answer(&mut self, source: LookupCatalog, outcome: LookupOutcome) {
         answer_provider(&mut self.providers, source, outcome);
     }
 
@@ -323,8 +323,8 @@ impl ValueLookup {
 
 /// Ask every one of `providers`, each through the effect `ask` makes.
 fn ask_every(
-    providers: &[Catalog],
-    ask: impl Fn(Catalog) -> Effect,
+    providers: &[LookupCatalog],
+    ask: impl Fn(LookupCatalog) -> Effect,
     effects: &mut Vec<Effect>,
 ) -> Vec<ProviderLookup> {
     providers
@@ -338,7 +338,11 @@ fn ask_every(
 
 /// Land `source`'s answer among `providers`, where it is still being waited
 /// for.
-fn answer_provider(providers: &mut [ProviderLookup], source: Catalog, outcome: LookupOutcome) {
+fn answer_provider(
+    providers: &mut [ProviderLookup],
+    source: LookupCatalog,
+    outcome: LookupOutcome,
+) {
     if let Some(lookup) =
         providers.iter_mut().find(|l| l.source == source && l.state == LookupState::LookingUp)
     {
@@ -370,7 +374,7 @@ fn providers_failures(providers: &[ProviderLookup]) -> Vec<SourceFailure> {
         .iter()
         .filter_map(|l| match &l.state {
             LookupState::Failed { failure } => {
-                Some(SourceFailure { source: l.source, failure: failure.clone() })
+                Some(SourceFailure { source: l.source.catalog(), failure: failure.clone() })
             }
             _ => None,
         })
@@ -422,8 +426,8 @@ fn search_covers(searched: Option<&str>, wanted: Option<&str>) -> bool {
 /// at a time and every page is read, so naming the artist leaves fewer
 /// pages; MusicBrainz answers it in one, so naming it there saves no request
 /// and adds one per artist.
-pub(super) fn names_artist(catalog: Catalog) -> bool {
-    catalog == Catalog::Discogs
+pub(super) fn names_artist(catalog: LookupCatalog) -> bool {
+    catalog == LookupCatalog::Discogs
 }
 
 /// The artist `result` credits, as a search names it: its artist line as the
@@ -445,7 +449,7 @@ impl CatalogLookup {
     fn started(
         value: &str,
         artist: Option<String>,
-        providers: &[Catalog],
+        providers: &[LookupCatalog],
         effects: &mut Vec<Effect>,
     ) -> Self {
         let mut lookup = Self { value: value.to_string(), searches: Vec::new() };
@@ -454,7 +458,12 @@ impl CatalogLookup {
     }
 
     /// Search the number under `artist` as well, on `providers`.
-    fn search(&mut self, artist: Option<String>, providers: &[Catalog], effects: &mut Vec<Effect>) {
+    fn search(
+        &mut self,
+        artist: Option<String>,
+        providers: &[LookupCatalog],
+        effects: &mut Vec<Effect>,
+    ) {
         let providers = ask_every(
             providers,
             |source| Effect::LookupCatalog {
@@ -471,7 +480,7 @@ impl CatalogLookup {
     /// being waited for.
     pub(super) fn answer(
         &mut self,
-        source: Catalog,
+        source: LookupCatalog,
         artist: &Option<String>,
         outcome: LookupOutcome,
     ) {
@@ -505,7 +514,7 @@ impl CatalogLookup {
     }
 
     /// Whether any search of the number asked `source`.
-    pub(super) fn asks(&self, source: Catalog) -> bool {
+    pub(super) fn asks(&self, source: LookupCatalog) -> bool {
         self.searches
             .iter()
             .any(|search| search.providers.iter().any(|provider| provider.source == source))
@@ -513,7 +522,7 @@ impl CatalogLookup {
 
     /// Whether a search of the number already holds every release one
     /// asking `source` under `artist` would return.
-    pub(super) fn covers(&self, source: Catalog, artist: Option<&str>) -> bool {
+    pub(super) fn covers(&self, source: LookupCatalog, artist: Option<&str>) -> bool {
         self.searches.iter().any(|search| {
             search.covers(artist)
                 && search.providers.iter().any(|provider| provider.source == source)
@@ -563,7 +572,7 @@ impl CatalogProgress {
         self,
         value: &str,
         artist: Option<String>,
-        providers: &[Catalog],
+        providers: &[LookupCatalog],
         effects: &mut Vec<Effect>,
     ) -> Self {
         let mut values = match self {
@@ -731,7 +740,7 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
     excluded: bool,
-    providers: &[Catalog],
+    providers: &[LookupCatalog],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
     match signal {
@@ -739,7 +748,7 @@ pub(super) fn start_discid_progress(
             // The reason nearest the value wins: see `NotAskedReason`.
             let reason = if excluded {
                 Some(NotAskedReason::LeftOut)
-            } else if !providers.contains(&Catalog::DISC_ID_CATALOG) {
+            } else if !providers.contains(&LookupCatalog::DISC_ID) {
                 Some(NotAskedReason::NoCatalog)
             } else {
                 None
@@ -767,13 +776,13 @@ pub(super) fn start_discid_progress(
 /// Ask MusicBrainz about every code the audio's tags carry, in one search.
 pub(super) fn start_isrc_progress(
     codes: Vec<String>,
-    providers: &[Catalog],
+    providers: &[LookupCatalog],
     effects: &mut Vec<Effect>,
 ) -> IsrcProgress {
     if codes.is_empty() {
         return IsrcProgress::Skipped;
     }
-    if !providers.contains(&Catalog::ISRC_CATALOG) {
+    if !providers.contains(&LookupCatalog::ISRC) {
         return IsrcProgress::NotAsked { reason: NotAskedReason::NoCatalog };
     }
     effects.push(Effect::LookupIsrcs { isrcs: codes });
@@ -785,7 +794,7 @@ pub(super) fn start_barcode_progress(
     codes: Vec<String>,
     excluded: &[String],
     had_source: bool,
-    providers: &[Catalog],
+    providers: &[LookupCatalog],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
     if codes.is_empty() {
@@ -816,7 +825,7 @@ pub(super) fn start_barcode_progress(
 /// stands: no release the run found carries it yet to say whose it is.
 pub(super) fn start_catalog_progress(
     chosen: &[String],
-    providers: &[Catalog],
+    providers: &[LookupCatalog],
     effects: &mut Vec<Effect>,
 ) -> CatalogProgress {
     if chosen.is_empty() {

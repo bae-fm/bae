@@ -6,7 +6,6 @@ import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
-import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
@@ -19,6 +18,7 @@ import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeImportStorage
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgePressingFacts
@@ -266,12 +266,12 @@ object BridgeFixtures {
             lookupCatalogs =
                 listOf(
                     BridgeLookupCatalogSetting(
-                        catalog = BridgeCatalog.MUSIC_BRAINZ,
+                        catalog = BridgeLookupCatalog.MUSIC_BRAINZ,
                         availability = BridgeSourceAvailability.ON,
                         canChange = false,
                     ),
                     BridgeLookupCatalogSetting(
-                        catalog = BridgeCatalog.DISCOGS,
+                        catalog = BridgeLookupCatalog.DISCOGS,
                         availability = BridgeSourceAvailability.NOT_CONFIGURED,
                         canChange = false,
                     ),

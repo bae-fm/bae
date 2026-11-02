@@ -307,9 +307,17 @@ pub struct AutomationToolbarSignal {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchQuery {
-    General { artist: String, album: String, source: AutomationCatalog },
-    CatalogNumber { catalog_number: String, source: AutomationCatalog },
-    Barcode { barcode: String, source: AutomationCatalog },
+    General { artist: String, album: String, source: AutomationLookupCatalog },
+    CatalogNumber { catalog_number: String, source: AutomationLookupCatalog },
+    Barcode { barcode: String, source: AutomationLookupCatalog },
+}
+
+/// A catalog that answers searches: the one a search is asked of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationLookupCatalog {
+    MusicBrainz,
+    Discogs,
 }
 
 /// A service that publishes descriptions of releases.

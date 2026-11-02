@@ -24,7 +24,7 @@ use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::import::candidates::CandidateFiles;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::str::FromStr;
 
 /// A query as its row's columns: the mode, and the values that mode asks.
@@ -215,8 +215,9 @@ fn load_on(
             .unwrap_or_default()
             .into_iter()
             .map(|part| {
-                let catalog = Catalog::from_str(&part.catalog).map_err(DbError::Message)?;
-                Ok((catalog, part.part(by_catalog.remove(&catalog).unwrap_or_default())?))
+                let catalog = LookupCatalog::from_str(&part.catalog).map_err(DbError::Message)?;
+                let results = by_catalog.remove(&catalog.catalog()).unwrap_or_default();
+                Ok((catalog, part.part(results)?))
             })
             .collect::<Result<Vec<_>, DbError>>()?;
         if let Some(catalog) = by_catalog.keys().next() {
@@ -330,7 +331,7 @@ fn start_on(
 fn land_on(
     sql: &CovenWrite<'_>,
     run: SearchRun,
-    catalog: Catalog,
+    catalog: LookupCatalog,
     outcome: &Result<Vec<MetadataResult>, Failure>,
 ) -> Result<bool, DbError> {
     let empty = Vec::new();
@@ -363,7 +364,7 @@ fn land_on(
     let next = usize::try_from(next)
         .map_err(|error| DbError::Message(format!("a search's next position {next}: {error}")))?;
     for (offset, result) in results.iter().enumerate() {
-        if result.source != catalog {
+        if result.source != catalog.catalog() {
             return Err(DbError::Message(format!(
                 "{} answered a search with a {} release",
                 catalog.as_str(),
@@ -415,7 +416,7 @@ impl Database {
     pub(crate) async fn retry_candidate_search(
         &self,
         key: &CandidateKey,
-    ) -> Result<Option<(SearchRun, SearchQuery, Vec<Catalog>)>, DbError> {
+    ) -> Result<Option<(SearchRun, SearchQuery, Vec<LookupCatalog>)>, DbError> {
         let key = key.clone();
         self.call(move |sql| {
             let Some((run, query)) = sql
@@ -444,7 +445,7 @@ impl Database {
             retried.sort();
             let catalogs = retried
                 .into_iter()
-                .map(|(_, catalog)| Catalog::from_str(&catalog).map_err(DbError::Message))
+                .map(|(_, catalog)| LookupCatalog::from_str(&catalog).map_err(DbError::Message))
                 .collect::<Result<_, _>>()?;
             Ok(Some((SearchRun::of(run), query?, catalogs)))
         })
@@ -455,7 +456,10 @@ impl Database {
     /// releases it returned go. Each search keeps its run, so another
     /// catalog's answer still lands; `catalog`'s, still out, finds its part
     /// no longer searching.
-    pub(crate) async fn switch_search_source_off(&self, catalog: Catalog) -> Result<(), DbError> {
+    pub(crate) async fn switch_search_source_off(
+        &self,
+        catalog: LookupCatalog,
+    ) -> Result<(), DbError> {
         self.call(move |sql| {
             // A part holds releases only while it stands answered, so they go
             // first.
@@ -479,7 +483,7 @@ impl Database {
     pub(crate) async fn land_candidate_search(
         &self,
         run: SearchRun,
-        catalog: Catalog,
+        catalog: LookupCatalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
         self.call(move |sql| land_on(sql, run, catalog, &outcome)).await

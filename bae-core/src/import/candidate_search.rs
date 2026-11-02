@@ -24,7 +24,7 @@ use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
 use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::release_group::{group_results, ReleaseGroup};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 /// The run a stored search is on: what each catalog's answer names to land
 /// on it. A new search for a key is on a new run, and no run is used twice.
@@ -113,9 +113,9 @@ pub enum SearchStatus {
 pub struct CandidateSearch {
     pub query: SearchQuery,
     /// Each catalog's part of this search, one entry per
-    /// [`Catalog::LOOKUP`] member, in that order. Neither is the main one: a
+    /// [`LookupCatalog`], in that order. Neither is the main one: a
     /// surface iterates this and every method below folds over it.
-    pub sources: Vec<(Catalog, SourceSearch)>,
+    pub sources: Vec<(LookupCatalog, SourceSearch)>,
     /// Every settled source's results, folded into album cards as the
     /// search is read, so a card gains a second source's rows the moment that
     /// source answers.
@@ -153,7 +153,7 @@ impl CandidateSearch {
     /// and the results a pick read, its cards folded from them.
     pub(crate) fn of(
         query: SearchQuery,
-        sources: Vec<(Catalog, SourceSearch)>,
+        sources: Vec<(LookupCatalog, SourceSearch)>,
         picked: Vec<PickedResult>,
     ) -> Self {
         let mut search = Self { query, sources, groups: Vec::new(), picked };
@@ -163,7 +163,7 @@ impl CandidateSearch {
 
     /// This source's part of the search, or `None` for a source the search was
     /// not started with.
-    pub fn source(&self, source: Catalog) -> Option<&SourceSearch> {
+    pub fn source(&self, source: LookupCatalog) -> Option<&SourceSearch> {
         self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
     }
 
@@ -220,7 +220,7 @@ impl CandidateSearch {
 
     /// The sources with a lookup to run — every asked source of a just-started
     /// search, and the re-asked ones after a Retry.
-    pub fn searching_sources(&self) -> Vec<Catalog> {
+    pub fn searching_sources(&self) -> Vec<LookupCatalog> {
         self.sources_matching(|state| matches!(state, SourceSearch::Searching))
     }
 
@@ -239,7 +239,7 @@ impl CandidateSearch {
     }
 
     /// The sources whose part satisfies `predicate`, in source order.
-    fn sources_matching(&self, predicate: impl Fn(&SourceSearch) -> bool) -> Vec<Catalog> {
+    fn sources_matching(&self, predicate: impl Fn(&SourceSearch) -> bool) -> Vec<LookupCatalog> {
         self.sources
             .iter()
             .filter(|(_, state)| predicate(state))
@@ -262,7 +262,7 @@ impl CandidateSearch {
 
     /// The sources that failed, for the lines that name them and the Retry
     /// that re-asks them.
-    pub fn failed_sources(&self) -> Vec<Catalog> {
+    pub fn failed_sources(&self) -> Vec<LookupCatalog> {
         self.sources_matching(|state| matches!(state, SourceSearch::Failed(_)))
     }
 
@@ -289,20 +289,20 @@ mod tests {
     /// A library that asks every source.
     fn all_on() -> Vec<CatalogAvailability> {
         availability(&[
-            (Catalog::MusicBrainz, SourceAvailability::On),
-            (Catalog::Discogs, SourceAvailability::On),
+            (LookupCatalog::MusicBrainz, SourceAvailability::On),
+            (LookupCatalog::Discogs, SourceAvailability::On),
         ])
     }
 
     /// A library with no Discogs key: it is listed, and it is not asked.
     fn discogs_unconfigured() -> Vec<CatalogAvailability> {
         availability(&[
-            (Catalog::MusicBrainz, SourceAvailability::On),
-            (Catalog::Discogs, SourceAvailability::NotConfigured),
+            (LookupCatalog::MusicBrainz, SourceAvailability::On),
+            (LookupCatalog::Discogs, SourceAvailability::NotConfigured),
         ])
     }
 
-    fn availability(states: &[(Catalog, SourceAvailability)]) -> Vec<CatalogAvailability> {
+    fn availability(states: &[(LookupCatalog, SourceAvailability)]) -> Vec<CatalogAvailability> {
         states.iter().map(|&(catalog, state)| CatalogAvailability { catalog, state }).collect()
     }
 
@@ -310,7 +310,7 @@ mod tests {
         SearchQuery::General { artist: "Artist Name".to_string(), album: "Album Title".to_string() }
     }
 
-    fn result(source: Catalog, release_id: &str, group_id: &str) -> MetadataResult {
+    fn result(source: impl Into<Catalog>, release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
@@ -333,7 +333,7 @@ mod tests {
     fn search(musicbrainz: SourceSearch, discogs: SourceSearch) -> CandidateSearch {
         CandidateSearch::of(
             query(),
-            vec![(Catalog::MusicBrainz, musicbrainz), (Catalog::Discogs, discogs)],
+            vec![(LookupCatalog::MusicBrainz, musicbrainz), (LookupCatalog::Discogs, discogs)],
             Vec::new(),
         )
     }
@@ -459,8 +459,8 @@ mod tests {
         let read = CandidateSearch::of(
             query(),
             vec![
-                (Catalog::MusicBrainz, unpaired(Catalog::MusicBrainz, "mb-1", "group-x")),
-                (Catalog::Discogs, unpaired(Catalog::Discogs, "dg-1", "master-7")),
+                (LookupCatalog::MusicBrainz, unpaired(Catalog::MusicBrainz, "mb-1", "group-x")),
+                (LookupCatalog::Discogs, unpaired(Catalog::Discogs, "dg-1", "master-7")),
             ],
             vec![PickedResult {
                 release_id: "mb-1".to_string(),
@@ -479,11 +479,14 @@ mod tests {
         assert_eq!(
             search.sources,
             vec![
-                (Catalog::MusicBrainz, SourceSearch::Searching),
-                (Catalog::Discogs, SourceSearch::Searching),
+                (LookupCatalog::MusicBrainz, SourceSearch::Searching),
+                (LookupCatalog::Discogs, SourceSearch::Searching),
             ]
         );
-        assert_eq!(search.searching_sources(), vec![Catalog::MusicBrainz, Catalog::Discogs]);
+        assert_eq!(
+            search.searching_sources(),
+            vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs]
+        );
         assert!(!search.is_settled());
         assert!(search.groups.is_empty());
     }
@@ -491,8 +494,8 @@ mod tests {
     #[test]
     fn an_unconfigured_discogs_is_never_asked() {
         let started = CandidateSearch::started(query(), &discogs_unconfigured());
-        assert_eq!(started.source(Catalog::Discogs), Some(&SourceSearch::NotConfigured));
-        assert_eq!(started.searching_sources(), vec![Catalog::MusicBrainz]);
+        assert_eq!(started.source(LookupCatalog::Discogs), Some(&SourceSearch::NotConfigured));
+        assert_eq!(started.searching_sources(), vec![LookupCatalog::MusicBrainz]);
         assert!(!started.is_settled(), "MusicBrainz is still looking");
 
         let answered = search(
@@ -511,19 +514,19 @@ mod tests {
         let search = CandidateSearch::started(
             query(),
             &availability(&[
-                (Catalog::MusicBrainz, SourceAvailability::Off),
-                (Catalog::Discogs, SourceAvailability::On),
+                (LookupCatalog::MusicBrainz, SourceAvailability::Off),
+                (LookupCatalog::Discogs, SourceAvailability::On),
             ]),
         );
 
         assert_eq!(
             search.sources,
             vec![
-                (Catalog::MusicBrainz, SourceSearch::Off),
-                (Catalog::Discogs, SourceSearch::Searching),
+                (LookupCatalog::MusicBrainz, SourceSearch::Off),
+                (LookupCatalog::Discogs, SourceSearch::Searching),
             ]
         );
-        assert_eq!(search.searching_sources(), vec![Catalog::Discogs]);
+        assert_eq!(search.searching_sources(), vec![LookupCatalog::Discogs]);
         assert!(!search.is_settled(), "Discogs is still looking");
     }
 
@@ -534,8 +537,8 @@ mod tests {
         let search = CandidateSearch::started(
             query(),
             &availability(&[
-                (Catalog::MusicBrainz, SourceAvailability::Off),
-                (Catalog::Discogs, SourceAvailability::NotConfigured),
+                (LookupCatalog::MusicBrainz, SourceAvailability::Off),
+                (LookupCatalog::Discogs, SourceAvailability::NotConfigured),
             ]),
         );
 
@@ -585,7 +588,7 @@ mod tests {
             failed(crate::catalog_model::LookupFailure::Network),
         );
         assert!(search.is_settled());
-        assert_eq!(search.failed_sources(), vec![Catalog::Discogs]);
+        assert_eq!(search.failed_sources(), vec![LookupCatalog::Discogs]);
         assert_eq!(search.groups.len(), 1);
     }
 

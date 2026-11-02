@@ -24,25 +24,36 @@ fn stored_strings_and_names_are_distinct() {
 }
 
 #[test]
+fn a_stored_catalog_that_answers_no_lookups_reads_as_no_lookup_catalog() {
+    for catalog in LookupCatalog::ALL {
+        assert_eq!(LookupCatalog::from_str(catalog.as_str()), Ok(catalog));
+    }
+    assert!(LookupCatalog::from_str(Catalog::Spotify.as_str()).is_err());
+}
+
+#[test]
 fn an_unknown_stored_string_is_an_error() {
     assert!(Catalog::from_str("bandcamp_but_not").is_err());
 }
 
 #[test]
 fn the_two_asked_catalogs_lead_the_list() {
-    assert_eq!(&Catalog::ALL[..2], &Catalog::LOOKUP[..]);
+    assert_eq!(&Catalog::ALL[..2], &LookupCatalog::ALL.map(LookupCatalog::catalog)[..]);
+}
+
+#[test]
+fn a_catalog_reads_as_a_lookup_catalog_exactly_when_it_answers_questions() {
+    for catalog in Catalog::ALL {
+        let asked = LookupCatalog::ALL.map(LookupCatalog::catalog).contains(&catalog);
+        assert_eq!(catalog.lookup().map(LookupCatalog::catalog), asked.then_some(catalog));
+    }
 }
 
 #[test]
 fn only_the_asked_catalogs_group_their_releases() {
     for catalog in Catalog::ALL {
         let grouped = catalog.group_url("g").is_some();
-        assert_eq!(
-            grouped,
-            Catalog::LOOKUP.contains(&catalog),
-            "{} groups: {grouped}",
-            catalog.as_str()
-        );
+        assert_eq!(grouped, catalog.lookup().is_some(), "{} groups: {grouped}", catalog.as_str());
     }
 }
 
@@ -84,7 +95,7 @@ fn a_parsed_page_rebuilds_the_address_it_was_read_from() {
         ("https://www.deezer.com/album/424242", Catalog::Deezer, "424242"),
     ] {
         let page = parse_catalog_url(url).unwrap_or_else(|| panic!("{url} names a catalog page"));
-        let expected = if Catalog::LOOKUP.contains(&catalog) {
+        let expected = if catalog.lookup().is_some() {
             CatalogPage::Release { catalog, key: key.to_string() }
         } else {
             CatalogPage::Group { catalog, key: key.to_string() }

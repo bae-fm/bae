@@ -130,7 +130,7 @@ pub enum BridgeLookupState {
 /// Mirrors `bae_core::identify::ProviderCell`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeProviderCell {
-    pub source: BridgeCatalog,
+    pub source: BridgeLookupCatalog,
     pub lookup: BridgeLookupState,
 }
 
@@ -241,7 +241,7 @@ pub enum BridgeSearchStep {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeIdentifyRun {
     /// The providers the run asks, in the order their cells are listed.
-    pub providers: Vec<BridgeCatalog>,
+    pub providers: Vec<BridgeLookupCatalog>,
     pub disc_id: BridgeDiscIdStep,
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,

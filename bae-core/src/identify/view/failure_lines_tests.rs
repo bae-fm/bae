@@ -6,7 +6,7 @@ use super::*;
 use crate::catalog_model::search::SourceFailure;
 use crate::identify::{Findings, IdentifyFailure, TerminalVerdict};
 
-const DG: Catalog = Catalog::Discogs;
+const DG: LookupCatalog = LookupCatalog::Discogs;
 
 /// The failures a surface says in lines of their own under the ledger: a
 /// lookup's failure its cell shows, with the cell's retry, is not said again
@@ -14,10 +14,14 @@ const DG: Catalog = Catalog::Discogs;
 /// release the run picked — is.
 #[test]
 fn a_failure_its_cell_shows_has_no_line_of_its_own() {
-    let catalog =
-        IdentifyFailure::Catalog(SourceFailure { source: DG, failure: LookupFailure::Timeout });
-    let cover =
-        IdentifyFailure::Cover(SourceFailure { source: MB, failure: LookupFailure::Network });
+    let catalog = IdentifyFailure::Catalog(SourceFailure {
+        source: DG.catalog(),
+        failure: LookupFailure::Timeout,
+    });
+    let cover = IdentifyFailure::Cover(SourceFailure {
+        source: MB.catalog(),
+        failure: LookupFailure::Network,
+    });
     let ledger = IdentifyRunView {
         providers: vec![MB, DG],
         disc_id: DiscIdStepView::Absent,
@@ -58,7 +62,7 @@ fn a_failure_its_cell_shows_has_no_line_of_its_own() {
 #[test]
 fn every_failure_of_a_run_with_no_ledger_has_a_line() {
     let failures = vec![IdentifyFailure::Search(SourceFailure {
-        source: DG,
+        source: DG.catalog(),
         failure: LookupFailure::Network,
     })];
     let verdict = TerminalVerdict::Failed {
