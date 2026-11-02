@@ -274,9 +274,10 @@ struct DiscogsSettingsContent: View {
     // MARK: - Previews
 
     /// The key as the Sources section draws it: one row of a grouped Form.
-    private struct DiscogsKeyPreview: View {
+    struct DiscogsKeyPreview: View {
         let status: BridgeDiscogsTokenStatus
         var draft: String = ""
+        var isValidating = false
         var saveError: DisplayError?
 
         var body: some View {
@@ -285,7 +286,7 @@ struct DiscogsSettingsContent: View {
                     DiscogsSettingsContent(
                         draft: .constant(draft),
                         status: status,
-                        isValidating: false,
+                        isValidating: isValidating,
                         saveError: saveError,
                         readError: nil,
                         onSave: {},
@@ -309,6 +310,14 @@ struct DiscogsSettingsContent: View {
 
     #Preview("Unvalidated") {
         DiscogsKeyPreview(status: .unvalidated, draft: "abcdef123456")
+    }
+
+    #Preview("Checking") {
+        DiscogsKeyPreview(
+            status: .unvalidated,
+            draft: "abcdef123456",
+            isValidating: true
+        )
     }
 
     #Preview("Rejected") {

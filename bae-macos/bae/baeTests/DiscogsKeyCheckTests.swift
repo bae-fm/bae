@@ -6,17 +6,22 @@ import Testing
 @testable import bae
 
 /// Checking a Discogs key asks Discogs over the network, so the key's row
-/// says so while it does.
+/// spins, saying so, while it does; the words are the
+/// `settings-discogs-checking` shot's.
 @MainActor
 @Suite("Discogs key check")
 struct DiscogsKeyCheckTests {
     @Test(
-        "a running check is named",
+        "the key's row spins only while a check runs",
         arguments: [
             BridgeDiscogsTokenStatus.notConfigured, .unvalidated,
-        ]
+        ],
+        [true, false]
     )
-    func checkIsNamed(status: BridgeDiscogsTokenStatus) async throws {
+    func spinsWhileChecking(
+        status: BridgeDiscogsTokenStatus,
+        isValidating: Bool
+    ) async throws {
         let size = NSSize(width: 500, height: 320)
         try await SnapshotTestSupport.withHostedWindow(
             Form {
@@ -24,7 +29,7 @@ struct DiscogsKeyCheckTests {
                     DiscogsSettingsContent(
                         draft: .constant("abcdef123456"),
                         status: status,
-                        isValidating: true,
+                        isValidating: isValidating,
                         saveError: nil,
                         readError: nil,
                         onSave: {},
@@ -38,13 +43,9 @@ struct DiscogsKeyCheckTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(
-                lines.carrying("Checking the key with Discogs"),
-                "drew \(lines)"
-            )
+            let spinners = SnapshotTestSupport.descendants(of: host)
+                .filter { $0 is NSProgressIndicator }
+            #expect(spinners.count == (isValidating ? 1 : 0))
         }
     }
 }

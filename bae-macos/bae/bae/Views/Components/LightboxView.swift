@@ -478,6 +478,39 @@ private struct LiveTextOverlay: NSViewRepresentable {
                 .environment(ImageStore.stub())
         }
     }
+
+    #Preview("Loading") {
+        LightboxView<LightboxItem>.loadingPreview()
+    }
+
+    extension LightboxView where Item == LightboxItem {
+        /// A remote image whose bytes never arrive, which keeps the lightbox
+        /// on its load.
+        static func loadingPreview() -> some View {
+            let image = BridgeRemoteImageSet(
+                url: "https://images.example/front-original.png",
+                downscaled: []
+            )
+            let item = LightboxItem(
+                id: "front",
+                label: "Front",
+                image: .remote(image)
+            )
+            let images = ImageStore(fetchRemoteImage: { _, _ in
+                try await Task.sleep(for: .seconds(3_600))
+                throw CancellationError()
+            })
+            return Cursor(items: [item], preferring: "front")
+                .map { cursor in
+                    LightboxView(
+                        cursor: cursor,
+                        onUpdate: { _ in },
+                        onDismiss: {}
+                    )
+                    .environment(images)
+                }
+        }
+    }
 #endif
 
 // periphery:ignore - a `.task(id:)` identity: compared, never read.

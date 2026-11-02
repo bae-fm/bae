@@ -203,7 +203,7 @@ struct ShotScene {
             ) {
                 AnyView(PreviewScenes.nowPlayingBar(.allHere))
             },
-        ] + storageManagerScenes
+        ] + storageManagerScenes + waitScenes
 }
 
 extension ShotScene {

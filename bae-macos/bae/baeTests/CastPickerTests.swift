@@ -5,13 +5,17 @@ import Testing
 
 @testable import bae
 
-/// Connecting to a device can take a while, so the picker names the device
-/// it is connecting to until the cast starts.
+/// Connecting to a device can take a while, so the picker spins, naming the
+/// device it is connecting to, until the cast starts; the words are the
+/// `cast-picker-connecting` shot's.
 @MainActor
 @Suite("Cast picker")
 struct CastPickerTests {
-    @Test("a connecting cast names its device")
-    func connectingNamesTheDevice() async throws {
+    @Test(
+        "the picker spins only while a cast connects",
+        arguments: ["Kitchen", nil]
+    )
+    func spinsWhileConnecting(connectingName: String?) async throws {
         let size = NSSize(width: 300, height: 160)
         try await SnapshotTestSupport.withHostedWindow(
             CastPickerPopover(
@@ -24,7 +28,7 @@ struct CastPickerTests {
                 ],
                 castingDevice: nil,
                 endedFailure: nil,
-                connectingName: "Kitchen",
+                connectingName: connectingName,
                 onCast: { _ in },
                 onDisconnect: {}
             )
@@ -32,10 +36,9 @@ struct CastPickerTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(lines.carrying("Connecting to Kitchen"), "drew \(lines)")
+            let spinners = SnapshotTestSupport.descendants(of: host)
+                .filter { $0 is NSProgressIndicator }
+            #expect(spinners.count == (connectingName == nil ? 0 : 1))
         }
     }
 }
