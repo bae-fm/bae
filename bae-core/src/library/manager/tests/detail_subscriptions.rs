@@ -158,7 +158,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
     let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let values = services.subscribe_release_detail();
     values.set(Some(release.id.clone())).unwrap();
-    let actions_until = |accept: fn(&[crate::album_detail::ReleaseStorageAction]) -> bool| {
+    let actions_until = |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {
         let values = &values;
         async move {
             tokio::time::timeout(std::time::Duration::from_secs(20), async {
@@ -179,6 +179,6 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
     connect_test_cloud(&manager).await;
     assert_eq!(
         actions_until(|actions| !actions.is_empty()).await,
-        vec![crate::album_detail::ReleaseStorageAction::Upload]
+        vec![bae_types::release_storage::ReleaseStorageAction::Upload]
     );
 }

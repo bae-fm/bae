@@ -48,11 +48,12 @@ use bae_audio::DecodeError;
 // from the queue's `ContextSource`.
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
-use crate::playback::timeline::{StreamPosition, TrackTime, TrackTimeline};
+use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use crate::playback::PlayingTrack;
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_audio::track_stream::TrackStream;
 use bae_types::pressing::PhysicalMedium;
+use bae_types::track_time::TrackTime;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;

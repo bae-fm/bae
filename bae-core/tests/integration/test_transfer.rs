@@ -603,7 +603,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
             .expect("storage projection resolves")
     };
 
-    use bae_core::album_detail::ReleaseStorageAction::{DetachAudio, Pin};
+    use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin};
     assert_eq!(
         next().await.selection_actions,
         [DetachAudio],

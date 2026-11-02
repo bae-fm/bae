@@ -6,7 +6,7 @@ use super::RepeatMode;
 use crate::db::{
     ContextFill, ContextFilled, DbError, ManualPlace, PlaybackQueueTables, ShuffleChange,
 };
-use crate::playback::timeline::TrackTime;
+use bae_types::track_time::TrackTime;
 
 /// What names a queued row to the screens and back. Every row of either lane
 /// is an entry of its own — the same track queued twice is two entries, each

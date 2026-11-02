@@ -329,7 +329,7 @@ pub(super) struct ReleaseDetailRows {
     remote: bool,
     upload: Option<DbReleaseUpload>,
     download: Option<crate::library::DownloadPhase>,
-    transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
+    transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
     cover_version: Option<String>,
 }
 

@@ -3,8 +3,9 @@
 //! device change.
 
 use super::*;
-use crate::album_detail::{OtherDevice, ReleasePlayability, ReleaseStorageAction};
+use crate::album_detail::{OtherDevice, ReleasePlayability};
 use crate::sync::membership::FormerDeviceState;
+use bae_types::release_storage::ReleaseStorageAction;
 
 /// How long a test waits for a live read to deliver a value.
 const DELIVERY: std::time::Duration = std::time::Duration::from_secs(20);

@@ -28,8 +28,8 @@ use tracing::{debug, warn};
 use crate::album_detail::{
     AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail,
     ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
-    ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StoragePage, StorageRow,
-    WorkDetail, WorkReleaseSummary, WorkSummary,
+    ReleaseStorageSummary, SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary,
+    WorkSummary,
 };
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
@@ -40,6 +40,7 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
+use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;

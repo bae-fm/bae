@@ -478,7 +478,7 @@ async fn next_storage_release(
 
 #[tokio::test]
 async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
-    use bae_core::album_detail::ReleaseStorageAction;
+    use bae_types::release_storage::ReleaseStorageAction;
 
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud) = setup_manager(&tmp).await;

@@ -36,7 +36,7 @@ pub struct StorageBrowseSnapshot {
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<crate::album_detail::StorageRow>,
-    pub selection_actions: Vec<crate::album_detail::ReleaseStorageAction>,
+    pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
     pub queues: StorageQueues,
 }
 

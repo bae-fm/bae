@@ -279,7 +279,7 @@ pub struct DbReleaseDetail {
     pub download: Option<crate::library::DownloadPhase>,
     /// The storage transition this process runs for the release; `None`
     /// when it runs none.
-    pub transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
+    pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
 }
@@ -408,7 +408,7 @@ pub struct DbReleaseSummary {
     pub upload: Option<DbReleaseUpload>,
     /// The storage transition this process runs for the release; `None`
     /// when it runs none.
-    pub transfer_action: Option<crate::album_detail::ReleaseStorageAction>,
+    pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose

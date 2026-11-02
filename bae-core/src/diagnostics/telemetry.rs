@@ -11,9 +11,9 @@
 
 use std::time::Duration;
 
-use crate::album_detail::ReleaseStorageAction;
-use crate::config::CloudProvider;
 use crate::diagnostics::DiagnosticLevel;
+use bae_types::release_storage::ReleaseStorageAction;
+use coven::CloudProvider;
 
 /// A value allowed to ship in a telemetry event. Deliberately NOT implemented
 /// for `String`/`&str`: free text, names, paths, and externally-resolvable ids
@@ -60,7 +60,7 @@ impl TelemetryValue for Duration {
     }
 }
 
-impl TelemetryValue for crate::playback::TrackTime {
+impl TelemetryValue for bae_types::track_time::TrackTime {
     fn record(&self) -> serde_json::Value {
         // Milliseconds from the track's start, as a JSON number; negative in
         // the pregap.
@@ -420,7 +420,7 @@ telemetry_events! {
     /// `track_time` into the track, as the player shows it.
     PlaybackStarved, "playback_starved", Warn {
         track_id: LocalId,
-        track_time: crate::playback::TrackTime,
+        track_time: bae_types::track_time::TrackTime,
     },
 
     /// A track drained to natural completion. `decode_errors` is the quality
@@ -648,7 +648,7 @@ mod tests {
     fn playback_starved_is_warn_with_track_time_as_number() {
         let event = TelemetryEvent::PlaybackStarved {
             track_id: LocalId("track-5".to_string()),
-            track_time: crate::playback::TrackTime::from_millis(-1_500),
+            track_time: bae_types::track_time::TrackTime::from_millis(-1_500),
         };
         assert_eq!(event.name(), "playback_starved");
         assert_eq!(event.level(), DiagnosticLevel::Warn);

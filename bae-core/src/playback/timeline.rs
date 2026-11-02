@@ -11,6 +11,7 @@
 //! [`TrackTimeline`] is the only way from one to the other, so display,
 //! progress, seeking and the restart threshold agree on where the track starts.
 
+use bae_types::track_time::TrackTime;
 use std::time::Duration;
 
 /// A position in a track's stream: time from its first sample (INDEX 00).
@@ -64,29 +65,6 @@ impl std::ops::Add<Duration> for StreamPosition {
     }
 }
 
-/// Time into a track from its start (INDEX 01), in milliseconds: what the
-/// player shows. Negative while the pregap plays.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TrackTime(i64);
-
-impl TrackTime {
-    /// The track's start, INDEX 01.
-    pub const START: Self = Self(0);
-
-    pub const fn from_millis(ms: i64) -> Self {
-        Self(ms)
-    }
-
-    /// The time `since_start` after INDEX 01.
-    pub fn from_duration(since_start: std::time::Duration) -> Self {
-        Self(i64::try_from(since_start.as_millis()).expect("track time exceeds i64 milliseconds"))
-    }
-
-    pub const fn as_millis(self) -> i64 {
-        self.0
-    }
-}
-
 /// Where a track sits in its stream: how long its pregap runs before INDEX 01,
 /// and how long it runs from there when that is known.
 ///
@@ -135,13 +113,15 @@ impl TrackTimeline {
             Some(duration_ms) => ms.min(i128::from(duration_ms)),
             None => ms,
         };
-        TrackTime(i64::try_from(ms).expect("playback position exceeds i64 milliseconds"))
+        TrackTime::from_millis(
+            i64::try_from(ms).expect("playback position exceeds i64 milliseconds"),
+        )
     }
 
     /// The stream position at track time `time`, held at the stream's start.
     /// No upper bound: a position past the end plays nothing and completes.
     pub fn stream_position(self, time: TrackTime) -> StreamPosition {
-        let ms = i128::from(time.0) + self.pregap.as_millis() as i128;
+        let ms = i128::from(time.as_millis()) + self.pregap.as_millis() as i128;
         StreamPosition::from_millis(u64::try_from(ms.max(0)).unwrap_or(u64::MAX))
     }
 
@@ -152,7 +132,7 @@ impl TrackTimeline {
         let Some(duration_ms) = self.duration_ms().filter(|ms| *ms > 0) else {
             return 0.0;
         };
-        let time = self.track_time(position).0;
+        let time = self.track_time(position).as_millis();
         (time.max(0) as f64 / duration_ms as f64).clamp(0.0, 1.0)
     }
 

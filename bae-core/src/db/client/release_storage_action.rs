@@ -2,7 +2,7 @@
 //! `release_storage_action` holds it, and what a release's reads show of it.
 
 use super::*;
-use crate::album_detail::ReleaseStorageAction;
+use bae_types::release_storage::ReleaseStorageAction;
 
 /// Ends the storage transition of the release `?1`, whatever it is.
 const END_RELEASE_STORAGE_ACTION: &str = "DELETE FROM release_storage_action WHERE release_id = ?1";

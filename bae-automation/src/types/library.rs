@@ -76,7 +76,7 @@ impl From<ReleaseStorageState> for AutomationReleaseStorageState {
 }
 
 /// A storage transition a release allows. Mirrors
-/// `bae_core::album_detail::ReleaseStorageAction`.
+/// `bae_types::release_storage::ReleaseStorageAction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationReleaseStorageAction {

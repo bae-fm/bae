@@ -3,8 +3,9 @@
 //! write that finishes the transition's work, or after a failure.
 
 use super::*;
-use crate::album_detail::{ReleaseStorageAction, StorageRowStatus};
+use crate::album_detail::StorageRowStatus;
 use crate::db::StoredTransition;
+use bae_types::release_storage::ReleaseStorageAction;
 
 const WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 

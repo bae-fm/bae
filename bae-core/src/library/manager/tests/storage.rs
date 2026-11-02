@@ -92,7 +92,7 @@ async fn storage_page_sorts_album_title_descending() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
-    use crate::album_detail::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
+    use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
 
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
@@ -640,7 +640,7 @@ async fn check_upload_offered(
     originals: &std::path::Path,
     elsewhere: &DbRelease,
 ) {
-    use crate::album_detail::ReleaseStorageAction;
+    use bae_types::release_storage::ReleaseStorageAction;
     let here = insert_local_release_with_files(
         manager,
         originals,

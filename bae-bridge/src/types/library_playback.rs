@@ -237,7 +237,7 @@ mirror_enum! {
 }
 
 /// A storage transition available from the release "Storage…" sheet.
-/// Mirrors `bae_core::album_detail::ReleaseStorageAction`.
+/// Mirrors `bae_types::release_storage::ReleaseStorageAction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageAction {
     Upload,
@@ -247,8 +247,8 @@ pub enum BridgeReleaseStorageAction {
 }
 
 impl BridgeReleaseStorageAction {
-    pub fn from_core(value: bae_core::album_detail::ReleaseStorageAction) -> Self {
-        use bae_core::album_detail::ReleaseStorageAction as A;
+    pub fn from_core(value: bae_types::release_storage::ReleaseStorageAction) -> Self {
+        use bae_types::release_storage::ReleaseStorageAction as A;
         match value {
             A::Upload => Self::Upload,
             A::DetachAudio => Self::DetachAudio,

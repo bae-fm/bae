@@ -3,8 +3,8 @@
 
 use super::super::*;
 use super::*;
-use crate::album_detail::ReleaseStorageAction;
 use crate::library::release_queue::ReleaseQueueEntry;
+use bae_types::release_storage::ReleaseStorageAction;
 
 const LIBRARY: &str = "
     INSERT INTO albums (id, title, is_compilation, created_at) VALUES

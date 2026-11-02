@@ -11,10 +11,10 @@
 
 use std::future::Future;
 
-use crate::album_detail::ReleaseStorageAction;
 use crate::diagnostics::{LocalId, TelemetryEvent};
 use crate::library::queued_releases::RunningOp;
 use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
+use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{caught, TaskFailed};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};

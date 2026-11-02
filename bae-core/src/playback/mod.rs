@@ -69,5 +69,5 @@ pub use service::{
     PlaybackTrackSide,
 };
 pub use source::{TrackCrossing, TrackFmt};
-pub use timeline::{StreamPosition, TrackTime, TrackTimeline};
+pub use timeline::{StreamPosition, TrackTimeline};
 pub use track_download::TrackDownload;
