@@ -184,7 +184,7 @@ extension BridgeTriageRow {
 extension TriageRowView {
     /// The line under the release summary: how bae broke for a row in
     /// error, or a failed import.
-    private var statusLine: String? {
+    var statusLine: String? {
         if case .error(let failure) = live.standing {
             return failure.detail
         }
