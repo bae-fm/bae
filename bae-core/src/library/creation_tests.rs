@@ -681,10 +681,12 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
 }
 
 /// Resetting a connected library loads it from storage again, and tells its
-/// caller each step of the load as it goes, as a restore does: reading the
-/// library's history, then applying it.
+/// caller how the load goes, as a restore does: its steps in the order they
+/// run, through to the last slot applied. coven hands a caller slower than
+/// the load its newest report, so a step that ends between two of the
+/// caller's reads, such as reading a short history, may never reach it.
 #[tokio::test]
-async fn a_reset_reports_each_step_of_loading_the_library() {
+async fn a_reset_reports_loading_the_library_in_order_to_its_end() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
@@ -705,20 +707,32 @@ async fn a_reset_reports_each_step_of_loading_the_library() {
     .unwrap();
     assert_ne!(reset.device_id(), device);
     reset.close().await.unwrap();
-    let steps: Vec<coven::LoadStep> = statuses
+    let loading: Vec<coven::Progress<coven::LoadStep>> = statuses
         .into_inner()
         .unwrap()
         .into_iter()
         .filter_map(|status| match status {
-            coven::BootstrapStatus::Loading(progress) => Some(progress.step),
+            coven::BootstrapStatus::Loading(progress) => Some(progress),
             _ => None,
         })
         .collect();
-    // A library with no snapshot yet loads by reading its whole history.
-    let first = |step| steps.iter().position(|seen| *seen == step);
+    let order = |step: &coven::LoadStep| match step {
+        coven::LoadStep::FindingKeys => 0,
+        coven::LoadStep::Streaming(_) => 1,
+        coven::LoadStep::Installing => 2,
+        coven::LoadStep::InstallingSlots => 3,
+        coven::LoadStep::Reading => 4,
+        coven::LoadStep::Applying => 5,
+    };
     assert!(
-        first(coven::LoadStep::Reading) < first(coven::LoadStep::Applying)
-            && first(coven::LoadStep::Reading).is_some(),
-        "{steps:?}"
+        loading
+            .windows(2)
+            .all(|pair| order(&pair[0].step) <= order(&pair[1].step)),
+        "{loading:?}"
     );
+    // A library with no snapshot yet loads by applying its whole history,
+    // and the report of the last slot applied always arrives.
+    let last = loading.last().expect("the reset reports its load");
+    assert_eq!(last.step, coven::LoadStep::Applying, "{loading:?}");
+    assert_eq!(last.done, last.total, "{loading:?}");
 }
