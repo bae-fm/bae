@@ -34,8 +34,8 @@ async fn a_new_library_starts_at_the_defaults() {
     let (db, _tmp) = temp_db().await;
     let prefs = preferences(&db).await.unwrap();
     assert_eq!(prefs, Preferences::default());
-    assert_eq!(prefs.transfer_limits(), crate::app_dir::default_transfer_limits());
-    assert_eq!(prefs.max_concurrent_uploads.get(), crate::app_dir::DEFAULT_CONCURRENT_TRANSFERS);
+    assert_eq!(prefs.transfer_limits(), bae_app_dir::default_transfer_limits());
+    assert_eq!(prefs.max_concurrent_uploads.get(), bae_app_dir::DEFAULT_CONCURRENT_TRANSFERS);
     assert_eq!(
         prefs.save_presets[0].codec,
         SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },

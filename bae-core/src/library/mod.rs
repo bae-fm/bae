@@ -97,8 +97,8 @@ mod local_lifecycle_tests;
 #[cfg(test)]
 mod saved_codes_tests;
 
-use crate::app_dir::AppDir;
 use crate::db::configure_store;
+use bae_app_dir::AppDir;
 use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
@@ -279,7 +279,7 @@ pub(crate) fn with_transfer_limits(
 /// under the default transfer limits: the library's own preferences are in
 /// the store being loaded, so they apply once it opens.
 fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
-    with_transfer_limits(configure_store(builder), crate::app_dir::default_transfer_limits())
+    with_transfer_limits(configure_store(builder), bae_app_dir::default_transfer_limits())
 }
 
 /// Create a store and retain its open handle, including its identity custody.

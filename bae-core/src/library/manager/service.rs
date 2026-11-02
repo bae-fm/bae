@@ -40,7 +40,7 @@ impl LibraryManager {
     /// process outlives is cleared. `closing` ends its tasks when it closes.
     pub(crate) async fn open(
         database: Database,
-        app_dir: crate::app_dir::AppDir,
+        app_dir: bae_app_dir::AppDir,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,

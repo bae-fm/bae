@@ -316,7 +316,7 @@ async fn download_bytes_send_no_new_sync_activity() {
 #[tokio::test]
 async fn opening_a_library_empties_its_transfer_queues() {
     let temp_dir = TempDir::new().unwrap();
-    let app_dir = crate::app_dir::AppDir::at(temp_dir.path()).unwrap();
+    let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))

@@ -1,0 +1,44 @@
+[package]
+name = "bae-app-dir"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_app_dir"
+path = "src/lib.rs"
+
+[dependencies]
+# How a library whose settings can't be read is shown to the person.
+bae-diagnostics = { workspace = true }
+# The directory sync the installation id is published with.
+bae-util = { workspace = true }
+# The store layout, its stores and their storage settings, the keyring
+# namespace and the transfer limits coven's builder takes.
+coven = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# Library ids and the installation id are UUIDs.
+uuid = { workspace = true }
+# The installation id is staged in a temporary file before an atomic persist.
+tempfile = { workspace = true }
+
+[dev-dependencies]
+# The in-memory keyring and the stores the discovery tests create.
+coven = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["macros", "rt"] }
+uuid = { workspace = true, features = ["v4"] }
+
+[features]
+default = []
+# An app directory at a path a test picks, and where a test stages the
+# originals of the release files it seeds. Dev/test-only: a production build
+# never enables it.
+test-utils = []
+# A debug app's dev reset, which empties the app directory.
+dev-reset = []
+
+[lints]
+workspace = true

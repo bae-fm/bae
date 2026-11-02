@@ -45,7 +45,7 @@ async fn setup_import_service() -> TestService {
         crate::import::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
     let library = crate::app::test_library::TestLibrary::open(
         database.clone(),
-        crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
+        bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),
     )
     .await;

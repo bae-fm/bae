@@ -730,6 +730,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-app-dir"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-diagnostics",
+ "bae-util",
+ "coven",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "bae-audio"
 version = "0.0.0-dev"
 dependencies = [
@@ -768,6 +782,7 @@ name = "bae-bridge"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bae-app-dir",
  "bae-cast",
  "bae-catalogs",
  "bae-core",
@@ -859,6 +874,7 @@ version = "0.0.0-dev"
 dependencies = [
  "async-trait",
  "axum",
+ "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
  "bae-diagnostics",
@@ -998,6 +1014,7 @@ name = "bae-test-support"
 version = "0.0.0-dev"
 dependencies = [
  "axum",
+ "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
  "bae-core",

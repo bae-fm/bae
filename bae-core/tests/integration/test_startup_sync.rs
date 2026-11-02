@@ -1,8 +1,8 @@
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
+use bae_app_dir::AppDir;
 use bae_core::app::{bootstrap, BootstrapError};
-use bae_core::app_dir::AppDir;
 use coven::{Clock, Storage};
 use tempfile::TempDir;
 

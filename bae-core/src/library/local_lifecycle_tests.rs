@@ -2,7 +2,7 @@ use super::local_lifecycle::{
     finish_removals, remove_local_library, remove_unopenable_library, LibraryRemovalError,
     UnfinishedRemoval,
 };
-use crate::app_dir::AppDir;
+use bae_app_dir::AppDir;
 use bae_diagnostics::Diagnostics;
 use coven::Storage;
 use std::sync::Arc;
@@ -495,7 +495,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     let listed = home.app_dir.discover_libraries().await.unwrap();
     assert!(
         listed.iter().any(|library| library.id == id.to_string()
-            && matches!(library.state, crate::app_dir::LibraryState::Unreadable(_))),
+            && matches!(library.state, bae_app_dir::LibraryState::Unreadable(_))),
         "{listed:?}"
     );
     super::unsent_before_removal(

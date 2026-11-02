@@ -68,7 +68,7 @@ async fn setup_test_manager_with(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let app_dir = crate::app_dir::AppDir::at(temp_dir.path()).unwrap();
+    let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
@@ -110,7 +110,7 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
     let store = manager.database.store_id();
     manager.close().await.unwrap();
     manager.installation.lose_storage_credentials(store).unwrap();
-    let app_dir = crate::app_dir::AppDir::at(temp_dir.path()).unwrap();
+    let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let handle = crate::db::configure_store(manager.installation.builder(app_dir.store_layout()))
         .clock(clock.clone())

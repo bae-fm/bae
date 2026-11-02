@@ -82,13 +82,13 @@ impl AppDir {
 
     /// The directory of removal records: one file per library whose removal
     /// from this device has started and not finished, named by its id.
-    pub(crate) fn removal_records(&self) -> PathBuf {
+    pub fn removal_records(&self) -> PathBuf {
         self.path.join("removals")
     }
 
     /// The file a removal, or a lookup of unfinished removals, holds locked
     /// for its whole run, in every process using this directory.
-    pub(crate) fn removal_lock(&self) -> PathBuf {
+    pub fn removal_lock(&self) -> PathBuf {
         self.path.join("removals.lock")
     }
 
@@ -99,7 +99,7 @@ impl AppDir {
 
     /// A bae-owned installation id shared by this installation's libraries.
     /// Publishing without replacement makes concurrent first launches agree.
-    pub(crate) fn install_id(&self, ids: &dyn coven::IdSource) -> Result<String, AppDirError> {
+    pub fn install_id(&self, ids: &dyn coven::IdSource) -> Result<String, AppDirError> {
         use std::io::Write;
         let path = self.path.join("install-id");
         let read = || -> Result<String, AppDirError> {
@@ -228,7 +228,7 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, AppDirEr
 /// transfer from holding up the rest.
 pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
 
-pub(crate) fn default_transfer_concurrency() -> NonZeroU32 {
+pub fn default_transfer_concurrency() -> NonZeroU32 {
     NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
 }
 
@@ -245,7 +245,7 @@ pub fn default_transfer_limits() -> coven::TransferLimits {
 /// Widen a stored concurrency setting to the [`NonZeroUsize`] coven's builder
 /// takes. Non-zero is preserved: `usize` is at least 32 bits on every platform
 /// bae targets, so a `NonZeroU32` never widens to zero.
-pub(crate) fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
+pub fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
     NonZeroUsize::new(n.get() as usize).expect("a NonZeroU32 widened to usize stays non-zero")
 }
 
@@ -280,5 +280,4 @@ impl AppDirError {
 }
 
 #[cfg(test)]
-#[path = "app_dir_tests.rs"]
 mod tests;

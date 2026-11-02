@@ -2,8 +2,8 @@
 //! presets, the types they hold, and the row's SQL.
 
 #[cfg(any(test, feature = "test-utils"))]
-use crate::app_dir::default_transfer_concurrency;
-use crate::app_dir::usize_bound;
+use bae_app_dir::default_transfer_concurrency;
+use bae_app_dir::usize_bound;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU32;
 use std::path::PathBuf;

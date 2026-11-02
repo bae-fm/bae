@@ -1,24 +1,24 @@
 use super::*;
 use tempfile::TempDir;
 
+/// A store named `name`, created under `app_dir` and closed, as discovery
+/// lists it.
+async fn store(installation: &coven::TestCoven, app_dir: &AppDir, name: &str) -> coven::StoreId {
+    installation
+        .create_closed_store(&app_dir.store_layout(), name, std::sync::Arc::new(coven::UuidIds))
+        .await
+        .unwrap()
+        .id()
+}
+
 #[tokio::test]
 async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
-    let first = crate::db::configure_store(installation.builder(app_dir.store_layout()))
-        .create_store("First")
-        .await
-        .unwrap();
-    let second = crate::db::configure_store(installation.builder(app_dir.store_layout()))
-        .create_store("Second")
-        .await
-        .unwrap();
-    let first_id = first.store_id();
-    let second_id = second.store_id();
+    let first_id = store(&installation, &app_dir, "First").await;
+    let second_id = store(&installation, &app_dir, "Second").await;
     app_dir.save_active_library(second_id).unwrap();
-    first.close().await.unwrap();
-    second.close().await.unwrap();
     let libraries = app_dir.discover_libraries().await.unwrap();
     assert_eq!(
         libraries.iter().map(|l| (l.id.as_str(), l.name.as_str(), l.is_active)).collect::<Vec<_>>(),
@@ -50,12 +50,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let installation = coven::TestCoven::new();
     let mut ids = Vec::new();
     for name in ["Openable", "Unreadable"] {
-        let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
-            .create_store(name)
-            .await
-            .unwrap();
-        ids.push(handle.store_id());
-        handle.close().await.unwrap();
+        ids.push(store(&installation, &app_dir, name).await);
     }
     std::fs::write(
         tmp.path().join("stores").join(ids[1].to_string()).join("storage.json"),
@@ -103,12 +98,7 @@ async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
     let home = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(home.path()).unwrap();
     assert!(home.path().join(".bae").is_dir());
-    let installation = coven::TestCoven::new();
-    let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
-        .create_store("First")
-        .await
-        .unwrap();
-    handle.close().await.unwrap();
+    store(&coven::TestCoven::new(), &app_dir, "First").await;
 }
 
 #[test]

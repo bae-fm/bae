@@ -7,7 +7,7 @@ const HOST_LOCK: &str = "host registrations lock";
 #[derive(uniffi::Object)]
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
-    app_dir: bae_core::app_dir::AppDir,
+    app_dir: bae_app_dir::AppDir,
     keychain: bae_core::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.

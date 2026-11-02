@@ -42,7 +42,7 @@ fn main() {
             std::process::exit(2);
         }),
     };
-    let app_dir = match bae_core::app_dir::AppDir::under_home(&home) {
+    let app_dir = match bae_app_dir::AppDir::under_home(&home) {
         Ok(app_dir) => app_dir,
         Err(error) => {
             eprintln!("{error}");
@@ -58,7 +58,7 @@ fn main() {
         .with_writer(std::io::stderr);
     format.init();
 
-    if let Err(error) = bae_core::app_dir::register_keyring_service() {
+    if let Err(error) = bae_app_dir::register_keyring_service() {
         eprintln!("initialize keyring failed: {error}");
         std::process::exit(1);
     }

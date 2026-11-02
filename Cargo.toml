@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "bae-app-dir",
     "bae-audio",
     "bae-automation",
     "bae-bridge",
@@ -64,6 +65,7 @@ tracing = "0.1.41"
 thiserror = "2"
 
 # The workspace's own crates.
+bae-app-dir = { path = "bae-app-dir" }
 bae-audio = { path = "bae-audio" }
 bae-automation = { path = "bae-automation" }
 bae-cast = { path = "bae-cast" }

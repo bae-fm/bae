@@ -22,6 +22,7 @@ async-trait = { workspace = true }
 bae-desktop = { workspace = true, optional = true }
 bae-cast = { workspace = true, optional = true }
 bae-core = { workspace = true }
+bae-app-dir = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
 bae-catalogs = { workspace = true }

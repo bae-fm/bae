@@ -72,7 +72,7 @@ fn main() {
         )
         .with_writer(std::io::stderr)
         .init();
-    if let Err(error) = bae_core::app_dir::register_keyring_service() {
+    if let Err(error) = bae_app_dir::register_keyring_service() {
         eprintln!("initialize keyring failed: {error}");
         std::process::exit(1);
     }
@@ -80,7 +80,7 @@ fn main() {
         eprintln!("could not determine the home directory");
         std::process::exit(1);
     };
-    let app_dir = match bae_core::app_dir::AppDir::under_home(&home) {
+    let app_dir = match bae_app_dir::AppDir::under_home(&home) {
         Ok(app_dir) => app_dir,
         Err(error) => {
             eprintln!("{error}");
@@ -130,7 +130,7 @@ fn main() {
 }
 
 async fn bench(
-    app_dir: &bae_core::app_dir::AppDir,
+    app_dir: &bae_app_dir::AppDir,
     store_id: coven::StoreId,
     runs: usize,
     downloads: Option<std::num::NonZeroUsize>,
@@ -171,8 +171,8 @@ async fn restore_runs(
     let mut times = Vec::new();
     for run in 1..=runs {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let new_app_dir = bae_core::app_dir::AppDir::under_home(directory.path())
-            .map_err(|error| error.to_string())?;
+        let new_app_dir =
+            bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
         let installation = coven::TestCoven::new();
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
@@ -254,5 +254,5 @@ async fn restore_runs(
 
 /// The upload limit bae loads a library from storage at.
 fn crate_default_uploads() -> std::num::NonZeroUsize {
-    bae_core::app_dir::default_transfer_limits().uploads
+    bae_app_dir::default_transfer_limits().uploads
 }

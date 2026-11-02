@@ -340,7 +340,7 @@ impl Fixture {
         // `use_discogs`.
         let manager = TestLibrary::open_with(
             database.clone(),
-            crate::app_dir::AppDir::under_home(temp.path()).unwrap(),
+            bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
             clock,
             ids,

@@ -6,9 +6,9 @@ use std::time::Duration;
 use coven::Storage;
 use tempfile::TempDir;
 
-use crate::app_dir::AppDir;
 use crate::db::Database;
 use crate::library::LibraryManager;
+use bae_app_dir::AppDir;
 
 /// How long a test waits for sync to reach a state before failing.
 const SETTLE: Duration = Duration::from_secs(20);

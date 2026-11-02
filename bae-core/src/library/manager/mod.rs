@@ -192,7 +192,7 @@ pub enum LibraryError {
     /// Reading or writing bae's directory failed: the library list, the
     /// active-library pointer, a removal record.
     #[error("Config error: {0}")]
-    AppDir(#[from] crate::app_dir::AppDirError),
+    AppDir(#[from] bae_app_dir::AppDirError),
     /// Reading or writing this device's preferences failed, or a change to
     /// them was refused.
     #[error("Config error: {0}")]
@@ -460,7 +460,7 @@ pub struct LibraryManager {
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,
     /// and where forgetting this library removes it from.
-    app_dir: crate::app_dir::AppDir,
+    app_dir: bae_app_dir::AppDir,
     clock: ClockRef,
     ids: IdSourceRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id

@@ -316,7 +316,7 @@ impl Database {
             })?;
         let installation = coven::TestCoven::new();
         let handle = crate::db::configure_store(
-            installation.builder(crate::app_dir::AppDir::at(root)?.store_layout()),
+            installation.builder(bae_app_dir::AppDir::at(root)?.store_layout()),
         )
         .clock(clock.clone())
         .create_store("Test Library")

@@ -44,7 +44,7 @@ async fn setup_test_manager_over(
             .unwrap();
     let library = TestLibrary::open_with(
         database.clone(),
-        crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
+        bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         providers,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),

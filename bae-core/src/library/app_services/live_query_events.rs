@@ -139,7 +139,7 @@ mod tests {
                 .unwrap();
         let manager = crate::app::test_library::TestLibrary::open(
             database.clone(),
-            crate::app_dir::AppDir::under_home(directory.path()).unwrap(),
+            bae_app_dir::AppDir::under_home(directory.path()).unwrap(),
             bae_catalogs::providers::Providers::offline(),
         )
         .await;

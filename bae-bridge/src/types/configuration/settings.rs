@@ -594,8 +594,8 @@ impl From<bae_core::preferences::PreferencesError> for BridgeError {
 }
 
 /// A failed read or write of bae's directory, in the class core gave it.
-impl From<bae_core::app_dir::AppDirError> for BridgeError {
-    fn from(error: bae_core::app_dir::AppDirError) -> Self {
+impl From<bae_app_dir::AppDirError> for BridgeError {
+    fn from(error: bae_app_dir::AppDirError) -> Self {
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),

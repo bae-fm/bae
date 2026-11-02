@@ -4,8 +4,8 @@
 
 use std::sync::{Arc, Mutex};
 
+use bae_app_dir::AppDir;
 use bae_core::app::{bootstrap, BootstrapError};
-use bae_core::app_dir::AppDir;
 use tempfile::TempDir;
 
 /// A library this device holds that hasn't run bae's migration yet, as

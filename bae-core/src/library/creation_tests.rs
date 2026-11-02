@@ -387,7 +387,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     assert!(
         matches!(
             libraries[0].state,
-            crate::app_dir::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Restore)
+            bae_app_dir::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Restore)
         ),
         "{:?}",
         libraries[0].state
@@ -430,10 +430,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     assert!(
         matches!(
             libraries[..],
-            [crate::app_dir::LibraryInfo {
-                state: crate::app_dir::LibraryState::Openable(Some(_)),
-                ..
-            }]
+            [bae_app_dir::LibraryInfo { state: bae_app_dir::LibraryState::Openable(Some(_)), .. }]
         ),
         "{libraries:?}"
     );
@@ -574,8 +571,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
     )
     .await
     .unwrap();
-    let default =
-        std::num::NonZeroUsize::new(crate::app_dir::DEFAULT_CONCURRENT_TRANSFERS as usize);
+    let default = std::num::NonZeroUsize::new(bae_app_dir::DEFAULT_CONCURRENT_TRANSFERS as usize);
     assert_eq!(
         phone.transfer_limits(),
         coven::TransferLimits { uploads: default.unwrap(), downloads: default.unwrap() }
@@ -610,7 +606,7 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     )
     .await
     .unwrap();
-    assert_eq!(restored.transfer_limits(), crate::app_dir::default_transfer_limits());
+    assert_eq!(restored.transfer_limits(), bae_app_dir::default_transfer_limits());
     let database = crate::db::Database::from_handle(
         restored.clone(),
         std::sync::Arc::new(coven::SystemClock),

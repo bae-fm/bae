@@ -17,6 +17,8 @@ path = "src/lib.rs"
 # below build on. bae-core dev-depends back on this crate; Cargo permits that
 # cycle because it runs only through dev-dependencies.
 bae-core = { workspace = true, features = ["test-utils"] }
+# The app directory the libraries the helpers open live under.
+bae-app-dir = { workspace = true }
 # The diagnostics sink the libraries the helpers open report to.
 bae-diagnostics = { workspace = true }
 # The decoded-audio shape the sample helpers read.

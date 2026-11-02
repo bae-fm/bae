@@ -145,7 +145,7 @@ mod tests {
             crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
         )
         .unwrap();
-        let libraries = bae_core::app_dir::AppDir::under_home(root.path()).unwrap().libraries();
+        let libraries = bae_app_dir::AppDir::under_home(root.path()).unwrap().libraries();
         std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
         let result = caller.block_on(app.clone().remove_library(None)).unwrap();

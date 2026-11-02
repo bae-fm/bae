@@ -1,7 +1,7 @@
 //! Only a fully opened, unlocked library advances the active-library pointer.
 
+use bae_app_dir::AppDir;
 use bae_core::app::{bootstrap, BootstrapError};
-use bae_core::app_dir::AppDir;
 use coven::Storage;
 use tempfile::TempDir;
 
