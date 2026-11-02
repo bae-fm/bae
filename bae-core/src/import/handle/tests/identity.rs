@@ -246,7 +246,7 @@ async fn test_new_artist_inserts() {
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-999"));
 }
 
-// ── find_existing_album_for_import (identity-based dedup) ────────
+// ── album_records_name (identity-based dedup) ────────
 
 use crate::db::{DbAlbum, DbRelease, DbTrack};
 use crate::catalog_model::records::ReleaseRecord;
@@ -493,7 +493,7 @@ async fn test_file_tags_import_skips_lookup() {
 #[tokio::test]
 async fn test_merge_release_into_existing_album() {
     // A second release with the same MB group attaches to the
-    // existing album via `find_existing_album_for_import` returning
+    // existing album via `album_records_name` returning
     // `Some(album_id)`. The caller redirects the new release's
     // album_id and inserts it as a sibling.
     let (manager, _tmp, album, release1) =
