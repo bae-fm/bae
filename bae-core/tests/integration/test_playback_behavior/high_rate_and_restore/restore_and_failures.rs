@@ -6,7 +6,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
         seed_discogs_test_release(catalogs.providers(), create_test_album());
     support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     let releases = library_manager
-        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
     let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
@@ -265,6 +265,7 @@ impl CloudOnlyPlaybackFixture {
         let identification = import_handle.start_identification_queue();
         let services = bae_core::library::AppServices::new(
             library_manager,
+            bae_core::library::views::LibraryViews::new(database.clone()),
             playback_handle.clone(),
             import_handle,
             identification,

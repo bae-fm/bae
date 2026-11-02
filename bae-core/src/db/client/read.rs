@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn find_album_by_id_on(
+pub(crate) fn find_album_by_id_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> Result<Option<DbAlbum>, DbError> {
@@ -20,7 +20,7 @@ pub(super) fn find_album_by_id_on(
     .map_err(DbError::from)
 }
 
-pub(super) fn get_artists_for_album_on(
+pub(crate) fn get_artists_for_album_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> Result<Vec<LibraryCredit>, DbError> {
@@ -120,7 +120,7 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
 }
 
 /// The line a credit-list JSON column prints, read in a row closure.
-pub(super) fn credit_line_column(row: &Row, column: &str) -> rusqlite::Result<String> {
+pub(crate) fn credit_line_column(row: &Row, column: &str) -> rusqlite::Result<String> {
     let json: String = row.get(column)?;
     credits_from_json(&json)
         .map(|credits| crate::db::credits::library_line(&credits))
@@ -136,7 +136,7 @@ pub(super) fn find_release_by_id_on(
         .map_err(DbError::from)
 }
 
-pub(super) fn get_releases_for_album_on(
+pub(crate) fn get_releases_for_album_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
@@ -148,7 +148,7 @@ pub(super) fn get_releases_for_album_on(
     .map_err(DbError::from)
 }
 
-pub(super) fn build_release_detail_on(
+pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release: DbRelease,
 ) -> Result<ReleaseDetailRows, DbError> {
@@ -320,8 +320,8 @@ pub(super) fn unstored_audio_in_row(
 }
 
 #[derive(Clone, PartialEq)]
-pub(super) struct ReleaseDetailRows {
-    pub(super) release: DbRelease,
+pub(crate) struct ReleaseDetailRows {
+    pub(crate) release: DbRelease,
     mediums: DbReleaseMediums,
     tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
     files: Vec<DbFile>,
@@ -336,7 +336,7 @@ pub(super) struct ReleaseDetailRows {
 }
 
 impl ReleaseDetailRows {
-    pub(super) fn process(self) -> DbReleaseDetail {
+    pub(crate) fn process(self) -> DbReleaseDetail {
         DbReleaseDetail {
             release: self.release,
             mediums: self.mediums,
@@ -704,7 +704,7 @@ pub(crate) fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {
     row_to_artist_with_prefix(row, "")
 }
 
-pub(super) fn row_to_album(row: &Row) -> rusqlite::Result<DbAlbum> {
+pub(crate) fn row_to_album(row: &Row) -> rusqlite::Result<DbAlbum> {
     row_to_album_with_prefix(row, "")
 }
 

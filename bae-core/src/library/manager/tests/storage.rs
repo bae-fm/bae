@@ -162,7 +162,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
         pressings.push((release.id, pin));
     }
 
-    let detail = manager.find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
+    let detail = manager.views().find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
     let pinned: std::collections::HashMap<_, _> = detail
         .releases
         .iter()

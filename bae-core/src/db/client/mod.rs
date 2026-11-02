@@ -30,8 +30,7 @@ macro_rules! release_file_columns {
 }
 
 mod album;
-mod album_search;
-pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
+pub(crate) mod album_search;
 pub use artist::{
     ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
     ComposerDetailProjection, WorkDetailProjection,
@@ -58,7 +57,7 @@ pub(crate) use file_row::FileRow;
 mod pending;
 pub(crate) mod queued_uploads;
 mod sync_start_failure;
-mod sync_status;
+pub(crate) mod sync_status;
 pub(crate) use pending::PendingRow;
 use sync_status::cloud_home_on;
 mod coven_capabilities;
@@ -283,7 +282,6 @@ impl Database {
 
     /// A live query whose request can be replaced without a new
     /// subscription.
-    #[cfg(desktop)]
     pub(crate) fn subscribe_reconfigurable<Q, F, R>(
         &self,
         initial_request: Q,

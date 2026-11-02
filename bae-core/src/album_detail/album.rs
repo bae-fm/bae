@@ -1,11 +1,12 @@
 //! Resolved album types.
 //!
 //! Only `AlbumSummary`'s projection is pure enough to own its constructor here.
-//! `AlbumDetail`'s needs covers and per-release pin state, so it lives on
-//! `LibraryManager`.
+//! `AlbumDetail`'s needs covers and whether storage is set up, so the album
+//! view resolves it (`crate::library::views`).
 
 use super::*;
-use crate::db::{DbAlbum, DbAlbumAppearance, DbAlbumSummary};
+use crate::db::{DbAlbum, DbAlbumSummary};
+use crate::library::views::DbAlbumAppearance;
 
 /// An album with its releases, each carrying tracks, files, and gallery.
 #[derive(Debug, Clone)]

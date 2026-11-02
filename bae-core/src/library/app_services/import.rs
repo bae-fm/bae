@@ -5,6 +5,20 @@ use super::*;
 use crate::import::{ImportCandidateDetail, ImportListView, LiveImportList};
 
 impl AppServices {
+    /// The library albums a parsed, non-blank query finds, as the album
+    /// picker lists them: title, the album's credit line and year.
+    pub async fn search_albums(
+        &self,
+        query: &crate::library::LibrarySearchQuery,
+    ) -> Result<Vec<crate::library::views::DbAlbumSearchResult>, crate::library::LibraryError> {
+        Ok(self
+            .inner
+            .views
+            .search_rows(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+            .await?
+            .albums)
+    }
+
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &crate::import::CandidateKey) -> Result<Vec<std::path::PathBuf>, crate::import::ImportError>);
     delegate_async!(import, import_combine_candidates => combine_candidates(keys: Vec<crate::import::CandidateKey>) -> Result<crate::import::CandidateKey, crate::import::ImportError>);
     delegate_async!(import, import_combine_folder => combine_folder(folder: crate::import::FolderReleaseDecisionKey) -> Result<crate::import::CandidateKey, crate::import::ImportError>);
@@ -38,7 +52,6 @@ impl AppServices {
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: bae_catalogs::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &crate::import::CandidateKey, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_album => set_candidate_album(candidate_key: &crate::import::CandidateKey, album_id: Option<String>) -> Result<(), crate::import::ImportError>);
-    delegate_async!(manager, search_albums => search_albums(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::db::DbAlbumSearchResult>, crate::library::LibraryError>);
     delegate_async!(import, import_move_candidate_pane => move_candidate_pane(candidate_key: &crate::import::CandidateKey, pane_move: crate::import::PaneMove) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_search_form => set_candidate_search_form(candidate_key: &crate::import::CandidateKey, search: crate::import::SearchForm) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &crate::import::CandidateKey, edit: crate::import::DraftFieldEdit) -> Result<(), crate::import::ImportError>);

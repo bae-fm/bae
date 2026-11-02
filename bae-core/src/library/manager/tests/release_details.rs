@@ -143,6 +143,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
 
     // No cover row yet: the detail carries no cover reference.
     let detail = manager
+        .views()
         .find_album_detail(&album.id)
         .await
         .unwrap()
@@ -151,6 +152,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
 
     store_test_cover(&manager, &release.id, b"cover").await;
     let before = manager
+        .views()
         .find_album_detail(&album.id)
         .await
         .unwrap()
@@ -162,6 +164,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
     // Replace the cover (what change_cover does): new bytes.
     store_test_cover(&manager, &release.id, b"replacement cover").await;
     let after = manager
+        .views()
         .find_album_detail(&album.id)
         .await
         .unwrap()
@@ -181,6 +184,7 @@ async fn find_album_detail_returns_none_when_releases_vanish() {
     manager.database.insert_album(&album).await.unwrap();
 
     let detail = manager
+        .views()
         .find_album_detail(&album.id)
         .await
         .expect("empty album aggregate must resolve without an error");

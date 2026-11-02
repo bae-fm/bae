@@ -214,13 +214,13 @@ pub(super) fn artist_is_shown(alias: &str) -> String {
 
 /// Whether the album aliased `a` (every album listing's alias) holds a release,
 /// so listings include it. See [`vacate_album_on`].
-pub(super) const ALBUM_A_IS_SHOWN: &str =
+pub(crate) const ALBUM_A_IS_SHOWN: &str =
     "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
 /// The composer list's rows (`composer_listing`), each with its artist, as
 /// [`row_to_composer_summary`] reads them, and each row's key in `keyed`'s
 /// order when one is given; `filter` and `tail` follow the join.
-pub(super) fn composer_listing_query(
+pub(crate) fn composer_listing_query(
     keyed: Option<&ListOrder>,
     filter: Option<&str>,
     tail: Option<&str>,
@@ -259,7 +259,7 @@ pub(super) fn composer_listing_query(
 /// show it; track credits (`track_artists`) don't list it. Various Artists
 /// gets no special case: it is a real `artists` row and lists like any
 /// other artist.
-pub(super) fn artist_listing_query(
+pub(crate) fn artist_listing_query(
     keyed: Option<&ListOrder>,
     filter: Option<&str>,
     tail: Option<&str>,
@@ -308,101 +308,6 @@ pub(super) fn listing_window_query(
     )
 }
 
-/// What an album listing's Artist sort compares.
-#[derive(Clone, Copy)]
-pub(super) enum ArtistOrder {
-    /// The album's whole credit list (`album_listing`'s credit keys).
-    CreditList,
-    /// The one artist the row is listed under, `artist` (the browse grouped
-    /// by artist lists an album under each artist it credits).
-    GroupArtist,
-}
-
-/// The same relation and order serve paging, section ranges, and reveal.
-/// Grouped rows are album appearances; flat rows are distinct albums. Both
-/// read `album_listing listing` and the album as `a`.
-pub(super) fn album_browse_order(
-    sort: &[AlbumSortCriterion],
-    group_by_artist: bool,
-) -> (String, ListOrder) {
-    if !group_by_artist {
-        return (
-            "FROM album_listing listing JOIN albums a ON a.id = listing.album_id".to_string(),
-            album_order(sort, ArtistOrder::CreditList),
-        );
-    }
-    let direction = sort
-        .iter()
-        .find(|c| c.field == AlbumSortField::Artist)
-        .map_or(SortDirection::Ascending, |c| c.direction);
-    let mut grouped_sort = vec![AlbumSortCriterion { field: AlbumSortField::Artist, direction }];
-    grouped_sort.extend(sort.iter().filter(|c| c.field != AlbumSortField::Artist).cloned());
-    if sort.is_empty() {
-        grouped_sort.push(AlbumSortCriterion {
-            field: AlbumSortField::DateAdded,
-            direction: SortDirection::Descending,
-        });
-    }
-    let order = album_order(&grouped_sort, ArtistOrder::GroupArtist);
-    // CROSS JOIN keeps this join order: the artists in their index's order,
-    // each artist's albums after it, so a window reads about its own rows.
-    (
-        "FROM artist_listing artist \
-         CROSS JOIN album_artist_link link ON link.artist_id = artist.artist_id \
-         CROSS JOIN album_listing listing ON listing.album_id = link.album_id \
-         JOIN albums a ON a.id = listing.album_id"
-            .to_string(),
-        order,
-    )
-}
-
-/// The tables whose rows the album list's order reads, flat or grouped by
-/// artist, as `list_order_versions` names them.
-pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static str] {
-    if group_by_artist {
-        &["album_listing", "album_artist_link", "artist_listing"]
-    } else {
-        &["album_listing"]
-    }
-}
-
-/// The grid's sections when grouped by artist: each artist in the grouped
-/// order with its name, where its albums start in the rows, how many there
-/// are, and the version of its picture. `direction` is the grouped order's
-/// Artist direction.
-pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
-    let dir = sort_direction_sql(direction);
-    let order = format!("artist.sort_key COLLATE NOCASE {dir}, artist.artist_id {dir}");
-    format!(
-        "SELECT artist.artist_id, artist.name, \
-                SUM(artist.album_count) OVER (ORDER BY {order} ROWS UNBOUNDED PRECEDING) \
-                    - artist.album_count, \
-                artist.album_count, \
-                {image} AS image_version \
-         FROM artist_listing artist \
-         ORDER BY {order}",
-        image = super::files::artist_image_version_sql("artist.artist_id"),
-    )
-}
-
-/// The artist whose group lists each row of the album grid (a SQL
-/// expression over `album_browse_order`'s relation): the group's artist when
-/// grouped by artist, else NULL.
-pub(super) fn album_group_artist_sql(group_by_artist: bool) -> &'static str {
-    if group_by_artist {
-        "artist.artist_id"
-    } else {
-        "NULL"
-    }
-}
-
-fn sort_direction_sql(direction: SortDirection) -> &'static str {
-    match direction {
-        SortDirection::Ascending => "ASC",
-        SortDirection::Descending => "DESC",
-    }
-}
-
 /// The release whose cover a work shows: the release of the first track,
 /// in track position, that performs it (a SQL expression over `w`).
 const WORK_REPRESENTATIVE_RELEASE: &str = "(
@@ -414,7 +319,7 @@ const WORK_REPRESENTATIVE_RELEASE: &str = "(
                     LIMIT 1
                 )";
 
-pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
+pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let mut query = format!(
         "SELECT w.id AS work_id,
                 w.title AS work_title,
@@ -464,7 +369,7 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
     query
 }
 
-pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
+pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
     let representative_release_id: Option<String> = row.get("representative_release_id")?;
     let representative_cover = match &representative_release_id {
         Some(id) => crate::db::cover_ref(id, row.get("representative_cover_version")?),
@@ -487,7 +392,7 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
     })
 }
 
-pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
+pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
         image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
@@ -498,7 +403,7 @@ pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
     })
 }
 
-pub(super) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
+pub(crate) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbArtistSummary {
         image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
@@ -667,55 +572,6 @@ pub(super) fn row_to_library_image(
     })
 }
 
-/// The order of an album listing over `album_listing listing`; `artist`
-/// says what its Artist sort compares. With no criteria the newest albums
-/// come first. An index of `album_listing` serves each one-field sort.
-pub(super) fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
-    // Every order ends with the album id, a total order over albums. Without
-    // it rows sharing a sort value order arbitrarily — and a window read by
-    // its offset, one read from a row beside it and `get_album_index` (a
-    // ROW_NUMBER window) are different query shapes, so SQLite could
-    // tie-break them differently and a reveal would scroll to the wrong
-    // album.
-    if sort.is_empty() {
-        return ListOrder::new(vec![
-            SortTerm::descending("listing.created_at"),
-            SortTerm::ascending("listing.album_id"),
-        ]);
-    }
-    let mut terms = sort
-        .iter()
-        .flat_map(|c| {
-            let dir = c.direction;
-            match c.field {
-                AlbumSortField::Title => {
-                    vec![SortTerm::running("listing.title COLLATE NOCASE", dir)]
-                }
-                AlbumSortField::Artist => match artist {
-                    ArtistOrder::CreditList => vec![
-                        SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir)
-                            .nullable(),
-                        SortTerm::running("listing.credit_artist_ids", dir).nullable(),
-                    ],
-                    ArtistOrder::GroupArtist => vec![
-                        SortTerm::running("artist.sort_key COLLATE NOCASE", dir),
-                        SortTerm::running("artist.artist_id", dir),
-                    ],
-                },
-                // An unknown year sorts as above every year: last ascending,
-                // first descending.
-                AlbumSortField::Year => vec![
-                    SortTerm::running("listing.year IS NULL", dir),
-                    SortTerm::running("listing.year", dir).nullable(),
-                ],
-                AlbumSortField::DateAdded => vec![SortTerm::running("listing.created_at", dir)],
-            }
-        })
-        .collect::<Vec<_>>();
-    terms.push(SortTerm::ascending("listing.album_id"));
-    ListOrder::new(terms)
-}
-
 /// The Storage Manager list's order over `release_listing listing`. Every
 /// order ends with the album title, then `created_at` unless it sorts by
 /// that, and the release id, which tell apart two releases sharing a title
@@ -810,7 +666,7 @@ fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &
 }
 
 /// The album `a`'s credits as a JSON array, `[]` for none.
-pub(super) fn album_credits_json_sql() -> String {
+pub(crate) fn album_credits_json_sql() -> String {
     format!(
         "COALESCE({}, '[]')",
         credits_json_sql("album_artists", "album_id", "a.id", "album_credits")
@@ -819,7 +675,7 @@ pub(super) fn album_credits_json_sql() -> String {
 
 /// The credits the track `track_alias` shows, as a JSON array: its own, else
 /// its album `a`'s.
-pub(super) fn track_credits_json_sql(track_alias: &str) -> String {
+pub(crate) fn track_credits_json_sql(track_alias: &str) -> String {
     format!(
         "COALESCE({}, {})",
         credits_json_sql(
@@ -833,7 +689,7 @@ pub(super) fn track_credits_json_sql(track_alias: &str) -> String {
 }
 
 /// The album's releases in album order (see [`album_primary_release_sql`]).
-pub(super) fn album_release_ids_json_sql() -> &'static str {
+pub(crate) fn album_release_ids_json_sql() -> &'static str {
     "COALESCE(( \
         SELECT json_group_array(album_release.id ORDER BY album_release.album_order, album_release.id) \
         FROM releases album_release \
@@ -844,7 +700,7 @@ pub(super) fn album_release_ids_json_sql() -> &'static str {
 /// The album `a`'s primary release: its lowest-ordered release, ties broken
 /// by release id, so every device that holds the same rows names the same
 /// one. NULL only for an emptied album, which no listing shows.
-pub(super) fn album_primary_release_sql() -> &'static str {
+pub(crate) fn album_primary_release_sql() -> &'static str {
     "(SELECT album_release.id FROM releases album_release \
       WHERE album_release.album_id = a.id \
       ORDER BY album_release.album_order, album_release.id LIMIT 1)"
@@ -854,7 +710,7 @@ pub(super) fn album_primary_release_sql() -> &'static str {
 /// credit list as JSON), `release_ids_json`
 /// (releases in album order), `primary_release_id` and the version of that
 /// release's cover, `primary_cover_version`.
-pub(super) fn album_summary_columns() -> String {
+pub(crate) fn album_summary_columns() -> String {
     format!(
         "a.id, a.title, a.year, a.is_compilation, \
             {primary} AS primary_release_id, \
@@ -870,14 +726,14 @@ pub(super) fn album_summary_columns() -> String {
 
 /// Shared SELECT list for album-summary queries. Callers append
 /// `FROM albums a` and their own `ORDER BY` / `WHERE` / `LIMIT`.
-pub(super) fn album_summary_select() -> String {
+pub(crate) fn album_summary_select() -> String {
     format!("SELECT {}", album_summary_columns())
 }
 
 /// Owned SQL columns; JSON decoding runs after the read connection is released.
 #[derive(Clone, PartialEq)]
-pub(super) struct AlbumSummaryRow {
-    pub(super) id: String,
+pub(crate) struct AlbumSummaryRow {
+    pub(crate) id: String,
     title: String,
     year: Option<i32>,
     is_compilation: bool,
@@ -888,7 +744,7 @@ pub(super) struct AlbumSummaryRow {
 }
 
 impl AlbumSummaryRow {
-    pub(super) fn read(row: &Row) -> rusqlite::Result<Self> {
+    pub(crate) fn read(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             title: row.get("title")?,
@@ -901,18 +757,18 @@ impl AlbumSummaryRow {
         })
     }
 
-    pub(super) fn process(self) -> Result<DbAlbumSummary, DbError> {
+    pub(crate) fn process(self) -> Result<DbAlbumSummary, DbError> {
         let credits = self.credits()?;
         self.process_with(&credits)
     }
 
     /// The album's credits, in list order.
-    pub(super) fn credits(&self) -> Result<Vec<crate::db::credits::LibraryCredit>, DbError> {
+    pub(crate) fn credits(&self) -> Result<Vec<crate::db::credits::LibraryCredit>, DbError> {
         super::read::credits_from_json(&self.album_credits)
     }
 
     /// The summary, its artist line printed from `credits`, the album's own.
-    pub(super) fn process_with(
+    pub(crate) fn process_with(
         self,
         credits: &[crate::db::credits::LibraryCredit],
     ) -> Result<DbAlbumSummary, DbError> {

@@ -1,48 +1,5 @@
 use super::*;
 
-/// Raw combined search-result aggregate. No formatting — the resolver in
-/// `LibraryManager` produces the display-ready `crate::album_detail::SearchResults`.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct DbLibrarySearchResults {
-    pub albums: Vec<DbAlbumSearchResult>,
-    pub artists: Vec<DbArtistSummary>,
-    pub tracks: Vec<DbTrackSearchResult>,
-    pub composers: Vec<DbComposerSummary>,
-    pub works: Vec<DbWorkSummary>,
-}
-
-/// Raw album search-result row; `artist_name` is the album's credits,
-/// comma-joined.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbAlbumSearchResult {
-    pub id: String,
-    pub title: String,
-    pub year: Option<i32>,
-    /// The album's lowest-ordered release.
-    pub primary_release_id: String,
-    /// The version of that release's cover; `None` when it has none.
-    pub cover_version: Option<String>,
-    pub artist_name: String,
-}
-
-/// Raw track search-result row with album and artist info joined in SQL;
-/// `artist_name` is the track's own credits, else its album's. No formatted
-/// duration label — the resolver in `LibraryManager` formats it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbTrackSearchResult {
-    pub id: String,
-    pub title: String,
-    pub duration_ms: u64,
-    /// The release the track belongs to — the key the resolver looks the
-    /// track's cover up by.
-    pub release_id: String,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_name: String,
-    /// The version of the release's cover; `None` when it has none.
-    pub cover_version: Option<String>,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerSummary {
     pub artist: DbArtist,
@@ -168,23 +125,9 @@ pub struct DbReleaseStorageSummary {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AlbumSortField {
-    Title,
-    Artist,
-    Year,
-    DateAdded,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
     Ascending,
     Descending,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AlbumSortCriterion {
-    pub field: AlbumSortField,
-    pub direction: SortDirection,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -210,20 +153,6 @@ pub enum ArtistSortField {
 pub struct ArtistSortCriterion {
     pub field: ArtistSortField,
     pub direction: SortDirection,
-}
-
-/// Raw album-detail aggregate. The resolver in `LibraryManager` produces
-/// the display-ready `crate::album_detail::AlbumDetail`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbAlbumDetail {
-    pub album: DbAlbum,
-    pub artists: Vec<crate::db::credits::LibraryCredit>,
-    /// The album's releases in album order.
-    pub releases: Vec<DbReleaseDetail>,
-    /// The album's lowest-ordered release.
-    pub primary_release_id: String,
-    /// The version of that release's cover; `None` when it has none.
-    pub primary_cover_version: Option<String>,
 }
 
 /// A release detail plus the album context needed to project it: the album's

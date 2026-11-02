@@ -227,6 +227,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     // command goes through; the fixture's own queue is never started.
     let services = crate::library::AppServices::new(
         fixture.manager.clone(),
+        fixture.manager.views(),
         fixture.manager.start_playback().await,
         fixture.import.clone(),
         fixture.import.start_identification_queue(),

@@ -2,7 +2,7 @@
 async fn search_library_matches_album_artist_names() {
     let (db, _tmp) = seeded_db().await;
 
-    let results = db.search_library("Album Artist A", 10).await.unwrap();
+    let results = crate::library::views::LibraryViews::new(db.clone()).search_rows("Album Artist A", 10).await.unwrap();
     assert_eq!(results.albums.len(), 1);
     assert_eq!(results.albums[0].id, ALBUM_A);
 }
@@ -11,14 +11,14 @@ async fn search_library_matches_album_artist_names() {
 async fn search_library_returns_artist_hits() {
     let (db, _tmp) = seeded_db().await;
 
-    let results = db.search_library("Album Artist A", 10).await.unwrap();
+    let results = crate::library::views::LibraryViews::new(db.clone()).search_rows("Album Artist A", 10).await.unwrap();
     assert_eq!(results.artists.len(), 1);
     assert_eq!(results.artists[0].artist.id, ARTIST_ALBUM);
     assert_eq!(results.artists[0].album_count, 1);
 
     // Composer artists are artist rows too, but only surface as artist
     // hits when they have albums; the seeded composer has none.
-    let composer = db.search_library("Displayed Composer A", 10).await.unwrap();
+    let composer = crate::library::views::LibraryViews::new(db.clone()).search_rows("Displayed Composer A", 10).await.unwrap();
     assert_eq!(composer.composers.len(), 1);
     assert!(composer.artists.is_empty());
 }
@@ -27,11 +27,11 @@ async fn search_library_returns_artist_hits() {
 async fn search_library_matches_composer_and_work_sort_names() {
     let (db, _tmp) = seeded_db().await;
 
-    let composer_results = db.search_library("Hidden Composer", 10).await.unwrap();
+    let composer_results = crate::library::views::LibraryViews::new(db.clone()).search_rows("Hidden Composer", 10).await.unwrap();
     assert_eq!(composer_results.composers.len(), 1);
     assert_eq!(composer_results.composers[0].artist.id, ARTIST_COMPOSER);
 
-    let work_results = db.search_library("Displayed Work", 10).await.unwrap();
+    let work_results = crate::library::views::LibraryViews::new(db.clone()).search_rows("Displayed Work", 10).await.unwrap();
     assert_eq!(work_results.works.len(), 1);
     assert_eq!(work_results.works[0].work.id, WORK_CHILD_A);
     assert_eq!(work_results.works[0].parent_work_id.as_deref(), Some(WORK_PARENT_A));
@@ -74,13 +74,13 @@ async fn search_library_treats_like_metacharacters_as_literals() {
     .await
     .unwrap();
 
-    let percent_results = db.search_library("50%", 10).await.unwrap();
+    let percent_results = crate::library::views::LibraryViews::new(db.clone()).search_rows("50%", 10).await.unwrap();
     assert_eq!(percent_results.albums.len(), 1);
     assert_eq!(percent_results.albums[0].id, ALBUM_PERCENT);
     assert_eq!(percent_results.tracks.len(), 1);
     assert_eq!(percent_results.tracks[0].id, TRACK_PERCENT);
 
-    let underscore_results = db.search_library("A_B", 10).await.unwrap();
+    let underscore_results = crate::library::views::LibraryViews::new(db.clone()).search_rows("A_B", 10).await.unwrap();
     assert_eq!(underscore_results.albums.len(), 1);
     assert_eq!(underscore_results.albums[0].id, ALBUM_UNDERSCORE);
     assert_eq!(underscore_results.tracks.len(), 1);

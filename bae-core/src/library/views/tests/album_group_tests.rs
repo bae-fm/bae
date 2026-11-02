@@ -1,6 +1,5 @@
-use super::super::*;
-use super::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
-use crate::db::LibraryPageWindow;
+use crate::db::client::tests::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
+use crate::library::views::*;
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
     let (db, dir) = temp_db().await;
@@ -53,7 +52,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
                 direction: SortDirection::Descending,
             },
         ];
-        let mut browse = db.subscribe_album_browse(
+        let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
             &sort,
             true,
             [LibraryPageWindow { offset: 2, limit: 1 }].into(),
@@ -62,7 +61,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         assert_eq!(value.windows[0].rows.len(), 1);
         assert_eq!(value.total_count, 5);
         assert_eq!(value.sections.len(), 3);
-        let page = db.get_album_page(&sort, 0, 10).await.unwrap();
+        let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 10).await.unwrap();
         let mut offset = 0;
         for section in &value.sections {
             assert_eq!(section.window.offset, offset);
@@ -71,14 +70,17 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
             for (position, album) in albums.iter().enumerate() {
                 assert_eq!(
-                    db.get_album_index(&sort, &album.id, true).await.unwrap(),
+                    LibraryViews::new(db.clone())
+                        .get_album_index(&sort, &album.id, true)
+                        .await
+                        .unwrap(),
                     Some(offset + position as u64)
                 );
             }
             offset += section.window.limit;
         }
         assert_eq!(offset, 5);
-        assert_eq!(value.windows[0].rows[0].album, page[2]);
+        assert_eq!(value.windows[0].rows[0].album.id, page[2].id);
     }
 }
 
@@ -87,7 +89,8 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
     let (db, _dir) = grouped_library().await;
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending }];
-    let mut browse = db.subscribe_album_browse(&sort, true, BTreeSet::new());
+    let mut browse =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, true, BTreeSet::new());
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.sections[0].id, ARTIST_C);
     exec(
@@ -109,7 +112,8 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
     assert_eq!(removed.total_count, 4);
     assert_eq!(removed.sections.len(), 2);
     assert!(!removed.sections.iter().any(|section| section.id == ARTIST_C));
-    let mut flat = db.subscribe_album_browse(&sort, false, BTreeSet::new());
+    let mut flat =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, false, BTreeSet::new());
     assert!(flat.next().await.expect("the query stays open").result.unwrap().sections.is_empty());
 }
 
@@ -125,8 +129,11 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     .await;
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
-    let mut browse =
-        db.subscribe_album_browse(&sort, true, [LibraryPageWindow { offset: 0, limit: 20 }].into());
+    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+        &sort,
+        true,
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+    );
     let value = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(value.total_count, 5);
     assert_eq!(value.row_count, 6);
@@ -143,10 +150,10 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     }
     assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
     assert_eq!(
-        db.get_album_index(&sort, album_id, true).await.unwrap(),
+        LibraryViews::new(db.clone()).get_album_index(&sort, album_id, true).await.unwrap(),
         rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
     );
-    let mut flat = db.subscribe_album_browse(
+    let mut flat = LibraryViews::new(db.clone()).subscribe_album_browse(
         &sort,
         false,
         [LibraryPageWindow { offset: 0, limit: 20 }].into(),
@@ -172,8 +179,11 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
             "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
             &[id, album_id, artist, position]).await;
     }
-    let mut browse =
-        db.subscribe_album_browse(&[], true, [LibraryPageWindow { offset: 0, limit: 20 }].into());
+    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        true,
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+    );
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.row_count, 6);
     exec(
@@ -198,21 +208,29 @@ async fn a_selection_is_read_in_the_grids_order() {
     let (db, _dir) = grouped_library().await;
     let album = |index: u32| format!("00000000-0000-4000-8000-{index:012}");
     let picked = vec![album(3), album(0), "no-such-album".to_string(), album(4), album(1)];
-    let titles = |albums: Vec<DbAlbumSummary>| {
+    let titles = |albums: Vec<crate::album_detail::AlbumSummary>| {
         albums.into_iter().map(|album| album.title).collect::<Vec<_>>()
     };
     let by_title =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
     assert_eq!(
-        titles(db.albums_in_browse_order(&by_title, picked.clone(), false).await.unwrap()),
+        titles(
+            LibraryViews::new(db.clone())
+                .albums_in_browse_order(&by_title, picked.clone(), false)
+                .await
+                .unwrap()
+        ),
         ["Album E", "Album D", "Album B", "Album A"]
     );
     let by_artist = [
         AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending },
         AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending },
     ];
-    let grouped = db.albums_in_browse_order(&by_artist, picked, true).await.unwrap();
-    let page = db.get_album_page(&by_artist, 0, 10).await.unwrap();
+    let grouped = LibraryViews::new(db.clone())
+        .albums_in_browse_order(&by_artist, picked, true)
+        .await
+        .unwrap();
+    let page = LibraryViews::new(db.clone()).get_album_page(&by_artist, 0, 10).await.unwrap();
     let expected: Vec<String> = page
         .into_iter()
         .filter(|album| grouped.iter().any(|picked| picked.id == album.id))
@@ -235,7 +253,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
     )
     .await;
     let windows = [LibraryPageWindow { offset: 0, limit: 20 }];
-    let grouped = db
+    let grouped = LibraryViews::new(db.clone())
         .subscribe_album_browse(&[], true, windows.clone().into())
         .next()
         .await
@@ -267,7 +285,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         ]
         .into()
     );
-    let flat = db
+    let flat = LibraryViews::new(db.clone())
         .subscribe_album_browse(&[], false, windows.into())
         .next()
         .await
@@ -282,11 +300,16 @@ async fn a_grouped_row_names_the_albums_other_credits() {
 #[tokio::test]
 async fn an_artist_section_carries_the_artists_picture() {
     let (db, _dir) = grouped_library().await;
-    let mut browse = db.subscribe_album_browse(&[], true, BTreeSet::new());
+    let mut browse =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert!(initial.sections.iter().all(|section| section.image.is_none()));
-    let version =
-        super::live_query_tests::write_artist_image(&db, ARTIST_B, "artist image bytes").await;
+    let version = crate::db::client::tests::live_query_tests::write_artist_image(
+        &db,
+        ARTIST_B,
+        "artist image bytes",
+    )
+    .await;
     let pictured = browse.next().await.expect("the query stays open").result.unwrap();
     let images = pictured
         .sections

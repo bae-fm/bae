@@ -1,7 +1,5 @@
-use bae_core::db::{
-    AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbAlbumArtist, DbArtist, DbRelease,
-    SortDirection,
-};
+use bae_core::db::{Database, DbAlbum, DbAlbumArtist, DbArtist, DbRelease, SortDirection};
+use bae_core::library::views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
@@ -74,7 +72,7 @@ async fn test_default_sort_is_date_added_desc() {
     insert_listed_album(&db, &new).await;
 
     // Empty criteria = default = created_at DESC (newest first)
-    let albums = db.get_albums(&[]).await.unwrap();
+    let albums = LibraryViews::new(db.clone()).get_albums(&[]).await.unwrap();
     assert_eq!(albums.len(), 2);
     assert_eq!(albums[0].title, "New Album");
     assert_eq!(albums[1].title, "Old Album");
@@ -92,7 +90,7 @@ async fn test_sort_by_title_ascending() {
     insert_listed_album(&db, &a).await;
     insert_listed_album(&db, &b).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Title,
             direction: SortDirection::Ascending,
@@ -115,7 +113,7 @@ async fn test_sort_by_title_descending() {
     insert_listed_album(&db, &a).await;
     insert_listed_album(&db, &b).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Title,
             direction: SortDirection::Descending,
@@ -137,7 +135,7 @@ async fn test_sort_by_title_is_case_insensitive() {
     insert_listed_album(&db, &lower).await;
     insert_listed_album(&db, &upper).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Title,
             direction: SortDirection::Ascending,
@@ -161,7 +159,7 @@ async fn test_sort_by_year_ascending_nulls_last() {
     insert_listed_album(&db, &y2020).await;
     insert_listed_album(&db, &y2010).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Year,
             direction: SortDirection::Ascending,
@@ -186,7 +184,7 @@ async fn test_sort_by_year_descending_nulls_first() {
     insert_listed_album(&db, &y2020).await;
     insert_listed_album(&db, &y2010).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Year,
             direction: SortDirection::Descending,
@@ -211,7 +209,7 @@ async fn test_sort_by_date_added_ascending() {
     insert_listed_album(&db, &newest).await;
     insert_listed_album(&db, &middle).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::DateAdded,
             direction: SortDirection::Ascending,
@@ -238,7 +236,7 @@ async fn test_sort_by_artist_ascending() {
     insert_listed_album(&db, &album_z).await;
     insert_listed_album(&db, &album_a).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Artist,
             direction: SortDirection::Ascending,
@@ -264,7 +262,7 @@ async fn test_sort_by_artist_uses_sort_name() {
     insert_listed_album(&db, &album_the).await;
     insert_listed_album(&db, &album_a).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
             field: AlbumSortField::Artist,
             direction: SortDirection::Ascending,
@@ -293,7 +291,7 @@ async fn test_multi_criteria_artist_then_year() {
     }
 
     // Sort by artist ASC, then year DESC
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[
             AlbumSortCriterion {
                 field: AlbumSortField::Artist,
@@ -328,16 +326,18 @@ async fn test_album_index_matches_page_position() {
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
 
     // The paged list is the ground truth; the index query must agree with it.
-    let page = db.get_album_page(&sort, 0, 100).await.unwrap();
+    let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 100).await.unwrap();
     assert_eq!(page.len(), titles.len());
 
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&sort, &summary.id, false).await.unwrap();
+        let index =
+            LibraryViews::new(db.clone()).get_album_index(&sort, &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64), "album {}", summary.title);
     }
 
     // An id that isn't in the library has no position.
-    let missing = db.get_album_index(&sort, "no-such-album", false).await.unwrap();
+    let missing =
+        LibraryViews::new(db.clone()).get_album_index(&sort, "no-such-album", false).await.unwrap();
     assert_eq!(missing, None);
 }
 
@@ -352,9 +352,10 @@ async fn test_album_index_matches_page_position_default_sort() {
 
     // Empty sort exercises the default `created_at DESC` order, which needs no
     // artist join — same path `get_album_page` takes for the default sort.
-    let page = db.get_album_page(&[], 0, 100).await.unwrap();
+    let page = LibraryViews::new(db.clone()).get_album_page(&[], 0, 100).await.unwrap();
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&[], &summary.id, false).await.unwrap();
+        let index =
+            LibraryViews::new(db.clone()).get_album_index(&[], &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64));
     }
 }
@@ -374,10 +375,11 @@ async fn test_album_index_matches_page_position_on_ties() {
 
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
-    let page = db.get_album_page(&sort, 0, 100).await.unwrap();
+    let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 100).await.unwrap();
     assert_eq!(page.len(), 8);
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&sort, &summary.id, false).await.unwrap();
+        let index =
+            LibraryViews::new(db.clone()).get_album_index(&sort, &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64), "album {}", summary.id);
     }
 }
@@ -394,7 +396,7 @@ async fn test_multi_criteria_year_asc_then_title_asc() {
     insert_listed_album(&db, &b).await;
     insert_listed_album(&db, &c).await;
 
-    let albums = db
+    let albums = LibraryViews::new(db.clone())
         .get_albums(&[
             AlbumSortCriterion { field: AlbumSortField::Year, direction: SortDirection::Ascending },
             AlbumSortCriterion {

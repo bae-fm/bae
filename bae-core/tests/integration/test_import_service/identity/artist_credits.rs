@@ -370,7 +370,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     let (_, album_id) = import_and_wait(&f, dir, support::discogs_release(release_key)).await;
 
     let album =
-        f.library_manager.find_album_detail(&album_id).await.unwrap().expect("the imported album");
+        bae_core::library::views::LibraryViews::new(f.db.clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
     assert_eq!(album.artist_names, "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");

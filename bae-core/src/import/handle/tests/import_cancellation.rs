@@ -85,7 +85,7 @@ async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::import:
 }
 
 async fn album_count(handle: &ImportServiceHandle) -> usize {
-    handle.database.get_albums(&[]).await.unwrap().len()
+    crate::library::views::LibraryViews::new(handle.database.clone()).get_albums(&[]).await.unwrap().len()
 }
 
 #[tokio::test(flavor = "multi_thread")]

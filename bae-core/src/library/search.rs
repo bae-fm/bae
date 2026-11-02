@@ -60,10 +60,10 @@ impl From<crate::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
 pub struct LiveLibrarySearch {
     query: crate::live_query::CancellableLiveQuery<
         Option<LibrarySearchQuery>,
-        crate::db::LibrarySearchProjection,
+        crate::library::views::LibrarySearchProjection,
     >,
     resolve: std::sync::Arc<
-        dyn Fn(crate::db::LibrarySearchProjection) -> crate::album_detail::SearchResults
+        dyn Fn(crate::library::views::LibrarySearchProjection) -> crate::album_detail::SearchResults
             + Send
             + Sync,
     >,
@@ -73,9 +73,9 @@ impl LiveLibrarySearch {
     pub(crate) fn new(
         query: crate::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
-            crate::db::LibrarySearchProjection,
+            crate::library::views::LibrarySearchProjection,
         >,
-        resolve: impl Fn(crate::db::LibrarySearchProjection) -> crate::album_detail::SearchResults
+        resolve: impl Fn(crate::library::views::LibrarySearchProjection) -> crate::album_detail::SearchResults
             + Send
             + Sync
             + 'static,

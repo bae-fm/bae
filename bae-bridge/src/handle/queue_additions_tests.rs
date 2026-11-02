@@ -22,7 +22,10 @@ fn handle_over_one_album(
     };
     let track_ids = runtime.block_on(async {
         manager.write_fixture(&fixture).await.expect("write the library fixture");
-        let albums = manager.get_albums(&[]).await.expect("read the albums");
+        let albums = bae_core::library::views::LibraryViews::new(database.clone())
+            .get_albums(&[])
+            .await
+            .expect("read the albums");
         let releases =
             manager.get_releases_for_album(&albums[0].id).await.expect("read the releases");
         manager.get_track_ids(&releases[0].id).await.expect("read the tracks")

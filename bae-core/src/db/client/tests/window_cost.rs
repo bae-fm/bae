@@ -14,6 +14,7 @@
 //! ```
 
 use super::super::*;
+use crate::library::views::*;
 use std::time::{Duration, Instant};
 
 /// The sizes the lists are measured at, each reached by adding rows to the
@@ -232,9 +233,9 @@ async fn measure_albums(db: &Database, n: u64) {
     for group_by_artist in [false, true] {
         let (list, rows): (&str, Rows<_>) = if group_by_artist {
             ("albums_by_artist", |sql, order, seek, limit, offset| {
-                super::super::album::album_rows_on(
+                crate::library::views::album::album_rows_on(
                     sql,
-                    &query::album_browse_order(&[], true).0,
+                    &crate::library::views::album::album_browse_order(&[], true).0,
                     true,
                     order,
                     seek,
@@ -244,9 +245,9 @@ async fn measure_albums(db: &Database, n: u64) {
             })
         } else {
             ("albums", |sql, order, seek, limit, offset| {
-                super::super::album::album_rows_on(
+                crate::library::views::album::album_rows_on(
                     sql,
-                    &query::album_browse_order(&[], false).0,
+                    &crate::library::views::album::album_browse_order(&[], false).0,
                     false,
                     order,
                     seek,
@@ -256,7 +257,8 @@ async fn measure_albums(db: &Database, n: u64) {
             })
         };
         for (name, sort) in &sorts {
-            let (_, order) = query::album_browse_order(sort, group_by_artist);
+            let (_, order) =
+                crate::library::views::album::album_browse_order(sort, group_by_artist);
             measure(db, list, name, n, order, rows).await;
         }
     }

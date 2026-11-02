@@ -28,8 +28,9 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
     manager.write_fixture(&fixture).await.unwrap();
 
     let newest_first = manager
-        .get_albums(&[crate::db::AlbumSortCriterion {
-            field: crate::db::AlbumSortField::DateAdded,
+        .views()
+        .get_albums(&[crate::library::views::AlbumSortCriterion {
+            field: crate::library::views::AlbumSortField::DateAdded,
             direction: crate::db::SortDirection::Descending,
         }])
         .await
@@ -62,7 +63,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let albums = manager.get_albums(&[]).await.unwrap();
+    let albums = manager.views().get_albums(&[]).await.unwrap();
     let shared = albums
         .iter()
         .find(|album| album.title == "Shared Album")
@@ -76,7 +77,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         .collect();
     assert_eq!(credited, ["Artist A", "Artist B"]);
 
-    let mut browse = manager.subscribe_album_browse(
+    let mut browse = manager.views().subscribe_album_browse(
         &[],
         true,
         [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
@@ -116,7 +117,7 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
 
     manager.write_fixture(&fixture_of_albums(vec![album])).await.unwrap();
 
-    let albums = manager.get_albums(&[]).await.unwrap();
+    let albums = manager.views().get_albums(&[]).await.unwrap();
     let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
     let stored = manager
         .read_cover_image_bytes(&release_id)
@@ -145,7 +146,7 @@ async fn a_fixture_album_crediting_no_artist_writes_nothing() {
         error,
         crate::library::LibraryFixtureError::NoArtist { ref album } if album == "Uncredited Album"
     ));
-    assert!(manager.get_albums(&[]).await.unwrap().is_empty());
+    assert!(manager.views().get_albums(&[]).await.unwrap().is_empty());
 }
 
 /// A fixture candidate in `state`, its folder named `folder`, of two tracks.
@@ -391,7 +392,7 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
         .await
         .unwrap();
 
-    let albums = manager.get_albums(&[]).await.unwrap();
+    let albums = manager.views().get_albums(&[]).await.unwrap();
     assert_eq!(
         albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
         ["Album Title"]
@@ -445,7 +446,7 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         }))
         .await
         .unwrap();
-    let album_id = manager.get_albums(&[]).await.unwrap()[0].id.clone();
+    let album_id = manager.views().get_albums(&[]).await.unwrap()[0].id.clone();
     let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
     let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 

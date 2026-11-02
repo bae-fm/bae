@@ -59,7 +59,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        test.database.get_albums(&[]).await.unwrap().len(),
+        crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap().len(),
         1,
         "the next import lands the release"
     );

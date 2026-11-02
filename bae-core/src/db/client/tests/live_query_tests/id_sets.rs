@@ -88,7 +88,8 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
 #[tokio::test]
 async fn album_selection_follows_its_ids_on_one_subscription() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_selection(BTreeSet::new());
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
     assert!(live.next().await.expect("the query stays open").result.unwrap().is_empty());
 

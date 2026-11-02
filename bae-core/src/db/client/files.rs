@@ -177,7 +177,7 @@ pub(crate) fn cover_version_sql(release_id: &str) -> String {
 
 /// The version of the image of the artist `artist_id` (a SQL expression),
 /// found by the artist images' key; NULL when the artist has no image.
-pub(super) fn artist_image_version_sql(artist_id: &str) -> String {
+pub(crate) fn artist_image_version_sql(artist_id: &str) -> String {
     format!(
         "(SELECT {version} FROM artist_images AS artist_image \
           WHERE artist_image.id = {artist_id})",

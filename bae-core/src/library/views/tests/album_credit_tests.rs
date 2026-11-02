@@ -1,8 +1,8 @@
 //! An album's credits are one ordered list (`album_artists` from position 0):
 //! every reader of an album's artists reads the whole list.
 
-use super::super::*;
-use super::{exec_batch, temp_db};
+use crate::db::client::tests::{exec_batch, temp_db};
+use crate::library::views::*;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
 const ARTIST_B: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a02";
@@ -62,7 +62,7 @@ async fn credited_library() -> (Database, tempfile::TempDir) {
 async fn an_album_is_found_by_any_of_its_credits() {
     let (db, _dir) = credited_library().await;
 
-    let results = db.search_library("Artist B", 10).await.unwrap();
+    let results = LibraryViews::new(db.clone()).search_rows("Artist B", 10).await.unwrap();
 
     let albums: Vec<(&str, &str)> = results
         .albums
@@ -76,7 +76,7 @@ async fn an_album_is_found_by_any_of_its_credits() {
 async fn a_track_search_row_names_its_own_credits_else_its_albums() {
     let (db, _dir) = credited_library().await;
 
-    let results = db.search_library("Track", 10).await.unwrap();
+    let results = LibraryViews::new(db.clone()).search_rows("Track", 10).await.unwrap();
 
     let tracks: Vec<(&str, &str)> = results
         .tracks
@@ -104,7 +104,7 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
         )
         .await
         .unwrap();
-    let grid = db
+    let grid = LibraryViews::new(db.clone())
         .get_album_page(
             &[AlbumSortCriterion {
                 field: AlbumSortField::Artist,

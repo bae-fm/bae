@@ -13,7 +13,7 @@ pub(crate) const ARTIST_A: &str = "d7d8141f-54ff-467d-8b60-4f34a4d2e528";
 const ARTIST_ABSENT: &str = "78420eae-1cd1-4a36-87ae-2a5556aa52aa";
 pub(crate) const ARTIST_ALBUM: &str = "85f70840-aba5-4eb9-8e1a-0d319e53b798";
 pub(crate) const ARTIST_B: &str = "38fc314c-c130-4120-8ca9-38b870ccef3a";
-const ARTIST_C: &str = "1b4bafc9-0ece-4538-833e-4ff52feb6ef0";
+pub(crate) const ARTIST_C: &str = "1b4bafc9-0ece-4538-833e-4ff52feb6ef0";
 pub(crate) const ARTIST_COMPOSER: &str = "5412b7ad-bdc1-4561-8985-b6d6ef8a2880";
 const ARTIST_EXTRA: &str = "7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8";
 const ARTIST_PRIMARY: &str = "7cdf9a34-0746-472b-8c68-0a669c11f2f1";
@@ -217,12 +217,6 @@ mod queue_cover_tests;
 
 #[cfg(test)]
 pub(crate) mod live_query_tests;
-
-#[cfg(test)]
-mod album_group_tests;
-
-#[cfg(test)]
-mod album_credit_tests;
 
 mod local_foreign_keys;
 

@@ -169,8 +169,10 @@ async fn test_local_delete_preserves_files() {
         library_manager.get_tracks_for_release(&release_id).await.expect("get tracks after delete");
     assert!(tracks_after.is_empty(), "Tracks should be deleted from database");
 
-    let album_after =
-        library_manager.find_album_detail(&album_id).await.expect("get album after delete");
+    let album_after = bae_core::library::views::LibraryViews::new(database.clone())
+        .find_album_detail(&album_id)
+        .await
+        .expect("get album after delete");
     assert!(album_after.is_none(), "Album should no longer be shown (was last release)");
 
     for path in &original_files {
@@ -308,7 +310,7 @@ async fn run_import_with_cover_test() {
         .get_album_id_for_release(&release_id)
         .await
         .expect("Failed to get album_id");
-    let album = library_manager
+    let album = bae_core::library::views::LibraryViews::new(database.clone())
         .find_album_detail(&album_id)
         .await
         .expect("Failed to get album")

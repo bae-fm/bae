@@ -94,8 +94,20 @@ macro_rules! delegate_async {
     };
 }
 
+/// A read the library's views answer as it is, its failure told as a
+/// library error.
+macro_rules! delegate_view {
+    ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ok:ty) => {
+        pub async fn $name(&self, $($arg: $ty),*) -> Result<$ok, crate::library::LibraryError> {
+            Ok(self.inner.views.$target($($arg),*).await?)
+        }
+    };
+}
+
 struct AppServicesInner {
     manager: LibraryManager,
+    /// The library's views, for the reads a screen shows as they are.
+    views: crate::library::views::LibraryViews,
     playback: PlaybackHandle,
     /// The import service, which also owns the identify driver and the
     /// extraction feeding it: one of each per library, reached through it.
@@ -153,6 +165,7 @@ impl std::fmt::Debug for AppServices {
 impl AppServices {
     pub fn new(
         manager: LibraryManager,
+        views: crate::library::views::LibraryViews,
         playback: PlaybackHandle,
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -161,6 +174,7 @@ impl AppServices {
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
+                views,
                 playback,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 import,
@@ -266,17 +280,17 @@ impl AppServices {
 
     pub fn subscribe_album_browse(
         &self,
-        sort: &[crate::db::AlbumSortCriterion],
+        sort: &[crate::library::views::AlbumSortCriterion],
         group_by_artist: bool,
     ) -> crate::library::LiveAlbumBrowse {
         let manager = self.inner.manager.clone();
-        let query = manager.until_closed(manager.subscribe_album_browse(
+        let query = manager.until_closed(self.inner.views.subscribe_album_browse(
             sort,
             group_by_artist,
             std::collections::BTreeSet::new(),
         ));
         crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
-            manager.resolve_album_browse(projection, request_revision, cause)
+            crate::library::views::album::resolve_album_browse(projection, request_revision, cause)
         })
     }
 
@@ -285,19 +299,20 @@ impl AppServices {
     /// starts with none.
     pub fn subscribe_album_selection(&self) -> crate::library::LiveAlbumSelection {
         let manager = &self.inner.manager;
-        crate::library::LiveAlbumSelection::new(
-            manager
-                .until_closed(manager.subscribe_album_selection(std::collections::BTreeSet::new())),
-        )
+        crate::library::LiveAlbumSelection::new(manager.until_closed(
+            self.inner.views.subscribe_album_selection(std::collections::BTreeSet::new()),
+        ))
     }
 
     /// One live library search, pointed at a new query in place as the
     /// person types; it starts with no query.
     pub fn subscribe_library_search(&self) -> crate::library::LiveLibrarySearch {
         let manager = self.inner.manager.clone();
-        let query = manager.until_closed(manager.subscribe_library_search(None));
+        let query = manager.until_closed(
+            self.inner.views.subscribe_library_search(None, crate::library::SEARCH_RESULT_LIMIT),
+        );
         crate::library::LiveLibrarySearch::new(query, move |projection| {
-            manager.resolve_library_search_projection(projection)
+            crate::library::views::album::resolve_library_search_projection(projection)
         })
     }
 
@@ -452,12 +467,12 @@ impl AppServices {
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Result<Option<u64>, crate::library::LibraryError>);
+    delegate_view!(get_album_index => get_album_index(sort: &[crate::library::views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
     delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[crate::db::LibraryCheck]) -> Result<Vec<crate::db::LibraryStatus>, crate::library::LibraryError>);
-    delegate_async!(manager, albums_in_browse_order => albums_in_browse_order(sort: &[crate::db::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Result<Vec<crate::album_detail::AlbumSummary>, crate::library::LibraryError>);
-    delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
+    delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[crate::library::views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<crate::album_detail::AlbumSummary>);
+    delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<crate::album_detail::AlbumDetail>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
-    delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);
+    delegate_view!(get_albums => get_albums(sort: &[crate::library::views::AlbumSortCriterion]) -> Vec<crate::db::DbAlbum>);
     delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<crate::db::DbRelease>, crate::library::LibraryError>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<crate::db::DbRelease>, crate::library::LibraryError>);
 
@@ -545,7 +560,7 @@ impl AppServices {
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<crate::db::ResolvedCredit>, crate::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, search_library => search_library(query: &crate::library::LibrarySearchQuery) -> Result<crate::album_detail::SearchResults, crate::library::LibraryError>);
+    delegate_view!(search_library => search_library(query: &crate::library::LibrarySearchQuery) -> crate::album_detail::SearchResults);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

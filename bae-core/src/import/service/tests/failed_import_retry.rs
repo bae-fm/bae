@@ -64,7 +64,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        test.database.get_albums(&[]).await.unwrap().is_empty(),
+        crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap().is_empty(),
         "a failed import writes no album"
     );
     assert!(
@@ -94,7 +94,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .await
         .expect("the retried import lands");
 
-    let albums = test.database.get_albums(&[]).await.unwrap();
+    let albums = crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap();
     assert_eq!(albums.len(), 1, "the retry writes the release once");
     let releases =
         test.database.get_releases_for_album(&albums[0].id).await.unwrap();

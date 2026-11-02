@@ -87,7 +87,7 @@ async fn listed_artists(database: &Database) -> Vec<String> {
 
 /// The albums the album browse lists.
 async fn listed_albums(database: &Database) -> Vec<String> {
-    database
+    crate::library::views::LibraryViews::new(database.clone())
         .get_album_page(&[], 0, 100)
         .await
         .unwrap()

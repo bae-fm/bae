@@ -102,13 +102,14 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     let album_id = release.album_id.clone();
 
     // Grid and count include the album.
-    let page = manager.get_album_page(&[], 0, 10).await.unwrap();
+    let views = crate::library::views::LibraryViews::new(manager.database.clone());
+    let page = views.get_album_page(&[], 0, 10).await.unwrap();
     assert_eq!(page.len(), 1);
     assert_eq!(page[0].release_ids, vec![release.id.clone()]);
-    assert_eq!(manager.get_album_count().await.unwrap(), 1);
+    assert_eq!(views.get_album_count().await.unwrap(), 1);
 
     // Album detail carries the release.
-    let detail = manager.find_album_detail(&album_id).await.unwrap().expect("album surfaces");
+    let detail = views.find_album_detail(&album_id).await.unwrap().expect("album surfaces");
     let detail_ids: Vec<_> = detail.releases.iter().map(|r| r.summary.id.clone()).collect();
     assert_eq!(detail_ids, vec![release.id.clone()]);
 

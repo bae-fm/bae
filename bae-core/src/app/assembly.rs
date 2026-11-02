@@ -83,6 +83,7 @@ pub async fn start_library_services(
     let queue_tables = crate::db::PlaybackQueueTables::new(database.clone());
     let now_row = crate::db::PlaybackNowRow::new(database.clone());
     let timeline_row = crate::db::PlaybackTimelineRow::new(database.clone());
+    let views = crate::library::views::LibraryViews::new(database.clone());
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => crate::playback::PlaybackService::start(
             manager.clone(),
@@ -132,10 +133,10 @@ pub async fn start_library_services(
         // Queue-wide identification runs whether or not anyone has the Import
         // section open: opening a view is not what starts it.
         let identification = import.start_identification_queue();
-        Ok(AppServices::new(manager, playback, import, identification))
+        Ok(AppServices::new(manager, views, playback, import, identification))
     }
     #[cfg(not(desktop))]
-    Ok(AppServices::new(manager, playback))
+    Ok(AppServices::new(manager, views, playback))
 }
 
 /// Why the library's services did not start.

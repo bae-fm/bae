@@ -25,14 +25,13 @@ pub(crate) use client::QueuedPayload;
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseMetadataRows;
 pub(crate) use client::StoredTransition;
-pub use client::{
-    AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
-    ArtistSearchProjection, ComposerBrowseProjection, ComposerDetailProjection,
-    LibrarySearchProjection, ReleaseDetailProjection, StorageBrowseProjection,
-    StorageBrowseRequest, WorkDetailProjection,
-};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
+pub use client::{
+    ArtistBrowseProjection, ArtistDetailProjection, ArtistSearchProjection,
+    ComposerBrowseProjection, ComposerDetailProjection, ReleaseDetailProjection,
+    StorageBrowseProjection, StorageBrowseRequest, WorkDetailProjection,
+};
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackNowRow, PlaybackQueueTables,
     PlaybackTimelineRow, ReleaseStart, ShuffleChange,

@@ -38,7 +38,7 @@ fn coven_status_on(sql: &SqlReadContext<'_>) -> Result<coven::SyncStatus, DbErro
 
 /// Whether storage is set up on this device, as coven's sync status says:
 /// what a release's storage choices and markers are read against.
-pub(super) fn cloud_home_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
+pub(crate) fn cloud_home_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
     Ok(!matches!(coven_status_on(sql)?, coven::SyncStatus::Disconnected))
 }
 

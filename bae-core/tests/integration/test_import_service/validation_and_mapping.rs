@@ -48,7 +48,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         err.contains("decode verification failed") && err.contains("Broken Track (track 1)"),
         "the failure must name the broken track, got: {err}",
     );
-    assert!(f.db.get_albums(&[]).await.unwrap().is_empty(), "a failed import writes no album",);
+    assert!(bae_core::library::views::LibraryViews::new(f.db.clone()).get_albums(&[]).await.unwrap().is_empty(), "a failed import writes no album",);
     assert!(f.db.get_all_track_ids().await.unwrap().is_empty(), "a failed import writes no track",);
 }
 

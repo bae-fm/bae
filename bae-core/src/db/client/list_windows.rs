@@ -52,7 +52,7 @@ impl SortTerm {
         Self { descending: true, ..Self::ascending(expression) }
     }
 
-    pub(super) fn running(expression: impl Into<String>, direction: SortDirection) -> Self {
+    pub(crate) fn running(expression: impl Into<String>, direction: SortDirection) -> Self {
         match direction {
             SortDirection::Ascending => Self::ascending(expression),
             SortDirection::Descending => Self::descending(expression),

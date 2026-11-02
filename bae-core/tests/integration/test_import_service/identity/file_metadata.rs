@@ -122,7 +122,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(release.pressing.year, None, "the tags state no year");
     assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
-    let album_detail = f.db.find_album_detail(&album_id).await.unwrap().expect("album detail");
+    let album_detail = bae_core::library::views::LibraryViews::new(f.db.clone()).find_album_detail(&album_id).await.unwrap().expect("album detail");
     let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()

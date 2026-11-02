@@ -80,7 +80,7 @@ struct PrintedLines {
 
 async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
     let manager = &library.manager;
-    let album = manager.find_album_detail(&library.album.id).await.unwrap().expect("the album");
+    let album = manager.views().find_album_detail(&library.album.id).await.unwrap().expect("the album");
     let row = |id: &str| {
         album.releases[0]
             .tracks
@@ -98,8 +98,8 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
         .expect("the track's display")
         .artist_names;
     let searched_album = manager
-        .database
-        .search_library("Test Album", 10)
+        .views()
+        .search_rows("Test Album", 10)
         .await
         .unwrap()
         .albums

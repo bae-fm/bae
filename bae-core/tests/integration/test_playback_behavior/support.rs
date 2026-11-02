@@ -449,6 +449,7 @@ impl PlaybackTestFixture {
         let identification = import.start_identification_queue();
         bae_core::library::AppServices::new(
             self.library_manager.clone(),
+            bae_core::library::views::LibraryViews::new(self.database.clone()),
             self.playback_handle.clone(),
             import,
             identification,

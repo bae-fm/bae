@@ -69,6 +69,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let playback = manager.start_playback().await;
     let services = crate::library::AppServices::new(
         manager.clone(),
+        manager.views(),
         playback,
         handle.clone(),
         handle.start_identification_queue(),

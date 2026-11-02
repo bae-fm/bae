@@ -60,7 +60,7 @@ async fn test_delete_release_with_single_release_empties_album() {
 
     manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = manager.find_album_detail(&album.id).await.unwrap();
+    let album_result = manager.views().find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
@@ -286,7 +286,7 @@ async fn test_delete_album_deletes_all_releases() {
 
     manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = manager.find_album_detail(&album.id).await.unwrap();
+    let album_result = manager.views().find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
@@ -354,17 +354,17 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let kept_files =
         manager.database.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
-    let mut browse = manager.subscribe_album_browse(
+    let mut browse = manager.views().subscribe_album_browse(
         &[],
         false,
         [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
-    let listed = |browse: &crate::db::AlbumBrowseProjection| -> Vec<String> {
+    let listed = |browse: &crate::library::views::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()
     };
     let before = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);
-    let mut detail = manager.subscribe_album_detail(Some(album_id.clone()));
+    let mut detail = manager.views().subscribe_album_detail(Some(album_id.clone()));
     let shown = detail.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(shown.detail.expect("the album shows").releases.len(), 2);
 

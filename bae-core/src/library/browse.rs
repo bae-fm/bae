@@ -29,8 +29,10 @@ pub struct LibraryBrowseSnapshot<Row> {
     pub cause: coven::LiveQueryCause,
 }
 
-pub type LiveAlbumBrowse =
-    LiveLibraryBrowse<crate::db::AlbumBrowseProjection, crate::album_detail::AlbumAppearance>;
+pub type LiveAlbumBrowse = LiveLibraryBrowse<
+    crate::library::views::AlbumBrowseProjection,
+    crate::album_detail::AlbumAppearance,
+>;
 pub type LiveArtistBrowse =
     LiveLibraryBrowse<crate::db::ArtistBrowseProjection, crate::album_detail::ArtistSummary>;
 pub type LiveComposerBrowse =

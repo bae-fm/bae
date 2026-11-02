@@ -8,7 +8,7 @@
 /// credit shows, or the other name it prints, holds it. Each part reads its
 /// search table's index, and an album two credits find is listed twice, so
 /// the list is only read through `IN`.
-pub(super) fn albums_credits_find_sql(pattern: &str) -> String {
+pub(crate) fn albums_credits_find_sql(pattern: &str) -> String {
     format!(
         "SELECT credit.album_id FROM artist_search matched_artist \
          JOIN artist_shown_as shown ON shown.shown_artist_id = matched_artist.artist_id \
@@ -30,7 +30,7 @@ pub(super) fn albums_credits_find_sql(pattern: &str) -> String {
 /// it. Each part reads its search table's index, so the test costs what the
 /// search finds, read once per statement; an album two parts find is listed
 /// twice, which the `IN` list holds once, so no part is sorted to merge them.
-pub(super) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
+pub(crate) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
     format!(
         "{album_id} IN ( \
              SELECT album_id FROM album_search WHERE title GLOB {pattern} \
@@ -42,7 +42,7 @@ pub(super) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
 /// Whether the album `album_id` names has a credit library search finds for
 /// the search pattern `pattern`, read from the search tables' indexes like
 /// [`album_matches_sql`].
-pub(super) fn album_credits_found_sql(album_id: &str, pattern: &str) -> String {
+pub(crate) fn album_credits_found_sql(album_id: &str, pattern: &str) -> String {
     format!("{album_id} IN ({})", albums_credits_find_sql(pattern))
 }
 
@@ -65,7 +65,7 @@ fn album_title_holds_sql(album_id: &str, pattern: &str) -> String {
 /// each read by its key from the text its search table keeps. The test costs
 /// a few lookups however many albums the pattern finds, so a statement
 /// testing the rows an index reaches reads only those.
-pub(super) fn album_holds_sql(album_id: &str, pattern: &str) -> String {
+pub(crate) fn album_holds_sql(album_id: &str, pattern: &str) -> String {
     format!(
         "({title} \
           OR EXISTS (SELECT 1 FROM album_artists credit \

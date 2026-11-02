@@ -13,14 +13,11 @@ impl AppServices {
     pub fn subscribe_album_detail(
         &self,
     ) -> crate::library::LiveDetail<crate::album_detail::AlbumDetail> {
-        let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         detail_read(
-            manager.clone(),
-            {
-                let manager = manager.clone();
-                move |id| manager.subscribe_album_detail(id)
-            },
-            move |projection| manager.resolve_album_detail_projection(projection),
+            self.inner.manager.clone(),
+            move |id| views.subscribe_album_detail(id),
+            crate::library::views::album::resolve_album_detail_projection,
         )
     }
 

@@ -33,7 +33,7 @@ async fn exec_searched(db: &Database, sql: &'static str) {
 /// What a search for `query` finds: the ids of its albums, tracks, artists,
 /// composers and works.
 async fn found(db: &Database, query: &str) -> [Vec<String>; 5] {
-    let results = db.search_library(query, 10).await.unwrap();
+    let results = crate::library::views::LibraryViews::new(db.clone()).search_rows(query, 10).await.unwrap();
     [
         results.albums.into_iter().map(|album| album.id).collect(),
         results.tracks.into_iter().map(|track| track.id).collect(),

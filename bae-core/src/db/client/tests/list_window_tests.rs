@@ -5,6 +5,8 @@
 use super::super::list_windows::OrderKey;
 use super::super::*;
 use crate::db::{LibraryPageWindow, LibraryPageWindows};
+use crate::library::views::album::album_browse_order;
+use crate::library::views::*;
 
 /// The plan of `statement` under `seek`'s parameters and `extra`, one line
 /// per step.
@@ -123,7 +125,7 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
                 &db,
                 &order,
                 move |sql, order, seek, limit, offset| {
-                    super::super::album::album_rows_on(
+                    crate::library::views::album::album_rows_on(
                         sql,
                         &read,
                         group_by_artist,
@@ -145,7 +147,7 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
                 &order,
                 key,
                 |seek| {
-                    super::super::album::album_window_statement(
+                    crate::library::views::album::album_window_statement(
                         &relation,
                         group_by_artist,
                         &order,
@@ -628,7 +630,8 @@ async fn the_download_queue_seeks_its_windows_through_its_key() {
 
 /// The album list's ids at `window`, as a read by offset finds them.
 async fn albums_at(db: &Database, window: &LibraryPageWindow) -> Vec<String> {
-    db.get_album_page(&[], window.offset, window.limit)
+    crate::library::views::LibraryViews::new(db.clone())
+        .get_album_page(&[], window.offset, window.limit)
         .await
         .unwrap()
         .into_iter()
@@ -666,7 +669,11 @@ async fn read_albums(
 async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
     let (db, _tmp) = library().await;
     let window = |offset| LibraryPageWindow { offset, limit: 50 };
-    let mut query = db.subscribe_album_browse(&[], false, LibraryPageWindows::new());
+    let mut query = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        false,
+        LibraryPageWindows::new(),
+    );
     query.next().await.unwrap().result.unwrap();
     for offset in [100, 150, 200, 150, 100] {
         assert_eq!(

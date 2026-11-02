@@ -1,5 +1,6 @@
 use super::super::*;
 use crate::db::LibraryPageWindow;
+use crate::library::views::*;
 use std::collections::BTreeSet;
 
 const BRAVO: &str = "f392a38b-f264-41a0-a225-c6935b8a8262";
@@ -42,7 +43,8 @@ async fn exec(db: &Database, sql: &'static str) {
 
 /// The grid's album ids in `field` order, `direction`.
 async fn album_ids(db: &Database, field: AlbumSortField, direction: SortDirection) -> Vec<String> {
-    db.get_album_page(&[AlbumSortCriterion { field, direction }], 0, 50)
+    crate::library::views::LibraryViews::new(db.clone())
+        .get_album_page(&[AlbumSortCriterion { field, direction }], 0, 50)
         .await
         .unwrap()
         .into_iter()
@@ -64,7 +66,11 @@ async fn artists(db: &Database) -> Vec<(String, i64)> {
 /// length, and the album ids of the rows in order.
 async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
     let windows = [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect::<BTreeSet<_>>();
-    let mut live = db.subscribe_album_browse(&[], true, windows);
+    let mut live = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        true,
+        windows,
+    );
     let shown = live.next().await.expect("the query stays open").result.unwrap();
     (
         shown
@@ -119,11 +125,17 @@ async fn album_grid_puts_unknown_years_last_ascending_and_first_descending() {
 #[tokio::test]
 async fn an_album_leaves_the_lists_with_its_last_release() {
     let (db, _tmp) = listed_db().await;
-    assert_eq!(db.get_album_count().await.unwrap(), 3);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap(),
+        3
+    );
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 
     exec(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';").await;
-    assert_eq!(db.get_album_count().await.unwrap(), 2);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap(),
+        2
+    );
     assert!(!album_ids(&db, AlbumSortField::Title, SortDirection::Ascending)
         .await
         .contains(&ALBUM_ONE.to_string()));
@@ -137,7 +149,10 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
             ('24b929ff-1f01-4621-9891-81abea7fbe87', '07d22f7d-3980-4c81-9d27-8fcd50ee3464', '2026-01-01T00:00:00Z', 0);",
     )
     .await;
-    assert_eq!(db.get_album_count().await.unwrap(), 3);
+    assert_eq!(
+        crate::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap(),
+        3
+    );
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 }
 

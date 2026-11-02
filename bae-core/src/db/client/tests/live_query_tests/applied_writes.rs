@@ -8,7 +8,8 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     crate::sync::test_devices::run_two_device_test(async |devices| {
         let writer = devices.a().database();
         let reader = devices.b().database();
-        let mut live = reader.subscribe_album_browse(&[], false, first_page());
+        let mut live = crate::library::views::LibraryViews::new(reader.clone())
+            .subscribe_album_browse(&[], false, first_page());
         assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         exec_batch(writer, &format!(
             "INSERT INTO artists (id, name, name_key, created_at)
@@ -129,7 +130,10 @@ fn library_search_finds_rows_applied_from_another_device() {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
             })
             .await;
-        let found = reader.search_library("écrin", 10).await.unwrap();
+        let found = crate::library::views::LibraryViews::new(reader.clone())
+            .search_rows("écrin", 10)
+            .await
+            .unwrap();
         assert_eq!(
             found.albums.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(),
             vec![ALBUM_ID]
@@ -142,7 +146,20 @@ fn library_search_finds_rows_applied_from_another_device() {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
             })
             .await;
-        assert!(reader.search_library("écrin", 10).await.unwrap().albums.is_empty());
-        assert_eq!(reader.search_library("renamed album", 10).await.unwrap().albums.len(), 1);
+        assert!(crate::library::views::LibraryViews::new(reader.clone())
+            .search_rows("écrin", 10)
+            .await
+            .unwrap()
+            .albums
+            .is_empty());
+        assert_eq!(
+            crate::library::views::LibraryViews::new(reader.clone())
+                .search_rows("renamed album", 10)
+                .await
+                .unwrap()
+                .albums
+                .len(),
+            1
+        );
     });
 }

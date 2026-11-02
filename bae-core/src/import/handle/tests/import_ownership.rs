@@ -10,7 +10,7 @@ use super::*;
 /// Every release in the library.
 async fn release_count(handle: &ImportServiceHandle) -> usize {
     let mut count = 0;
-    for album in handle.database.get_albums(&[]).await.unwrap() {
+    for album in crate::library::views::LibraryViews::new(handle.database.clone()).get_albums(&[]).await.unwrap() {
         count += handle.database.get_releases_for_album(&album.id).await.unwrap().len();
     }
     count

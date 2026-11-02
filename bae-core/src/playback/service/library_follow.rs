@@ -106,7 +106,7 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            database.subscribe_album_detail(None),
+            crate::library::views::LibraryViews::new(database.clone()).subscribe_album_detail(None),
             None,
             "the album",
             &crate::diagnostics::Diagnostics::noop(),
@@ -140,7 +140,7 @@ mod tests {
         .await
         .unwrap();
         let mut follow = LibraryFollow::new(
-            database.subscribe_album_detail(None),
+            crate::library::views::LibraryViews::new(database.clone()).subscribe_album_detail(None),
             None,
             "the album",
             &crate::diagnostics::Diagnostics::noop(),

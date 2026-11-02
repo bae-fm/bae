@@ -34,7 +34,7 @@ impl HighSampleRateTestFixture {
 
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
 
-        let albums = library_manager.get_albums(&[]).await?;
+        let albums = bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await?;
         let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
         let tracks = library_manager.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
@@ -352,7 +352,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let releases = library_manager
-        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
     let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
@@ -389,7 +389,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let release_id = library_manager
-        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap()[0]
         .id

@@ -67,7 +67,10 @@ async fn test_delete_album_integration() {
 
     library_manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = library_manager.find_album_detail(&album.id).await.unwrap();
+    let album_result = bae_core::library::views::LibraryViews::new(database.clone())
+        .find_album_detail(&album.id)
+        .await
+        .unwrap();
     assert!(album_result.is_none());
 
     let releases = library_manager.get_releases_for_album(&album.id).await.unwrap();
@@ -131,7 +134,10 @@ async fn test_delete_last_release_empties_album() {
 
     library_manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = library_manager.find_album_detail(&album.id).await.unwrap();
+    let album_result = bae_core::library::views::LibraryViews::new(database.clone())
+        .find_album_detail(&album.id)
+        .await
+        .unwrap();
     assert!(album_result.is_none());
 
     let releases = library_manager.get_releases_for_album(&album.id).await.unwrap();
@@ -139,11 +145,8 @@ async fn test_delete_last_release_empties_album() {
 }
 
 /// The album's primary release, as its detail names it.
-async fn primary_release_of(
-    library_manager: &bae_core::library::LibraryManager,
-    album_id: &str,
-) -> String {
-    library_manager
+async fn primary_release_of(database: &bae_core::db::Database, album_id: &str) -> String {
+    bae_core::library::views::LibraryViews::new(database.clone())
         .find_album_detail(album_id)
         .await
         .unwrap()
@@ -170,17 +173,17 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
             .unwrap();
     }
     assert_eq!(
-        primary_release_of(&library_manager, &album.id).await,
+        primary_release_of(&database, &album.id).await,
         release1.id,
         "an album's first release is its primary"
     );
     library_manager.set_album_primary_release(&album.id, &release3.id).await.unwrap();
-    assert_eq!(primary_release_of(&library_manager, &album.id).await, release3.id);
+    assert_eq!(primary_release_of(&database, &album.id).await, release3.id);
 
     library_manager.delete_release(&release3.id).await.unwrap();
 
     assert_eq!(
-        primary_release_of(&library_manager, &album.id).await,
+        primary_release_of(&database, &album.id).await,
         release1.id,
         "the lowest-ordered release left is the primary"
     );
@@ -209,7 +212,7 @@ async fn test_deleting_another_release_keeps_the_primary() {
 
     library_manager.delete_release(&release1.id).await.unwrap();
 
-    assert_eq!(primary_release_of(&library_manager, &album.id).await, release2.id);
+    assert_eq!(primary_release_of(&database, &album.id).await, release2.id);
 }
 
 /// Making a release primary that is not one of the album's is refused.
@@ -237,5 +240,5 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         .set_album_primary_release(&album.id, &elsewhere.id)
         .await
         .expect_err("another album's release is not this album's to make primary");
-    assert_eq!(primary_release_of(&library_manager, &album.id).await, release.id);
+    assert_eq!(primary_release_of(&database, &album.id).await, release.id);
 }

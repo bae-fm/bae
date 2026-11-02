@@ -8,13 +8,16 @@
 //! and joins a resolved shape needs. The pure projection from a `Db*` aggregate
 //! to its resolved counterpart lives on the produced type, as a `from_raw`
 //! constructor in `crate::album_detail`. Public methods return the resolved
-//! shapes — `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`,
-//! `AlbumDetail`, `ReleaseDetail` — never the raw `Db*` aggregates.
+//! shapes — `ReleaseStorageSummary`, `ReleaseDetail` and the like — never the
+//! raw `Db*` aggregates.
 //!
-//! Rule for additions: all DB-backed data flows through this layer. A new
-//! resolved shape means a raw type in `crate::db::models`, a resolved type in
-//! `crate::album_detail` (or a sibling like `crate::queue`) with its `from_raw`
-//! constructor, and the I/O method in the matching entity module here.
+//! Rule for additions: a view's reads, and the shapes a screen shows them in,
+//! are `crate::library::views::LibraryViews`'; every other resolved shape is
+//! made in this layer. A new resolved shape means a raw type in
+//! `crate::db::models` (or `crate::library::views` for what a view reads), a
+//! resolved type in `crate::album_detail` (or a sibling like `crate::queue`)
+//! with its `from_raw` constructor, and the I/O method in the matching entity
+//! module here (or in the view's module).
 
 use std::future::Future;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -26,10 +29,9 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
-    AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail,
-    ComposerSummary, ComposerWorkGroup, GallerySource, ReleaseDetail, ReleaseResolveCtx,
-    ReleaseStorageSummary, SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary,
-    WorkSummary,
+    AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail, ComposerSummary,
+    ComposerWorkGroup, GallerySource, ReleaseDetail, ReleaseResolveCtx, ReleaseStorageSummary,
+    StoragePage, StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,

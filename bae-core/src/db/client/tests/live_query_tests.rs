@@ -1,6 +1,7 @@
 use super::super::*;
 use super::{exec, exec_batch};
 use crate::db::LibraryPageWindow;
+use crate::library::views::*;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
@@ -37,7 +38,7 @@ pub(crate) async fn live_db() -> (Database, tempfile::TempDir) {
 
 /// Store an artist image holding `content` and return the version reads
 /// report for it.
-pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &str) -> String {
+pub(crate) async fn write_artist_image(db: &Database, artist: &str, content: &str) -> String {
     let bytes = content.as_bytes();
     db.write_library_image(
         &DbLibraryImage {
@@ -138,7 +139,11 @@ fn first_page() -> BTreeSet<LibraryPageWindow> {
 #[tokio::test]
 async fn album_browse_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_browse(&[], false, first_page());
+    let mut live = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        false,
+        first_page(),
+    );
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.total_count, 1);
@@ -168,7 +173,11 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         &[OTHER_RELEASE_ID, ALBUM_ID],
     )
     .await;
-    let mut live = db.subscribe_album_browse(&[], false, first_page());
+    let mut live = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        false,
+        first_page(),
+    );
     live.next().await.expect("the query stays open").result.unwrap();
 
     super::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
@@ -189,7 +198,11 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         field: AlbumSortField::DateAdded,
         direction: SortDirection::Ascending,
     }];
-    let mut live = db.subscribe_album_browse(&sort, false, BTreeSet::new());
+    let mut live = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &sort,
+        false,
+        BTreeSet::new(),
+    );
     let requests = live.requests();
     let initial_event = live.next().await.expect("the query stays open");
     assert_eq!(initial_event.revision.0, 0);
@@ -494,7 +507,8 @@ async fn artist_browse_reads_its_windows_and_their_images() {
 #[tokio::test]
 async fn library_search_moves_between_queries_on_one_subscription() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_library_search(None, 50);
+    let mut live =
+        crate::library::views::LibraryViews::new(db.clone()).subscribe_library_search(None, 50);
     let requests = live.requests();
 
     let idle = live.next().await.expect("the query stays open").result.unwrap();
@@ -524,7 +538,11 @@ async fn library_search_moves_between_queries_on_one_subscription() {
 #[tokio::test]
 async fn album_browse_ignores_an_unread_table() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_browse(&[], false, first_page());
+    let mut live = crate::library::views::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        false,
+        first_page(),
+    );
     let initial = live.next().await.expect("the query stays open").result.unwrap();
 
     exec(
@@ -547,7 +565,8 @@ async fn album_browse_ignores_an_unread_table() {
 async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db().await;
     super::write_cover(&db, RELEASE_ID, "cover bytes").await;
-    let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_album_detail(Some(ALBUM_ID.to_string()));
     live.next().await.expect("the query stays open").result.unwrap();
 
     exec(&db, "UPDATE covers SET created_at = '2027-01-01T00:00:00Z' WHERE id = ?1", &[RELEASE_ID])
@@ -586,7 +605,8 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
 #[tokio::test]
 async fn album_detail_subscription_delivers_absence_after_deletion() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_album_detail(Some(ALBUM_ID.to_string()));
     assert!(live.next().await.expect("the query stays open").result.unwrap().detail.is_some());
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;

@@ -221,17 +221,6 @@ pub struct DbAlbumSummary {
     pub cover_version: Option<String>,
 }
 
-/// One row of the album grid: an album, listed once when the grid is flat and
-/// under each artist its credits show when grouped by artist.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbAlbumAppearance {
-    pub album: DbAlbumSummary,
-    /// Grouped by artist: the album's credits other than the artist whose
-    /// group lists it, printed as a line; `None` when that artist is its only
-    /// credit, or when the grid is flat.
-    pub credited_with: Option<String>,
-}
-
 /// Probe whether a search-result candidate is already in the library: as the
 /// same pressing (a record on this `source` whose key is
 /// `release_id`), or as the same album (any release with

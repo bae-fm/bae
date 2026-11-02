@@ -31,6 +31,7 @@ mod sync_activity;
 pub(crate) mod sync_controller;
 mod upload_progress;
 mod upload_throughput;
+pub mod views;
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection, LiveAlbumSelectionError};
 pub use app_services::*;
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};

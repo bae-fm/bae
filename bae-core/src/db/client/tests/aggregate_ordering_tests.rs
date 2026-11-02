@@ -1,5 +1,6 @@
 use super::super::*;
 use super::*;
+use crate::library::views::*;
 
 async fn aggregate_db() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
@@ -39,7 +40,12 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
 async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
     let (db, _tmp) = aggregate_db().await;
     // The one album in the fixture, read the way the library page reads it.
-    let summary = db.get_album_page(&[], 0, 1).await.unwrap().pop().expect("album summary row");
+    let summary = crate::library::views::LibraryViews::new(db.clone())
+        .get_album_page(&[], 0, 1)
+        .await
+        .unwrap()
+        .pop()
+        .expect("album summary row");
 
     assert_eq!(summary.artist_names, "Artist Name Primary, Artist Name First, Artist Name Second");
     assert_eq!(summary.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);
@@ -48,7 +54,10 @@ async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
 #[tokio::test]
 async fn work_summary_orders_composer_names_inside_the_aggregate() {
     let (db, _tmp) = aggregate_db().await;
-    let results = db.search_library("Work Title A", 10).await.unwrap();
+    let results = crate::library::views::LibraryViews::new(db.clone())
+        .search_rows("Work Title A", 10)
+        .await
+        .unwrap();
     let summary = results.works.first().expect("work summary row");
 
     assert_eq!(
@@ -113,7 +122,10 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
 
     let album_sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
-    let albums = db.get_album_page(&album_sort, 0, 10).await.unwrap();
+    let albums = crate::library::views::LibraryViews::new(db.clone())
+        .get_album_page(&album_sort, 0, 10)
+        .await
+        .unwrap();
     assert_eq!(albums.len(), 2);
     assert_eq!(albums[0].artist_names, "");
     assert_eq!(albums[1].artist_names, "Artist Name First, Artist Name Second");

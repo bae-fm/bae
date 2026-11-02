@@ -9,7 +9,7 @@ fn devices_setting_different_primaries_converge_on_one() {
 }
 
 async fn primary_of(database: &crate::db::Database, album_id: &str) -> String {
-    database
+    crate::library::views::LibraryViews::new(database.clone())
         .find_album_detail(album_id)
         .await
         .unwrap()

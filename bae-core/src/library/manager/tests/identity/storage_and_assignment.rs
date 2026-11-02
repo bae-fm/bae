@@ -96,7 +96,7 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
     manager.set_records(&release.id, vec![]).await.unwrap();
 
     // The original album was a one-release album → empty and unlisted now.
-    assert!(manager.find_album_detail(&album.id).await.unwrap().is_none());
+    assert!(manager.views().find_album_detail(&album.id).await.unwrap().is_none());
 
     // Release moved to a brand-new album, holds nothing else.
     let new_album_id =
@@ -216,7 +216,7 @@ async fn set_records_moves_the_release_to_the_matching_album() {
     assert_eq!(target_siblings.len(), 2);
 
     // album_a was a single-release album → empty and unlisted now.
-    assert!(manager.find_album_detail(&album_a.id).await.unwrap().is_none());
+    assert!(manager.views().find_album_detail(&album_a.id).await.unwrap().is_none());
 }
 
 #[tokio::test]

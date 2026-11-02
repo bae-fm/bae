@@ -3,7 +3,7 @@
 //! that produce them.
 
 use super::*;
-use crate::db::DbLibrarySearchResults;
+use crate::library::views::DbLibrarySearchResults;
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {

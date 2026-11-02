@@ -780,13 +780,13 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSortField = bae_core::db::AlbumSortField,
+    BridgeSortField = bae_core::library::views::AlbumSortField,
     into_core: fn,
     variants: { Title, Artist, Year, DateAdded },
 }
 
 mirror_struct! {
-    BridgeSortCriterion = bae_core::db::AlbumSortCriterion,
+    BridgeSortCriterion = bae_core::library::views::AlbumSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeSortField),
