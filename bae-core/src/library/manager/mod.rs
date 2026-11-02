@@ -29,9 +29,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
-    AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail, ComposerSummary,
-    ComposerWorkGroup, GallerySource, ReleaseDetail, ReleaseResolveCtx, ReleaseStorageSummary,
-    StoragePage, StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
+    GallerySource, ReleaseDetail, ReleaseResolveCtx, ReleaseStorageSummary, StoragePage, StorageRow,
 };
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
@@ -53,7 +51,6 @@ mod album;
 mod artist;
 mod cast_devices;
 mod collections;
-mod composer;
 mod config;
 mod coven_files;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

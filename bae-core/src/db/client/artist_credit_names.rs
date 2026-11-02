@@ -62,7 +62,7 @@ fn relink_credit_name(
 /// The other printed names of the artist `artist_id` shows as (a SQL
 /// expression), in name order, as a JSON array: its own rows and those of the
 /// artists merged into it, read by the artists' shown-as index.
-pub(super) fn credit_names_json_sql(artist_id: &str) -> String {
+pub(crate) fn credit_names_json_sql(artist_id: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object('artist_id', credit_name.artist_id, \
                                               'key', credit_name.name_key, \
@@ -75,7 +75,7 @@ pub(super) fn credit_names_json_sql(artist_id: &str) -> String {
 }
 
 /// The other printed names [`credit_names_json_sql`] reads into `column`.
-pub(super) fn credit_names_column(
+pub(crate) fn credit_names_column(
     row: &Row<'_>,
     column: &str,
 ) -> rusqlite::Result<Vec<ArtistCreditName>> {
@@ -106,7 +106,7 @@ pub(super) fn credit_names_column(
 /// The other printed names of each of `artist_ids` (artists as they show,
 /// after merges), each artist's in name order: its own rows and those of the
 /// artists merged into it.
-pub(super) fn credit_names_of_on(
+pub(crate) fn credit_names_of_on(
     sql: &SqlReadContext<'_>,
     artist_ids: &[String],
 ) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {

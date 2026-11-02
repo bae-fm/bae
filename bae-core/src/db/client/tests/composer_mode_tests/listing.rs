@@ -30,7 +30,7 @@ async fn listed_composers(db: &Database) -> Vec<(String, i64, i64, i64)> {
         field: ComposerSortField::Name,
         direction: SortDirection::Ascending,
     }];
-    db.get_composer_page(&sort, 0, 50)
+    crate::library::views::LibraryViews::new(db.clone()).get_composer_page(&sort, 0, 50)
         .await
         .unwrap()
         .into_iter()
@@ -83,13 +83,13 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
         vec![(LISTED_SURVIVOR.to_string(), 2, 2, 0)],
         "the absorbed composer's work and release count under the survivor"
     );
-    let survivor = db
+    let survivor = crate::library::views::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_SURVIVOR)
         .await
         .unwrap()
         .expect("the survivor is a composer");
     assert_eq!(survivor.work_groups.len(), 2);
-    assert!(db.find_composer_detail(LISTED_ABSORBED).await.unwrap().is_none());
+    assert!(crate::library::views::LibraryViews::new(db.clone()).find_composer_detail(LISTED_ABSORBED).await.unwrap().is_none());
 
     exec_listed(
         &db,
@@ -119,7 +119,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     )
     .await;
     assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0, 2)]);
-    let credited = db
+    let credited = crate::library::views::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_CREDITED)
         .await
         .unwrap()
@@ -142,7 +142,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     .await;
     assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 1, 0)]);
     let credited =
-        db.find_composer_detail(LISTED_CREDITED).await.unwrap().expect("the work's composer");
+        crate::library::views::LibraryViews::new(db.clone()).find_composer_detail(LISTED_CREDITED).await.unwrap().expect("the work's composer");
     assert!(credited.unlinked_track_roles.is_empty());
     assert!(credited.unlinked_release_roles.is_empty());
 
@@ -154,7 +154,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
 
     exec_listed(&db, "DELETE FROM works WHERE id = '65c7e99f-2638-4086-aac4-9dceab1ae6ef';").await;
     assert!(listed_composers(&db).await.is_empty());
-    assert!(db.find_composer_detail(LISTED_CREDITED).await.unwrap().is_none());
+    assert!(crate::library::views::LibraryViews::new(db.clone()).find_composer_detail(LISTED_CREDITED).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -180,7 +180,7 @@ async fn composer_page_sorts_names_descending_with_ids_ascending() {
         field: ComposerSortField::Name,
         direction: SortDirection::Descending,
     }];
-    let ids = db
+    let ids = crate::library::views::LibraryViews::new(db.clone())
         .get_composer_page(&sort, 0, 10)
         .await
         .unwrap()

@@ -33,10 +33,14 @@ pub type LiveAlbumBrowse = LiveLibraryBrowse<
     crate::library::views::AlbumBrowseProjection,
     crate::album_detail::AlbumAppearance,
 >;
-pub type LiveArtistBrowse =
-    LiveLibraryBrowse<crate::db::ArtistBrowseProjection, crate::album_detail::ArtistSummary>;
-pub type LiveComposerBrowse =
-    LiveLibraryBrowse<crate::db::ComposerBrowseProjection, crate::album_detail::ComposerSummary>;
+pub type LiveArtistBrowse = LiveLibraryBrowse<
+    crate::library::views::ArtistBrowseProjection,
+    crate::album_detail::ArtistSummary,
+>;
+pub type LiveComposerBrowse = LiveLibraryBrowse<
+    crate::library::views::ComposerBrowseProjection,
+    crate::album_detail::ComposerSummary,
+>;
 
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.

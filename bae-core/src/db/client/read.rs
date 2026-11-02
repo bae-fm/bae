@@ -512,7 +512,7 @@ pub(super) fn optional_count_column(row: &Row, column: &str) -> rusqlite::Result
 
 /// Read a named text column back into the type whose `FromStr` it was written
 /// from, surfacing a word no variant answers to as a column-conversion error.
-pub(super) fn parsed_column<T>(row: &Row, column: &str) -> rusqlite::Result<T>
+pub(crate) fn parsed_column<T>(row: &Row, column: &str) -> rusqlite::Result<T>
 where
     T: std::str::FromStr<Err = String>,
 {
@@ -528,7 +528,7 @@ where
 // taking that prefix, plus a bare-column wrapper — which is also the `fn(&Row)`
 // value the single-table queries hand to `query` / `query_row`.
 
-pub(super) fn row_to_artist_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbArtist> {
+pub(crate) fn row_to_artist_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbArtist> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbArtist {
         id: row.get(column("id").as_str())?,
@@ -540,7 +540,7 @@ pub(super) fn row_to_artist_with_prefix(row: &Row, prefix: &str) -> rusqlite::Re
     })
 }
 
-pub(super) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbAlbum> {
+pub(crate) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbAlbum> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbAlbum {
         id: row.get(column("id").as_str())?,
@@ -551,7 +551,7 @@ pub(super) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Res
     })
 }
 
-pub(super) fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbTrack> {
+pub(crate) fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbTrack> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbTrack {
         id: row.get(column("id").as_str())?,

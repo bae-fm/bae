@@ -66,13 +66,13 @@ impl DiscogsPick {
 
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
-        let mut search =
-            self.handle.database.subscribe_artist_search(crate::library::ArtistSearchView {
+        let mut search = crate::library::views::LibraryViews::new(self.handle.database.clone())
+            .subscribe_artist_search(crate::library::ArtistSearchView {
                 query: crate::library::LibrarySearchQuery::parse("Track Artist"),
                 windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
             });
         let found = search.next().await.expect("the artist search stays open").result.unwrap();
-        let result = crate::library::LibraryManager::resolve_artist_search(found, 0)
+        let result = crate::library::views::artist_search::resolve_artist_search(found, 0)
             .windows
             .into_iter()
             .flat_map(|window| window.rows)

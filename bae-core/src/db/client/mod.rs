@@ -31,15 +31,9 @@ macro_rules! release_file_columns {
 
 mod album;
 pub(crate) mod album_search;
-pub use artist::{
-    ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
-    ComposerDetailProjection, WorkDetailProjection,
-};
 mod artist;
-mod artist_credit_names;
-mod artist_search;
+pub(crate) mod artist_credit_names;
 use artist_credit_names::settle_credit_name;
-pub use artist_search::ArtistSearchProjection;
 pub(crate) mod artist_resolution;
 pub(crate) mod label_resolution;
 #[cfg(test)]

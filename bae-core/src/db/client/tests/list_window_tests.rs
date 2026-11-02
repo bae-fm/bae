@@ -172,14 +172,20 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
         artist_sorts.push(vec![ArtistSortCriterion { field, direction }]);
     }
     for sort in artist_sorts {
-        let order = artist_order(&sort);
-        let key = key_at(&db, &order, super::super::artist::artist_rows_on, 150).await;
+        let order = crate::library::views::artist::artist_order(&sort);
+        let key = key_at(&db, &order, crate::library::views::artist::artist_rows_on, 150).await;
         assert_seeks_search(
             &db,
             &format!("artists {sort:?}"),
             &order,
             key,
-            |seek| listing_window_query(artist_listing_query, &order, seek),
+            |seek| {
+                crate::library::views::listing_window_query(
+                    crate::library::views::artist::artist_listing_query,
+                    &order,
+                    seek,
+                )
+            },
             Vec::new(),
         )
         .await;
@@ -195,14 +201,20 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
         }
     }
     for sort in composer_sorts {
-        let order = composer_order(&sort);
-        let key = key_at(&db, &order, super::super::artist::composer_rows_on, 150).await;
+        let order = crate::library::views::composer::composer_order(&sort);
+        let key = key_at(&db, &order, crate::library::views::composer::composer_rows_on, 150).await;
         assert_seeks_search(
             &db,
             &format!("composers {sort:?}"),
             &order,
             key,
-            |seek| listing_window_query(composer_listing_query, &order, seek),
+            |seek| {
+                crate::library::views::listing_window_query(
+                    crate::library::views::composer::composer_listing_query,
+                    &order,
+                    seek,
+                )
+            },
             Vec::new(),
         )
         .await;

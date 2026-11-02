@@ -1,7 +1,7 @@
 //! Resolved composer/work types and their pure projections from DB aggregates.
 
 use super::*;
-use crate::db::{
+use crate::library::views::{
     DbComposerSummary, DbReleaseRoleSummary, DbTrackRoleSummary, DbWorkReleaseSummary,
     DbWorkSummary, DbWorkTrackSummary,
 };

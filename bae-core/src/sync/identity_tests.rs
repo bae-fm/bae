@@ -76,12 +76,12 @@ async fn texts(database: &Database, query: &str) -> Vec<String> {
 
 /// The artists the artist browse lists.
 async fn listed_artists(database: &Database) -> Vec<String> {
-    database
+    crate::library::views::LibraryViews::new(database.clone())
         .get_artist_page(&[], 0, 100)
         .await
         .unwrap()
         .into_iter()
-        .map(|summary| summary.artist.id)
+        .map(|summary| summary.raw.artist.id)
         .collect()
 }
 

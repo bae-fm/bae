@@ -17,7 +17,7 @@ async fn pure_reads_use_the_read_connection() {
     bae_core::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap();
     bae_core::library::views::LibraryViews::new(db.clone()).get_albums(&[]).await.unwrap();
     db.find_artist_by_id("missing").await.unwrap();
-    db.get_artist_count().await.unwrap();
+    bae_core::library::views::LibraryViews::new(db.clone()).get_artist_count().await.unwrap();
     db.find_track_by_id("missing").await.unwrap();
     db.get_track_ids_for_release("missing").await.unwrap();
     db.find_release_by_id("missing").await.unwrap();

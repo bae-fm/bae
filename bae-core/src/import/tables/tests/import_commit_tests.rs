@@ -289,8 +289,11 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     )
     .await;
 
-    let composer_detail =
-        db.find_composer_detail(&composer.id).await.unwrap().expect("composer detail");
+    let composer_detail = crate::library::views::LibraryViews::new(db.clone())
+        .find_composer_detail(&composer.id)
+        .await
+        .unwrap()
+        .expect("composer detail");
     assert_eq!(composer_detail.work_groups.len(), 1);
     assert_eq!(composer_detail.work_groups[0].works[0].work.id, WORK_A);
     let release_role_count = db
@@ -306,7 +309,11 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .unwrap();
     assert_eq!(release_role_count, 1);
 
-    let work_detail = db.find_work_detail(WORK_A).await.unwrap().expect("work detail");
+    let work_detail = crate::library::views::LibraryViews::new(db.clone())
+        .find_work_detail(WORK_A)
+        .await
+        .unwrap()
+        .expect("work detail");
     assert_eq!(work_detail.tracks.len(), 1);
     let track_role_count = db
         .read(|conn| {

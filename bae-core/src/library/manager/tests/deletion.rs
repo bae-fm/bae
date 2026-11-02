@@ -33,7 +33,7 @@ async fn work_detail_release_rows_are_display_ready() {
         .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let detail = manager.get_work_detail(&work.id).await.unwrap().expect("work detail");
+    let detail = manager.views().get_work_detail(&work.id).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let row = &detail.releases[0];

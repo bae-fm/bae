@@ -31,45 +31,6 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
-    /// Follow what an artist picker's search finds, from `initial` on.
-    pub(crate) fn subscribe_artist_search(
-        &self,
-        initial: crate::library::ArtistSearchView,
-    ) -> coven::ReconfigurableLiveQuery<
-        crate::library::ArtistSearchView,
-        crate::db::ArtistSearchProjection,
-    > {
-        self.database.subscribe_artist_search(initial)
-    }
-
-    /// The artists an artist search's windows hold, each beside its image
-    /// and its other printed names.
-    pub(crate) fn resolve_artist_search(
-        projection: crate::db::ArtistSearchProjection,
-        request_revision: u64,
-    ) -> crate::library::ArtistSearchSnapshot {
-        let crate::db::ArtistSearchProjection { windows, total_count } = projection;
-        crate::library::ArtistSearchSnapshot {
-            windows: windows
-                .into_iter()
-                .map(|window| crate::db::LibraryBrowseWindow {
-                    window: window.window,
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(|row| ArtistSearchResult {
-                            image: crate::db::artist_image_ref(&row.artist.id, row.image_version),
-                            credit_names: row.credit_names,
-                            artist: row.artist,
-                        })
-                        .collect(),
-                })
-                .collect(),
-            total_count,
-            request_revision,
-        }
-    }
-
     /// Give an artist another printed name, which credits can then print for
     /// it. A name it already goes by adds nothing.
     pub async fn add_artist_credit_name(
@@ -105,88 +66,6 @@ impl LibraryManager {
         key: &str,
     ) -> Result<(), LibraryError> {
         Ok(self.database.remove_artist_credit_name(artist_id, key).await?)
-    }
-
-    pub async fn get_artist_count(&self) -> Result<u64, LibraryError> {
-        Ok(self.database.get_artist_count().await?)
-    }
-
-    pub async fn get_artist_page(
-        &self,
-        sort: &[crate::db::ArtistSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> Result<Vec<ArtistSummary>, LibraryError> {
-        let raw = self.database.get_artist_page(sort, offset, limit).await?;
-        Ok(raw.into_iter().map(ArtistSummary::from_raw).collect())
-    }
-
-    pub(crate) fn subscribe_artist_browse(
-        &self,
-        sort: &[crate::db::ArtistSortCriterion],
-        initial_windows: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        crate::db::LibraryPageWindows,
-        crate::db::ArtistBrowseProjection,
-    > {
-        self.database.subscribe_artist_browse(sort, initial_windows)
-    }
-
-    pub(crate) fn resolve_artist_browse(
-        &self,
-        projection: crate::db::ArtistBrowseProjection,
-        request_revision: u64,
-        cause: coven::LiveQueryCause,
-    ) -> crate::library::LibraryBrowseSnapshot<ArtistSummary> {
-        crate::library::LibraryBrowseSnapshot {
-            windows: projection
-                .windows
-                .into_iter()
-                .map(|window| crate::db::LibraryBrowseWindow {
-                    window: window.window,
-                    rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
-                })
-                .collect(),
-            total_count: projection.total_count,
-            row_count: projection.total_count,
-            sections: Vec::new(),
-            request_revision,
-            cause,
-        }
-    }
-
-    pub async fn get_artist_detail(
-        &self,
-        artist_id: &str,
-    ) -> Result<Option<ArtistDetail>, LibraryError> {
-        let Some(raw) = self.database.find_artist_detail(artist_id).await? else {
-            return Ok(None);
-        };
-        let albums = raw.albums.into_iter().map(AlbumSummary::from_raw).collect();
-        Ok(Some(ArtistDetail {
-            artist: ArtistSummary::from_raw(raw.artist),
-            credit_names: raw.credit_names,
-            albums,
-        }))
-    }
-
-    pub(crate) fn subscribe_artist_detail(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::ArtistDetailProjection> {
-        self.database.subscribe_artist_detail(initial)
-    }
-
-    pub(crate) fn resolve_artist_detail_projection(
-        &self,
-        projection: crate::db::ArtistDetailProjection,
-    ) -> Option<ArtistDetail> {
-        let raw = projection.detail?;
-        Some(ArtistDetail {
-            artist: ArtistSummary::from_raw(raw.artist),
-            credit_names: raw.credit_names,
-            albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
-        })
     }
 
     /// What the library holds, as it stands now, for every artist credit

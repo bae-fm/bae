@@ -1,12 +1,23 @@
-use super::super::*;
-use super::*;
+use crate::db::client::tests::{temp_db, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
+use crate::library::views::*;
+
+const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
+const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
+const ALBUM_2001_UPPER: &str = "a663cff7-fad7-45b1-8469-5f77af82ddb8";
+const ALBUM_JUNCTION: &str = "7e6f42e7-8952-48e6-89bf-d1bcc611176d";
+const ALBUM_NULL: &str = "c6648d5a-617e-4b69-87da-b7f1c4fb5e65";
+const ARTIST_ABSENT: &str = "78420eae-1cd1-4a36-87ae-2a5556aa52aa";
+const ARTIST_EXTRA: &str = "7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8";
+const ARTIST_SOLO: &str = "49549823-0e72-4747-891e-ee50e1611e3a";
+const ARTIST_VARIOUS: &str = "f862abf2-3b15-4518-889b-1996d7100201";
+const ARTIST_WORK_ONLY: &str = "b96d8066-777d-408d-8ae4-ed58c767e40c";
 
 /// Artists covering every membership case: a primary-FK artist that is
 /// also a junction artist elsewhere, a junction-only artist, the Various
 /// Artists row as a compilation's primary, a work-only composer (no album
 /// links), and a fully unlinked artist.
 async fn seeded_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -47,12 +58,13 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 
 /// The first ten artists `text` finds.
 async fn search(db: &Database, text: &str) -> Vec<DbArtist> {
-    db.search_artists(
-        &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-        crate::db::LibraryPageWindow { offset: 0, limit: 10 },
-    )
-    .await
-    .unwrap()
+    LibraryViews::new(db.clone())
+        .search_artists(
+            &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
+            crate::db::LibraryPageWindow { offset: 0, limit: 10 },
+        )
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
@@ -104,15 +116,15 @@ async fn artist_page_lists_album_artists_with_distinct_album_counts() {
 
     let sort =
         [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
-    let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
+    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
 
-    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_EXTRA, ARTIST_PRIMARY, ARTIST_VARIOUS]);
 
-    let counts: Vec<i64> = page.iter().map(|a| a.album_count).collect();
+    let counts: Vec<i64> = page.iter().map(|a| a.raw.album_count).collect();
     assert_eq!(counts, vec![1, 2, 1]);
 
-    assert_eq!(db.get_artist_count().await.unwrap(), 3);
+    assert_eq!(LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 3);
 }
 
 #[tokio::test]
@@ -123,15 +135,15 @@ async fn artist_page_sorts_by_album_count() {
         field: ArtistSortField::AlbumCount,
         direction: SortDirection::Descending,
     }];
-    let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
+    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
 
-    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_PRIMARY, ARTIST_EXTRA, ARTIST_VARIOUS]);
 }
 
 #[tokio::test]
 async fn artist_page_uses_id_tiebreaker() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -163,9 +175,9 @@ async fn artist_page_uses_id_tiebreaker() {
     }];
     let mut page_ids = Vec::new();
     for offset in 0..3 {
-        let page = db.get_artist_page(&sort, offset, 1).await.unwrap();
+        let page = LibraryViews::new(db.clone()).get_artist_page(&sort, offset, 1).await.unwrap();
         assert_eq!(page.len(), 1);
-        page_ids.push(page[0].artist.id.clone());
+        page_ids.push(page[0].raw.artist.id.clone());
     }
 
     // Equal album counts, so the id breaks the tie ascending. The ids are
@@ -183,7 +195,7 @@ async fn artist_page_uses_id_tiebreaker() {
 /// fall through to the tail's `ar.name ASC` and order them the other way.
 #[tokio::test]
 async fn artist_page_applies_secondary_criterion() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -222,8 +234,8 @@ async fn artist_page_applies_secondary_criterion() {
         },
         ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Descending },
     ];
-    let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
-    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
+    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
 
     // artist-a and artist-b tie on album_count (2 each); the secondary
     // Name DESC criterion orders artist-b before artist-a.
@@ -232,7 +244,7 @@ async fn artist_page_applies_secondary_criterion() {
 
 #[tokio::test]
 async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -268,7 +280,7 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
     .await
     .unwrap();
 
-    let detail = db.find_artist_detail(ARTIST_A).await.unwrap();
+    let detail = LibraryViews::new(db.clone()).find_artist_detail(ARTIST_A).await.unwrap();
     let detail = detail.expect("artist-a has album links and must resolve");
 
     assert_eq!(detail.artist.artist.id, ARTIST_A);
@@ -285,6 +297,14 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
 async fn artist_detail_absent_or_album_less_artist_is_none() {
     let (db, _tmp) = seeded_db().await;
 
-    assert!(db.find_artist_detail(ARTIST_ABSENT).await.unwrap().is_none());
-    assert!(db.find_artist_detail(ARTIST_WORK_ONLY).await.unwrap().is_none());
+    assert!(LibraryViews::new(db.clone())
+        .find_artist_detail(ARTIST_ABSENT)
+        .await
+        .unwrap()
+        .is_none());
+    assert!(LibraryViews::new(db.clone())
+        .find_artist_detail(ARTIST_WORK_ONLY)
+        .await
+        .unwrap()
+        .is_none());
 }

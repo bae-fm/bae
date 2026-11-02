@@ -262,8 +262,8 @@ async fn whole_library(
     songs: &Window,
 ) -> Result<Element, SubError> {
     // Artists.
-    let sort = [bae_core::db::ArtistSortCriterion {
-        field: bae_core::db::ArtistSortField::Name,
+    let sort = [bae_core::library::views::ArtistSortCriterion {
+        field: bae_core::library::views::ArtistSortField::Name,
         direction: bae_core::db::SortDirection::Ascending,
     }];
     let artist_page = services

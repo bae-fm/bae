@@ -744,13 +744,13 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeComposerSortField = bae_core::db::ComposerSortField,
+    BridgeComposerSortField = bae_core::library::views::ComposerSortField,
     into_core: fn,
     variants: { Name, WorkCount, LinkedReleaseCount },
 }
 
 mirror_struct! {
-    BridgeComposerSortCriterion = bae_core::db::ComposerSortCriterion,
+    BridgeComposerSortCriterion = bae_core::library::views::ComposerSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeComposerSortField),
@@ -759,13 +759,13 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeArtistSortField = bae_core::db::ArtistSortField,
+    BridgeArtistSortField = bae_core::library::views::ArtistSortField,
     into_core: fn,
     variants: { Name, AlbumCount },
 }
 
 mirror_struct! {
-    BridgeArtistSortCriterion = bae_core::db::ArtistSortCriterion,
+    BridgeArtistSortCriterion = bae_core::library::views::ArtistSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeArtistSortField),

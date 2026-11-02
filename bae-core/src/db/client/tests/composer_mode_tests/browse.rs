@@ -91,7 +91,7 @@ async fn search_library_treats_like_metacharacters_as_literals() {
 async fn composer_detail_carries_work_parent_and_representative_release() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db.find_composer_detail(ARTIST_COMPOSER).await.unwrap().expect("composer detail");
+    let detail = crate::library::views::LibraryViews::new(db.clone()).find_composer_detail(ARTIST_COMPOSER).await.unwrap().expect("composer detail");
 
     assert_eq!(detail.work_groups.len(), 1);
     let group = &detail.work_groups[0];
@@ -106,7 +106,7 @@ async fn composer_detail_carries_work_parent_and_representative_release() {
 async fn work_detail_lists_child_works_with_their_representative_release() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db.find_work_detail(WORK_PARENT_A).await.unwrap().expect("work detail");
+    let detail = crate::library::views::LibraryViews::new(db.clone()).find_work_detail(WORK_PARENT_A).await.unwrap().expect("work detail");
 
     assert_eq!(detail.child_works.len(), 1);
     assert_eq!(detail.child_works[0].work.id, WORK_CHILD_A);
@@ -117,7 +117,7 @@ async fn work_detail_lists_child_works_with_their_representative_release() {
 async fn work_detail_release_rows_carry_album_release_display_fields() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db.find_work_detail(WORK_CHILD_A).await.unwrap().expect("work detail");
+    let detail = crate::library::views::LibraryViews::new(db.clone()).find_work_detail(WORK_CHILD_A).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let release = &detail.releases[0];
@@ -164,7 +164,7 @@ async fn composer_page_uses_id_tiebreaker() {
     }];
     let mut page_ids = Vec::new();
     for offset in 0..3 {
-        let page = db.get_composer_page(&sort, offset, 1).await.unwrap();
+        let page = crate::library::views::LibraryViews::new(db.clone()).get_composer_page(&sort, offset, 1).await.unwrap();
         assert_eq!(page.len(), 1);
         page_ids.push(page[0].artist.id.clone());
     }
@@ -219,7 +219,7 @@ async fn composer_page_applies_secondary_criterion() {
             direction: SortDirection::Descending,
         },
     ];
-    let page = db.get_composer_page(&sort, 0, 10).await.unwrap();
+    let page = crate::library::views::LibraryViews::new(db.clone()).get_composer_page(&sort, 0, 10).await.unwrap();
     let ids: Vec<&str> = page.iter().map(|c| c.artist.id.as_str()).collect();
 
     // composer-a and composer-b tie on work_count (2 each); the secondary

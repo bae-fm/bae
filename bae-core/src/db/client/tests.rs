@@ -1,25 +1,15 @@
 // Fixture row ids, UUIDs because coven refuses any other synced primary key.
 const ALBUM_1: &str = "9644b84d-94b2-4b3b-863a-d6583931920c";
-const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
-const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
-const ALBUM_2001_UPPER: &str = "a663cff7-fad7-45b1-8469-5f77af82ddb8";
 pub(crate) const ALBUM_A: &str = "a67c03ad-425f-45e9-8279-0144c852aaa5";
-const ALBUM_JUNCTION: &str = "7e6f42e7-8952-48e6-89bf-d1bcc611176d";
-const ALBUM_NULL: &str = "c6648d5a-617e-4b69-87da-b7f1c4fb5e65";
 const ALBUM_PERCENT: &str = "7e9948c4-f2d0-4a73-8e5c-a885eda086ff";
 const ALBUM_UNDERSCORE: &str = "2dd55a3f-3208-4faf-8737-453f474074cb";
 const ARTIST_1: &str = "6c441836-aef7-4239-8a84-5336c4cce52c";
 pub(crate) const ARTIST_A: &str = "d7d8141f-54ff-467d-8b60-4f34a4d2e528";
-const ARTIST_ABSENT: &str = "78420eae-1cd1-4a36-87ae-2a5556aa52aa";
 pub(crate) const ARTIST_ALBUM: &str = "85f70840-aba5-4eb9-8e1a-0d319e53b798";
 pub(crate) const ARTIST_B: &str = "38fc314c-c130-4120-8ca9-38b870ccef3a";
 pub(crate) const ARTIST_C: &str = "1b4bafc9-0ece-4538-833e-4ff52feb6ef0";
 pub(crate) const ARTIST_COMPOSER: &str = "5412b7ad-bdc1-4561-8985-b6d6ef8a2880";
-const ARTIST_EXTRA: &str = "7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8";
-const ARTIST_PRIMARY: &str = "7cdf9a34-0746-472b-8c68-0a669c11f2f1";
-const ARTIST_SOLO: &str = "49549823-0e72-4747-891e-ee50e1611e3a";
-const ARTIST_VARIOUS: &str = "f862abf2-3b15-4518-889b-1996d7100201";
-const ARTIST_WORK_ONLY: &str = "b96d8066-777d-408d-8ae4-ed58c767e40c";
+pub(crate) const ARTIST_PRIMARY: &str = "7cdf9a34-0746-472b-8c68-0a669c11f2f1";
 const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
 const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
 const COMPOSER_C: &str = "80cd3a5e-7fb7-4766-8ec3-d8e86575743b";
@@ -194,12 +184,6 @@ mod row_mapper_error_tests;
 
 #[cfg(test)]
 mod composer_mode_tests;
-
-#[cfg(test)]
-mod artist_mode_tests;
-
-#[cfg(test)]
-mod artist_search_tests;
 
 #[cfg(test)]
 mod album_listing_tests;

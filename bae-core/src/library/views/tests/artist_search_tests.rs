@@ -1,9 +1,10 @@
 //! The artist picker's live search: one subscription moved between texts and
 //! windows, and woken by writes to what it finds.
 
-use super::super::*;
-use super::{exec, exec_batch};
+use crate::db::client::tests::live_query_tests::write_artist_image;
+use crate::db::client::tests::{exec, exec_batch, temp_db};
 use crate::db::LibraryPageWindow;
+use crate::library::views::*;
 use crate::library::{ArtistSearchView, LibrarySearchQuery};
 use std::time::Duration;
 
@@ -13,7 +14,7 @@ const THIRD: &str = "3c9e3b75-8f2a-4b65-9c74-2e5b5c1b2c03";
 const OTHER: &str = "4daf4c86-9a3b-4c76-8d85-3f6c6d2c3d04";
 
 async fn seeded() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = temp_db().await;
     exec_batch(
         &db,
         &format!(
@@ -39,9 +40,7 @@ fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
     }
 }
 
-fn ids(
-    window: &crate::db::LibraryBrowseWindow<super::super::artist_search::DbArtistSearchRow>,
-) -> Vec<&str> {
+fn ids(window: &crate::db::LibraryBrowseWindow<DbArtistSearchRow>) -> Vec<&str> {
     window.rows.iter().map(|row| row.artist.id.as_str()).collect()
 }
 
@@ -51,7 +50,8 @@ fn ids(
 #[tokio::test]
 async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
     let (db, _tmp) = seeded().await;
-    let mut live = db.subscribe_artist_search(view("artist name", &[window(0, 2), window(2, 2)]));
+    let mut live = LibraryViews::new(db.clone())
+        .subscribe_artist_search(view("artist name", &[window(0, 2), window(2, 2)]));
     let requests = live.requests();
 
     let found = live.next().await.expect("the query stays open").result.unwrap();
@@ -77,7 +77,8 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
 #[tokio::test]
 async fn artist_search_follows_writes_to_what_it_finds() {
     let (db, _tmp) = seeded().await;
-    let mut live = db.subscribe_artist_search(view("artist name", &[window(0, 10)]));
+    let mut live = LibraryViews::new(db.clone())
+        .subscribe_artist_search(view("artist name", &[window(0, 10)]));
     let first = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.total_count, 3);
     assert!(first
@@ -126,9 +127,9 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let (db, _tmp) = seeded().await;
     db.add_artist_credit_name(FIRST, "Zed Alias").await.unwrap();
     db.add_artist_credit_name(FIRST, "Alpha Alias").await.unwrap();
-    let image = super::live_query_tests::write_artist_image(&db, FIRST, "artist image bytes").await;
+    let image = write_artist_image(&db, FIRST, "artist image bytes").await;
 
-    let found = db
+    let found = LibraryViews::new(db.clone())
         .subscribe_artist_search(view("artist name", &[window(0, 10)]))
         .next()
         .await

@@ -1,7 +1,7 @@
 //! Resolved artist types and their pure projections from DB aggregates.
 
 use super::*;
-use crate::db::DbArtistSummary;
+use crate::library::views::DbArtistSummary;
 
 #[derive(Debug, Clone)]
 pub struct ArtistSummary {

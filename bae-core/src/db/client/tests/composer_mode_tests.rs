@@ -1,5 +1,6 @@
 use super::super::*;
 use super::*;
+use crate::library::views::*;
 
 /// The library the composer tests read: an album artist and a composer
 /// credited on one track's work and its parent.

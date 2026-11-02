@@ -275,8 +275,15 @@ async fn measure_artists(db: &Database, n: u64) {
         }
     }
     for (name, sort) in sorts {
-        measure(db, "artists", &name, n, artist_order(&sort), super::super::artist::artist_rows_on)
-            .await;
+        measure(
+            db,
+            "artists",
+            &name,
+            n,
+            crate::library::views::artist::artist_order(&sort),
+            crate::library::views::artist::artist_rows_on,
+        )
+        .await;
     }
 }
 
@@ -300,8 +307,8 @@ async fn measure_composers(db: &Database, n: u64) {
             "composers",
             &name,
             n,
-            composer_order(&sort),
-            super::super::artist::composer_rows_on,
+            crate::library::views::composer::composer_order(&sort),
+            crate::library::views::composer::composer_rows_on,
         )
         .await;
     }

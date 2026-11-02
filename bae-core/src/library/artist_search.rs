@@ -29,11 +29,13 @@ pub struct ArtistSearchSnapshot {
 pub struct LiveArtistSearch {
     query: crate::live_query::CancellableLiveQuery<
         ArtistSearchView,
-        crate::db::ArtistSearchProjection,
+        crate::library::views::ArtistSearchProjection,
     >,
     /// The snapshot a projection read for a request revision resolves to.
     resolve: std::sync::Arc<
-        dyn Fn(crate::db::ArtistSearchProjection, u64) -> ArtistSearchSnapshot + Send + Sync,
+        dyn Fn(crate::library::views::ArtistSearchProjection, u64) -> ArtistSearchSnapshot
+            + Send
+            + Sync,
     >,
 }
 
@@ -41,9 +43,9 @@ impl LiveArtistSearch {
     pub(crate) fn new(
         query: crate::live_query::CancellableLiveQuery<
             ArtistSearchView,
-            crate::db::ArtistSearchProjection,
+            crate::library::views::ArtistSearchProjection,
         >,
-        resolve: impl Fn(crate::db::ArtistSearchProjection, u64) -> ArtistSearchSnapshot
+        resolve: impl Fn(crate::library::views::ArtistSearchProjection, u64) -> ArtistSearchSnapshot
             + Send
             + Sync
             + 'static,

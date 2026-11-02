@@ -142,7 +142,7 @@ async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_a
 
     let credits = library.manager.get_artists_for_album(&library.album.id).await.unwrap();
     let detail =
-        library.manager.get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
+        library.manager.views().get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
 
     assert_eq!(credits[1].artist.id, CREDIT_ARTIST_B);
     assert_eq!(credits[1].artist.name, "Artist B");
@@ -248,7 +248,7 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
     manager.remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & Artist B");
     let detail =
-        manager.get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
+        manager.views().get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
     assert!(detail.credit_names.is_empty());
 }
 

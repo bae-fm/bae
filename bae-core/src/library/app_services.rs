@@ -322,13 +322,13 @@ impl AppServices {
     pub fn subscribe_artist_search(&self) -> crate::library::LiveArtistSearch {
         let manager = &self.inner.manager;
         crate::library::LiveArtistSearch::new(
-            manager.until_closed(manager.subscribe_artist_search(
+            manager.until_closed(self.inner.views.subscribe_artist_search(
                 crate::library::ArtistSearchView {
                     query: None,
                     windows: crate::db::LibraryPageWindows::new(),
                 },
             )),
-            LibraryManager::resolve_artist_search,
+            crate::library::views::artist_search::resolve_artist_search,
         )
     }
 
@@ -346,27 +346,30 @@ impl AppServices {
 
     pub fn subscribe_artist_browse(
         &self,
-        sort: &[crate::db::ArtistSortCriterion],
+        sort: &[crate::library::views::ArtistSortCriterion],
     ) -> crate::library::LiveArtistBrowse {
-        let manager = self.inner.manager.clone();
-        let query = manager
-            .until_closed(manager.subscribe_artist_browse(sort, std::collections::BTreeSet::new()));
-        crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
-            manager.resolve_artist_browse(projection, request_revision, cause)
-        })
+        let manager = &self.inner.manager;
+        let query = manager.until_closed(
+            self.inner.views.subscribe_artist_browse(sort, std::collections::BTreeSet::new()),
+        );
+        crate::library::LiveLibraryBrowse::new(
+            query,
+            crate::library::views::artist::resolve_artist_browse,
+        )
     }
 
     pub fn subscribe_composer_browse(
         &self,
-        sort: &[crate::db::ComposerSortCriterion],
+        sort: &[crate::library::views::ComposerSortCriterion],
     ) -> crate::library::LiveComposerBrowse {
-        let manager = self.inner.manager.clone();
+        let manager = &self.inner.manager;
         let query = manager.until_closed(
-            manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
+            self.inner.views.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
         );
-        crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
-            manager.resolve_composer_browse(projection, request_revision, cause)
-        })
+        crate::library::LiveLibraryBrowse::new(
+            query,
+            crate::library::views::composer::resolve_composer_browse,
+        )
     }
 
     pub fn subscribe_playback_progress(
@@ -460,9 +463,9 @@ impl AppServices {
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, get_artist_count => get_artist_count() -> Result<u64, crate::library::LibraryError>);
-    delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
-    delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
+    delegate_view!(get_artist_count => get_artist_count() -> u64);
+    delegate_view!(get_artist_page => get_artist_page(sort: &[crate::library::views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<crate::album_detail::ArtistSummary>);
+    delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<crate::album_detail::ArtistDetail>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);

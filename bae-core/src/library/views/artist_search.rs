@@ -3,6 +3,7 @@
 //! that makes another match, reads it again.
 
 use super::*;
+use crate::db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
 
 /// Every requested window of an artist search, and how many artists it
 /// found.
@@ -21,7 +22,7 @@ pub struct DbArtistSearchRow {
     pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
 }
 
-impl Database {
+impl LibraryViews {
     /// Search every stored artist, including artists without an album link,
     /// reading `window` of what it finds.
     #[cfg(any(test, feature = "test-utils"))]
@@ -31,13 +32,14 @@ impl Database {
         window: crate::db::LibraryPageWindow,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
-        self.read(move |sql| {
-            Ok(artist_search_rows_on(&sql, &query, &window)?
-                .into_iter()
-                .map(|row| row.artist)
-                .collect())
-        })
-        .await
+        self.database
+            .read(move |sql| {
+                Ok(artist_search_rows_on(&sql, &query, &window)?
+                    .into_iter()
+                    .map(|row| row.artist)
+                    .collect())
+            })
+            .await
     }
 
     /// Follow what an artist search finds, in the windows it asks for. No
@@ -49,7 +51,7 @@ impl Database {
         initial: crate::library::ArtistSearchView,
     ) -> coven::ReconfigurableLiveQuery<crate::library::ArtistSearchView, ArtistSearchProjection>
     {
-        self.inner.handle.subscribe_reconfigurable(initial, |view, sql| {
+        self.database.subscribe_reconfigurable(initial, |view, sql| {
             let Some(query) = &view.query else {
                 return Ok(ArtistSearchProjection {
                     windows: view
@@ -77,6 +79,34 @@ impl Database {
                 .map_err(CovenError::from)?;
             Ok(ArtistSearchProjection { windows, total_count })
         })
+    }
+}
+
+/// The artists an artist search's windows hold, each beside its image
+/// and its other printed names.
+pub(crate) fn resolve_artist_search(
+    projection: ArtistSearchProjection,
+    request_revision: u64,
+) -> crate::library::ArtistSearchSnapshot {
+    let ArtistSearchProjection { windows, total_count } = projection;
+    crate::library::ArtistSearchSnapshot {
+        windows: windows
+            .into_iter()
+            .map(|window| crate::db::LibraryBrowseWindow {
+                window: window.window,
+                rows: window
+                    .rows
+                    .into_iter()
+                    .map(|row| crate::album_detail::ArtistSearchResult {
+                        image: crate::db::artist_image_ref(&row.artist.id, row.image_version),
+                        credit_names: row.credit_names,
+                        artist: row.artist,
+                    })
+                    .collect(),
+            })
+            .collect(),
+        total_count,
+        request_revision,
     }
 }
 
@@ -146,18 +176,15 @@ fn artist_search_rows_on(
             LIMIT ?2 OFFSET ?3
             "#,
             filter = artist_search_filter(),
-            image = super::files::artist_image_version_sql("artists.id"),
-            credit_names = super::artist_credit_names::credit_names_json_sql("artists.id"),
+            image = artist_image_version_sql("artists.id"),
+            credit_names = credit_names_json_sql("artists.id"),
         ),
         params![query.as_str(), window.limit as i64, window.offset as i64],
         |row| {
             Ok(DbArtistSearchRow {
                 artist: row_to_artist(row)?,
                 image_version: row.get("image_version")?,
-                credit_names: super::artist_credit_names::credit_names_column(
-                    row,
-                    "credit_names_json",
-                )?,
+                credit_names: credit_names_column(row, "credit_names_json")?,
             })
         },
     )

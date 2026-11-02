@@ -354,7 +354,7 @@ mirror_struct! {
 impl BridgeComposerSummary {
     pub(crate) fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
         let bae_core::album_detail::ComposerSummary { raw } = s;
-        let bae_core::db::DbComposerSummary {
+        let bae_core::library::views::DbComposerSummary {
             artist,
             image,
             work_count,
@@ -385,7 +385,7 @@ impl BridgeComposerSummary {
 impl BridgeArtistSummary {
     pub(crate) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
         let bae_core::album_detail::ArtistSummary { raw } = s;
-        let bae_core::db::DbArtistSummary { artist, image, album_count } = raw;
+        let bae_core::library::views::DbArtistSummary { artist, image, album_count } = raw;
         let bae_core::db::DbArtist {
             id: artist_id,
             name,
@@ -418,7 +418,7 @@ mirror_struct! {
 impl BridgeWorkSummary {
     pub(super) fn from_core(s: bae_core::album_detail::WorkSummary) -> Self {
         let bae_core::album_detail::WorkSummary { raw } = s;
-        let bae_core::db::DbWorkSummary {
+        let bae_core::library::views::DbWorkSummary {
             work,
             parent_work_id,
             representative_release_id,
@@ -452,7 +452,7 @@ impl BridgeWorkSummary {
 
 impl BridgeReleaseRoleSummary {
     pub(super) fn from_core(s: bae_core::album_detail::ReleaseRoleSummary) -> Self {
-        let bae_core::db::DbReleaseRoleSummary { role, album } = s;
+        let bae_core::library::views::DbReleaseRoleSummary { role, album } = s;
         let bae_core::db::DbReleaseArtistRole {
             release_id,
             source,
@@ -481,7 +481,7 @@ impl BridgeReleaseRoleSummary {
 
 impl BridgeTrackRoleSummary {
     pub(super) fn from_core(s: bae_core::album_detail::TrackRoleSummary) -> Self {
-        let bae_core::db::DbTrackRoleSummary { role, track, album, artist } = s;
+        let bae_core::library::views::DbTrackRoleSummary { role, track, album, artist } = s;
         let bae_core::db::DbTrackArtistRole {
             track_id,
             artist_id,
@@ -532,7 +532,7 @@ impl BridgeTrackRoleSummary {
 
 impl BridgeWorkTrackSummary {
     pub(super) fn from_core(s: bae_core::album_detail::WorkTrackSummary) -> Self {
-        let bae_core::db::DbWorkTrackSummary { link, track, album } = s;
+        let bae_core::library::views::DbWorkTrackSummary { link, track, album } = s;
         let bae_core::db::DbTrackWork {
             track_id,
             id: _,

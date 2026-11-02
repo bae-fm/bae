@@ -361,7 +361,8 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     }];
     let second_window = LibraryPageWindow { offset: 1, limit: 1 };
     let initial_request = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
-    let mut live = db.subscribe_composer_browse(&sort, initial_request.clone());
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_composer_browse(&sort, initial_request.clone());
     let requests = live.requests();
     let initial_event = live.next().await.expect("the query stays open");
     assert_eq!(initial_event.request, initial_request);
@@ -476,7 +477,8 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
 #[tokio::test]
 async fn artist_browse_reads_its_windows_and_their_images() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_artist_browse(&[], first_page());
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_artist_browse(&[], first_page());
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.total_count, 1);

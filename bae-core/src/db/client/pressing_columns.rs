@@ -129,7 +129,7 @@ pub(crate) fn media_column(media: &[MediaCount]) -> String {
 /// The SQL of the library release `release_id`'s media as one `media`
 /// column: its `release_media` rows in order, as the JSON array
 /// [`read_media`] reads.
-pub(super) fn release_media_sql(release_id: &str) -> String {
+pub(crate) fn release_media_sql(release_id: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object('medium', m.medium, 'count', m.count) \
                 ORDER BY m.position) \
@@ -138,7 +138,7 @@ pub(super) fn release_media_sql(release_id: &str) -> String {
 }
 
 /// Read a `media` column: the carriers and their counts.
-pub(super) fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaCount>> {
+pub(crate) fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaCount>> {
     let media: String = row.get(column)?;
     serde_json::from_str::<Vec<MediaCount>>(&media)
         .map_err(|error| column_conversion_error(row, column, format!("media {media:?}: {error}")))

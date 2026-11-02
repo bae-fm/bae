@@ -1,7 +1,8 @@
 use bae_core::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
-use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
+use bae_core::db::{DbArtist, DbWork};
+use bae_core::library::views::{DbComposerSummary, DbWorkSummary};
 use std::sync::Arc;
 
 fn track_detail(

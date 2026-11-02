@@ -81,14 +81,11 @@ impl AppServices {
     pub fn subscribe_artist_detail(
         &self,
     ) -> crate::library::LiveDetail<crate::album_detail::ArtistDetail> {
-        let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         detail_read(
-            manager.clone(),
-            {
-                let manager = manager.clone();
-                move |id| manager.subscribe_artist_detail(id)
-            },
-            move |projection| manager.resolve_artist_detail_projection(projection),
+            self.inner.manager.clone(),
+            move |id| views.subscribe_artist_detail(id),
+            crate::library::views::artist::resolve_artist_detail_projection,
         )
     }
 
@@ -97,14 +94,11 @@ impl AppServices {
     pub fn subscribe_composer_detail(
         &self,
     ) -> crate::library::LiveDetail<crate::album_detail::ComposerDetail> {
-        let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         detail_read(
-            manager.clone(),
-            {
-                let manager = manager.clone();
-                move |id| manager.subscribe_composer_detail(id)
-            },
-            move |projection| manager.resolve_composer_detail_projection(projection),
+            self.inner.manager.clone(),
+            move |id| views.subscribe_composer_detail(id),
+            crate::library::views::composer::resolve_composer_detail_projection,
         )
     }
 
@@ -130,14 +124,11 @@ impl AppServices {
     pub fn subscribe_work_detail(
         &self,
     ) -> crate::library::LiveDetail<crate::album_detail::WorkDetail> {
-        let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         detail_read(
-            manager.clone(),
-            {
-                let manager = manager.clone();
-                move |id| manager.subscribe_work_detail(id)
-            },
-            move |projection| manager.resolve_work_detail_projection(projection),
+            self.inner.manager.clone(),
+            move |id| views.subscribe_work_detail(id),
+            crate::library::views::composer::resolve_work_detail_projection,
         )
     }
 }

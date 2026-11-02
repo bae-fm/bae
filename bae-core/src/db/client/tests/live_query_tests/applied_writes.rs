@@ -46,7 +46,8 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             field: ComposerSortField::Name,
             direction: SortDirection::Ascending,
         }];
-        let mut live = reader.subscribe_composer_browse(&sort, first_page());
+        let mut live = crate::library::views::LibraryViews::new(reader.clone())
+            .subscribe_composer_browse(&sort, first_page());
         assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
             crate::db::LibraryPageWindows,
@@ -88,7 +89,11 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         )).await;
         devices
             .settle("the remote work credits", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID).await.unwrap().is_some()
+                crate::library::views::LibraryViews::new(db.clone())
+                    .find_composer_detail(OTHER_COMPOSER_ID)
+                    .await
+                    .unwrap()
+                    .is_some()
             })
             .await;
         let credited = listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
@@ -102,7 +107,11 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         .await;
         devices
             .settle("the remote merge", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID).await.unwrap().is_none()
+                crate::library::views::LibraryViews::new(db.clone())
+                    .find_composer_detail(OTHER_COMPOSER_ID)
+                    .await
+                    .unwrap()
+                    .is_none()
             })
             .await;
         let merged = listed(&mut live, vec![(COMPOSER_ID, 2)]).await;
