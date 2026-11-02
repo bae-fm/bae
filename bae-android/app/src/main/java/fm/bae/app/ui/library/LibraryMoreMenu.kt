@@ -99,33 +99,48 @@ internal fun LibraryMoreMenu(
             Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
         }
         DropdownMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close) {
-            Text(
-                text = stringResource(R.string.sort_by),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier =
-                    Modifier
-                        .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
-                        .semantics { heading() },
-            )
-            ViewSortItems(state = state, close = close)
-            HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.shuffle_library)) },
-                onClick = {
-                    close()
-                    onShuffleLibrary()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.settings)) },
-                onClick = {
-                    close()
-                    onSettings()
-                },
-            )
+            LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
         }
     }
+}
+
+/**
+ * What the ⋮ menu holds; each choice closes the menu. Its own composable so a
+ * screenshot scene can show the menu's contents, which layoutlib can't draw in
+ * the menu's popup.
+ */
+@Composable
+internal fun LibraryMoreMenuItems(
+    state: LibraryBrowserState,
+    onShuffleLibrary: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val close = { state.openMenu = null }
+    Text(
+        text = stringResource(R.string.sort_by),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
+                .semantics { heading() },
+    )
+    ViewSortItems(state = state, close = close)
+    HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.shuffle_library)) },
+        onClick = {
+            close()
+            onShuffleLibrary()
+        },
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.settings)) },
+        onClick = {
+            close()
+            onSettings()
+        },
+    )
 }
 
 /** The sort choices of the view on screen; choosing one closes the menu. */

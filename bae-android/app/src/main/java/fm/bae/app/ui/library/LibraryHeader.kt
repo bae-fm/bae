@@ -181,17 +181,27 @@ private fun LibraryViewHeading(
             expanded = state.openMenu == LibraryHeaderMenu.VIEWS,
             onDismissRequest = { state.openMenu = null },
         ) {
-            LibraryBrowserMode.entries.forEach { mode ->
-                ChoiceMenuItem(
-                    label = stringResource(mode.label),
-                    selected = mode == state.mode,
-                    onClick = {
-                        state.mode = mode
-                        state.openMenu = null
-                    },
-                )
-            }
+            LibraryViewMenuItems(state)
         }
+    }
+}
+
+/**
+ * The heading's menu: the library's views, the one on screen chosen. Its own
+ * composable so a screenshot scene can show the menu's contents, which
+ * layoutlib can't draw in the menu's popup.
+ */
+@Composable
+internal fun LibraryViewMenuItems(state: LibraryBrowserState) {
+    LibraryBrowserMode.entries.forEach { mode ->
+        ChoiceMenuItem(
+            label = stringResource(mode.label),
+            selected = mode == state.mode,
+            onClick = {
+                state.mode = mode
+                state.openMenu = null
+            },
+        )
     }
 }
 

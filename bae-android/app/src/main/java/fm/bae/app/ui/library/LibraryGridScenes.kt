@@ -1,18 +1,27 @@
 package fm.bae.app.ui.library
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
@@ -43,7 +52,7 @@ private val SCENE_SECTIONS: List<BridgeLibraryBrowseSection> =
  * The library home screenshot scenes: the header over fixture albums with empty
  * cover tiles, in the app chrome, needing no session. The grid starts at its
  * item [firstItem] (an artist's header counts as one when grouped), and
- * [openMenu] shows that header menu open.
+ * [openMenu] shows that header menu's contents open over the grid.
  */
 @Composable
 internal fun LibraryGridScene(
@@ -53,13 +62,7 @@ internal fun LibraryGridScene(
 ) {
     BaeAppChrome {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            val state =
-                remember {
-                    LibraryBrowserState().apply {
-                        this.openMenu = openMenu
-                        groupAlbumsByArtist = grid == SceneGrid.GROUPED
-                    }
-                }
+            val state = remember { LibraryBrowserState().apply { groupAlbumsByArtist = grid == SceneGrid.GROUPED } }
             val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstItem)
             val collapse = rememberHeadingCollapse(gridState)
             Column(modifier = Modifier.fillMaxSize()) {
@@ -70,25 +73,60 @@ internal fun LibraryGridScene(
                     onSettings = {},
                     syncActivity = {},
                 )
-                when (grid) {
-                    SceneGrid.FLAT -> {
-                        LibraryGridSceneAlbums(gridState)
+                Box(modifier = Modifier.weight(1f)) {
+                    when (grid) {
+                        SceneGrid.FLAT -> LibraryGridSceneAlbums(gridState)
+                        SceneGrid.GROUPED -> SceneGroupedAlbums(gridState)
                     }
-
-                    SceneGrid.GROUPED -> {
-                        LibraryGridBacking(
-                            count = SCENE_SECTIONS.sumOf { it.window.limit.toInt() },
-                            sections = SCENE_SECTIONS,
-                            rowAt = ::sceneGroupedRow,
-                            gridState = gridState,
-                            onSelectAlbum = {},
-                            onSelectArtist = {},
-                        )
+                    if (openMenu != null) {
+                        SceneMenu(menu = openMenu, state = state)
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * A header menu's contents as they show open under the header: the views at
+ * the heading's start, the ⋮ menu at the end. Drawn in a surface like the
+ * menu's own, because layoutlib draws an open menu's popup blank.
+ */
+@Composable
+private fun BoxScope.SceneMenu(
+    menu: LibraryHeaderMenu,
+    state: LibraryBrowserState,
+) {
+    Surface(
+        shape = MenuDefaults.shape,
+        color = MenuDefaults.containerColor,
+        tonalElevation = MenuDefaults.TonalElevation,
+        shadowElevation = MenuDefaults.ShadowElevation,
+        modifier =
+            Modifier
+                .align(if (menu == LibraryHeaderMenu.VIEWS) Alignment.TopStart else Alignment.TopEnd)
+                .padding(horizontal = ThemeSpace.related),
+    ) {
+        Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max)) {
+            when (menu) {
+                LibraryHeaderMenu.VIEWS -> LibraryViewMenuItems(state)
+                LibraryHeaderMenu.MORE -> LibraryMoreMenuItems(state = state, onShuffleLibrary = {}, onSettings = {})
+            }
+        }
+    }
+}
+
+/** The grouped fixture's albums under their artists, scrolled by [gridState]. */
+@Composable
+private fun SceneGroupedAlbums(gridState: LazyGridState) {
+    LibraryGridBacking(
+        count = SCENE_SECTIONS.sumOf { it.window.limit.toInt() },
+        sections = SCENE_SECTIONS,
+        rowAt = ::sceneGroupedRow,
+        gridState = gridState,
+        onSelectAlbum = {},
+        onSelectArtist = {},
+    )
 }
 
 /**
