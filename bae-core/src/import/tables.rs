@@ -22,7 +22,8 @@ pub(crate) use import_list::SelectionWrite;
 pub use import_state::ImportCommitError;
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, ImportClaim, RunVerdictSaved, ScannedCandidateKey,
+    CandidateSaved, ImportClaim, ImportCommitGuard, ImportRows, NewArtistImages, RunVerdictSaved,
+    ScannedCandidateKey,
 };
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;

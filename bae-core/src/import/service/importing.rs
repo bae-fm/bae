@@ -677,7 +677,7 @@ impl ImportService {
             .await
             .map_err(crate::import::ImportError::from)?;
 
-        let commit_guard = crate::db::ImportCommitGuard::Candidate {
+        let commit_guard = crate::import::tables::ImportCommitGuard::Candidate {
             candidate_key: candidate_key.clone(),
             source: committed.source,
             expectation: committed.expectation,
@@ -690,7 +690,7 @@ impl ImportService {
             new_album,
             db_release,
             tracks_to_files,
-            crate::db::ImportRows {
+            crate::import::tables::ImportRows {
                 mediums,
                 track_artists,
                 album_artists,
@@ -764,11 +764,11 @@ impl ImportService {
     /// without its artist.
     async fn finalize_import_atomic(
         &self,
-        guard: crate::db::ImportCommitGuard,
+        guard: crate::import::tables::ImportCommitGuard,
         album: Option<&DbAlbum>,
         release: &DbRelease,
         tracks_to_files: &[TrackFile],
-        rows: crate::db::ImportRows<'_>,
+        rows: crate::import::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
         library_image: Option<(&crate::db::DbLibraryImage, &[u8])>,
         artist_images: &[crate::import::DiscogsArtistImage],
@@ -783,7 +783,7 @@ impl ImportService {
             artist_image_rows(&expected.inserts, artist_images, self.clock.now().into())?;
         let artist_images: Vec<_> =
             artist_images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
-        self.database
+        self.tables
             .finalize_import_atomic(
                 guard,
                 album,
@@ -792,7 +792,7 @@ impl ImportService {
                 rows,
                 files,
                 library_image,
-                crate::db::NewArtistImages {
+                crate::import::tables::NewArtistImages {
                     expected_new_artists: &expected_new_artists,
                     images: &artist_images,
                 },

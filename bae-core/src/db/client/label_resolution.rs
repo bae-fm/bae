@@ -58,7 +58,7 @@ pub(super) fn label_write(parts: &LabelParts) -> LabelWrite<'_> {
 /// The [`label_write`] of an import of `candidate`, which follows its answers
 /// to label conflicts.
 #[cfg(desktop)]
-pub(super) fn import_label_write<'a>(
+pub(crate) fn import_label_write<'a>(
     parts: &'a LabelParts,
     candidate: Option<&'a str>,
 ) -> LabelWrite<'a> {
@@ -67,14 +67,14 @@ pub(super) fn import_label_write<'a>(
 
 /// What a write of labels takes along into its closure: an id for each label
 /// that may be new, and the time the write makes them at.
-pub(super) struct LabelParts {
+pub(crate) struct LabelParts {
     fresh_ids: Vec<String>,
     now: String,
 }
 
 impl Database {
     /// The [`LabelParts`] of a write of `labels`.
-    pub(super) fn label_parts(&self, labels: &[ReleaseLabel]) -> LabelParts {
+    pub(crate) fn label_parts(&self, labels: &[ReleaseLabel]) -> LabelParts {
         LabelParts {
             fresh_ids: labels.iter().map(|_| self.inner.ids.new_id().to_string()).collect(),
             now: chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339(),

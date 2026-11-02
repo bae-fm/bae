@@ -73,6 +73,7 @@ mod draftless_candidate_tests;
 mod file_tag_snapshot_tests;
 mod folder_scan_live_query_tests;
 mod import_candidate_state_tests;
+mod import_commit_tests;
 mod import_list_live_query_tests;
 mod import_list_placement_tests;
 mod import_list_tests;

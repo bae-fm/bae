@@ -174,7 +174,7 @@ pub(crate) struct ResolvedArtists {
 impl ResolvedArtists {
     /// Insert the new artists and fill in the linked ones, before any link
     /// that points at them is written.
-    pub(super) fn write_on(&self, tx: &CovenWrite<'_>) -> Result<(), DbError> {
+    pub(crate) fn write_on(&self, tx: &CovenWrite<'_>) -> Result<(), DbError> {
         for artist in &self.inserts {
             insert_artist_row(tx, artist)?;
         }
@@ -191,7 +191,7 @@ impl ResolvedArtists {
     }
 
     /// The resolved id of every input credit, keyed by the id it came in with.
-    pub(super) fn id_map(&self, credits: &[DbArtist]) -> HashMap<String, String> {
+    pub(crate) fn id_map(&self, credits: &[DbArtist]) -> HashMap<String, String> {
         credits.iter().zip(&self.ids).map(|(credit, id)| (credit.id.clone(), id.clone())).collect()
     }
 }
@@ -419,7 +419,7 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
 
 /// `links` with each one's artist rewritten from the credit id it names to
 /// the library artist that credit resolved to.
-pub(super) fn relink<T: Clone>(
+pub(crate) fn relink<T: Clone>(
     links: &[T],
     artist_ids: &HashMap<String, String>,
     label: &str,
@@ -443,7 +443,7 @@ pub(super) fn relink<T: Clone>(
 
 /// The album's credits, resolved. Each place keeps its credit even where two
 /// resolve to one artist: the list names that artist twice.
-pub(super) fn relink_album_artists(
+pub(crate) fn relink_album_artists(
     links: &[DbAlbumArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbAlbumArtist>, DbError> {
@@ -451,7 +451,7 @@ pub(super) fn relink_album_artists(
 }
 
 /// Each track's own credits, resolved, every place kept.
-pub(super) fn relink_track_artists(
+pub(crate) fn relink_track_artists(
     links: &[DbTrackArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbTrackArtist>, DbError> {

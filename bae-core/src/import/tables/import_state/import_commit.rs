@@ -1,10 +1,23 @@
-//! The candidate a library import commits, read inside the import's own
-//! transaction so the commit and the check that it still describes the
-//! prepared candidate are one.
+//! An import's commit: the release's rows, written by db's row writers in
+//! the one transaction that also reads the candidate the import commits, so
+//! the commit and the check that it still describes the prepared candidate
+//! are one.
 
 use super::*;
-use crate::db::client::artist_resolution::identity_write_failure;
+use crate::db::client::artist_resolution::{
+    identity_write_failure, relink, relink_album_artists, relink_track_artists,
+};
+use crate::db::client::label_resolution::import_label_write;
+use crate::db::client::write::{
+    insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
+    insert_release_file_row, insert_release_medium_row, insert_release_row,
+    insert_scrub_points_row, insert_track_artist_role_row, insert_track_artist_row,
+    insert_track_row, insert_track_work_row, insert_work_artist_row, insert_work_part_row,
+    insert_work_row, replace_album_artists, upsert_album_row, upsert_library_image_row,
+    write_release_records,
+};
 use crate::import::preparation::CommittingCandidate;
+use std::collections::BTreeSet;
 
 /// Why an import's commit did not land. Nothing of it was written; the
 /// person may ask for the import again.
@@ -36,7 +49,7 @@ impl From<rusqlite::Error> for ImportCommitError {
 
 /// Carry an [`ImportCommitError`] out of the commit's coven write closure
 /// with its type intact, so [`import_commit_error`] can hand it back.
-pub(crate) fn import_commit_failure(error: ImportCommitError) -> CovenError {
+fn import_commit_failure(error: ImportCommitError) -> CovenError {
     match error {
         ImportCommitError::Write(error) => identity_write_failure(error),
         other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
@@ -44,7 +57,7 @@ pub(crate) fn import_commit_failure(error: ImportCommitError) -> CovenError {
 }
 
 /// The [`ImportCommitError`] the commit's coven write closure failed with.
-pub(crate) fn import_commit_error(error: CovenError) -> ImportCommitError {
+fn import_commit_error(error: CovenError) -> ImportCommitError {
     match error {
         CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
             match host.downcast::<ImportCommitError>() {
@@ -62,7 +75,7 @@ pub(crate) fn import_commit_error(error: CovenError) -> ImportCommitError {
 /// was prepared from. The rows are read here; what must match is
 /// [`ImportExpectation::verify`](crate::import::service::ImportExpectation::verify)'s
 /// to say.
-pub(crate) fn require_import_commit_guard(
+fn require_import_commit_guard(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
@@ -82,7 +95,7 @@ pub(crate) fn require_import_commit_guard(
 /// going or the import gone without its release. That failure stands until
 /// this write — an attempt that never commits, cancelled or failing with a
 /// failure of its own, leaves it as it found it or replaces it.
-pub(crate) fn end_import_attempt_of_commit(
+fn end_import_attempt_of_commit(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
@@ -102,7 +115,7 @@ pub(crate) fn end_import_attempt_of_commit(
 /// asked for if this device already held the hash; an import of the same files
 /// that landed in between leaves the hash taken, and the unique hash refuses
 /// this commit whole as [`ImportCommitError::FilesAlreadyImported`].
-pub(crate) fn record_import_origin_on(
+fn record_import_origin_on(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
     release_id: &str,
@@ -152,7 +165,7 @@ pub(crate) fn record_import_origin_on(
 /// were read off, and so do the file decisions, which lay its files out. A
 /// commit that does not land deletes none of it, so a retry finds the
 /// candidate as the failed attempt left it.
-pub(crate) fn delete_what_the_import_spent_on(
+fn delete_what_the_import_spent_on(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
@@ -230,4 +243,280 @@ fn load_committing_candidate(
         prepared_revisions,
         file_tag_snapshot,
     }))
+}
+
+/// The exact candidate state a library import transaction is allowed to
+/// consume. The final write checks this inside the transaction before writing
+/// any library row.
+#[derive(Debug, Clone)]
+pub(crate) enum ImportCommitGuard {
+    Candidate {
+        candidate_key: crate::import::CandidateKey,
+        source: crate::import::release_candidate::CandidateSource,
+        expectation: crate::import::service::ImportExpectation,
+        /// The import committing, whose claim on the candidate the commit
+        /// ends with the release.
+        import_id: String,
+    },
+    /// A test's import of a release no scanned candidate stands behind,
+    /// optionally answering for the candidate state at `content_hash`.
+    #[cfg(test)]
+    UncheckedTestSetup { content_hash: Option<String> },
+}
+
+impl ImportCommitGuard {
+    /// The folder hash of the candidate the import commits: what its artist
+    /// decisions are stored under, and what this device records it imported.
+    pub(crate) fn content_hash(&self) -> Option<&str> {
+        match self {
+            Self::Candidate { expectation, .. } => Some(&expectation.candidate.content_hash),
+            #[cfg(test)]
+            Self::UncheckedTestSetup { content_hash } => content_hash.as_deref(),
+        }
+    }
+}
+
+/// The row lists an import commit writes around its release — the artist, work,
+/// role, audio-format, and record rows that hang off it.
+///
+/// One group rather than thirteen parameters: each is a plain list the caller
+/// either has or does not, and `Default` is every one of them empty, so a
+/// caller names only the lists it actually fills.
+///
+/// Every artist link here — `album_artists`, `track_artists`, the role rows and `work_artists` — names its artist by the
+/// id of one of `artists.credits`. The commit resolves those credits to
+/// library artists inside its own transaction and writes each link to the
+/// artist its credit resolved to.
+#[derive(Default)]
+pub(crate) struct ImportRows<'a> {
+    pub mediums: &'a [DbReleaseMedium],
+    pub track_artists: &'a [DbTrackArtist],
+    pub album_artists: &'a [DbAlbumArtist],
+    pub works: &'a [DbWork],
+    pub work_artists: &'a [DbWorkArtist],
+    pub work_parts: &'a [DbWorkPart],
+    pub track_works: &'a [DbTrackWork],
+    pub release_artist_roles: &'a [DbReleaseArtistRole],
+    pub track_artist_roles: &'a [DbTrackArtistRole],
+    pub artists: crate::db::ArtistCredits<'a>,
+    pub audio_formats: &'a [DbAudioFormat],
+    pub audio_segments: &'a [DbAudioSegment],
+    pub scrub_points: &'a [DbScrubPoints],
+    pub records: &'a [crate::catalog_model::records::ReleaseRecord],
+}
+
+/// Pictures for the new artists an import expects to create. Their bytes are
+/// staged before the transaction's SQL runs, so they are prepared against a
+/// read of the library just before it; the transaction resolves the credits
+/// again and refuses to commit if the new artists it would create are not
+/// exactly `expected_new_artists` — a picture is never left without its
+/// artist, and no new artist misses the picture prepared for it.
+#[derive(Default, Clone, Copy)]
+pub(crate) struct NewArtistImages<'a> {
+    pub expected_new_artists: &'a [String],
+    pub images: &'a [(&'a DbLibraryImage, &'a [u8])],
+}
+
+impl ImportTables {
+    /// Finalize an import in one transaction. Nothing of it is in the DB yet except
+    /// the import record — every row below lands together or not at all.
+    pub(crate) async fn finalize_import_atomic(
+        &self,
+        guard: ImportCommitGuard,
+        // `None` when the album is an existing one, already in the DB.
+        album: Option<&DbAlbum>,
+        release: &DbRelease,
+        tracks_to_files: &[crate::import::TrackFile],
+        rows: ImportRows<'_>,
+        files: Vec<crate::import::service::PreparedImportFile>,
+        library_image: Option<(&DbLibraryImage, &[u8])>,
+        artist_images: NewArtistImages<'_>,
+    ) -> Result<(), ImportCommitError> {
+        let album = album.cloned();
+        let release = release.clone();
+        let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
+        let mediums = rows.mediums.to_vec();
+        let track_artists = rows.track_artists.to_vec();
+        let album_artists = rows.album_artists.to_vec();
+        let works = rows.works.to_vec();
+        let work_artists = rows.work_artists.to_vec();
+        let work_parts = rows.work_parts.to_vec();
+        let track_works = rows.track_works.to_vec();
+        let release_artist_roles = rows.release_artist_roles.to_vec();
+        let track_artist_roles = rows.track_artist_roles.to_vec();
+        let artist_credits = rows.artists.credits.to_vec();
+        let picked_artists = rows.artists.picked.to_vec();
+        let expected_new_artists: BTreeSet<String> =
+            artist_images.expected_new_artists.iter().cloned().collect();
+        let audio_formats = rows.audio_formats.to_vec();
+        let audio_segments = rows.audio_segments.to_vec();
+        let scrub_points = rows.scrub_points.to_vec();
+        let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
+        let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
+            .images
+            .iter()
+            .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
+            .collect();
+        // Each image's bytes are staged as a coven file, in the order of
+        // `library_image` then `artist_images`, which the rows then reference.
+        let image_files: Vec<(&'static str, Vec<u8>)> = library_image
+            .iter()
+            .chain(artist_images.iter())
+            .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
+            .collect();
+        // Each original is staged as a coven file, on this device only or for
+        // the cloud as its place says, which its row references.
+        let (rows_to_insert, originals): (Vec<NewReleaseFile>, Vec<_>) = files
+            .into_iter()
+            .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
+            .unzip();
+        let records = rows.records.to_vec();
+        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.database.now());
+        let now = now_dt.to_rfc3339();
+        let labels = self.database.label_parts(&release.pressing.labels);
+        self.database
+            .write_staged(
+                move |w| {
+                    Ok(image_files
+                        .into_iter()
+                        .map(|(namespace, bytes)| w.put_file(namespace, bytes, coven::Place::Cloud))
+                        .collect::<Vec<coven::FileId>>())
+                },
+                move |sql, image_file_ids| {
+                    let original_file_ids = originals
+                        .into_iter()
+                        .map(|(original, place)| {
+                            sql.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, original, place)
+                        })
+                        .collect::<Result<Vec<coven::FileId>, _>>()?;
+                    let tx = &sql;
+                    require_import_commit_guard(tx, &guard)?;
+                    end_import_attempt_of_commit(tx, &guard)?;
+
+                    // Every credit is decided here, against the library as it
+                    // stands inside this transaction, so an artist another
+                    // import committed a moment ago is the one this import
+                    // links to. New artists go in and linked ones are filled in
+                    // before the links below point at them.
+                    let credits =
+                        ArtistCredits { credits: &artist_credits, picked: &picked_artists };
+                    let resolved = credits
+                        .resolve_for_import_on(tx, guard.content_hash())
+                        .map_err(identity_write_failure)?;
+                    let inserted: BTreeSet<String> =
+                        resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
+                    if inserted != expected_new_artists {
+                        return Err(import_commit_failure(ImportCommitError::LibraryChanged));
+                    }
+                    resolved.write_on(tx)?;
+                    let artist_ids = resolved.id_map(&artist_credits);
+                    let album_artists = relink_album_artists(&album_artists, &artist_ids)?;
+                    let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
+                    let release_artist_roles = relink(
+                        &release_artist_roles,
+                        &artist_ids,
+                        "release artist role",
+                        |role| &mut role.artist_id,
+                    )?;
+                    let track_artist_roles =
+                        relink(&track_artist_roles, &artist_ids, "track artist role", |role| {
+                            &mut role.artist_id
+                        })?;
+                    let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| {
+                        &mut link.artist_id
+                    })?;
+
+                    // A new album for a release group carries the group's id, so
+                    // its row can be here already, emptied by an earlier delete
+                    // or move: the import writes it whole either way.
+                    if let Some(album) = &album {
+                        upsert_album_row(tx, album)?;
+                        replace_album_artists(tx, &album.id, &album_artists, &now)?;
+                    }
+
+                    insert_release_row(
+                        tx,
+                        &release,
+                        &import_label_write(&labels, guard.content_hash()),
+                    )
+                    .map_err(identity_write_failure)?;
+                    record_import_origin_on(tx, &guard, &release.id)
+                        .map_err(import_commit_failure)?;
+                    // The credits are resolved above, so the artist decisions
+                    // this deletes have been read.
+                    delete_what_the_import_spent_on(tx, &guard)?;
+
+                    // One row per catalog that describes the release, empty when
+                    // none does. The records are uniquely keyed on
+                    // `(release_id, catalog)`, so a release never carries two
+                    // rows for one catalog.
+                    write_release_records(tx, &release.id, &records)?;
+
+                    // Works are globally identified; they go in before their links.
+                    for work in &works {
+                        insert_work_row(tx, work)?;
+                    }
+
+                    for work_artist in &work_artists {
+                        insert_work_artist_row(tx, work_artist)?;
+                    }
+
+                    for work_part in &work_parts {
+                        insert_work_part_row(tx, work_part)?;
+                    }
+
+                    for role in &release_artist_roles {
+                        insert_release_artist_role_row(tx, role)?;
+                    }
+
+                    for medium in &mediums {
+                        insert_release_medium_row(tx, medium)?;
+                    }
+
+                    // The tracks came out of `tracks_to_files`; their `duration_ms`
+                    // was set from the audio each is bound to: its CUE slice or its
+                    // whole file.
+                    for track in &tracks {
+                        insert_track_row(tx, track)?;
+                    }
+
+                    for ta in &track_artists {
+                        insert_track_artist_row(tx, ta)?;
+                    }
+
+                    for track_work in &track_works {
+                        insert_track_work_row(tx, track_work)?;
+                    }
+
+                    for role in &track_artist_roles {
+                        insert_track_artist_role_row(tx, role)?;
+                    }
+
+                    for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
+                        insert_release_file_row(tx, row, file)?;
+                    }
+
+                    for af in &audio_formats {
+                        insert_audio_format_row(tx, af)?;
+                    }
+                    for segment in &audio_segments {
+                        insert_audio_segment_row(tx, segment)?;
+                    }
+                    for points in &scrub_points {
+                        insert_scrub_points_row(tx, points)?;
+                    }
+
+                    for ((image, _), file) in
+                        library_image.iter().chain(artist_images.iter()).zip(&image_file_ids)
+                    {
+                        upsert_library_image_row(tx, image, file)?;
+                    }
+
+                    Ok(())
+                },
+            )
+            .await
+            .map(|_| ())
+            .map_err(import_commit_error)
+    }
 }

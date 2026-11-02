@@ -65,7 +65,7 @@ pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result
 /// the group's) can be here already, emptied, when a release is filed under it
 /// again.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
+pub(crate) fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
@@ -119,7 +119,7 @@ pub(super) fn insert_album_artist_row(
 /// it must name one. The release is ordered after its album's others, so an
 /// album's first release stays its primary one. Its labels name the library
 /// labels `labels` decides.
-pub(super) fn insert_release_row(
+pub(crate) fn insert_release_row(
     conn: &CovenWrite<'_>,
     release: &DbRelease,
     labels: &super::LabelWrite<'_>,
@@ -265,7 +265,7 @@ pub(super) fn replace_release_media(
     Ok(())
 }
 
-pub(super) fn insert_release_medium_row(
+pub(crate) fn insert_release_medium_row(
     conn: &CovenWrite<'_>,
     medium: &DbReleaseMedium,
 ) -> Result<(), DbError> {
@@ -285,7 +285,7 @@ pub(super) fn insert_release_medium_row(
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
+pub(crate) fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO tracks (
@@ -310,7 +310,7 @@ pub(super) fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_track_artist_row(
+pub(crate) fn insert_track_artist_row(
     conn: &CovenWrite<'_>,
     ta: &DbTrackArtist,
 ) -> Result<(), DbError> {
@@ -337,7 +337,7 @@ pub(super) fn insert_track_artist_row(
 }
 
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
+pub(crate) fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO works (
@@ -358,7 +358,7 @@ pub(super) fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<()
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_work_artist_row(
+pub(crate) fn insert_work_artist_row(
     conn: &CovenWrite<'_>,
     link: &DbWorkArtist,
 ) -> Result<(), DbError> {
@@ -381,7 +381,7 @@ pub(super) fn insert_work_artist_row(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_work_part_row(
+pub(crate) fn insert_work_part_row(
     conn: &CovenWrite<'_>,
     part: &DbWorkPart,
 ) -> Result<(), DbError> {
@@ -405,7 +405,7 @@ pub(super) fn insert_work_part_row(
 }
 
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn insert_track_work_row(
+pub(crate) fn insert_track_work_row(
     conn: &CovenWrite<'_>,
     link: &DbTrackWork,
 ) -> Result<(), DbError> {
@@ -428,7 +428,7 @@ pub(super) fn insert_track_work_row(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_release_artist_role_row(
+pub(crate) fn insert_release_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbReleaseArtistRole,
 ) -> Result<(), DbError> {
@@ -449,7 +449,7 @@ pub(super) fn insert_release_artist_role_row(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_track_artist_role_row(
+pub(crate) fn insert_track_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbTrackArtistRole,
 ) -> Result<(), DbError> {
@@ -506,7 +506,7 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 /// Insert a release file row referencing `coven_file`, the coven file the
 /// write staged for it, once its name is checked to name a file.
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn insert_release_file_row(
+pub(crate) fn insert_release_file_row(
     conn: &CovenWrite<'_>,
     file: &NewReleaseFile,
     coven_file: coven::FileId,
@@ -551,7 +551,7 @@ pub(super) fn insert_release_file_row(
 }
 
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn insert_audio_format_row(
+pub(crate) fn insert_audio_format_row(
     conn: &CovenWrite<'_>,
     af: &DbAudioFormat,
 ) -> Result<(), DbError> {
@@ -580,7 +580,7 @@ pub(super) fn insert_audio_format_row(
 }
 
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn insert_audio_segment_row(
+pub(crate) fn insert_audio_segment_row(
     conn: &CovenWrite<'_>,
     segment: &DbAudioSegment,
 ) -> Result<(), DbError> {
@@ -608,7 +608,7 @@ pub(super) fn insert_audio_segment_row(
 }
 
 #[cfg(any(test, feature = "test-utils", desktop))]
-pub(super) fn insert_scrub_points_row(
+pub(crate) fn insert_scrub_points_row(
     conn: &CovenWrite<'_>,
     points: &DbScrubPoints,
 ) -> Result<(), DbError> {
@@ -636,7 +636,7 @@ fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, 
 
 /// Write an image's row, pointing it at `file`, the coven file its write
 /// staged.
-pub(super) fn upsert_library_image_row(
+pub(crate) fn upsert_library_image_row(
     conn: &CovenWrite<'_>,
     image: &DbLibraryImage,
     file: &coven::FileId,
@@ -666,13 +666,12 @@ pub(super) fn upsert_library_image_row(
 }
 
 /// Write `records` as `release_id`'s records, replacing any it had, and set the
-/// catalog its draft was read from. Shared by the atomic import path
-/// (`finalize_import_atomic` / `set_records_atomic`) and the test seam
-/// `insert_release_records`. Each row's id is its `(release, catalog)`, so a
+/// catalog its draft was read from. Shared by an import's commit, a records
+/// change (`set_records_atomic`) and the test seam `insert_release_records`. Each row's id is its `(release, catalog)`, so a
 /// device that writes the same record set another device wrote writes the same
 /// rows.
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn write_release_records(
+pub(crate) fn write_release_records(
     conn: &CovenWrite<'_>,
     release_id: &str,
     records: &[crate::catalog_model::records::ReleaseRecord],
@@ -706,7 +705,7 @@ pub(super) fn write_release_records(
 
 /// Make `album_id`'s credit list exactly `artists`, touching only the rows
 /// that differ (see [`write_credits`]).
-pub(super) fn replace_album_artists(
+pub(crate) fn replace_album_artists(
     conn: &CovenWrite<'_>,
     album_id: &str,
     artists: &[DbAlbumArtist],

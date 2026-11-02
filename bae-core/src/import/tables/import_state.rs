@@ -26,10 +26,7 @@ pub(super) use album_pick_rows::load_album_pick_on;
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub use import_commit::ImportCommitError;
-pub(crate) use import_commit::{
-    delete_what_the_import_spent_on, end_import_attempt_of_commit, import_commit_error,
-    import_commit_failure, record_import_origin_on, require_import_commit_guard,
-};
+pub(crate) use import_commit::{ImportCommitGuard, ImportRows, NewArtistImages};
 pub(super) use pane_rows::{cover_read_columns, insert_draft, load_pane_rows_on, read_cover};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,

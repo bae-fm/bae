@@ -48,14 +48,12 @@ mod artist_identity_merge;
 pub(crate) mod artist_resolution;
 #[cfg(desktop)]
 mod label_identity_choice;
-mod label_resolution;
+pub(crate) mod label_resolution;
 #[cfg(test)]
 pub(crate) use artist_resolution::resolved_in_an_empty_library;
 pub(crate) use artist_resolution::ArtistCredits;
 pub use artist_resolution::IdentityWriteError;
 use artist_resolution::{relink_album_artists, relink_track_artists};
-#[cfg(desktop)]
-use label_resolution::import_label_write;
 use label_resolution::label_write;
 pub(crate) use label_resolution::LabelWrite;
 // Only the import write resolves credits inside a release's own write.
@@ -96,8 +94,6 @@ mod playback_queue_reads;
 pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 pub(crate) use release::ReleaseMetadataRows;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use release::{ImportRows, NewArtistImages};
 // Only saving a release edit session writes metadata alongside records.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use release::write_release_metadata_on;
@@ -144,7 +140,7 @@ pub(crate) mod pressing_columns;
 pub(crate) mod query;
 pub(crate) mod read;
 mod scrub_points_column;
-mod write;
+pub(crate) mod write;
 
 use album_search::*;
 use list_windows::{
@@ -330,7 +326,7 @@ impl Database {
     /// and `sql` gets it once the write has taken the staged files. The
     /// staging future is boxed, as the write's is, to keep coven's buffers off
     /// the caller's async stack.
-    async fn write_staged<T, R>(
+    pub(crate) async fn write_staged<T, R>(
         &self,
         stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, CovenError> + Send + 'static,
         sql: impl for<'ctx> FnOnce(CovenWrite<'ctx>, T) -> Result<R, CovenError> + Send + 'static,

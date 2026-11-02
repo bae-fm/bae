@@ -163,39 +163,6 @@ pub struct DbCandidateImportPreparation {
     pub assets: crate::import::CandidatePreparedAssets,
 }
 
-/// The exact candidate state a library import transaction is allowed to
-/// consume. The final write checks this inside the transaction before writing
-/// any library row.
-#[cfg(desktop)]
-#[derive(Debug, Clone)]
-pub(crate) enum ImportCommitGuard {
-    Candidate {
-        candidate_key: crate::import::CandidateKey,
-        source: crate::import::release_candidate::CandidateSource,
-        expectation: crate::import::service::ImportExpectation,
-        /// The import committing, whose claim on the candidate the commit
-        /// ends with the release.
-        import_id: String,
-    },
-    /// A test's import of a release no scanned candidate stands behind,
-    /// optionally answering for the candidate state at `content_hash`.
-    #[cfg(test)]
-    UncheckedTestSetup { content_hash: Option<String> },
-}
-
-#[cfg(desktop)]
-impl ImportCommitGuard {
-    /// The folder hash of the candidate the import commits: what its artist
-    /// decisions are stored under, and what this device records it imported.
-    pub(crate) fn content_hash(&self) -> Option<&str> {
-        match self {
-            Self::Candidate { expectation, .. } => Some(&expectation.candidate.content_hash),
-            #[cfg(test)]
-            Self::UncheckedTestSetup { content_hash } => content_hash.as_deref(),
-        }
-    }
-}
-
 /// Every watched root with its status and every stored entry under it.
 /// Only tests read whole snapshots; production reads entries by key.
 #[cfg(test)]

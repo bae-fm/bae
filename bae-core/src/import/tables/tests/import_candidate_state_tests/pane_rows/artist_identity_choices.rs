@@ -1,5 +1,6 @@
 use super::*;
-use crate::db::{ArtistCredits, ImportCommitGuard, ImportRows, NewArtistImages};
+use crate::db::ArtistCredits;
+use crate::import::tables::{ImportCommitGuard, ImportRows, NewArtistImages};
 use crate::import::ArtistIdentityConflictChoice as Choice;
 
 async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, DbArtist) {
@@ -129,7 +130,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         };
         let expected_new: Vec<_> =
             resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
-        db.finalize_import_atomic(
+        tables.finalize_import_atomic(
             ImportCommitGuard::UncheckedTestSetup { content_hash: Some(hash.clone()) },
             Some(&album),
             &release,

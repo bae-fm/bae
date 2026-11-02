@@ -157,7 +157,7 @@ fn chosen_artist_on<Q: QueryOne>(
 }
 
 impl ArtistCredits<'_> {
-    pub(super) fn resolve_for_import_on<Q: QueryOne + QueryRows>(
+    pub(crate) fn resolve_for_import_on<Q: QueryOne + QueryRows>(
         &self,
         sql: &Q,
         content_hash: Option<&str>,

@@ -31,8 +31,6 @@ pub use client::{
     PlaybackTimelineRow, ReleaseStart, ShuffleChange,
 };
 pub use client::{Database, IdentityWriteError, ReleaseDeletion};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use client::{ImportRows, NewArtistImages};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))
