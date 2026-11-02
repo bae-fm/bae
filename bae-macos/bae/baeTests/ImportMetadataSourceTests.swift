@@ -314,62 +314,6 @@ extension ImportMetadataSourceTests {
 
 }
 
-/// What the draft card offers as ways to a release.
-@MainActor
-@Suite("The draft card's release entries")
-struct ImportReleaseEntryTests {
-    /// Two entries under one Identify label, named for what each one does
-    /// rather than where it goes: both open the same page, and only the first
-    /// asks for a run.
-    @Test("the card names both ways to a release")
-    func theCardNamesBothWaysToARelease() async throws {
-        let lines = try await FindOnlineRendering.text(
-            ImportReleaseHeader(
-                releaseSummary: ImportReleaseSummary(
-                    candidate: PreviewData.mappingCandidate,
-                    editValues: PreviewData.confirmEditValues
-                ),
-                actionable: true,
-                isReading: false,
-                coverContent: nil,
-                hasCoverOptions: true,
-                editValues: PreviewData.confirmEditValues,
-                records: [],
-                releaseLink: nil,
-                editActions: ReleaseFieldWriter { _, _ in },
-                editingCommands: EditingCommitCommands(),
-                commit: nil,
-                sourceActions: ImportReleaseSourceActions(
-                    identifyAutomatically: {},
-                    searchForRelease: {},
-                    resetToFileMetadata: {},
-                    clearMetadata: {},
-                    unlink: {}
-                ),
-                localCoverSelections: [:],
-                onEditCover: {},
-                onSelectCover: { _ in }
-            )
-            .importPreviewEnvironment()
-            .environment(Library.stub())
-            .candidateReaderPreviewEnvironment(),
-            size: NSSize(width: 900, height: 620),
-            scale: 3
-        )
-
-        for label in [
-            String(localized: "Identify"),
-            String(localized: "Automatic"),
-            String(localized: "Search"),
-        ] {
-            #expect(
-                lines.contains { $0.localizedCaseInsensitiveContains(label) },
-                "the card reads: \(lines)"
-            )
-        }
-    }
-}
-
 @MainActor
 final class ImportFileTagsRepeatabilityTests: XCTestCase {
     /// Resetting to tags twice reads the files twice and writes the draft

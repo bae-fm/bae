@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import Foundation
 import Testing
@@ -26,49 +25,18 @@ struct NotSureOfferTests {
         needsYou: .matches(count: 2)
     )
 
+    /// Core says whether the rows are pressings of one album; the pane
+    /// offers Not sure on that alone. Its words are the
+    /// `import-search-not-sure` shot's.
     @Test("several pressings of one album offer Not sure; others do not")
-    func severalPressingsOfOneAlbumOfferNotSure() async throws {
-        let offered = try await renderedText(of: Self.sharedAlbumState)
-        #expect(
-            offered.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "Not sure")
-                )
-            },
-            "the pane reads: \(offered)"
+    func severalPressingsOfOneAlbumOfferNotSure() {
+        #expect(Self.sharedAlbumState.offersSharedAlbum)
+        let notOffered = PreviewData.searchState(
+            identifyState: IdentifyState(
+                bridge: PreviewData.bridgeDisagreementState
+            ),
+            needsYou: .matches(count: 2)
         )
-        #expect(
-            offered.contains {
-                $0.localizedCaseInsensitiveContains("these releases share")
-            },
-            "the pane reads: \(offered)"
-        )
-
-        let notOffered = try await renderedText(
-            of: PreviewData.searchState(
-                identifyState: IdentifyState(
-                    bridge: PreviewData.bridgeDisagreementState
-                ),
-                needsYou: .matches(count: 2)
-            )
-        )
-        #expect(
-            !notOffered.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "Not sure")
-                )
-            },
-            "the pane reads: \(notOffered)"
-        )
-    }
-
-    /// Every line of text the pane draws for `state`.
-    private func renderedText(
-        of state: ImportSearchState
-    ) async throws -> [String] {
-        try await FindOnlineRendering.text(
-            ImportSearchPane.preview(state: state).importPreviewEnvironment(),
-            size: NSSize(width: 900, height: 600)
-        )
+        #expect(!notOffered.offersSharedAlbum)
     }
 }

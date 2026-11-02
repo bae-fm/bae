@@ -59,7 +59,13 @@ struct FindOnlineAutomaticSection: View {
     /// only by a source losing its credential after being left as the only one
     /// switched on.
     private var hasSourceToSearch: Bool {
-        configStore.config.lookupCatalogs.contains { $0.availability == .on }
+        Self.hasSourceToSearch(configStore.config)
+    }
+
+    /// Whether any catalog is on to ask, without which there is nothing to
+    /// search by name.
+    static func hasSourceToSearch(_ config: Config) -> Bool {
+        config.lookupCatalogs.contains { $0.availability == .on }
     }
 
     var body: some View {

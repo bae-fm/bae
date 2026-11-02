@@ -76,47 +76,8 @@ struct ShotScene {
                         .environment(ImageStore.stub())
                 )
             },
-            ShotScene(
-                id: "release-records-card",
-                size: CGSize(width: ReleaseRecordsCard.width, height: 96)
-            ) {
-                AnyView(
-                    ReleaseRecordsCard(
-                        records: PreviewData.identifiedFromBothCatalogs
-                    )
-                )
-            },
-            ShotScene(
-                id: "release-storage-sheet",
-                size: CGSize(width: 640, height: 600)
-            ) {
-                let release = PreviewData.storageBridgeRelease(
-                    storageState: .remote,
-                    pinned: true,
-                    storageActions: [.unpin, .detachAudio],
-                    playability: .playable
-                )
-                return AnyView(
-                    ReleaseStorageSheet(
-                        release: ReleaseDetail(bridge: release),
-                        onAction: { _ in },
-                        onExport: {},
-                        onSaveAs: {},
-                        onDone: {}
-                    )
-                    .background(Theme.background)
-                    .environment(
-                        Library(
-                            releaseDetail: { .fixed { _ in release } },
-                            releaseFiles: {
-                                .fixed(PreviewData.previewReleaseFiles)
-                            }
-                        )
-                    )
-                    .environment(OutboxStore(uploadsPaused: false))
-                    .environment(DownloadStore())
-                )
-            },
+            settingsImport("settings-import-key-stored", discogsUsable: true),
+            settingsImport("settings-import-no-key", discogsUsable: false),
             ShotScene(
                 id: "album-detail-mixed-columns",
                 size: CGSize(width: 1100, height: 800)
@@ -265,7 +226,7 @@ struct ShotScene {
                 AnyView(PreviewScenes.nowPlayingBar(.allHere))
             },
         ] + storageManagerScenes + waitScenes + findOnlineScenes
-        + coverPickerScenes
+        + coverPickerScenes + releaseScenes
 }
 
 extension ShotScene {
@@ -303,6 +264,27 @@ extension ShotScene {
 }
 
 extension ShotScene {
+    /// Settings' Import pane, with a stored Discogs key or none.
+    fileprivate static func settingsImport(
+        _ id: String,
+        discogsUsable: Bool
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 700, height: 620)) {
+            AnyView(
+                ImportSettingsTab()
+                    .environment(
+                        PreviewData.makeConfigStore(
+                            libraryFullWidth: false,
+                            discogsUsable: discogsUsable
+                        )
+                    )
+                    .environment(Discogs.stub())
+                    .environment(Importer.stub())
+                    .environment(UiStore())
+            )
+        }
+    }
+
     /// An empty state over an empty library with no usable Discogs key,
     /// which offers Add Discogs Key.
     fileprivate static func emptyStateWithoutKey(

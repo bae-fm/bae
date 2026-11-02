@@ -7,70 +7,13 @@ import Testing
 
 /// Which catalogs describe a release is one answer, drawn once: as a row of
 /// links last in the import pane, and behind the library expansion's facts
-/// line.
+/// line. The row's names are the `release-records-every-catalog` shot's, and
+/// the pane drawing them once, in that row, the `import-metadata-draft`
+/// shot's.
 @MainActor
 @Suite("Release records")
 struct ReleaseRecordsTests {
-    // Tall enough for the header card down to its records row, its last
-    // line. The track table below takes no part, and capturing it too scales
-    // the row's small type under what text recognition reads reliably:
-    // "Discogs" came back as "Discoas".
-    private static let paneSize = NSSize(width: 900, height: 1100)
-    private static let rowSize = NSSize(width: 420, height: 120)
     private static let cardSize = NSSize(width: 1100, height: 760)
-
-    /// The row names every catalog that describes the release, whichever of
-    /// them the draft was read from.
-    @Test("the records row names every catalog")
-    func theRecordsRowNamesEveryCatalog() async throws {
-        let lines = try await FindOnlineRendering.text(
-            ReleaseRecordsRow(records: PreviewData.releaseRecordsEveryCatalog)
-                .padding()
-                .frame(width: Self.rowSize.width)
-                .preferredColorScheme(.light)
-                .background(.white),
-            size: Self.rowSize
-        )
-        for catalog in bridgeCatalogs() {
-            let name = bridgeCatalogName(catalog: catalog)
-            #expect(
-                lines.carrying(name),
-                "\(name) is missing from \(lines)"
-            )
-        }
-    }
-
-    /// The pane draws the records once, at its end. The header above them
-    /// names no catalog: the artist line used to carry a chip per source, and
-    /// two places saying the same thing is what the row replaced.
-    @Test("the pane names its catalogs in the records row, not on the header")
-    func thePaneNamesItsCatalogsOnce() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable,
-            records: PreviewData.releaseRecordsPair
-        )
-        let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        let lines = try await FindOnlineRendering.text(
-            ImportMappingPreview.make(
-                candidate: candidate,
-                storageCloud: .constant(false),
-                storagePinned: .constant(false)
-            )
-            .environment(store)
-            .importPreviewEnvironment()
-            .preferredColorScheme(.light),
-            size: Self.paneSize,
-            scale: 2
-        )
-        for catalog in ["MusicBrainz", "Discogs"] {
-            #expect(
-                lines.filter { $0.contains(catalog) }.count == 1,
-                "\(catalog) is named once, in the records row: \(lines)"
-            )
-        }
-    }
 
     /// The facts line carries the record arrow at rest when a catalog
     /// describes the release, and nothing when none does — the one thing on

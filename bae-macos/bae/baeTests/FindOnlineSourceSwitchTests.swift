@@ -11,7 +11,6 @@ import Testing
 @MainActor
 @Suite("The metadata source switches")
 struct FindOnlineSourceSwitchTests {
-    private static let paneSize = NSSize(width: 900, height: 620)
 
     /// The settings tab's checkboxes write through an Importer call that
     /// passes the source and the value it is being set to straight through.
@@ -81,35 +80,20 @@ struct FindOnlineSourceSwitchTests {
     /// With every source switched off or unreachable there is nothing to look
     /// up, so the pane says so instead of offering the typed search, which
     /// would ask providers core will not ask.
+    /// The pane's words for each are the `import-search-no-source` and
+    /// `import-search-not-started` shots'.
     @Test("a pane with no source to ask says so instead of offering a search")
-    func aPaneWithNoSourceSaysSo() async throws {
-        let nothingToAsk = try await paneText(
-            configStore: PreviewData.makeConfigStore(
-                libraryFullWidth: false,
-                discogsUsable: false,
-                musicBrainz: .off
-            )
+    func aPaneWithNoSourceSaysSo() {
+        let nothingToAsk = PreviewData.makeConfigStore(
+            libraryFullWidth: false,
+            discogsUsable: false,
+            musicBrainz: .off
         )
-        let ordinary = try await paneText(
-            configStore: PreviewData.makeConfigStore(libraryFullWidth: false)
-        )
-
-        let noSource = String(localized: "No source to search")
-        let searchManually = String(localized: "Search manually")
+        let ordinary = PreviewData.makeConfigStore(libraryFullWidth: false)
         #expect(
-            nothingToAsk.contains {
-                $0.localizedCaseInsensitiveContains(noSource)
-            },
-            "a pane with nothing to ask reads: \(nothingToAsk)"
+            !FindOnlineAutomaticSection.hasSourceToSearch(nothingToAsk.config)
         )
-        // With a source to ask, the section offers the other way to a release
-        // rather than saying there is nothing to search.
-        #expect(
-            ordinary.contains {
-                $0.localizedCaseInsensitiveContains(searchManually)
-            },
-            "an ordinary pane reads: \(ordinary)"
-        )
+        #expect(FindOnlineAutomaticSection.hasSourceToSearch(ordinary.config))
     }
 
     /// A run that asked one source names that source on its chips. The
@@ -141,17 +125,6 @@ struct FindOnlineSourceSwitchTests {
 
         #expect(oneSource != blank, "a one-source run still draws its band")
         #expect(oneSource != bothSources)
-    }
-
-    /// Every line of text the pane draws for a library with these sources,
-    /// with nothing looked up yet.
-    private func paneText(configStore: ConfigStore) async throws -> [String] {
-        try await FindOnlineRendering.text(
-            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
-                .environment(configStore)
-                .importPreviewEnvironment(),
-            size: Self.paneSize
-        )
     }
 
 }

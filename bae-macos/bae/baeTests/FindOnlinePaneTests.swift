@@ -749,34 +749,6 @@ struct PickedRowTests {
 /// focused. Capture needs layout and `cacheDisplay`, not focus.
 @MainActor
 enum FindOnlineRendering {
-    /// Every line of text a view draws, read off its pixels: these panes draw
-    /// their own controls rather than hanging AppKit ones in the view tree, so
-    /// what they say is in what they drew.
-    /// Read off the window's own surface: text captured against
-    /// transparency loses all but its coloured parts, which is a header read
-    /// back as its blue link and nothing else.
-    static func text(
-        _ view: some View,
-        size: NSSize,
-        scale: CGFloat = 1
-    ) async throws -> [String] {
-        // Preserve the layout proposal while rendering more pixels for small
-        // type and opaque identifiers that OCR cannot infer from language.
-        let captureSize = NSSize(
-            width: size.width * scale,
-            height: size.height * scale
-        )
-        let png = try await withHosted(
-            view.windowBackground()
-                .frame(width: size.width, height: size.height)
-                .scaleEffect(scale),
-            size: captureSize
-        ) { _, host in
-            try await SnapshotTestSupport.capturePNG(host, size: captureSize)
-        }
-        return try await SnapshotTestSupport.recognizedText(in: png).map(\.text)
-    }
-
     static func pixels(
         _ view: some View,
         size: NSSize = NSSize(width: 380, height: 220)

@@ -6,11 +6,56 @@ import SwiftUI
 extension ShotScene {
     /// Find online states whose words the tests leave to the gallery: a row
     /// whose release could not be read, with its failure line and Retry; a
-    /// pane nothing has run for; a failure with no band, its lines and
-    /// Retry; the rows agreement set aside, listed above the line that puts
-    /// them away.
+    /// pane nothing has run for, and one with no source to ask; a folder
+    /// whose matches are pressings of one album, offered Not sure; a card
+    /// whose album links could not be read; a failure with no band, its
+    /// lines and Retry; the rows agreement set aside, listed above the line
+    /// that puts them away.
     static let findOnlineScenes: [ShotScene] = [
         pane("import-search-not-started", PreviewData.searchStateIdle),
+        ShotScene(
+            id: "import-search-no-source",
+            size: CGSize(width: 900, height: 600)
+        ) {
+            AnyView(
+                ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+                    .environment(
+                        PreviewData.makeConfigStore(
+                            libraryFullWidth: false,
+                            discogsUsable: false,
+                            musicBrainz: .off
+                        )
+                    )
+                    .importPreviewEnvironment()
+                    .windowBackground()
+            )
+        },
+        pane(
+            "import-search-not-sure",
+            PreviewData.searchState(
+                identifyState: .found(
+                    run: PreviewData.identifyRunFound,
+                    groups: [PreviewData.searchGroupExact],
+                    trackCount: 11,
+                    agreements: PreviewData.searchAgreementsExact,
+                    narrowedOutCount: 0,
+                    folderCheck: nil,
+                    offersSharedAlbum: true
+                ),
+                signals: PreviewData.settledSignals,
+                needsYou: .matches(count: 2)
+            )
+        ),
+        ShotScene(
+            id: "import-search-card-links-unread",
+            size: CGSize(width: 660, height: 160)
+        ) {
+            AnyView(
+                ReleaseGroupCard(group: PreviewData.searchGroupLinksUnread)
+                    .importPreviewEnvironment()
+                    .windowBackground()
+            )
+        },
         pane(
             "import-search-failure-lines",
             PreviewData.searchStateFailedWithoutRun

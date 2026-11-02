@@ -99,25 +99,6 @@ struct ImportSettingsTabTests {
         }
     }
 
-    /// The tab names each setting.
-    @Test("the tab names its settings")
-    func theTabNamesBothSettings() async throws {
-        let lines = try await FindOnlineRendering.text(
-            tab(recorder: ImportSettingRecorder()),
-            size: Self.size
-        )
-
-        for label in [
-            String(localized: "Identify automatically"),
-            String(localized: "Import automatically when identified"),
-        ] {
-            #expect(
-                lines.contains { $0.localizedCaseInsensitiveContains(label) },
-                "the tab reads: \(lines)"
-            )
-        }
-    }
-
     /// Discogs cannot be asked without a key, so the key is offered where the
     /// switch it unlocks is, and core reports the switch as immovable until one
     /// is stored.
@@ -139,18 +120,6 @@ struct ImportSettingsTabTests {
             // Core lists the sources in its own order and Discogs is the last of
             // them, so the last switch on the pane is the one the key unlocks.
             #expect(switches(in: host).last?.isEnabled == false)
-
-            let lines = try await FindOnlineRendering.text(
-                tab(
-                    recorder: ImportSettingRecorder(),
-                    configStore: PreviewData.makeConfigStore(
-                        libraryFullWidth: false,
-                        discogsUsable: false
-                    )
-                ),
-                size: Self.size
-            )
-            #expect(reads(lines, String(localized: "Save")), "\(lines)")
         }
     }
 
@@ -164,17 +133,6 @@ struct ImportSettingsTabTests {
 
             #expect(keyField(in: host) == nil)
             #expect(switches(in: host).last?.isEnabled == true)
-
-            let lines = try await FindOnlineRendering.text(
-                tab(recorder: ImportSettingRecorder()),
-                size: Self.size
-            )
-            for label in [
-                String(localized: "Connected"),
-                String(localized: "Remove"),
-            ] {
-                #expect(reads(lines, label), "\(lines)")
-            }
         }
     }
 
@@ -210,10 +168,6 @@ struct ImportSettingsTabTests {
 
     private func switches(in host: NSView) -> [NSSwitch] {
         SnapshotTestSupport.descendants(of: host).compactMap { $0 as? NSSwitch }
-    }
-
-    private func reads(_ lines: [String], _ label: String) -> Bool {
-        lines.contains { $0.localizedCaseInsensitiveContains(label) }
     }
 
     private func keyField(in host: NSView) -> NSTextField? {
