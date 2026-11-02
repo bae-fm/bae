@@ -2,20 +2,15 @@
 //! with, what each edit writes and reads back, what the live query delivers,
 //! and what the schema refuses.
 
-use super::super::*;
 use super::*;
-use crate::config::{
-    CastTranscodeFormat, ConfigError, DiscogsValidation, IdentificationPreferences,
-    ImportStoragePreferences, LookupCatalogPreferences, McpConfig, Preferences, ReplayGainMode,
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
-    SidePauseCountdown, SubsonicConfig,
-};
+use crate::db::client::tests::*;
+use crate::db::*;
 use std::num::NonZeroU32;
 use std::time::Duration;
 
 /// Edit the preferences as a setter does, refusing nothing.
 async fn set(db: &Database, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
-    db.edit_preferences(|prefs| {
+    edit_preferences(db, |prefs| {
         edit(prefs);
         Ok(())
     })
@@ -37,10 +32,10 @@ async fn next(values: &mut coven::LiveQuery<Preferences>) -> Preferences {
 #[tokio::test]
 async fn a_new_library_starts_at_the_defaults() {
     let (db, _tmp) = temp_db().await;
-    let prefs = db.preferences().await.unwrap();
+    let prefs = preferences(&db).await.unwrap();
     assert_eq!(prefs, Preferences::default());
-    assert_eq!(prefs.transfer_limits(), crate::config::default_transfer_limits());
-    assert_eq!(prefs.max_concurrent_uploads.get(), crate::config::DEFAULT_CONCURRENT_TRANSFERS);
+    assert_eq!(prefs.transfer_limits(), crate::app_dir::default_transfer_limits());
+    assert_eq!(prefs.max_concurrent_uploads.get(), crate::app_dir::DEFAULT_CONCURRENT_TRANSFERS);
     assert_eq!(
         prefs.save_presets[0].codec,
         SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
@@ -113,7 +108,7 @@ async fn every_preference_reads_back_as_set() {
     };
     let written = edited.clone();
     set(&db, move |prefs| *prefs = written).await;
-    assert_eq!(db.preferences().await.unwrap(), edited);
+    assert_eq!(preferences(&db).await.unwrap(), edited);
 }
 
 /// Each value of each enumerated setting is stored and read back unchanged.
@@ -127,11 +122,11 @@ async fn each_choice_of_each_setting_reads_back() {
         Some(DiscogsValidation::Rejected),
     ] {
         set(&db, move |prefs| prefs.discogs = discogs).await;
-        assert_eq!(db.preferences().await.unwrap().discogs, discogs);
+        assert_eq!(preferences(&db).await.unwrap().discogs, discogs);
     }
     for mode in [ReplayGainMode::Off, ReplayGainMode::Track, ReplayGainMode::Album] {
         set(&db, move |prefs| prefs.replay_gain_mode = mode).await;
-        assert_eq!(db.preferences().await.unwrap().replay_gain_mode, mode);
+        assert_eq!(preferences(&db).await.unwrap().replay_gain_mode, mode);
     }
     for countdown in [
         SidePauseCountdown::Off,
@@ -142,7 +137,7 @@ async fn each_choice_of_each_setting_reads_back() {
         SidePauseCountdown::Seconds60,
     ] {
         set(&db, move |prefs| prefs.side_pause_countdown = countdown).await;
-        assert_eq!(db.preferences().await.unwrap().side_pause_countdown, countdown);
+        assert_eq!(preferences(&db).await.unwrap().side_pause_countdown, countdown);
     }
     for codec in [
         SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
@@ -154,7 +149,7 @@ async fn each_choice_of_each_setting_reads_back() {
     ] {
         let stored = codec.clone();
         set(&db, move |prefs| prefs.save_presets[0].codec = stored).await;
-        assert_eq!(db.preferences().await.unwrap().save_presets[0].codec, codec);
+        assert_eq!(preferences(&db).await.unwrap().save_presets[0].codec, codec);
     }
     for pregap in [
         SavePregapPlacement::AppendToPreviousExceptHtoa,
@@ -162,7 +157,7 @@ async fn each_choice_of_each_setting_reads_back() {
         SavePregapPlacement::Exclude,
     ] {
         set(&db, move |prefs| prefs.save_presets[1].pregap_placement = pregap).await;
-        assert_eq!(db.preferences().await.unwrap().save_presets[1].pregap_placement, pregap);
+        assert_eq!(preferences(&db).await.unwrap().save_presets[1].pregap_placement, pregap);
     }
 }
 
@@ -172,16 +167,15 @@ async fn each_choice_of_each_setting_reads_back() {
 #[tokio::test]
 async fn the_live_query_follows_only_what_changes() {
     let (db, _tmp) = temp_db().await;
-    let mut values = db.subscribe_preferences();
+    let mut values = subscribe_preferences(&db);
     assert_eq!(next(&mut values).await, Preferences::default());
 
-    let refused = db
-        .edit_preferences(|prefs| {
-            prefs.cast_enabled = true;
-            Err(ConfigError::Config("refused".to_string()))
-        })
-        .await;
-    assert!(matches!(refused, Err(ConfigError::Config(_))), "{refused:?}");
+    let refused = edit_preferences(&db, |prefs| {
+        prefs.cast_enabled = true;
+        Err(PreferencesError::Invalid("refused".to_string()))
+    })
+    .await;
+    assert!(matches!(refused, Err(PreferencesError::Invalid(_))), "{refused:?}");
     set(&db, |prefs| prefs.show_remaining_time = false).await;
     set(&db, |prefs| prefs.show_remaining_time = true).await;
 
@@ -200,7 +194,7 @@ async fn concurrent_edits_keep_both_changes() {
         set(&db, |prefs| prefs.pause_between_sides = false),
     );
     let ((), ()) = (cast, pause);
-    let prefs = db.preferences().await.unwrap();
+    let prefs = preferences(&db).await.unwrap();
     assert!(prefs.cast_enabled);
     assert!(!prefs.pause_between_sides);
 }
@@ -243,13 +237,12 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
     ] {
-        let refused = db
-            .edit_preferences(|prefs| {
-                edit(prefs);
-                Ok(())
-            })
-            .await;
-        assert!(matches!(refused, Err(ConfigError::Database(_))), "{what}: {refused:?}");
-        assert_eq!(db.preferences().await.unwrap(), Preferences::default(), "{what} wrote nothing");
+        let refused = edit_preferences(&db, |prefs| {
+            edit(prefs);
+            Ok(())
+        })
+        .await;
+        assert!(matches!(refused, Err(PreferencesError::Database(_))), "{what}: {refused:?}");
+        assert_eq!(preferences(&db).await.unwrap(), Preferences::default(), "{what} wrote nothing");
     }
 }

@@ -61,7 +61,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     // COM apartment), and the test builds one player per case.
     let services = crate::app::test_library::TestLibrary::open(
         database,
-        crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
+        crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         crate::catalog_model::providers::Providers::offline(),
     )
     .await

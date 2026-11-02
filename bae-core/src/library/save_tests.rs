@@ -22,7 +22,7 @@ fn resolved(
     }
 }
 
-use crate::config::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
+use crate::preferences::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
 
 #[test]
 fn default_pattern_all_present_pads_track_number() {
@@ -247,7 +247,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("tagged.m4a");
     std::fs::write(&path, &m4a).unwrap();
-    let tag_type = codec_tag_type(&crate::config::SaveCodec::Aac { bitrate_kbps: 256 });
+    let tag_type = codec_tag_type(&crate::preferences::SaveCodec::Aac { bitrate_kbps: 256 });
     assert_eq!(tag_type, TagType::Mp4Ilst);
     write_tags(&path, tag_type, &tags, Some(3), 10, Some(&cover_bytes)).unwrap();
 

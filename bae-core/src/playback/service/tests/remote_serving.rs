@@ -7,7 +7,7 @@
 /// by its format) and the MIME type declared for it.
 async fn served_whole_file_then_window(
     flavor: RendererFlavor,
-    transcode: crate::config::CastTranscodeFormat,
+    transcode: crate::preferences::CastTranscodeFormat,
 ) -> Vec<(String, String)> {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const WHOLE_FILE: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
@@ -71,7 +71,7 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
     assert_eq!(
         served_whole_file_then_window(
             RendererFlavor::Cast,
-            crate::config::CastTranscodeFormat::Mp3
+            crate::preferences::CastTranscodeFormat::Mp3
         )
         .await,
         [
@@ -110,7 +110,7 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
     assert_eq!(
         served_whole_file_then_window(
             RendererFlavor::Cast,
-            crate::config::CastTranscodeFormat::Wav
+            crate::preferences::CastTranscodeFormat::Wav
         )
         .await,
         [whole_file.clone(), window("TranscodeWav", "audio/wav")]
@@ -118,7 +118,7 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
     assert_eq!(
         served_whole_file_then_window(
             RendererFlavor::Dlna,
-            crate::config::CastTranscodeFormat::Wav
+            crate::preferences::CastTranscodeFormat::Wav
         )
         .await,
         [whole_file, window("TranscodeMp3", "audio/mpeg")]

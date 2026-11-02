@@ -3,7 +3,7 @@
 //! the services start on it.
 
 use bae_core::app::bootstrap_on_fixture;
-use bae_core::config::AppDir;
+use bae_core::app_dir::AppDir;
 use bae_core::library::create_library;
 use coven::TestCoven;
 use tempfile::TempDir;

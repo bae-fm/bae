@@ -7,7 +7,7 @@
 //! be code-signed into that group to read them.
 
 fn main() {
-    if let Err(error) = bae_core::config::register_keyring_service() {
+    if let Err(error) = bae_core::app_dir::register_keyring_service() {
         eprintln!("initialize keyring failed: {error}");
         std::process::exit(1);
     }
@@ -16,7 +16,7 @@ fn main() {
         eprintln!("could not determine the home directory");
         std::process::exit(1);
     };
-    let app_dir = match bae_core::config::AppDir::under_home(&home) {
+    let app_dir = match bae_core::app_dir::AppDir::under_home(&home) {
         Ok(app_dir) => app_dir,
         Err(error) => {
             eprintln!("{error}");
@@ -24,7 +24,7 @@ fn main() {
         }
     };
 
-    let library_id = match bae_core::config::Config::active_library_id(&app_dir) {
+    let library_id = match app_dir.active_library_id() {
         Ok(Some(id)) => id,
         Ok(None) => {
             eprintln!(

@@ -8,11 +8,11 @@ use std::sync::Arc;
 /// reads `$HOME`.
 #[derive(uniffi::Object)]
 pub struct BridgeAppDir {
-    inner: bae_core::config::AppDir,
+    inner: bae_core::app_dir::AppDir,
 }
 
 impl BridgeAppDir {
-    pub(crate) fn core(&self) -> &bae_core::config::AppDir {
+    pub(crate) fn core(&self) -> &bae_core::app_dir::AppDir {
         &self.inner
     }
 }
@@ -24,7 +24,7 @@ impl BridgeAppDir {
     /// fails when it cannot.
     #[uniffi::constructor]
     pub fn new(home: String) -> Result<Arc<Self>, BridgeError> {
-        let inner = bae_core::config::AppDir::under_home(std::path::Path::new(&home))
+        let inner = bae_core::app_dir::AppDir::under_home(std::path::Path::new(&home))
             .map_err(BridgeError::config)?;
         Ok(Arc::new(Self { inner }))
     }

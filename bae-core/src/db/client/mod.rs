@@ -68,7 +68,6 @@ mod membership;
 mod people;
 mod playback;
 mod playback_now;
-mod preferences;
 mod profile_request;
 pub use playback_now::PlaybackNowRow;
 mod playback_timeline;
@@ -329,7 +328,7 @@ impl Database {
             })?;
         let installation = coven::TestCoven::new();
         let handle = crate::db::configure_store(
-            installation.builder(crate::config::AppDir::at(root)?.store_layout()),
+            installation.builder(crate::app_dir::AppDir::at(root)?.store_layout()),
         )
         .clock(clock.clone())
         .create_store("Test Library")

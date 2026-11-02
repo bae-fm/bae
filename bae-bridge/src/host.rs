@@ -7,7 +7,7 @@ const HOST_LOCK: &str = "host registrations lock";
 #[derive(uniffi::Object)]
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
-    app_dir: bae_core::config::AppDir,
+    app_dir: bae_core::app_dir::AppDir,
     keychain: bae_core::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
@@ -261,7 +261,8 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.list_libraries", move || async move {
-                bae_core::config::Config::discover_libraries(&self.app_dir)
+                self.app_dir
+                    .discover_libraries()
                     .await?
                     .into_iter()
                     .map(BridgeLibrary::from_core_info)

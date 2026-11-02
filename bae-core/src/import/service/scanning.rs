@@ -209,8 +209,9 @@ impl ImportService {
         // The write stores the item as it stands and never changes its
         // variant, so the variant still says which announcement it earns.
         let actionable = matches!(item, ScanItem::Valid(_));
-        let automatic =
-            found && actionable && services.database.preferences().await?.identification.automatic;
+        let automatic = found
+            && actionable
+            && crate::preferences::preferences(&services.database).await?.identification.automatic;
         match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                 event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {

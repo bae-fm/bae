@@ -3,7 +3,7 @@
 /// but external tampering can.
 #[tokio::test]
 async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
-    use crate::config::DiscogsValidation;
+    use crate::preferences::DiscogsValidation;
 
     let (manager, _temp_dir) = setup_test_manager().await;
     // Config claims an Unvalidated key; the keyring has none — the torn state.
@@ -28,7 +28,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 /// state.
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
-    use crate::config::DiscogsValidation;
+    use crate::preferences::DiscogsValidation;
     use crate::import::{DiscogsSaveOutcome, ImportError};
     use bae_catalogs::discogs::client::DiscogsError;
 
@@ -160,7 +160,7 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::Storage(F::Conflict.into()).into(), C::Storage(F::Conflict)),
         (coven::KeyError::PassphraseAuthentication.into(), C::Keyring),
         (coven::KeyError::ServiceNotRegistered.into(), C::Internal),
-        (crate::config::ConfigError::Config("invalid preference".into()).into(), C::Config),
+        (crate::preferences::PreferencesError::Invalid("invalid preference".into()).into(), C::Config),
         (coven::SyncError::SecureStorage(coven::KeyError::Unsupported).into(), C::Keyring),
         (coven::SyncError::Storage(F::Network.into()).into(), C::Storage(F::Network)),
         (coven::SyncError::NoStorage.into(), C::Config),

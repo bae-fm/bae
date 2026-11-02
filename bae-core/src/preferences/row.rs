@@ -2,36 +2,39 @@
 //! setting decides, followed by the settings screens' live query, and edited
 //! one write at a time by the setters.
 
-use super::query::{QueryOne, QueryRows};
-use super::*;
-use crate::config::{
-    CastTranscodeFormat, ConfigError, DiscogsValidation, IdentificationPreferences,
-    ImportStoragePreferences, LookupCatalogPreferences, McpConfig, Preferences, ReplayGainMode,
+use super::{
+    CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportStoragePreferences,
+    LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
     SidePauseCountdown, SubsonicConfig,
 };
+use crate::db::client::query::{QueryOne, QueryRows};
+use crate::db::{Database, DbError};
+use coven::{CovenError, CovenWrite};
+use rusqlite::params;
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 
-impl Database {
-    /// This device's preferences for the library.
-    pub async fn preferences(&self) -> Result<Preferences, DbError> {
-        self.read(|sql| Ok(preferences_on(&sql)?)).await
-    }
+/// This device's preferences for the library.
+pub(crate) async fn preferences(database: &Database) -> Result<Preferences, DbError> {
+    database.read(|sql| Ok(preferences_on(&sql)?)).await
+}
 
-    /// Follow this device's preferences: the first value at once, then one
-    /// after each write that changes them.
-    pub(crate) fn subscribe_preferences(&self) -> coven::LiveQuery<Preferences> {
-        self.inner.handle.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
-    }
+/// Follow this device's preferences: the first value at once, then one
+/// after each write that changes them.
+pub(crate) fn subscribe_preferences(database: &Database) -> coven::LiveQuery<Preferences> {
+    database.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
+}
 
-    /// Edit the preferences in one write. `edit` is handed the stored
-    /// preferences and may refuse the change, which then writes nothing; a
-    /// change that leaves them as they were writes nothing either.
-    pub(crate) async fn edit_preferences(
-        &self,
-        edit: impl FnOnce(&mut Preferences) -> Result<(), ConfigError> + Send + 'static,
-    ) -> Result<(), ConfigError> {
-        self.call(move |sql| {
+/// Edit the preferences in one write. `edit` is handed the stored
+/// preferences and may refuse the change, which then writes nothing; a
+/// change that leaves them as they were writes nothing either.
+pub(crate) async fn edit_preferences(
+    database: &Database,
+    edit: impl FnOnce(&mut Preferences) -> Result<(), PreferencesError> + Send + 'static,
+) -> Result<(), PreferencesError> {
+    database
+        .call(move |sql| {
             let stored = preferences_on(sql)?;
             let mut edited = stored.clone();
             if let Err(refused) = edit(&mut edited) {
@@ -41,7 +44,6 @@ impl Database {
             Ok(Ok(()))
         })
         .await?
-    }
 }
 
 fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Preferences> {
@@ -332,3 +334,7 @@ fn invalid(column: &str, value: impl std::fmt::Display) -> rusqlite::Error {
         format!("preferences hold {value} in {column}").into(),
     )
 }
+
+#[cfg(test)]
+#[path = "row_tests.rs"]
+mod tests;

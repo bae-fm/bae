@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
+use bae_core::preferences::{McpConfig, PreferencesError, SubsonicConfig};
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
@@ -27,7 +27,7 @@ pub struct DesktopServices {
 #[derive(Debug, thiserror::Error)]
 pub enum DesktopConfigError<E: ServerError> {
     #[error("{0}")]
-    Config(ConfigError),
+    Config(PreferencesError),
     #[error("{}", .0.detail())]
     Server(E),
 }
@@ -166,7 +166,7 @@ impl DesktopServices {
         self.services
             .set_subsonic_password(password.to_string())
             .await
-            .map_err(|e| DesktopConfigError::Config(ConfigError::Config(e.to_string())))?;
+            .map_err(|e| DesktopConfigError::Config(PreferencesError::Invalid(e.to_string())))?;
         let config = self.stored_preferences().await?.subsonic;
         if let SubsonicServerStatus::Error { error } =
             self.subsonic_controller.restart(config).await
@@ -180,11 +180,11 @@ impl DesktopServices {
     /// back to.
     async fn stored_preferences<E: ServerError>(
         &self,
-    ) -> Result<bae_core::config::Preferences, DesktopConfigError<E>> {
+    ) -> Result<bae_core::preferences::Preferences, DesktopConfigError<E>> {
         self.services
             .preferences()
             .await
-            .map_err(|error| DesktopConfigError::Config(ConfigError::Database(error)))
+            .map_err(|error| DesktopConfigError::Config(PreferencesError::Database(error)))
     }
 
     /// Stop both hosted servers. They start and stop together with the app, and
@@ -211,7 +211,7 @@ where
     C: Clone,
     E: ServerError,
     F: std::future::Future<Output = ServerStatus<E>>,
-    P: std::future::Future<Output = Result<(), ConfigError>>,
+    P: std::future::Future<Output = Result<(), PreferencesError>>,
 {
     if let ServerStatus::Error { error } = apply(config.clone()).await {
         apply(previous).await;
@@ -236,7 +236,7 @@ where
 mod tests {
     use super::*;
 
-    use bae_core::config::SubsonicConfig;
+    use bae_core::preferences::SubsonicConfig;
     use bae_test_support as support;
 
     #[test]

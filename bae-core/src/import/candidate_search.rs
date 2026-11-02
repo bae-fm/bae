@@ -22,8 +22,8 @@ use crate::catalog_model::album_links::{self, AlbumLinks, GroupLinks};
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
-use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::identify::release_group::{group_results, ReleaseGroup};
+use crate::preferences::{CatalogAvailability, SourceAvailability};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// The run a stored search is on: what each catalog's answer names to land

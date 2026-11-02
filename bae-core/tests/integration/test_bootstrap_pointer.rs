@@ -1,7 +1,7 @@
 //! Only a fully opened, unlocked library advances the active-library pointer.
 
 use bae_core::app::{bootstrap, BootstrapError};
-use bae_core::config::{AppDir, Config};
+use bae_core::app_dir::AppDir;
 use coven::Storage;
 use tempfile::TempDir;
 
@@ -55,7 +55,7 @@ impl Home {
     }
 
     fn active(&self) -> Option<String> {
-        Config::active_library_id(&self.app_dir).unwrap()
+        self.app_dir.active_library_id().unwrap()
     }
 }
 

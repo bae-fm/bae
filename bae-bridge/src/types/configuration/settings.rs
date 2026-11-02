@@ -584,8 +584,18 @@ mirror_enum! {
 
 /// A failed config read or write, in the class core gave it: a setting the
 /// person can fix, or a write that never finished.
-impl From<bae_core::config::ConfigError> for BridgeError {
-    fn from(error: bae_core::config::ConfigError) -> Self {
+impl From<bae_core::preferences::PreferencesError> for BridgeError {
+    fn from(error: bae_core::preferences::PreferencesError) -> Self {
+        BridgeError::Diagnostic {
+            category: BridgeErrorCategory::from_core(error.category()),
+            detail: error.to_string(),
+        }
+    }
+}
+
+/// A failed read or write of bae's directory, in the class core gave it.
+impl From<bae_core::app_dir::AppDirError> for BridgeError {
+    fn from(error: bae_core::app_dir::AppDirError) -> Self {
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),
@@ -690,8 +700,8 @@ impl BridgeCoverSelection {
 }
 
 impl BridgeCloudProvider {
-    pub(crate) fn from_core(p: &bae_core::config::CloudProvider) -> Self {
-        use bae_core::config::CloudProvider;
+    pub(crate) fn from_core(p: &coven::CloudProvider) -> Self {
+        use coven::CloudProvider;
         match p {
             CloudProvider::S3 => BridgeCloudProvider::S3,
             CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
@@ -701,8 +711,8 @@ impl BridgeCloudProvider {
     }
 
     #[cfg(feature = "oauth-providers")]
-    pub(crate) fn into_core(self) -> bae_core::config::CloudProvider {
-        use bae_core::config::CloudProvider;
+    pub(crate) fn into_core(self) -> coven::CloudProvider {
+        use coven::CloudProvider;
         match self {
             BridgeCloudProvider::S3 => CloudProvider::S3,
             BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,

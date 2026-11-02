@@ -166,7 +166,8 @@ impl ImportServiceHandle {
                 let (returned, regrouped) = self.tables.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
-                let automatic = self.database.preferences().await?.identification.automatic;
+                let automatic =
+                    crate::preferences::preferences(&self.database).await?.identification.automatic;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.clone(),
                 }));
@@ -206,7 +207,8 @@ impl ImportServiceHandle {
                 candidate_key: candidate_key.clone(),
             }));
         }
-        let automatic = self.database.preferences().await?.identification.automatic;
+        let automatic =
+            crate::preferences::preferences(&self.database).await?.identification.automatic;
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {

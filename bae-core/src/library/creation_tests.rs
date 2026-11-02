@@ -380,14 +380,14 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
 
     stop_at_swap(&app_dir, restore()).await;
 
-    let libraries = crate::config::Config::discover_libraries(&app_dir).await.unwrap();
+    let libraries = app_dir.discover_libraries().await.unwrap();
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].id, store.to_string());
     assert_eq!(libraries[0].name, "Household");
     assert!(
         matches!(
             libraries[0].state,
-            crate::config::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Restore)
+            crate::app_dir::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Restore)
         ),
         "{:?}",
         libraries[0].state
@@ -426,12 +426,12 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     let device = restored.device_id();
     assert_ne!(device, replaced.device);
     restored.close().await.unwrap();
-    let libraries = crate::config::Config::discover_libraries(&app_dir).await.unwrap();
+    let libraries = app_dir.discover_libraries().await.unwrap();
     assert!(
         matches!(
             libraries[..],
-            [crate::config::LibraryInfo {
-                state: crate::config::LibraryState::Openable(Some(_)),
+            [crate::app_dir::LibraryInfo {
+                state: crate::app_dir::LibraryState::Openable(Some(_)),
                 ..
             }]
         ),
@@ -501,8 +501,8 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert_eq!(store_files(), Vec::<String>::new());
     assert!(!app_dir.registered_library(&store.to_string()).exists());
-    assert!(crate::config::Config::discover_libraries(&app_dir).await.unwrap().is_empty());
-    assert_eq!(crate::config::Config::active_library_id(&app_dir).unwrap(), None);
+    assert!(app_dir.discover_libraries().await.unwrap().is_empty());
+    assert_eq!(app_dir.active_library_id().unwrap(), None);
     assert!(UnfinishedRemoval::find(&app_dir, &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap()
@@ -574,7 +574,8 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
     )
     .await
     .unwrap();
-    let default = std::num::NonZeroUsize::new(crate::config::DEFAULT_CONCURRENT_TRANSFERS as usize);
+    let default =
+        std::num::NonZeroUsize::new(crate::app_dir::DEFAULT_CONCURRENT_TRANSFERS as usize);
     assert_eq!(
         phone.transfer_limits(),
         coven::TransferLimits { uploads: default.unwrap(), downloads: default.unwrap() }
@@ -609,13 +610,16 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     )
     .await
     .unwrap();
-    assert_eq!(restored.transfer_limits(), crate::config::default_transfer_limits());
+    assert_eq!(restored.transfer_limits(), crate::app_dir::default_transfer_limits());
     let database = crate::db::Database::from_handle(
         restored.clone(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
     );
-    assert_eq!(database.preferences().await.unwrap(), crate::config::Preferences::default());
+    assert_eq!(
+        crate::preferences::preferences(&database).await.unwrap(),
+        crate::preferences::Preferences::default()
+    );
     restored.close().await.unwrap();
 }
 

@@ -100,10 +100,7 @@ impl LibraryManager {
     }
 
     #[cfg(feature = "oauth-providers")]
-    pub async fn sign_in(
-        &self,
-        provider: crate::config::CloudProvider,
-    ) -> Result<(), LibraryError> {
+    pub async fn sign_in(&self, provider: coven::CloudProvider) -> Result<(), LibraryError> {
         self.sync.sign_in(provider).await
     }
 

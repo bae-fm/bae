@@ -36,7 +36,9 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 async fn run_providers(
     database: &crate::db::Database,
 ) -> Result<Vec<LookupCatalog>, crate::db::DbError> {
-    Ok(crate::config::asked_sources(&database.preferences().await?.metadata_sources()))
+    Ok(crate::preferences::asked_sources(
+        &crate::preferences::preferences(database).await?.metadata_sources(),
+    ))
 }
 
 /// Keep what release groups were read to be beyond the list that read them,

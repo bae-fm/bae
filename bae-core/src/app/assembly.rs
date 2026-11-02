@@ -26,7 +26,7 @@ pub async fn open_library_manager(
     database: Database,
     #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
     closing: CancellationToken,
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     clock: ClockRef,
     ids: IdSourceRef,
     diagnostics: Diagnostics,

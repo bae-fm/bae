@@ -196,7 +196,7 @@ impl Household {
                 .unwrap(),
         );
         let builder = installation
-            .builder(bae_core::config::AppDir::at(dir.path()).unwrap().store_layout())
+            .builder(bae_core::app_dir::AppDir::at(dir.path()).unwrap().store_layout())
             .storage_connector(storage.clone());
         let builder = match sign_in {
             Some(sign_in) => sign_in.configure(builder),
@@ -277,7 +277,7 @@ impl Household {
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
         installation
-            .builder(bae_core::config::AppDir::at(dir.path()).unwrap().store_layout())
+            .builder(bae_core::app_dir::AppDir::at(dir.path()).unwrap().store_layout())
             .storage_connector(std::sync::Arc::new(storage))
     }
 

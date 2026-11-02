@@ -10,7 +10,6 @@ use bae_core::album_detail::{
 use bae_core::catalog_model::records::MetadataRef;
 use bae_core::catalog_model::search::MetadataResult;
 use bae_core::catalog_model::SearchQuery;
-use bae_core::config::McpConfig;
 use bae_core::db::ImageRef;
 use bae_core::db::LibraryStatus;
 use bae_core::identify::release_group::ReleaseGroup;
@@ -22,6 +21,7 @@ use bae_core::import::{
     ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
+use bae_core::preferences::McpConfig;
 use bae_types::audio_format::AudioFormat;
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;

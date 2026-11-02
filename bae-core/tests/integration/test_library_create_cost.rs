@@ -34,7 +34,7 @@ async fn creating_a_library_costs() {
     let mut times: Vec<Duration> = Vec::with_capacity(CREATIONS);
     for _ in 0..CREATIONS {
         let directory = tempfile::TempDir::new().unwrap();
-        let app_dir = bae_core::config::AppDir::under_home(directory.path()).unwrap();
+        let app_dir = bae_core::app_dir::AppDir::under_home(directory.path()).unwrap();
         let installation = coven::TestCoven::new();
         let builder = installation.builder(app_dir.store_layout());
         let name = bae_core::library_name::LibraryName::parse("Bench").unwrap();

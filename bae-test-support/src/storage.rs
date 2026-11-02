@@ -20,7 +20,7 @@ pub async fn storage_library(
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
     let handle = bae_core::db::configure_store(
         installation
-            .builder(bae_core::config::AppDir::under_home(directory).unwrap().store_layout()),
+            .builder(bae_core::app_dir::AppDir::under_home(directory).unwrap().store_layout()),
     )
     .storage_connector(storage.clone())
     .create_store("Test Library")

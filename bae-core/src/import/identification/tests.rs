@@ -340,7 +340,7 @@ impl Fixture {
         // `use_discogs`.
         let manager = TestLibrary::open_with(
             database.clone(),
-            crate::config::AppDir::under_home(temp.path()).unwrap(),
+            crate::app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
             clock,
             ids,
@@ -619,7 +619,7 @@ impl Fixture {
     /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
         self.catalogs
-            .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+            .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
             .await
             .expect("the fake Discogs key is stored");
     }

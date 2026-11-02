@@ -143,7 +143,7 @@ pub(super) fn fresh_test_library(
         .build()
         .expect("test runtime");
     let installation = coven::TestCoven::new();
-    let app_dir = bae_core::config::AppDir::under_home(&root).unwrap();
+    let app_dir = bae_core::app_dir::AppDir::under_home(&root).unwrap();
     let handle = runtime
         .block_on(
             bae_core::db::configure_store(installation.builder(app_dir.store_layout()))

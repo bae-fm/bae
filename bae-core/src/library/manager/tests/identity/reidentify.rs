@@ -259,7 +259,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let album = create_test_album();
@@ -585,7 +585,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
 

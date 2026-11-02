@@ -184,7 +184,7 @@ async fn seeded_library_manager_with_track_length(
 
     let library = TestLibrary::open_with(
         database,
-        crate::config::AppDir::under_home(home.path()).unwrap(),
+        crate::app_dir::AppDir::under_home(home.path()).unwrap(),
         crate::catalog_model::providers::Providers::offline(),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),

@@ -325,7 +325,7 @@ impl ImportServiceHandle {
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
             destination: crate::import::ImportDestination::of(
-                self.database.preferences().await?.import_storage,
+                crate::preferences::preferences(&self.database).await?.import_storage,
                 self.database.storage_config().await?.is_some(),
             ),
             #[cfg(any(test, feature = "test-utils"))]
@@ -417,7 +417,7 @@ impl ImportServiceHandle {
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
         let check =
             DiscogsCheck::of(self.catalogs.try_discogs_key(token, CallPriority::Interactive).await);
-        let validation = crate::config::DiscogsValidation::of(&check);
+        let validation = crate::preferences::DiscogsValidation::of(&check);
         match check {
             DiscogsCheck::Valid => {
                 self.persist_discogs_key(token, validation).await?;
@@ -435,7 +435,7 @@ impl ImportServiceHandle {
     async fn persist_discogs_key(
         &self,
         token: &str,
-        validation: crate::config::DiscogsValidation,
+        validation: crate::preferences::DiscogsValidation,
     ) -> Result<(), crate::import::ImportError> {
         Ok(self.catalogs.store_discogs_key(token, validation).await?)
     }
@@ -446,9 +446,11 @@ impl ImportServiceHandle {
     /// is told rather than shown the same state again.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         use crate::catalog_model::providers::DiscogsCheck;
-        use crate::config::DiscogsValidation;
+        use crate::preferences::DiscogsValidation;
 
-        if self.database.preferences().await?.discogs != Some(DiscogsValidation::Unvalidated) {
+        if crate::preferences::preferences(&self.database).await?.discogs
+            != Some(DiscogsValidation::Unvalidated)
+        {
             return Ok(());
         }
         let check = self.catalogs.session().await?.validate().await.ok_or_else(|| {
@@ -457,15 +459,14 @@ impl ImportServiceHandle {
             }
         })?;
         let validation = DiscogsValidation::of(&check);
-        self.database
-            .edit_preferences(move |prefs| {
-                if prefs.discogs.is_some() {
-                    prefs.discogs = Some(validation);
-                }
-                Ok(())
-            })
-            .await
-            .map_err(crate::import::DiscogsKeyError::from)?;
+        crate::preferences::edit_preferences(&self.database, move |prefs| {
+            if prefs.discogs.is_some() {
+                prefs.discogs = Some(validation);
+            }
+            Ok(())
+        })
+        .await
+        .map_err(crate::import::DiscogsKeyError::from)?;
         match check {
             DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
             DiscogsCheck::Unchecked(error) => {

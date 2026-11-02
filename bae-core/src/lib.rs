@@ -1,9 +1,9 @@
 pub mod album_detail;
 pub mod app;
+pub mod app_dir;
 pub mod catalog_model;
 pub mod collections;
 #[doc(hidden)]
-pub mod config;
 #[cfg(desktop)]
 pub mod cue_flac;
 pub mod db;
@@ -31,6 +31,7 @@ pub mod loudness;
 pub mod open_files_peak;
 pub mod people;
 pub mod playback;
+pub mod preferences;
 pub mod queue;
 pub mod renderer;
 pub mod storage;

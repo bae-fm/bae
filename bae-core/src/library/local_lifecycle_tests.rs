@@ -2,7 +2,7 @@ use super::local_lifecycle::{
     finish_removals, remove_local_library, remove_unopenable_library, LibraryRemovalError,
     UnfinishedRemoval,
 };
-use crate::config::{AppDir, Config};
+use crate::app_dir::AppDir;
 use crate::diagnostics::Diagnostics;
 use coven::Storage;
 use std::sync::Arc;
@@ -91,7 +91,7 @@ impl Home {
     }
 
     fn pointer(&self) -> Option<String> {
-        Config::active_library_id(&self.app_dir).unwrap()
+        self.app_dir.active_library_id().unwrap()
     }
 
     /// What the person is shown when the app next lists its libraries, and
@@ -492,10 +492,10 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         "{not settings",
     )
     .unwrap();
-    let listed = Config::discover_libraries(&home.app_dir).await.unwrap();
+    let listed = home.app_dir.discover_libraries().await.unwrap();
     assert!(
         listed.iter().any(|library| library.id == id.to_string()
-            && matches!(library.state, crate::config::LibraryState::Unreadable(_))),
+            && matches!(library.state, crate::app_dir::LibraryState::Unreadable(_))),
         "{listed:?}"
     );
     super::unsent_before_removal(

@@ -66,7 +66,7 @@ pub async fn start_import_service(
 /// `catalogs`, the sessions the test built its library over.
 pub async fn configure_test_discogs(catalogs: &bae_core::import::CatalogSessions) {
     catalogs
-        .store_discogs_key("test-discogs-token", bae_core::config::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_core::preferences::DiscogsValidation::Valid)
         .await
         .expect("test Discogs key is stored");
 }

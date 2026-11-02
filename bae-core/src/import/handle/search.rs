@@ -34,7 +34,7 @@ impl ImportServiceHandle {
         candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), crate::import::ImportError> {
-        let sources = self.database.preferences().await?.metadata_sources();
+        let sources = crate::preferences::preferences(&self.database).await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
         let run = self.runtime.start_search(&candidate_key, &search).await?;
         for source in search.searching_sources() {

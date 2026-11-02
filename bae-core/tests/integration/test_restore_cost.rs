@@ -13,7 +13,7 @@
 //! the snapshots past retention's week of grace restore from the floor, as on
 //! an older library; the others restore from the first slot.
 
-use bae_core::config::AppDir;
+use bae_core::app_dir::AppDir;
 use bae_core::library::{FixtureAlbum, LibraryFixture};
 use coven::{Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncStatus, TestCoven};
 use std::sync::atomic::{AtomicU64, Ordering};

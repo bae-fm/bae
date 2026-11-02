@@ -9,7 +9,7 @@
 //! a lookup and finishing each hold the removal lock for their whole run, so
 //! a lookup never sees a removal that is still waiting on coven.
 
-use crate::config::{AppDir, ConfigError};
+use crate::app_dir::{AppDir, AppDirError};
 use crate::diagnostics::Diagnostics;
 use crate::library::LibraryError;
 use std::collections::{BTreeSet, HashSet};
@@ -264,7 +264,7 @@ async fn listed_stores(app_dir: &AppDir) -> Result<HashSet<coven::StoreId>, Libr
         .store_layout()
         .stores()
         .await
-        .map_err(ConfigError::from)?
+        .map_err(AppDirError::from)?
         .into_iter()
         .map(|store| store.id)
         .collect())
@@ -282,7 +282,7 @@ async fn write_record(
         let parent = records.parent().expect("the records directory has a parent");
         bae_util::fs::sync_directory(parent).map_err(|error| io_at(parent, error))?;
         let id = store_id.to_string();
-        coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(ConfigError::from)?;
+        coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(AppDirError::from)?;
         Ok(())
     })
     .await

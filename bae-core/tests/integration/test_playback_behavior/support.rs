@@ -1,5 +1,5 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::config::SidePauseCountdown;
+use bae_core::preferences::SidePauseCountdown;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};

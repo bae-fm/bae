@@ -19,8 +19,10 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 }
 
 impl BridgeLibrary {
-    pub(crate) fn from_core_info(info: bae_core::config::LibraryInfo) -> Result<Self, BridgeError> {
-        let bae_core::config::LibraryInfo { id, name, path, is_active, state } = info;
+    pub(crate) fn from_core_info(
+        info: bae_core::app_dir::LibraryInfo,
+    ) -> Result<Self, BridgeError> {
+        let bae_core::app_dir::LibraryInfo { id, name, path, is_active, state } = info;
         let path = path
             .to_str()
             .ok_or_else(|| {
@@ -33,17 +35,17 @@ impl BridgeLibrary {
             path,
             is_active,
             state: match state {
-                bae_core::config::LibraryState::Openable(storage) => {
+                bae_core::app_dir::LibraryState::Openable(storage) => {
                     crate::types::BridgeLibraryState::Openable {
                         storage: storage.map(BridgeStorageLocation::from_core),
                     }
                 }
-                bae_core::config::LibraryState::Unreadable(error) => {
+                bae_core::app_dir::LibraryState::Unreadable(error) => {
                     crate::types::BridgeLibraryState::Unreadable {
                         error: BridgeError::from_core(error),
                     }
                 }
-                bae_core::config::LibraryState::ReplacementUnfinished(by) => {
+                bae_core::app_dir::LibraryState::ReplacementUnfinished(by) => {
                     crate::types::BridgeLibraryState::ReplacementUnfinished {
                         by: crate::types::BridgeReplacedBy::from_core(by),
                     }
@@ -190,12 +192,12 @@ mod tests {
             (coven::ReplacedBy::Restore, crate::BridgeReplacedBy::Restore),
             (coven::ReplacedBy::Reset, crate::BridgeReplacedBy::Reset),
         ] {
-            let library = BridgeLibrary::from_core_info(bae_core::config::LibraryInfo {
+            let library = BridgeLibrary::from_core_info(bae_core::app_dir::LibraryInfo {
                 id: "library".into(),
                 name: "Household".into(),
                 path: "/libraries/library".into(),
                 is_active: true,
-                state: bae_core::config::LibraryState::ReplacementUnfinished(core),
+                state: bae_core::app_dir::LibraryState::ReplacementUnfinished(core),
             })
             .unwrap();
             assert!(

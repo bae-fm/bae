@@ -1,4 +1,4 @@
-use super::ConfigError;
+use super::PreferencesError;
 use serde::{Deserialize, Serialize};
 
 /// One piece of an export filename pattern. A pattern is an ordered token list;
@@ -101,25 +101,25 @@ pub struct SavePreset {
 }
 
 impl SavePreset {
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.id.trim().is_empty() {
-            return Err(ConfigError::Config("export preset id is empty".to_string()));
+            return Err(PreferencesError::Invalid("export preset id is empty".to_string()));
         }
         if self.name.trim().is_empty() {
-            return Err(ConfigError::Config(format!(
+            return Err(PreferencesError::Invalid(format!(
                 "export preset {} has an empty name",
                 self.id
             )));
         }
         if !self.applies_to_track && !self.applies_to_release {
-            return Err(ConfigError::Config(format!(
+            return Err(PreferencesError::Invalid(format!(
                 "export preset {} does not apply to any export level",
                 self.id
             )));
         }
         if self.pregap_placement == SavePregapPlacement::SingleFileWithCue && self.applies_to_track
         {
-            return Err(ConfigError::Config(format!(
+            return Err(PreferencesError::Invalid(format!(
                 "export preset {} uses single-file CUE and cannot apply to track export",
                 self.id
             )));
@@ -127,7 +127,7 @@ impl SavePreset {
         if self.pregap_placement == SavePregapPlacement::SingleFileWithCue
             && !self.codec.supports_single_file_cue()
         {
-            return Err(ConfigError::Config(format!(
+            return Err(PreferencesError::Invalid(format!(
                 "export preset {} uses single-file CUE with an unsupported codec",
                 self.id
             )));
@@ -135,7 +135,7 @@ impl SavePreset {
         match self.codec {
             SaveCodec::Mp3 { bitrate_kbps } => {
                 if !(32..=320).contains(&bitrate_kbps) {
-                    return Err(ConfigError::Config(format!(
+                    return Err(PreferencesError::Invalid(format!(
                         "export preset {} has unsupported MP3 bitrate {}",
                         self.id, bitrate_kbps
                     )));
@@ -143,7 +143,7 @@ impl SavePreset {
             }
             SaveCodec::Aac { bitrate_kbps } => {
                 if !(32..=512).contains(&bitrate_kbps) {
-                    return Err(ConfigError::Config(format!(
+                    return Err(PreferencesError::Invalid(format!(
                         "export preset {} has unsupported AAC bitrate {}",
                         self.id, bitrate_kbps
                     )));
@@ -151,7 +151,7 @@ impl SavePreset {
             }
             SaveCodec::OpusOgg { bitrate_kbps } => {
                 if !(32..=512).contains(&bitrate_kbps) {
-                    return Err(ConfigError::Config(format!(
+                    return Err(PreferencesError::Invalid(format!(
                         "export preset {} has unsupported Opus bitrate {}",
                         self.id, bitrate_kbps
                     )));

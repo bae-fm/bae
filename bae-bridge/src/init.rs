@@ -88,7 +88,7 @@ pub struct BridgeDiagnostics {
 
 impl BridgeDiagnostics {
     pub(crate) fn init_keyring(&self) -> Result<(), BridgeError> {
-        bae_core::config::register_keyring_service().map_err(|error| {
+        bae_core::app_dir::register_keyring_service().map_err(|error| {
             self.inner.event(TelemetryEvent::KeyringInitFailed {});
             BridgeError::Diagnostic {
                 category: crate::types::BridgeErrorCategory::Keyring,
@@ -107,7 +107,7 @@ impl BridgeDiagnostics {
     /// `app_start_failed` through it before the error returns.
     pub(crate) fn open_app(
         &self,
-        app_dir: bae_core::config::AppDir,
+        app_dir: bae_core::app_dir::AppDir,
         library_id: String,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -134,7 +134,7 @@ impl BridgeDiagnostics {
     pub(crate) fn open_app_on_fixture(
         &self,
         fixture: std::path::PathBuf,
-        app_dir: bae_core::config::AppDir,
+        app_dir: bae_core::app_dir::AppDir,
         library_id: String,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -158,7 +158,7 @@ impl BridgeDiagnostics {
 
     pub(crate) fn open_prepared(
         &self,
-        app_dir: bae_core::config::AppDir,
+        app_dir: bae_core::app_dir::AppDir,
         handle: coven::CovenHandle,
         host: Arc<crate::BridgeHost>,
         position_update_interval_ms: u32,
@@ -179,7 +179,7 @@ impl BridgeDiagnostics {
     /// records is reported through this sink.
     pub(crate) async fn unfinished_removal(
         &self,
-        app_dir: &bae_core::config::AppDir,
+        app_dir: &bae_core::app_dir::AppDir,
     ) -> Result<Option<bae_core::library::UnfinishedRemoval>, bae_core::library::LibraryError> {
         bae_core::library::UnfinishedRemoval::find(app_dir, &self.inner).await
     }
@@ -189,7 +189,7 @@ impl BridgeDiagnostics {
     /// work is reported through this sink.
     pub(crate) async fn remove_unopenable_library(
         &self,
-        app_dir: &bae_core::config::AppDir,
+        app_dir: &bae_core::app_dir::AppDir,
         keychain: &bae_core::library::Keychain,
         store: coven::StoreId,
         steps: &(dyn Fn(bae_core::library::ClosingStep) + Send + Sync),
@@ -203,7 +203,7 @@ impl BridgeDiagnostics {
     /// this sink.
     pub(crate) async fn finish_removals(
         &self,
-        app_dir: &bae_core::config::AppDir,
+        app_dir: &bae_core::app_dir::AppDir,
         finished: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<(), bae_core::library::LibraryError> {
         bae_core::library::finish_removals(app_dir, &self.inner, finished).await

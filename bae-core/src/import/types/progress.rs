@@ -21,7 +21,10 @@ pub enum ImportDestination {
 impl ImportDestination {
     /// Where an import goes: to the cloud, pinned as chosen, when the stored
     /// choice is the cloud and the library has a cloud home; locally otherwise.
-    pub fn of(storage: crate::config::ImportStoragePreferences, storage_configured: bool) -> Self {
+    pub fn of(
+        storage: crate::preferences::ImportStoragePreferences,
+        storage_configured: bool,
+    ) -> Self {
         if storage.cloud && storage_configured {
             Self::Remote { pin: storage.pinned }
         } else {

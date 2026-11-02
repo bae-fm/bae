@@ -6,9 +6,9 @@
 //! database the callback writes to.
 
 use crate::catalog_model::providers::{CatalogSession, Providers};
-use crate::config::DiscogsValidation;
 use crate::db::{Database, DbError};
 use crate::diagnostics::Diagnostics;
+use crate::preferences::DiscogsValidation;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::rate_limiter::CallPriority;
@@ -36,7 +36,7 @@ pub enum DiscogsKeyError {
     #[error("Keyring error: {0}")]
     Keyring(#[from] coven::KeyError),
     #[error(transparent)]
-    Preferences(#[from] crate::config::ConfigError),
+    Preferences(#[from] crate::preferences::PreferencesError),
     #[error(transparent)]
     Task(#[from] bae_util::task_failure::TaskFailed),
 }
@@ -86,7 +86,7 @@ impl CatalogSessions {
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
         let mut cached = self.discogs_client.lock().await;
-        let validation = self.database.preferences().await?.discogs;
+        let validation = crate::preferences::preferences(&self.database).await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(CatalogSession::new(None, providers));
         }
@@ -186,12 +186,11 @@ impl CatalogSessions {
             })
             .await
             .map_err(|failed| self.diagnostics.bug(failed))??;
-            self.database
-                .edit_preferences(move |prefs| {
-                    prefs.discogs = Some(validation);
-                    Ok(())
-                })
-                .await?;
+            crate::preferences::edit_preferences(&self.database, move |prefs| {
+                prefs.discogs = Some(validation);
+                Ok(())
+            })
+            .await?;
             Ok(())
         })
         .await
@@ -202,12 +201,11 @@ impl CatalogSessions {
     /// Discogs disabled rather than half-enabled.
     pub(crate) async fn clear_discogs_key(&self) -> Result<(), DiscogsKeyError> {
         self.change_discogs_key(async {
-            self.database
-                .edit_preferences(|prefs| {
-                    prefs.discogs = None;
-                    Ok(())
-                })
-                .await?;
+            crate::preferences::edit_preferences(&self.database, |prefs| {
+                prefs.discogs = None;
+                Ok(())
+            })
+            .await?;
             let database = self.database.clone();
             blocking("clear the Discogs key", move || {
                 database.delete_host_secret(crate::keys::DISCOGS_API_KEY)
@@ -236,23 +234,22 @@ impl CatalogSessions {
 /// change applies to the key it finds. A failure to write it is logged; the
 /// next call's outcome is recorded again.
 async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKeySignal) {
-    let recorded = database
-        .edit_preferences(move |prefs| {
-            let next = match (prefs.discogs, &signal) {
-                (None, _) => None,
-                (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
-                (Some(DiscogsValidation::Unvalidated), DiscogsKeySignal::Accepted) => {
-                    Some(DiscogsValidation::Valid)
-                }
-                (Some(_), DiscogsKeySignal::Accepted) => None,
-            };
-            match next {
-                Some(next) => prefs.discogs = Some(next),
-                None => debug!("discogs validation signal changes nothing"),
+    let recorded = crate::preferences::edit_preferences(database, move |prefs| {
+        let next = match (prefs.discogs, &signal) {
+            (None, _) => None,
+            (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
+            (Some(DiscogsValidation::Unvalidated), DiscogsKeySignal::Accepted) => {
+                Some(DiscogsValidation::Valid)
             }
-            Ok(())
-        })
-        .await;
+            (Some(_), DiscogsKeySignal::Accepted) => None,
+        };
+        match next {
+            Some(next) => prefs.discogs = Some(next),
+            None => debug!("discogs validation signal changes nothing"),
+        }
+        Ok(())
+    })
+    .await;
     if let Err(error) = recorded {
         warn!("failed to record the Discogs key's validation: {error}");
     }

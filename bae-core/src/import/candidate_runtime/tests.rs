@@ -1,5 +1,4 @@
 use super::*;
-use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::candidates::ImportInFlight;
 use crate::import::candidates::{
@@ -8,6 +7,7 @@ use crate::import::candidates::{
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::import::ImportStep;
+use crate::preferences::{CatalogAvailability, SourceAvailability};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::path::PathBuf;
 

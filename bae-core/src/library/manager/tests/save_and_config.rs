@@ -21,13 +21,13 @@ async fn set_save_presets_rejects_removing_selected_default() {
 
 /// A release-only preset (single-file CUE) that a track save must refuse.
 #[cfg(test)]
-fn release_only_image_preset() -> crate::config::SavePreset {
-    crate::config::SavePreset {
+fn release_only_image_preset() -> crate::preferences::SavePreset {
+    crate::preferences::SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: crate::config::SaveCodec::Flac { bit_depth: crate::config::SaveBitDepth::Bits16 },
-        filename_tokens: vec![crate::config::SaveFilenameToken::Title],
-        pregap_placement: crate::config::SavePregapPlacement::SingleFileWithCue,
+        codec: crate::preferences::SaveCodec::Flac { bit_depth: crate::preferences::SaveBitDepth::Bits16 },
+        filename_tokens: vec![crate::preferences::SaveFilenameToken::Title],
+        pregap_placement: crate::preferences::SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
         embed_cover: true,
@@ -143,7 +143,7 @@ async fn removal_releases_custody_and_preferences() {
     let (manager, _temp) = setup_test_manager().await;
     let id = manager.database.store_id().to_string();
     manager.ensure_mcp_token().await.unwrap();
-    manager.set_mcp_config(crate::config::McpConfig::disabled_default()).await.unwrap();
+    manager.set_mcp_config(crate::preferences::McpConfig::disabled_default()).await.unwrap();
     manager.app_dir.save_active_library(manager.database.store_id()).unwrap();
     manager.remove_library(&|_| ()).await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
@@ -191,15 +191,15 @@ async fn a_library_without_storage_reports_nothing_unsent() {
 #[tokio::test]
 async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let invalid = crate::config::McpConfig { enabled: true, port: 0 };
+    let invalid = crate::preferences::McpConfig { enabled: true, port: 0 };
     assert!(manager.set_mcp_config(invalid).await.is_err());
     assert_eq!(
         manager.preferences().await.unwrap().mcp,
-        crate::config::McpConfig::disabled_default()
+        crate::preferences::McpConfig::disabled_default()
     );
 
     let valid =
-        crate::config::McpConfig { enabled: true, port: crate::config::MCP_DEFAULT_PORT + 1 };
+        crate::preferences::McpConfig { enabled: true, port: crate::preferences::MCP_DEFAULT_PORT + 1 };
     manager.set_mcp_config(valid).await.unwrap();
     assert_eq!(manager.preferences().await.unwrap().mcp, valid);
 }
@@ -234,21 +234,21 @@ async fn subsonic_password_is_keyring_backed() {
 #[tokio::test]
 async fn subsonic_config_rejects_invalid_and_persists_valid() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let enabled_without_username = crate::config::SubsonicConfig {
+    let enabled_without_username = crate::preferences::SubsonicConfig {
         enabled: true,
-        port: crate::config::SUBSONIC_DEFAULT_PORT,
+        port: crate::preferences::SUBSONIC_DEFAULT_PORT,
         username: String::new(),
         bind_address: "127.0.0.1".to_string(),
     };
     assert!(manager.set_subsonic_config(enabled_without_username).await.is_err());
     assert_eq!(
         manager.preferences().await.unwrap().subsonic,
-        crate::config::SubsonicConfig::disabled_default()
+        crate::preferences::SubsonicConfig::disabled_default()
     );
 
-    let valid = crate::config::SubsonicConfig {
+    let valid = crate::preferences::SubsonicConfig {
         enabled: true,
-        port: crate::config::SUBSONIC_DEFAULT_PORT + 1,
+        port: crate::preferences::SUBSONIC_DEFAULT_PORT + 1,
         username: "listener".to_string(),
         bind_address: "0.0.0.0".to_string(),
     };
@@ -261,7 +261,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
 /// about MusicBrainz.
 #[tokio::test]
 async fn the_last_source_being_asked_cannot_be_switched_off() {
-    use crate::config::SourceAvailability;
+    use crate::preferences::SourceAvailability;
     use bae_catalogs::catalog::LookupCatalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -300,7 +300,7 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 /// credential arrives.
 #[tokio::test]
 async fn an_unreachable_source_keeps_the_switch_underneath_it() {
-    use crate::config::SourceAvailability;
+    use crate::preferences::SourceAvailability;
     use bae_catalogs::catalog::LookupCatalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;

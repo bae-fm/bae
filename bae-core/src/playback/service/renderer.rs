@@ -198,7 +198,7 @@ impl RemoteRenderer {
     fn load(
         &self,
         audio: &ResolvedTrackAudio,
-        transcode: crate::config::CastTranscodeFormat,
+        transcode: crate::preferences::CastTranscodeFormat,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
         position: StreamPosition,

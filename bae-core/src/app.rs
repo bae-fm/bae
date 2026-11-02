@@ -148,7 +148,7 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
 /// ends. One that fails after drops the owner `compose` built, whose drop
 /// closes the library first, as the bridge's `AppHandle` does.
 pub fn bootstrap<T, F>(
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -180,7 +180,7 @@ where
 /// Start services on the live store returned by creation, restore, or device reset.
 /// The caller retains the runtime on which that store was prepared.
 pub fn bootstrap_prepared<T, F>(
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     handle: coven::CovenHandle,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -217,7 +217,7 @@ where
 ))]
 pub fn bootstrap_on_fixture<T, F>(
     fixture: std::path::PathBuf,
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -284,7 +284,7 @@ async fn open_store(
 /// The library a registered id names; an id that is no library's is not
 /// found.
 fn registered_store(library_id: &str) -> Result<coven::StoreId, BootstrapError> {
-    crate::config::parse_library_id(library_id).map_err(|error| {
+    crate::app_dir::parse_library_id(library_id).map_err(|error| {
         warn!(%library_id, %error, "no library is registered under this id");
         BootstrapError::LibraryNotFound(library_id.to_string())
     })
@@ -306,7 +306,7 @@ enum Opening {
 
 fn bootstrap_opening<T, F>(
     opening: Opening,
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -356,7 +356,7 @@ where
 
 fn bootstrap_inner<T, F>(
     opening: Opening,
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -588,7 +588,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::db::configure_store(
-            installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
+            installation.builder(crate::app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Unavailable Keychain")
         .await
@@ -608,7 +608,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::db::configure_store(
-            installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
+            installation.builder(crate::app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Keychain test")
         .await
@@ -658,7 +658,7 @@ mod tests {
             .build()
             .unwrap();
         let temp = tempfile::tempdir().unwrap();
-        let app_dir = crate::config::AppDir::at(temp.path()).unwrap();
+        let app_dir = crate::app_dir::AppDir::at(temp.path()).unwrap();
         let installation = coven::TestCoven::new();
         let handle = runtime
             .block_on(

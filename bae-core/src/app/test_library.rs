@@ -35,7 +35,7 @@ impl TestLibrary {
     /// `providers`, reporting nowhere.
     pub(crate) async fn open(
         database: Database,
-        app_dir: crate::config::AppDir,
+        app_dir: crate::app_dir::AppDir,
         providers: crate::catalog_model::providers::Providers,
     ) -> Self {
         Self::open_with(
@@ -53,7 +53,7 @@ impl TestLibrary {
     /// `clock` and `ids`, reporting to `diagnostics`.
     pub(crate) async fn open_with(
         database: Database,
-        app_dir: crate::config::AppDir,
+        app_dir: crate::app_dir::AppDir,
         providers: crate::catalog_model::providers::Providers,
         clock: ClockRef,
         ids: IdSourceRef,

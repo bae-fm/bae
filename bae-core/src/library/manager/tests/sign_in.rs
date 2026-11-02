@@ -27,7 +27,7 @@ async fn manager_signing_in_with(
     presenter: Arc<RecordingPresenter>,
 ) -> (LibraryManager, Arc<MemoryStorage>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
+    let app_dir = crate::app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle =
@@ -62,10 +62,7 @@ async fn signing_in_to_dropbox_asks_for_the_shared_folder_access_households_need
     let presenter = Arc::new(RecordingPresenter::default());
     let (manager, _storage, _temp) = manager_signing_in_with(presenter.clone()).await;
 
-    manager
-        .sign_in(crate::config::CloudProvider::Dropbox)
-        .await
-        .expect_err("the presenter cancels");
+    manager.sign_in(coven::CloudProvider::Dropbox).await.expect_err("the presenter cancels");
 
     let presented = presenter.presented.lock().unwrap().clone();
     assert_eq!(presented.len(), 1);

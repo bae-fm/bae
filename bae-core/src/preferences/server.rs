@@ -61,9 +61,9 @@ impl SubsonicConfig {
         }
     }
 
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.port == 0 {
-            return Err(ConfigError::Config(
+            return Err(PreferencesError::Invalid(
                 "Subsonic port must be between 1 and 65535".to_string(),
             ));
         }
@@ -71,12 +71,12 @@ impl SubsonicConfig {
         // salted-token check compares against this username. Refuse to enable a
         // server that would reject every login.
         if self.enabled && self.username.is_empty() {
-            return Err(ConfigError::Config(
+            return Err(PreferencesError::Invalid(
                 "Subsonic server requires a username when enabled".to_string(),
             ));
         }
         if self.bind_address.parse::<std::net::IpAddr>().is_err() {
-            return Err(ConfigError::Config(format!(
+            return Err(PreferencesError::Invalid(format!(
                 "Subsonic bind address {:?} is not a valid IP address",
                 self.bind_address
             )));
@@ -90,9 +90,11 @@ impl McpConfig {
         Self { enabled: false, port: MCP_DEFAULT_PORT }
     }
 
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.port == 0 {
-            return Err(ConfigError::Config("MCP port must be between 1 and 65535".to_string()));
+            return Err(PreferencesError::Invalid(
+                "MCP port must be between 1 and 65535".to_string(),
+            ));
         }
         Ok(())
     }

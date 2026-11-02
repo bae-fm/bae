@@ -24,11 +24,11 @@ pub mod renderer;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use bae_core::config::SubsonicCredential;
 use bae_core::diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
 use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::AirPlaySink;
 use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
+use bae_core::preferences::SubsonicCredential;
 use bae_core::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,

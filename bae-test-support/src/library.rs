@@ -64,7 +64,7 @@ pub async fn open_test_library_with(
     bae_core::library::CancellationToken,
 ) {
     let database = open_test_db(dir).await;
-    open_library(database, bae_core::config::AppDir::under_home(dir).unwrap(), providers).await
+    open_library(database, bae_core::app_dir::AppDir::under_home(dir).unwrap(), providers).await
 }
 
 /// A library over an installation the test created with its own storage and
@@ -85,7 +85,7 @@ pub async fn test_library_from_handle(
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidIds),
         ),
-        bae_core::config::AppDir::under_home(dir).unwrap(),
+        bae_core::app_dir::AppDir::under_home(dir).unwrap(),
         providers,
     )
     .await
@@ -96,7 +96,7 @@ pub async fn test_library_from_handle(
 /// builds them, and passed to the app's opening step.
 async fn open_library(
     database: bae_core::db::Database,
-    app_dir: bae_core::config::AppDir,
+    app_dir: bae_core::app_dir::AppDir,
     providers: bae_core::catalog_model::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
@@ -230,7 +230,7 @@ pub fn setup_fresh_library(
     tempfile::TempDir,
 ) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let app_dir = bae_core::config::AppDir::under_home(tmp.path()).unwrap();
+    let app_dir = bae_core::app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let library = runtime.block_on(async {
         let handle = bae_core::db::configure_store(installation.builder(app_dir.store_layout()))

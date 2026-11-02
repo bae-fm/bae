@@ -1,10 +1,10 @@
 //! Provider operations and the upload pause over coven's store handle.
 
-use crate::config::CloudProvider;
 use crate::db::Database;
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::library::LibraryError;
 use crate::sync::S3ConfigData;
+use coven::CloudProvider;
 
 /// Owns the cloud-connection lifecycle. Holds clones of the handles the sync
 /// paths need (database and diagnostics). Cloned alongside the manager —

@@ -47,7 +47,7 @@ async fn setup_import_service() -> TestService {
     );
     let library = crate::app::test_library::TestLibrary::open(
         database.clone(),
-        crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
+        crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         crate::catalog_model::providers::Providers::offline(),
     )
     .await;

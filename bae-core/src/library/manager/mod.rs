@@ -190,9 +190,14 @@ pub enum LibraryError {
     /// credentials, Discogs/MCP tokens).
     #[error("Keyring error: {0}")]
     Keyring(#[from] coven::KeyError),
-    /// Reading or writing the on-disk library config failed.
+    /// Reading or writing bae's directory failed: the library list, the
+    /// active-library pointer, a removal record.
     #[error("Config error: {0}")]
-    Config(#[from] crate::config::ConfigError),
+    AppDir(#[from] crate::app_dir::AppDirError),
+    /// Reading or writing this device's preferences failed, or a change to
+    /// them was refused.
+    #[error("Config error: {0}")]
+    Preferences(#[from] crate::preferences::PreferencesError),
     /// Building or probing a cloud home failed — bad credentials/config
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]
@@ -297,7 +302,8 @@ impl LibraryError {
         use crate::diagnostics::UiErrorCategory as C;
         match self {
             LibraryError::Database(_) => C::Database,
-            LibraryError::Config(error) => error.category(),
+            LibraryError::AppDir(error) => error.category(),
+            LibraryError::Preferences(error) => error.category(),
             LibraryError::Validation(_) => C::Config,
             LibraryError::Keyring(error) => key_category(error),
             LibraryError::CloudHome(e) => cloud_home_category(e),
@@ -605,8 +611,8 @@ impl ResolvedTrackAudio {
     /// and to unity when neither was (NULL measurements, or a silent track). For
     /// the chosen level the gain brings the measured loudness to the target, then
     /// is capped at `1.0/peak` so a boosted track can't clip.
-    pub fn replay_gain_linear(&self, mode: crate::config::ReplayGainMode) -> f32 {
-        use crate::config::ReplayGainMode;
+    pub fn replay_gain_linear(&self, mode: crate::preferences::ReplayGainMode) -> f32 {
+        use crate::preferences::ReplayGainMode;
 
         let track = self.track_loudness_lufs.zip(self.track_peak_linear);
         let album = self.album_loudness_lufs.zip(self.album_peak_linear);
@@ -687,7 +693,7 @@ pub struct LibraryManager {
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,
     /// and where forgetting this library removes it from.
-    app_dir: crate::config::AppDir,
+    app_dir: crate::app_dir::AppDir,
     clock: ClockRef,
     ids: IdSourceRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id

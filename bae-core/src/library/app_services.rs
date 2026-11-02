@@ -61,7 +61,7 @@ impl TrackDecode {
 #[derive(Debug, thiserror::Error)]
 pub enum MetadataSourceSwitchError {
     #[error(transparent)]
-    Preference(#[from] crate::config::ConfigError),
+    Preference(#[from] crate::preferences::PreferencesError),
     #[error(transparent)]
     Searches(#[from] crate::library::LibraryError),
 }
@@ -265,7 +265,7 @@ impl AppServices {
 
     /// The library's preferences as the settings screens read them: the
     /// first value at once, then one after each write that changes them.
-    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<crate::config::Config> {
+    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<crate::preferences::Config> {
         self.inner.manager.subscribe_config()
     }
 
@@ -273,7 +273,7 @@ impl AppServices {
     /// then one after each write that changes it.
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
-        part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
+        part: impl Fn(crate::preferences::Preferences) -> T + Send + Sync + 'static,
     ) -> crate::live_query::LiveValues<T> {
         self.inner.manager.follow_preferences(part)
     }
@@ -378,27 +378,27 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    delegate_async!(manager, preferences => preferences() -> Result<crate::config::Preferences, crate::db::DbError>);
+    delegate_async!(manager, preferences => preferences() -> Result<crate::preferences::Preferences, crate::db::DbError>);
     delegate_sync!(manager, library_path => library_path() -> std::path::PathBuf);
     delegate_sync!(manager, store_id => store_id() -> coven::StoreId);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, set_mcp_config => set_mcp_config(config: crate::config::McpConfig) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_mcp_config => set_mcp_config(config: crate::preferences::McpConfig) -> Result<(), crate::preferences::PreferencesError>);
     delegate_async!(manager, get_subsonic_password => get_subsonic_password() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, set_subsonic_password => set_subsonic_password(password: String) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: crate::config::SubsonicConfig) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: crate::config::CastTranscodeFormat) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: crate::preferences::SubsonicConfig) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: crate::preferences::CastTranscodeFormat) -> Result<(), crate::preferences::PreferencesError>);
     delegate_sync!(manager, store_key_state => store_key_state() -> Result<coven::StoreKeyState, crate::library::LibraryError>);
-    delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::config::SidePauseCountdown) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_import_when_identified => set_import_when_identified(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_import_to_cloud => set_import_to_cloud(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_import_pinned => set_import_pinned(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::preferences::SidePauseCountdown) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_import_when_identified => set_import_when_identified(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_import_to_cloud => set_import_to_cloud(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_import_pinned => set_import_pinned(enabled: bool) -> Result<(), crate::preferences::PreferencesError>);
 
     /// Ask, or stop asking, one metadata source — the switch on the Find online
     /// header and in Settings, which are two views of this one preference.
@@ -447,9 +447,9 @@ impl AppServices {
         Ok(())
     }
 
-    delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<crate::preferences::SavePreset>) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::preferences::PreferencesError>);
+    delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::preferences::PreferencesError>);
     delegate_async!(manager, rename_library => rename_library(name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -529,7 +529,7 @@ impl AppServices {
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str, steps: crate::library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, sign_in => sign_in(provider: crate::config::CloudProvider) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, sign_in => sign_in(provider: coven::CloudProvider) -> Result<(), crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, sign_in_again => sign_in_again(device_name: &str, steps: crate::library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
@@ -720,7 +720,7 @@ impl AppServices {
     pub async fn set_pause_between_sides(
         &self,
         enabled: bool,
-    ) -> Result<(), crate::config::ConfigError> {
+    ) -> Result<(), crate::preferences::PreferencesError> {
         self.inner.manager.set_pause_between_sides(enabled).await?;
         if enabled {
             self.inner.playback.reevaluate_side_pause_staging();

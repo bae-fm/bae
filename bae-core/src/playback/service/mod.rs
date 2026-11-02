@@ -394,7 +394,7 @@ fn finalize_playback_track(
     track_id: String,
     resolved: &ResolvedTrackAudio,
     segments: Vec<PreparedAudioSegment>,
-    replay_gain_mode: crate::config::ReplayGainMode,
+    replay_gain_mode: crate::preferences::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
     let duration = Some(std::time::Duration::from_millis(resolved.duration_ms));
 

@@ -76,7 +76,7 @@ impl McpServerController {
         }
     }
 
-    pub async fn apply_config(&self, config: bae_core::config::McpConfig) -> McpServerStatus {
+    pub async fn apply_config(&self, config: bae_core::preferences::McpConfig) -> McpServerStatus {
         if !config.enabled {
             return self.server.disable().await;
         }

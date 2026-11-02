@@ -19,9 +19,9 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use axum::Router;
-use bae_core::config::SubsonicCredential;
 use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
+use bae_core::preferences::SubsonicCredential;
 
 mod auth;
 mod controller;

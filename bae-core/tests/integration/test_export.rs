@@ -6,10 +6,10 @@
 
 use bae_test_support as support;
 
-use bae_core::config::{
+use bae_core::library::{LibraryManager, OutputKind};
+use bae_core::preferences::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
-use bae_core::library::{LibraryManager, OutputKind};
 use coven::MemoryStorage;
 use std::fs;
 use std::path::Path;

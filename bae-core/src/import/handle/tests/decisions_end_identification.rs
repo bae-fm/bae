@@ -129,7 +129,7 @@ async fn a_pick_ends_identification_in_its_write() {
     let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000301";

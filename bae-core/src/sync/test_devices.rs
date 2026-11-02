@@ -6,7 +6,7 @@ use std::time::Duration;
 use coven::Storage;
 use tempfile::TempDir;
 
-use crate::config::AppDir;
+use crate::app_dir::AppDir;
 use crate::db::Database;
 use crate::library::LibraryManager;
 

@@ -142,9 +142,6 @@ mod playback_queue_additions_tests;
 mod playback_timeline_tests;
 
 #[cfg(test)]
-mod preferences_tests;
-
-#[cfg(test)]
 mod playback_queue_bench;
 
 #[cfg(test)]

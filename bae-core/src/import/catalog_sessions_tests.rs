@@ -21,7 +21,7 @@ async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
 }
 
 async fn stored_validation(database: &Database) -> Option<DiscogsValidation> {
-    database.preferences().await.unwrap().discogs
+    crate::preferences::preferences(database).await.unwrap().discogs
 }
 
 async fn asks_discogs(sessions: &CatalogSessions) -> bool {
@@ -30,13 +30,12 @@ async fn asks_discogs(sessions: &CatalogSessions) -> bool {
 
 /// Record what Discogs said of the stored key, as a check of it does.
 async fn record_validation(database: &Database, validation: DiscogsValidation) {
-    database
-        .edit_preferences(move |prefs| {
-            prefs.discogs = Some(validation);
-            Ok(())
-        })
-        .await
-        .unwrap();
+    crate::preferences::edit_preferences(database, move |prefs| {
+        prefs.discogs = Some(validation);
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 #[tokio::test]

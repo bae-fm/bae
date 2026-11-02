@@ -1,24 +1,28 @@
+//! This device's preferences for a library: its `preferences` row and save
+//! presets, the types they hold, and the row's SQL.
+
+#[cfg(any(test, feature = "test-utils"))]
+use crate::app_dir::default_transfer_concurrency;
+use crate::app_dir::usize_bound;
 use serde::{Deserialize, Serialize};
-use std::num::{NonZeroU32, NonZeroUsize};
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-mod app_dir;
 mod catalog_availability;
 mod identification;
 mod import_storage;
-mod keyring;
 mod presentation;
+mod row;
 mod save;
 mod server;
 
-pub use app_dir::AppDir;
 pub use catalog_availability::{
     asked_sources, is_the_only_asked_source, CatalogAvailability, SourceAvailability,
 };
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
-pub use keyring::register_keyring_service;
 pub use presentation::LookupCatalogSetting;
+pub(crate) use row::{edit_preferences, preferences, subscribe_preferences};
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
@@ -27,49 +31,19 @@ pub use server::{
 #[cfg(any(test, feature = "test-utils"))]
 use save::default_save_presets;
 
-/// File transfers bae runs at once, per direction, on a fresh library, the
-/// `preferences` row's default, and what adding this device, joining or
-/// restoring reads the library from storage under, before the library's row
-/// exists. Serial (1) is safe but slow; a small burst keeps a single stalled
-/// transfer from holding up the rest.
-pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
-
 /// The largest transfer concurrency the UI offers and the setters accept.
 pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
-
-fn default_transfer_concurrency() -> NonZeroU32 {
-    NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
-}
-
-/// The file transfers a library runs at once before its own preferences can
-/// be read: while it is loaded from storage by adding this device, a join or
-/// a restore.
-pub fn default_transfer_limits() -> coven::TransferLimits {
-    coven::TransferLimits {
-        uploads: usize_bound(default_transfer_concurrency()),
-        downloads: usize_bound(default_transfer_concurrency()),
-    }
-}
 
 /// A file-transfer concurrency setting must be at least 1 — coven's drain admits
 /// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
 /// the ceiling the UI offers. Returns the validated value for storage.
-pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, ConfigError> {
+pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, PreferencesError> {
     NonZeroU32::new(n).filter(|n| n.get() <= MAX_CONCURRENT_TRANSFERS).ok_or_else(|| {
-        ConfigError::Config(format!(
+        PreferencesError::Invalid(format!(
             "transfer concurrency must be between 1 and {MAX_CONCURRENT_TRANSFERS}"
         ))
     })
 }
-
-/// Widen a stored concurrency setting to the [`NonZeroUsize`] coven's builder
-/// takes. Non-zero is preserved: `usize` is at least 32 bits on every platform
-/// bae targets, so a `NonZeroU32` never widens to zero.
-pub(crate) fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
-    NonZeroUsize::new(n.get() as usize).expect("a NonZeroU32 widened to usize stays non-zero")
-}
-
-pub use coven::{CloudProvider, StorageConfig};
 
 /// The validation state of a stored Discogs API key. Only carried when a key
 /// exists (`Config::discogs` is `Some`). Distinct from `DiscogsTokenStatus`:
@@ -241,31 +215,23 @@ impl Preferences {
     }
 }
 
+/// Why a preference could not be changed: the change was refused, or the
+/// `preferences` row could not be read or written.
 #[derive(Debug, thiserror::Error)]
-pub enum ConfigError {
+pub enum PreferencesError {
     #[error("invalid configuration: {0}")]
-    Config(String),
-    #[error("configuration file: {0}")]
-    Io(#[from] std::io::Error),
-    #[error(transparent)]
-    File(#[from] coven::FileError),
-    #[error(transparent)]
-    Stores(#[from] coven::StoreLayoutError),
-    #[error(transparent)]
-    Storage(#[from] coven::StorageError),
+    Invalid(String),
     /// The preferences row could not be read or written.
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
 }
 
-impl ConfigError {
+impl PreferencesError {
     /// The class the person is shown: a row that can't be read or written
     /// is the database's failure, not a setting to fix.
     pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
         match self {
-            Self::Config(_) | Self::Io(_) | Self::File(_) | Self::Stores(_) | Self::Storage(_) => {
-                crate::diagnostics::UiErrorCategory::Config
-            }
+            Self::Invalid(_) => crate::diagnostics::UiErrorCategory::Config,
             Self::Database(_) => crate::diagnostics::UiErrorCategory::Database,
         }
     }
@@ -367,32 +333,6 @@ impl Default for Preferences {
     }
 }
 
-/// A store discovered through coven, with its current committed name, or
-/// while a replacement of this device's copy is unfinished, the name the new
-/// copy loaded.
-#[derive(Clone, Debug)]
-pub struct LibraryInfo {
-    pub id: String,
-    pub name: String,
-    pub path: PathBuf,
-    pub is_active: bool,
-    pub state: LibraryState,
-}
-
-/// Whether a library on this device opens, and where it is stored.
-#[derive(Clone, Debug)]
-pub enum LibraryState {
-    /// It opens: stored at its cloud home, or on this device only (`None`).
-    Openable(Option<StorageConfig>),
-    /// Its storage settings can't be read, which keeps it from opening.
-    Unreadable(crate::diagnostics::UiError),
-    /// A reset or a restore of this device's copy put the new copy in place
-    /// of the old one but stopped before it finished. The library opens once
-    /// the call named here runs again and finishes it; coven refuses the
-    /// other call.
-    ReplacementUnfinished(coven::ReplacedBy),
-}
-
 /// This device's preferences for an open library, with the library they
 /// belong to and bae's directory for it, as the settings screens read them.
 /// Store names, device identity and storage settings are owned and read by
@@ -404,13 +344,6 @@ pub struct Config {
     pub prefs: Preferences,
 }
 
-/// The library a registered id names: a UUID, never a path.
-pub fn parse_library_id(library_id: &str) -> Result<coven::StoreId, ConfigError> {
-    Ok(coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(|error| {
-        ConfigError::Config(format!("invalid library id {library_id}: {error}"))
-    })?))
-}
-
 impl Config {
     /// The default preferences for `store_id`, kept in `library_path`, for
     /// tests that build a value without a library.
@@ -418,63 +351,8 @@ impl Config {
     pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
         Self { store_id, library_path: library_path.into(), prefs: Preferences::default() }
     }
-
-    pub async fn discover_libraries(app_dir: &AppDir) -> Result<Vec<LibraryInfo>, ConfigError> {
-        let active_id = Self::active_library_id(app_dir)?;
-        let layout = app_dir.store_layout();
-        let mut libraries = Vec::new();
-        for store in layout.stores().await? {
-            let state = match store.unfinished_replacement {
-                // Whatever its settings say, only finishing the call opens it.
-                Some(by) => LibraryState::ReplacementUnfinished(by),
-                None => match coven::Coven::storage_config(&layout.store_dir(&store.id)).await {
-                    Ok(storage) => LibraryState::Openable(storage),
-                    Err(error) => {
-                        tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
-                        LibraryState::Unreadable(crate::diagnostics::UiError::diagnostic(
-                            crate::diagnostics::cloud_home_category(&error),
-                            format_args!("Cloud home error: {error}"),
-                        ))
-                    }
-                },
-            };
-            let id = store.id.to_string();
-            libraries.push(LibraryInfo {
-                is_active: active_id.as_deref() == Some(id.as_str()),
-                path: app_dir.registered_library(&id),
-                id,
-                name: store.name,
-                state,
-            });
-        }
-        libraries.sort_by(|a, b| b.is_active.cmp(&a.is_active).then_with(|| a.name.cmp(&b.name)));
-        Ok(libraries)
-    }
-
-    pub fn active_library_id(app_dir: &AppDir) -> Result<Option<String>, ConfigError> {
-        let pointer_path = app_dir.active_library_pointer();
-        let Some(content) = read_optional_file(&pointer_path)? else {
-            return Ok(None);
-        };
-        let id = content.trim();
-        let parsed = uuid::Uuid::parse_str(id)
-            .map_err(|error| ConfigError::Config(format!("{}: {error}", pointer_path.display())))?;
-        Ok(Some(parsed.to_string()))
-    }
-}
-
-fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(Some(content)),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        // Keep the path in the error: "Access is denied" without the file it
-        // was denied on is undiagnosable from a user report.
-        Err(e) => {
-            Err(ConfigError::Io(std::io::Error::new(e.kind(), format!("{}: {e}", path.display()))))
-        }
-    }
 }
 
 #[cfg(test)]
-#[path = "config_tests.rs"]
+#[path = "preferences_tests.rs"]
 mod tests;
