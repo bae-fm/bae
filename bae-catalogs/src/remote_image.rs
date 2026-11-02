@@ -2,7 +2,7 @@
 //! behind each cover with its downscaled copies, and the bounded cache every
 //! surface reads those images through.
 
-use crate::catalog::Catalog;
+use crate::catalog::{Catalog, LookupCatalog};
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
 use bae_util::retry::{
@@ -220,7 +220,7 @@ impl RemoteCover {
             .collect();
         Self {
             image: RemoteImageSet::with_copies(front, downscaled),
-            label: label(Catalog::MusicBrainz.cover_source_label()),
+            label: label(LookupCatalog::MusicBrainz.cover_source_label()),
             source: Catalog::MusicBrainz,
             standing: CoverStanding::Unstated,
         }

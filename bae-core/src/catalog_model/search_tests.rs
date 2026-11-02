@@ -350,7 +350,7 @@ fn discogs_search_result_carries_remote_cover_pair() {
                     max_edge: 150,
                 }],
             ),
-            label: Catalog::Discogs.cover_source_label().to_string(),
+            label: LookupCatalog::Discogs.cover_source_label().to_string(),
             source: Catalog::Discogs,
             standing: bae_catalogs::remote_image::CoverStanding::Stated,
         })

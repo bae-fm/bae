@@ -691,7 +691,7 @@ async fn prepare(
 ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_prepared_release(release_ref).await? {
         let discogs_configured = library_manager
-            .can_fetch_releases_from(bae_catalogs::catalog::Catalog::Discogs)
+            .can_fetch_releases_from(bae_catalogs::catalog::LookupCatalog::Discogs)
             .await?;
         if !stored.stored.fetch_could_add(depth, discogs_configured) {
             return Ok(stored);

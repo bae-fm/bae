@@ -1,5 +1,5 @@
 use super::*;
-use crate::catalog::Catalog;
+use crate::catalog::{Catalog, LookupCatalog};
 use crate::discogs::documents::parse_discogs_master_covers;
 use crate::remote_image::{DownscaledCopy, RemoteImageSet};
 use std::io::{Read, Write};
@@ -74,7 +74,7 @@ fn search_result_remote_cover_uses_thumb_as_cover_when_cover_image_is_absent() {
         cover.image,
         RemoteImageSet::original("https://discogs.example/thumb.jpg".to_string())
     );
-    assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
+    assert_eq!(cover.label, LookupCatalog::Discogs.cover_source_label());
     assert_eq!(cover.source, Catalog::Discogs);
 }
 
@@ -88,7 +88,7 @@ fn search_result_remote_cover_reads_the_cover_everywhere_when_thumb_is_absent() 
         cover.image,
         RemoteImageSet::original("https://discogs.example/full.jpg".to_string())
     );
-    assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
+    assert_eq!(cover.label, LookupCatalog::Discogs.cover_source_label());
     assert_eq!(cover.source, Catalog::Discogs);
 }
 

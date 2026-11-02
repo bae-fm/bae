@@ -333,14 +333,13 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn can_fetch_releases_from(
         &self,
-        catalog: bae_catalogs::catalog::Catalog,
+        catalog: bae_catalogs::catalog::LookupCatalog,
     ) -> Result<bool, LibraryError> {
         match catalog {
-            bae_catalogs::catalog::Catalog::MusicBrainz => Ok(true),
-            bae_catalogs::catalog::Catalog::Discogs => {
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz => Ok(true),
+            bae_catalogs::catalog::LookupCatalog::Discogs => {
                 Ok(self.catalog_session().await?.asks_discogs())
             }
-            other => unreachable!("nothing fetches releases from {}", other.as_str()),
         }
     }
 
