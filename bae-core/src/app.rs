@@ -165,11 +165,7 @@ where
         restore_playback,
         audio_focus,
         diagnostics,
-        crate::library::manager::LibraryOpening::Registered {
-            builder,
-            store,
-            on_progress: Box::new(on_open_progress),
-        },
+        LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
     )
 }
@@ -198,7 +194,7 @@ where
         restore_playback,
         audio_focus,
         diagnostics,
-        crate::library::manager::LibraryOpening::Open(handle),
+        LibraryOpening::Open(handle),
         compose,
     )
 }
@@ -238,13 +234,44 @@ where
         restore_playback,
         audio_focus,
         diagnostics,
-        crate::library::manager::LibraryOpening::Registered {
-            builder,
-            store,
-            on_progress: Box::new(on_open_progress),
-        },
+        LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
     )
+}
+
+/// Where an open of a library reports each step it runs, with how much of
+/// it is done: rebuilding indexes, then migrating. Most opens run neither.
+type OpenProgressReport = Box<dyn Fn(coven::Progress<coven::OpenStep>) + Send>;
+
+/// Either open an existing store or retain a handle returned by creation or restore.
+enum LibraryOpening {
+    /// Open the registered store `store`, reporting the open's steps to
+    /// `on_progress`.
+    Registered {
+        builder: coven::CovenBuilder,
+        store: coven::StoreId,
+        on_progress: OpenProgressReport,
+    },
+    Open(coven::CovenHandle),
+}
+
+/// The library's store as `opening` finds it: the registered store opened
+/// through coven's top-level builder, or the handle already open.
+async fn open_store(
+    opening: LibraryOpening,
+    clock: ClockRef,
+    ids: IdSourceRef,
+) -> Result<crate::db::Database, crate::db::DbError> {
+    let handle = match opening {
+        LibraryOpening::Registered { builder, store, on_progress } => {
+            crate::db::configure_store(builder)
+                .clock(clock.clone())
+                .open(store, on_progress)
+                .await?
+        }
+        LibraryOpening::Open(handle) => handle,
+    };
+    Ok(crate::db::Database::from_handle(handle, clock, ids))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -279,7 +306,7 @@ fn bootstrap_opening<T, F>(
     audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
-    builder: crate::library::manager::LibraryOpening,
+    builder: LibraryOpening,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -329,7 +356,7 @@ fn bootstrap_inner<T, F>(
     audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
-    builder: crate::library::manager::LibraryOpening,
+    builder: LibraryOpening,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -374,20 +401,24 @@ where
 
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
-            runtime.block_on(crate::library::LibraryManager::open(
-                app_dir.clone(),
-                Arc::clone(&clock),
-                ids,
-                diagnostics.clone(),
-                runtime.handle().clone(),
-                builder,
-                bae_catalogs::remote_image::RemoteImageCache::new(
-                    &app_dir.registered_library(&library_id),
-                    http,
-                ),
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                providers,
-            ))
+            runtime.block_on(async {
+                let database = open_store(builder, Arc::clone(&clock), ids.clone()).await?;
+                crate::library::LibraryManager::open(
+                    database,
+                    app_dir.clone(),
+                    Arc::clone(&clock),
+                    ids,
+                    diagnostics.clone(),
+                    runtime.handle().clone(),
+                    bae_catalogs::remote_image::RemoteImageCache::new(
+                        &app_dir.registered_library(&library_id),
+                        http,
+                    ),
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    providers,
+                )
+                .await
+            })
         })
         .map_err(classify_open_error)?;
 
@@ -625,7 +656,7 @@ mod tests {
             false,
             crate::playback::AudioFocus::Unshared,
             crate::diagnostics::Diagnostics::noop(),
-            crate::library::manager::LibraryOpening::Open(handle.clone()),
+            super::LibraryOpening::Open(handle.clone()),
             |_services, _runtime| -> Result<(), BootstrapError> {
                 unreachable!("the bootstrap fails before it composes an owner")
             },

@@ -1,21 +1,5 @@
 use super::*;
 
-/// Where an open of a library reports each step it runs, with how much of
-/// it is done: rebuilding indexes, then migrating. Most opens run neither.
-pub type OpenProgressReport = Box<dyn Fn(coven::Progress<coven::OpenStep>) + Send>;
-
-/// Either open an existing store or retain a handle returned by creation or restore.
-pub enum LibraryOpening {
-    /// Open the registered store `store`, reporting the open's steps to
-    /// `on_progress`.
-    Registered {
-        builder: coven::CovenBuilder,
-        store: coven::StoreId,
-        on_progress: OpenProgressReport,
-    },
-    Open(coven::CovenHandle),
-}
-
 /// A subscription opened while its library closes, from a task the close is
 /// ending, has nothing left to read.
 fn subscription_unstarted(error: &LibraryError) {
@@ -45,29 +29,18 @@ impl BackgroundTasks {
 }
 
 impl LibraryManager {
-    /// Open coven through the top-level builder and create the library manager
-    /// over the resulting handle, running its file transfers as this device's
-    /// preferences for it say.
+    /// Create the library manager over the library's opened store, running
+    /// its file transfers as this device's preferences for it say.
     pub async fn open(
+        database: Database,
         app_dir: crate::config::AppDir,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        opening: LibraryOpening,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] providers: crate::catalog_model::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
-        let handle = match opening {
-            LibraryOpening::Registered { builder, store, on_progress } => {
-                crate::db::configure_store(builder)
-                    .clock(clock.clone())
-                    .open(store, on_progress)
-                    .await?
-            }
-            LibraryOpening::Open(handle) => handle,
-        };
-        let database = Database::from_handle(handle, clock.clone(), ids.clone());
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
         database.set_transfer_limits(database.preferences().await?.transfer_limits());

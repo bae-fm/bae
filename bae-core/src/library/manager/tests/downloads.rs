@@ -335,12 +335,12 @@ async fn opening_a_library_empties_its_transfer_queues() {
     left.set_release_queue_paused::<()>(true).await.unwrap();
 
     let manager = LibraryManager::open(
+        Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),
         app_dir,
         clock,
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::library::LibraryOpening::Open(handle),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::catalog_model::providers::Providers::offline(),
     )

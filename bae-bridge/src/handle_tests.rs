@@ -143,12 +143,16 @@ pub(super) fn fresh_test_library(
     let manager =
         runtime
             .block_on(bae_core::library::LibraryManager::open(
+                bae_core::db::Database::from_handle(
+                    handle,
+                    Arc::new(coven::SystemClock),
+                    Arc::new(coven::UuidIds),
+                ),
                 app_dir,
                 Arc::new(coven::SystemClock),
                 Arc::new(coven::UuidIds),
                 bae_core::diagnostics::Diagnostics::noop(),
                 runtime.handle().clone(),
-                bae_core::library::LibraryOpening::Open(handle),
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
                     bae_util::http::Http::for_test(),
                 ),
