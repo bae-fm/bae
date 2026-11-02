@@ -1,34 +1,86 @@
 //! Release pins restore their previous state if downloading fails or is cancelled.
 use super::*;
 
-/// Of the files `sizes` names, by release file id with its coven file and
-/// plaintext size, the bytes a pin holds: each file kept whole, each file
-/// whose download for this pin has ended (`fetched`: coven commits the
-/// pin's files together once every download is whole, so a fetched file
-/// waits whole for that write), and of each file downloading to be kept,
-/// the share of its size its object has moved as `moved` tells it. Counting
-/// each file's own share keeps the bytes moving as a file arrives, where the
-/// cache's coverage holds still until a file is kept.
-fn pinned_bytes(
-    sizes: &std::collections::BTreeMap<String, (coven::FileId, u64)>,
-    pins: &std::collections::BTreeMap<String, crate::db::DbFilePin>,
-    moved: &std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
-    fetched: &std::collections::BTreeSet<coven::FileId>,
-) -> u64 {
-    sizes
-        .iter()
-        .map(|(id, (file, size))| match pins.get(id) {
-            Some(pin) if pin.kept => *size,
-            _ if fetched.contains(file) => *size,
-            Some(crate::db::DbFilePin { downloading: Some(file), .. }) => {
-                moved.get(file).map_or(0, |progress| {
-                    (*size as f64 * crate::library::file_transfers::fraction(*progress)) as u64
-                })
+/// What a pin has heard of its release's files, from coven's download watch
+/// and from its own reads of the release's pins, which together say how many
+/// of the release's bytes the pin holds.
+#[derive(Default)]
+struct PinCount {
+    /// How far each file being downloaded has got, as the watch last told it.
+    moved: std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
+    /// The release's files whose download for this pin has ended: coven ends
+    /// a download only once its file is whole, and commits the pin's files
+    /// together once every download is, so each waits whole for that write.
+    fetched: std::collections::BTreeSet<coven::FileId>,
+    /// Where each file stood at the last read of the pins; `None` until the
+    /// first.
+    read: Option<std::collections::BTreeMap<String, crate::db::DbFilePin>>,
+}
+
+impl PinCount {
+    /// Take what the watch told, and say whether a download ended or the
+    /// watch started over, after which the pins are read again. A share that
+    /// only started or moved needs no read: until the pins say the file
+    /// downloads it counts nothing, and after, its share only grows.
+    fn heard(&mut self, changes: Vec<coven::TransferChange>) -> bool {
+        let ended =
+            changes.iter().any(|change| !matches!(change, coven::TransferChange::Updated { .. }));
+        let before: Vec<coven::FileId> = self.moved.keys().copied().collect();
+        for change in &changes {
+            if let coven::TransferChange::Removed { file } = change {
+                self.fetched.insert(*file);
             }
-            _ => 0,
-        })
-        .try_fold(0u64, |total, bytes| total.checked_add(bytes))
-        .expect("a release's pinned bytes fit its total")
+        }
+        crate::library::file_transfers::apply(&mut self.moved, changes);
+        self.fetched.extend(before.into_iter().filter(|file| !self.moved.contains_key(file)));
+        ended
+    }
+
+    /// Take a read of the release's pins. The pins and the watch each say
+    /// when a download ends, in either order: a file the last read showed
+    /// downloading that this one shows neither downloading nor kept has
+    /// ended its download whole, whether or not the watch has said so yet.
+    fn read(&mut self, pins: std::collections::BTreeMap<String, crate::db::DbFilePin>) {
+        if let Some(last) = &self.read {
+            for (id, pin) in last {
+                let Some(file) = pin.downloading else { continue };
+                if pins.get(id).is_some_and(|now| !now.kept && now.downloading.is_none()) {
+                    self.fetched.insert(file);
+                }
+            }
+        }
+        self.read = Some(pins);
+    }
+
+    /// Of the files `sizes` names, by release file id with its coven file
+    /// and plaintext size, the bytes the pin holds: each file kept or
+    /// fetched whole, and of each file downloading to be kept, the share of
+    /// its size its object has moved. Counting each file's own share keeps
+    /// the bytes moving as a file arrives, where the cache's coverage holds
+    /// still until a file is kept. `None` before the pins were first read.
+    fn bytes(
+        &self,
+        sizes: &std::collections::BTreeMap<String, (coven::FileId, u64)>,
+    ) -> Option<u64> {
+        let pins = self.read.as_ref()?;
+        Some(
+            sizes
+                .iter()
+                .map(|(id, (file, size))| match pins.get(id) {
+                    Some(pin) if pin.kept => *size,
+                    _ if self.fetched.contains(file) => *size,
+                    Some(crate::db::DbFilePin { downloading: Some(file), .. }) => {
+                        self.moved.get(file).map_or(0, |progress| {
+                            (*size as f64 * crate::library::file_transfers::fraction(*progress))
+                                as u64
+                        })
+                    }
+                    _ => 0,
+                })
+                .try_fold(0u64, |total, bytes| total.checked_add(bytes))
+                .expect("a release's pinned bytes fit its total"),
+        )
+    }
 }
 
 impl LibraryManager {
@@ -84,16 +136,7 @@ impl LibraryManager {
                 };
                 let mut pins = pins;
                 let mut transfers = manager.database.subscribe_download_file_transfers();
-                // How far each file being downloaded has got, as the watch
-                // last told it.
-                let mut moved = std::collections::BTreeMap::new();
-                // The release's files whose download for this pin has ended:
-                // each waits whole for the write that commits the pin.
-                let mut fetched = std::collections::BTreeSet::new();
-                // Where each file stands, read after the watch's first word
-                // and after each download it told ended; `None` until first
-                // read.
-                let mut read = None;
+                let mut count = PinCount::default();
                 let pin = manager.database.pin(&files);
                 tokio::pin!(pin);
                 let mut rate: Option<crate::library::download_snapshot::DownloadRate> = None;
@@ -113,39 +156,16 @@ impl LibraryManager {
                         }
                         changes = transfers.next() => {
                             let changes = changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?;
-                            // coven ends a download only once its file is
-                            // whole and waits for the pin's write, so a file
-                            // of the release whose download ended counts
-                            // whole, and a read after the end sees it no
-                            // longer downloading. A share that only started
-                            // or moved needs no read: until the pins say the
-                            // file downloads it counts nothing, and after,
-                            // its share only grows.
-                            let ended = changes
-                                .iter()
-                                .any(|change| !matches!(change, coven::TransferChange::Updated { .. }));
-                            let before: Vec<coven::FileId> = moved.keys().copied().collect();
-                            for change in &changes {
-                                if let coven::TransferChange::Removed { file } = change {
-                                    fetched.insert(*file);
-                                }
-                            }
-                            crate::library::file_transfers::apply(&mut moved, changes);
-                            fetched.extend(before.into_iter().filter(|file| !moved.contains_key(file)));
-                            (false, ended)
+                            (false, count.heard(changes))
                         }
                     };
                     if reread {
-                        read = Some(manager.database.release_file_pins(&release).await?);
+                        count.read(manager.database.release_file_pins(&release).await?);
                     }
-                    let Some(read) = &read else {
+                    let Some(bytes) = count.bytes(&sizes) else {
                         continue;
                     };
-                    let next = crate::library::DownloadTransferProgress::new(
-                        &release,
-                        pinned_bytes(&sizes, read, &moved, &fetched),
-                        total,
-                    )?;
+                    let next = crate::library::DownloadTransferProgress::new(&release, bytes, total)?;
                     let now = manager.clock.now();
                     let next = rate
                         .get_or_insert_with(|| crate::library::download_snapshot::DownloadRate::begin(now, next.bytes_done))
@@ -191,13 +211,17 @@ impl LibraryManager {
 }
 
 #[cfg(test)]
-mod pinned_bytes_tests {
-    use super::pinned_bytes;
+mod pin_count_tests {
+    use super::PinCount;
     use crate::db::DbFilePin;
     use std::collections::BTreeMap;
 
     fn file(n: u128) -> coven::FileId {
         coven::FileId(uuid::Uuid::from_u128(n))
+    }
+
+    fn pin(kept: bool, downloading: Option<coven::FileId>) -> DbFilePin {
+        DbFilePin { kept, downloading }
     }
 
     /// A kept file counts its whole size, as does a file whose download
@@ -215,22 +239,66 @@ mod pinned_bytes_tests {
         ]
         .into_iter()
         .collect();
-        let pin = |kept, downloading| DbFilePin { kept, downloading };
-        let pins: BTreeMap<String, DbFilePin> = [
-            ("kept".to_string(), pin(true, None)),
-            ("fetched".to_string(), pin(false, None)),
-            ("downloading".to_string(), pin(false, Some(file(1)))),
-            ("untold".to_string(), pin(false, Some(file(2)))),
-            ("waiting".to_string(), pin(false, None)),
-        ]
-        .into_iter()
-        .collect();
-        let moved =
-            [(file(1), coven::TransferProgress { bytes_transferred: 110, bytes_total: 440 })]
+        let mut count = PinCount::default();
+        assert_eq!(count.bytes(&sizes), None, "nothing is counted before the pins are read");
+        count.read(
+            [
+                ("kept".to_string(), pin(true, None)),
+                ("fetched".to_string(), pin(false, None)),
+                ("downloading".to_string(), pin(false, Some(file(1)))),
+                ("untold".to_string(), pin(false, Some(file(2)))),
+                ("waiting".to_string(), pin(false, None)),
+            ]
+            .into_iter()
+            .collect(),
+        );
+        count.heard(vec![
+            coven::TransferChange::Updated {
+                file: file(1),
+                progress: coven::TransferProgress { bytes_transferred: 110, bytes_total: 440 },
+            },
+            coven::TransferChange::Updated {
+                file: file(11),
+                progress: coven::TransferProgress { bytes_transferred: 1, bytes_total: 2 },
+            },
+        ]);
+        count.heard(vec![coven::TransferChange::Removed { file: file(11) }]);
+
+        assert_eq!(count.bytes(&sizes), Some(1_000 + 2_000 + 100));
+    }
+
+    /// A file whose download the pins say ended before the watch does keeps
+    /// counting: its bytes never fall back while the watch catches up.
+    #[test]
+    fn a_download_the_pins_end_before_the_watch_keeps_its_bytes() {
+        let sizes: BTreeMap<String, (coven::FileId, u64)> =
+            [("a".to_string(), (file(1), 400)), ("b".to_string(), (file(2), 400))]
                 .into_iter()
                 .collect();
-        let fetched = [file(11)].into_iter().collect();
+        let mut count = PinCount::default();
+        count.read(
+            [
+                ("a".to_string(), pin(false, Some(file(1)))),
+                ("b".to_string(), pin(false, Some(file(2)))),
+            ]
+            .into_iter()
+            .collect(),
+        );
+        count.heard(vec![coven::TransferChange::Updated {
+            file: file(1),
+            progress: coven::TransferProgress { bytes_transferred: 440, bytes_total: 440 },
+        }]);
+        assert_eq!(count.bytes(&sizes), Some(400));
 
-        assert_eq!(pinned_bytes(&sizes, &pins, &moved, &fetched), 1_000 + 2_000 + 100);
+        // The download of `a` ended; `b` still downloads, so neither is kept.
+        count.read(
+            [("a".to_string(), pin(false, None)), ("b".to_string(), pin(false, Some(file(2))))]
+                .into_iter()
+                .collect(),
+        );
+        assert_eq!(count.bytes(&sizes), Some(400));
+        // Then the watch says so too.
+        assert!(count.heard(vec![coven::TransferChange::Removed { file: file(1) }]));
+        assert_eq!(count.bytes(&sizes), Some(400));
     }
 }
