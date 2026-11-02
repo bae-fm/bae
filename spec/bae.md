@@ -2744,8 +2744,11 @@ its control says so in core's words for that transfer.
   runs the next cycle now when already connected. A start that breaks on a
   bug is reported as one and shows on the line the same way. Why the start
   failed is a row of this device's (`sync_start_failure`), kept until a
-  reconnect gets under way and emptied as the library opens, since no attempt
-  outlives the process that made it. The row holds the failure's class, and
+  start gets under way, whether a reconnect's or that of a storage setup such
+  as signing in again, and emptied as the library opens, since no attempt
+  outlives the process that made it. The write that changes coven's status to
+  one sync shows while it runs, or to a failure coven names itself, deletes
+  the row, so the line never shows a failed start beside sync that runs. The row holds the failure's class, and
   for a storage failure coven's reason with what that reason names (the
   access a sign-in lacks, a size and its limit), each in a column of its own,
   so the line words it as it words the same failure from a pass. A start

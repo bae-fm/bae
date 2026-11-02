@@ -493,6 +493,45 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     manager.close().await.unwrap();
 }
 
+/// A device whose start failed, here on a keychain locked for the session
+/// while its storage credentials were gone, signs in to its storage again:
+/// the setup starts sync, and the failed start stops showing as the status
+/// says sync runs, never beside it.
+#[tokio::test]
+async fn a_storage_setup_ends_the_failed_start_before_it() {
+    let (manager, temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let manager = reopen_without_credentials(manager, &temp).await;
+    manager.start().unwrap();
+    manager.installation.fail_next_keychain_operation();
+    manager.attach_and_start_sync_at_startup().await;
+    let failed = manager.sync_status().await.unwrap();
+    assert!(matches!(failed.status, coven::SyncStatus::Disconnected), "{failed:?}");
+    assert!(failed.error.is_some(), "the failed start is recorded: {failed:?}");
+
+    let mut values = manager.subscribe_sync_status();
+    manager
+        .database
+        .setup_s3_storage(
+            manager.storage.config(),
+            "Test Device",
+            "test-key".into(),
+            coven::SecretText::new("test-secret".into()),
+            &|_| (),
+        )
+        .await
+        .unwrap();
+    let synced = crate::followed::value_matching(&mut values, |value| {
+        let running =
+            !matches!(value.status, coven::SyncStatus::Stopped | coven::SyncStatus::Disconnected);
+        assert!(!running || value.error.is_none(), "a running sync shows a failed start: {value:?}");
+        matches!(value.status, coven::SyncStatus::Synced { .. })
+    })
+    .await;
+    assert_eq!(synced.indicator(), Some(SyncIndicator::Synced), "{synced:?}");
+    manager.close().await.unwrap();
+}
+
 /// Work asked of a closed library starts nothing, and the caller hears so
 /// rather than a log line: starting sync after close is refused.
 #[tokio::test]

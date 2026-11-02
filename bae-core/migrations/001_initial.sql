@@ -6342,7 +6342,8 @@ CREATE TABLE admin_operations (
 -- Why this device's last attempt to start sync failed, while it stands: a
 -- start that failed before coven's loop ran, such as a keychain locked for
 -- the session, which coven's own status can't name. Written when starting
--- fails, deleted when a start or a reconnect gets under way. The sync status
+-- fails; deleted when a reconnect's start returns, and by the trigger below
+-- as any start gets under way, a storage setup's among them. The sync status
 -- shows it beside coven's. Emptied as the library opens: no attempt outlives
 -- the process that made it. Never synced.
 CREATE TABLE IF NOT EXISTS sync_start_failure (
@@ -6393,3 +6394,15 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
     )),
     CHECK ((limit_bytes IS NOT NULL) = (size_bytes IS NOT NULL))
 ) STRICT;
+
+-- A start that got under way ends the failed start before it, in the
+-- transaction that writes coven's status: any status but `stopped` and
+-- `disconnected` is one coven writes as its loop runs, or a failure it names
+-- itself, such as a storage setup whose loop couldn't start. A setup starts
+-- sync inside coven, so no start of bae's returns to clear the row, and a
+-- status that says sync runs never shows beside a start that failed before.
+CREATE TRIGGER IF NOT EXISTS sync_start_failure_ended AFTER UPDATE OF state ON coven_sync_status
+WHEN NEW.state NOT IN ('stopped', 'disconnected')
+BEGIN
+    DELETE FROM sync_start_failure;
+END;
