@@ -157,7 +157,7 @@ impl AppServices {
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
     ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let identification = crate::import::identification::start(import.clone(), manager.clone());
+        let identification = import.start_identification_queue();
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,

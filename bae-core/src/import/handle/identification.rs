@@ -1,10 +1,21 @@
-//! The identification a handle runs for its candidates: starting and ending
-//! a run of the identify driver with the extraction feeding it, and the
-//! runtime marks the identification queue writes around each run.
+//! The identification a handle runs for its candidates: the queue that
+//! decides which candidates are identified, starting and ending a run of the
+//! identify driver with the extraction feeding it, and the runtime marks the
+//! identification queue writes around each run.
 
 use super::*;
 
 impl ImportServiceHandle {
+    /// Start the identification queue over this import service. There is
+    /// one per service, since it takes the service's event feed.
+    pub fn start_identification_queue(&self) -> crate::import::IdentificationHandle {
+        crate::import::identification::start(
+            self.clone(),
+            self.database.clone(),
+            self.diagnostics.clone(),
+        )
+    }
+
     /// The id of a run about to start. Separate from
     /// [`Self::start_identification`] so a consumer can subscribe to this
     /// handle's bus knowing which run it is waiting for before that run's

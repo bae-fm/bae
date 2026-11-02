@@ -72,7 +72,7 @@ pub(super) async fn settled_or_failed(
         identity,
         representative_key,
         run,
-        settled: Settled::WriteFailed { error: context.library_manager.bug(failed).to_string() },
+        settled: Settled::WriteFailed { error: context.diagnostics.bug(failed).to_string() },
     })
 }
 
@@ -205,10 +205,11 @@ async fn lead_metadata(
     partners: Vec<crate::catalog_model::source_release::SourceRelease>,
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
-    let current = match context
-        .library_manager
-        .load_import_candidate_preparation(&candidate.files.content_hash())
-        .await
+    let current = match crate::import::preparation::import_preparation(
+        &context.database,
+        &candidate.files.content_hash(),
+    )
+    .await
     {
         Ok(Some(current)) => current,
         Ok(None) => {

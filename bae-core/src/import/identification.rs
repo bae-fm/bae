@@ -33,7 +33,6 @@ use crate::identify::{IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::{Admission, CandidateFiles};
 use crate::import::extraction::ExtractionSource;
 use crate::import::IdentifyRunId;
-use crate::library::LibraryManager;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -59,7 +58,11 @@ const MAX_IN_FLIGHT: usize = 4;
 #[derive(Clone)]
 struct Context {
     import: ImportServiceHandle,
-    library_manager: LibraryManager,
+    /// The library's store, which the queue reads candidates' stored state
+    /// from.
+    database: crate::db::Database,
+    /// Where a bug in the queue's work is reported.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 /// What the handle asks the queue's loop for.
@@ -92,12 +95,17 @@ enum Drain {
     Every,
 }
 
-/// Start the identification queue over `import`. There is one per import
+/// Start the identification queue over `import`, reading the store
+/// `database` and reporting bugs to `diagnostics`. There is one per import
 /// service, since it takes the service's event feed.
-pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> IdentificationHandle {
+pub(crate) fn start(
+    import: ImportServiceHandle,
+    database: crate::db::Database,
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
-    let context = Context { import, library_manager };
+    let context = Context { import, database, diagnostics };
 
     let mut bus =
         context.import.take_event_feed().expect("one identification queue per import service");
@@ -121,7 +129,7 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
             // stops it, so its executor ends and what asks it after hears it
             // has stopped.
             if let Err(failed) = ran {
-                loop_context.library_manager.bug(failed);
+                loop_context.diagnostics.bug(failed);
                 loop_token.cancel();
                 loop_tasks.close();
             }

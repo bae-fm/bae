@@ -340,7 +340,11 @@ impl Fixture {
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
 
-        let context = Context { import: import.clone(), library_manager: manager.clone() };
+        let context = Context {
+            import: import.clone(),
+            database: database.clone(),
+            diagnostics: crate::diagnostics::Diagnostics::noop(),
+        };
         Fixture {
             manager,
             database,
@@ -356,7 +360,7 @@ impl Fixture {
 
     /// The running queue, started on first use.
     fn identification(&self) -> &IdentificationHandle {
-        self.identification.get_or_init(|| super::start(self.import.clone(), self.manager.clone()))
+        self.identification.get_or_init(|| self.import.start_identification_queue())
     }
 
     /// A candidate folder with two FLACs and a rip log, so the disc ID computes.

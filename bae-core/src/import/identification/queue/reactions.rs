@@ -248,7 +248,7 @@ async fn import_when_identified(
     import_asked: bool,
 ) {
     if !import_asked {
-        match context.library_manager.preferences().await {
+        match context.database.preferences().await {
             Ok(prefs) if prefs.identification.import_when_identified => {}
             Ok(_) => return,
             Err(error) => {

@@ -382,7 +382,7 @@ pub(super) fn record(
     written: Result<(), crate::library::LibraryError>,
 ) {
     if let Err(error) = written {
-        context.library_manager.report_bug(&format!("identification: {doing}"), &error);
+        context.diagnostics.report_bug(&format!("identification: {doing}"), &error);
     }
 }
 
@@ -454,7 +454,7 @@ pub(super) async fn run(
                 queue.cancel_every_run(context).await;
                 while let Some(result) = settling.join_next().await {
                     if let Err(error) = result {
-                        context.library_manager.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
+                        context.diagnostics.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
                     }
                 }
                 return;
@@ -507,7 +507,7 @@ pub(super) async fn run(
             Some(result) = settling.join_next() => match result {
                 Ok(done) => finish(context, &mut queue, done).await,
                 Err(error) => {
-                    context.library_manager.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
+                    context.diagnostics.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
                 }
             },
             event = bus.recv() => {
