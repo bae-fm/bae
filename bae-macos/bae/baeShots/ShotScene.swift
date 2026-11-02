@@ -92,6 +92,11 @@ struct ShotScene {
             ) {
                 AnyView(PreviewScenes.albumDetailMixedColumns())
             },
+            emptyStateWithoutKey(
+                "library-empty-no-key",
+                LibraryEmptyState(title: "No albums")
+            ),
+            emptyStateWithoutKey("import-empty-no-key", ImportEmptyState()),
             ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize)
             {
                 AnyView(PreviewScenes.libraryEmpty())
@@ -263,6 +268,37 @@ extension ShotScene {
             )
             .importPreviewEnvironment()
         )
+    }
+}
+
+extension ShotScene {
+    /// An empty state over an empty library with no usable Discogs key,
+    /// which offers Add Discogs Key.
+    fileprivate static func emptyStateWithoutKey(
+        _ id: String,
+        _ content: some View
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 600, height: 400)) {
+            let uiStore = UiStore()
+            return AnyView(
+                content
+                    .environment(uiStore)
+                    .environment(
+                        PreviewData.countedBrowseSession(
+                            albumCount: 0,
+                            uiStore: uiStore
+                        )
+                    )
+                    .environment(
+                        PreviewData.makeConfigStore(
+                            libraryFullWidth: false,
+                            discogsUsable: false
+                        )
+                    )
+                    .environment(SettingsNavigation())
+                    .windowBackground()
+            )
+        }
     }
 }
 

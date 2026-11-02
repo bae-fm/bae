@@ -23,11 +23,20 @@ struct AddDiscogsKeyButton: View {
             Button(
                 "Add \(bridgeCatalogName(catalog: .discogs)) Key..."
             ) {
-                settingsNavigation.open(
-                    .importing,
-                    present: { openSettings() }
+                Self.openKeySettings(
+                    navigation: settingsNavigation,
+                    openSettings: openSettings
                 )
             }
         }
+    }
+
+    /// What pressing the button does: open Settings on the Import pane,
+    /// where the key is entered.
+    static func openKeySettings(
+        navigation: SettingsNavigation,
+        openSettings: OpenSettingsWindowAction
+    ) {
+        navigation.open(.importing, present: { openSettings() })
     }
 }
