@@ -292,6 +292,7 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
     assert_eq!(rows.len(), 1);
     assert_eq!(cells(&rows[0]), vec![&LookupView::Queued, &LookupView::Queued]);
     assert!(matches!(run.catalog, CatalogStepView::Numbers { scanning: true, .. }));
+    assert!(run.reading_artwork());
 }
 
 /// Chosen catalog numbers are rows and the rest are tiles, one per number.
@@ -327,6 +328,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         panic!("numbers, got {:?}", run.catalog);
     };
     assert!(!scanning);
+    assert!(!run.reading_artwork());
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].value, "LBL-2");
     assert!(matches!(

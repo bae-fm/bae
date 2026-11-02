@@ -16,7 +16,6 @@ struct IdentifierBandWaitTests {
             providers: [.musicBrainz],
             discId: .reading,
             barcode: .rows(
-                scanning: true,
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
@@ -30,9 +29,10 @@ struct IdentifierBandWaitTests {
                     )
                 ]
             ),
-            catalog: .numbers(scanning: true, rows: [], candidates: []),
+            catalog: .numbers(rows: [], candidates: []),
             isrc: .absent,
-            search: .waiting(album: "Album Title", artist: "Artist Name")
+            search: .waiting(album: "Album Title", artist: "Artist Name"),
+            readingArtwork: true
         )
         let size = NSSize(width: 1_400, height: 120)
         try await SnapshotTestSupport.withHostedWindow(

@@ -707,7 +707,6 @@
                         )
                     ]),
                     barcode: .rows(
-                        scanning: false,
                         rows: [
                             BridgeSignalValueRow(
                                 value: "0123456789012",
@@ -721,7 +720,8 @@
                     ),
                     catalog: .noneFound,
                     isrc: .absent,
-                    search: .notNeeded
+                    search: .notNeeded,
+                    readingArtwork: false
                 ),
                 // The band's cells show both failures.
                 failureLines: [],

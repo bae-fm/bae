@@ -171,15 +171,16 @@ pub struct BridgeDiscIdRow {
     pub lookup: BridgeLookupState,
 }
 
-/// Mirrors `bae_core::identify::BarcodeStepView`.
+/// Mirrors `bae_core::identify::BarcodeStepView`, without its `scanning`,
+/// which crosses once for the run as `BridgeIdentifyRun::reading_artwork`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeBarcodeStep {
     /// No barcode source at all.
     Absent,
     /// There was a source and it held no code.
     NoCodes,
-    /// One row per code; while `scanning`, more may come.
-    Rows { scanning: bool, rows: Vec<BridgeSignalValueRow> },
+    /// One row per code.
+    Rows { rows: Vec<BridgeSignalValueRow> },
 }
 
 /// A catalog number the text offers that is not in effect. Mirrors
@@ -189,13 +190,12 @@ pub struct BridgeCatalogCandidate {
     pub value: String,
 }
 
-/// Mirrors `bae_core::identify::CatalogStepView`.
+/// Mirrors `bae_core::identify::CatalogStepView`, without its `scanning`,
+/// which crosses once for the run as `BridgeIdentifyRun::reading_artwork`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCatalogStep {
     NoneFound,
     Numbers {
-        /// Whether the artwork is still being read, so more may come.
-        scanning: bool,
         /// The numbers in effect — picked, then confirmed by a found
         /// release — each with its search, then the struck-out ones,
         /// `excluded`.
@@ -247,6 +247,9 @@ pub struct BridgeIdentifyRun {
     pub catalog: BridgeCatalogStep,
     pub isrc: BridgeIsrcStep,
     pub search: BridgeSearchStep,
+    /// Whether the artwork is still being read, so more barcodes or catalog
+    /// numbers may come.
+    pub reading_artwork: bool,
 }
 
 /// Mirrors `bae_core::signals::TextSignal`.

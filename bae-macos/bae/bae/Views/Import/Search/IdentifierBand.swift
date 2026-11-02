@@ -44,7 +44,7 @@ struct IdentifierBand: View {
                     isExpanded: $showsCatalogCandidates
                 )
             }
-            if isScanning {
+            if run.readingArtwork {
                 ScanningChip()
             }
         }
@@ -144,7 +144,7 @@ struct IdentifierBand: View {
         case .noCodes:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode on the artwork")
-        case .rows(_, let rows):
+        case .rows(let rows):
             ForEach(rows, id: \.value) { row in
                 Button {
                     onToggleLookup(.barcode(row.value))
@@ -183,7 +183,7 @@ struct IdentifierBand: View {
         case .noneFound:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("None found")
-        case .numbers(_, let rows, _):
+        case .numbers(let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
                     onToggleCatalogAgreement(row.value)
@@ -255,19 +255,10 @@ struct IdentifierBand: View {
 
     /// The numbers the folder offers that are not in effect.
     private var catalogCandidates: [BridgeCatalogCandidate] {
-        guard case .numbers(_, _, let candidates) = run.catalog else {
+        guard case .numbers(_, let candidates) = run.catalog else {
             return []
         }
         return candidates
-    }
-
-    /// Whether the artwork is still being read, so more chips may come.
-    private var isScanning: Bool {
-        if case .rows(scanning: true, rows: _) = run.barcode { return true }
-        if case .numbers(scanning: true, rows: _, candidates: _) = run.catalog {
-            return true
-        }
-        return false
     }
 }
 

@@ -184,14 +184,19 @@ impl BridgeDiscIdStep {
     }
 }
 
-mirror_enum! {
-    BridgeBarcodeStep = bae_core::identify::BarcodeStepView,
-    from_core: fn,
-    variants: {
-        Absent,
-        NoCodes,
-        Rows { scanning, rows: (each BridgeSignalValueRow) },
-    },
+impl BridgeBarcodeStep {
+    /// Not a copy: `scanning` crosses once for the run, as
+    /// `BridgeIdentifyRun::reading_artwork`.
+    fn from_core(step: bae_core::identify::BarcodeStepView) -> Self {
+        use bae_core::identify::BarcodeStepView;
+        match step {
+            BarcodeStepView::Absent => Self::Absent,
+            BarcodeStepView::NoCodes => Self::NoCodes,
+            BarcodeStepView::Rows { scanning: _, rows } => {
+                Self::Rows { rows: rows.into_iter().map(BridgeSignalValueRow::from_core).collect() }
+            }
+        }
+    }
 }
 
 mirror_struct! {
@@ -200,17 +205,19 @@ mirror_struct! {
     fields: { value },
 }
 
-mirror_enum! {
-    BridgeCatalogStep = bae_core::identify::CatalogStepView,
-    from_core: fn,
-    variants: {
-        NoneFound,
-        Numbers {
-            scanning,
-            rows: (each BridgeSignalValueRow),
-            candidates: (each BridgeCatalogCandidate),
-        },
-    },
+impl BridgeCatalogStep {
+    /// Not a copy: `scanning` crosses once for the run, as
+    /// `BridgeIdentifyRun::reading_artwork`.
+    fn from_core(step: bae_core::identify::CatalogStepView) -> Self {
+        use bae_core::identify::CatalogStepView;
+        match step {
+            CatalogStepView::NoneFound => Self::NoneFound,
+            CatalogStepView::Numbers { scanning: _, rows, candidates } => Self::Numbers {
+                rows: rows.into_iter().map(BridgeSignalValueRow::from_core).collect(),
+                candidates: candidates.into_iter().map(BridgeCatalogCandidate::from_core).collect(),
+            },
+        }
+    }
 }
 
 mirror_enum! {
@@ -238,6 +245,7 @@ impl BridgeIdentifyRun {
     /// The ledger, with the rate of the audio the run was over for its
     /// disc-ID step.
     fn from_core(run: bae_core::identify::IdentifyRunView, rate: Option<u32>) -> Self {
+        let reading_artwork = run.reading_artwork();
         let bae_core::identify::IdentifyRunView {
             providers,
             disc_id,
@@ -253,6 +261,7 @@ impl BridgeIdentifyRun {
             catalog: BridgeCatalogStep::from_core(catalog),
             isrc: BridgeIsrcStep::from_core(isrc),
             search: BridgeSearchStep::from_core(search),
+            reading_artwork,
         }
     }
 }
@@ -540,11 +549,22 @@ mod tests {
         }
     }
 
-    fn barcode_step(state: IdentifyState) -> BridgeBarcodeStep {
+    fn run_of(state: IdentifyState) -> BridgeIdentifyRun {
         match BridgeIdentifyState::from_core(state) {
-            BridgeIdentifyState::Triangulating { run, .. } => run.barcode,
+            BridgeIdentifyState::Triangulating { run, .. } => run,
             other => panic!("expected a run in flight, got {other:?}"),
         }
+    }
+
+    fn barcode_step(state: IdentifyState) -> BridgeBarcodeStep {
+        run_of(state).barcode
+    }
+
+    /// Whether the artwork is still being read crosses once, for the run.
+    #[test]
+    fn the_run_says_whether_the_artwork_is_still_being_read() {
+        assert!(run_of(in_flight(BarcodeProgress::Scanning)).reading_artwork);
+        assert!(!run_of(in_flight(BarcodeProgress::Lookups { codes: Vec::new() })).reading_artwork);
     }
 
     /// A code crosses as one row with one cell per provider, each its own.
@@ -564,10 +584,9 @@ mod tests {
                 ],
             }],
         }));
-        let BridgeBarcodeStep::Rows { scanning, rows } = step else {
+        let BridgeBarcodeStep::Rows { rows } = step else {
             panic!("a lookup in flight crosses as rows, got {step:?}");
         };
-        assert!(!scanning);
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].value, "0123456789012");
         assert!(!rows[0].excluded);
@@ -595,7 +614,7 @@ mod tests {
         };
         context.barcode.excluded = vec!["0123456789012".to_string()];
         let step = barcode_step(state);
-        let BridgeBarcodeStep::Rows { rows, .. } = step else {
+        let BridgeBarcodeStep::Rows { rows } = step else {
             panic!("a left-out code still crosses as a row, got {step:?}");
         };
         assert_eq!(rows.len(), 1);

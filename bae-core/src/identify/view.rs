@@ -168,6 +168,13 @@ pub struct IdentifyRunView {
 }
 
 impl IdentifyRunView {
+    /// Whether the artwork is still being read, so more barcodes or catalog
+    /// numbers may come.
+    pub fn reading_artwork(&self) -> bool {
+        matches!(self.barcode, BarcodeStepView::Rows { scanning: true, .. })
+            || matches!(self.catalog, CatalogStepView::Numbers { scanning: true, .. })
+    }
+
     /// Whether one of the ledger's cells shows `failure`: a lookup's cell
     /// that failed as it did. The lookup of an offered row's pressing and the
     /// fetches applying the release a run picked have no cell.
