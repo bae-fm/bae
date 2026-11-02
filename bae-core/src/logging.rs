@@ -40,21 +40,10 @@ impl LogSink {
     }
 }
 
-/// The log targets that are bae's own: every workspace crate the apps link,
-/// and coven, whose target also covers its `coven_*` crates (a directive
-/// matches every target it prefixes).
-const FIRST_PARTY_TARGETS: &[&str] = &[
-    "bae_automation",
-    "bae_bridge",
-    "bae_cast",
-    "bae_core",
-    "bae_desktop",
-    "bae_loc",
-    "bae_mcp",
-    "bae_mirror",
-    "bae_subsonic",
-    "coven",
-];
+/// The log targets that are bae's own: every workspace crate, all named
+/// `bae_*`, and coven, whose target also covers its `coven_*` crates (a
+/// directive matches every target it prefixes).
+const FIRST_PARTY_TARGETS: &[&str] = &["bae_", "coven"];
 
 /// The finest level a sink at `level` keeps of a dependency's lines when
 /// `RUST_LOG` is unset: no finer than `info`. A dependency's debug output is
@@ -175,6 +164,7 @@ mod tests {
     macro_rules! emit_probe_lines {
         () => {{
             tracing::debug!(target: "bae_core::import", "first-party debug");
+            tracing::debug!(target: "bae_catalogs::search", "first-party library debug");
             tracing::debug!(target: "coven_database::live_query", "coven debug");
             tracing::debug!(target: "sqlite3_parser::lexer", "dependency debug");
             tracing::info!(target: "sqlite3_parser::lexer", "dependency info");
@@ -224,8 +214,8 @@ mod tests {
         }
     }
 
-    /// A debug sink records bae's own debug lines and a dependency's info,
-    /// never a dependency's debug.
+    /// A debug sink records the debug lines of every bae crate and coven and
+    /// a dependency's info, never a dependency's debug.
     #[test]
     fn a_debug_sink_keeps_dependencies_at_info() {
         let kept = kept_lines(sink_filter(None, LevelFilter::DEBUG), || emit_probe_lines!());
@@ -234,6 +224,7 @@ mod tests {
             kept,
             vec![
                 "first-party debug".to_string(),
+                "first-party library debug".to_string(),
                 "coven debug".to_string(),
                 "dependency info".to_string(),
             ]
