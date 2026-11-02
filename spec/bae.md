@@ -2681,7 +2681,10 @@ is about another device's upload.
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
 the first: core signs in with the access the library's folder needs, then
-connects that location again under this device's name. For the second it
+connects that location again under this device's name. On a library in an S3
+bucket, *Sign In* asks for a new access key for that bucket instead, the same
+form Settings shows a device that lost its key, and connects the bucket again
+with it. For the second it
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
 the cloud, and its record offers *Cancel Upload*, which ends the move and

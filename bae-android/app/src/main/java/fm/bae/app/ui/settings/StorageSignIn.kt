@@ -88,14 +88,11 @@ internal fun StorageSignIn(
     error?.let { ErrorDetailDisclosure(it) }
     if (askingForKey && location is BridgeStorageLocation.S3) {
         S3KeyDialog(
-            onSignIn = { accessKeyId, secretAccessKey ->
+            location = location,
+            onSignIn = { config ->
                 askingForKey = false
                 signIn("sign in to S3 with a new access key") { deviceName, setup ->
-                    session.appHandle.saveSyncConfig(
-                        location.withKey(accessKeyId, secretAccessKey),
-                        deviceName,
-                        setup,
-                    )
+                    session.appHandle.saveSyncConfig(config, deviceName, setup)
                 }
             },
             onDismiss = { askingForKey = false },
@@ -103,10 +100,14 @@ internal fun StorageSignIn(
     }
 }
 
-/** A new access key for the library's S3 bucket. */
+/**
+ * A new access key for the library's S3 bucket at [location], handed to [onSignIn] as that location's connection with
+ * the key: for a device that lost its key, and for a pending record whose S3 key stopped working.
+ */
 @Composable
-private fun S3KeyDialog(
-    onSignIn: (accessKeyId: String, secretAccessKey: String) -> Unit,
+internal fun S3KeyDialog(
+    location: BridgeStorageLocation.S3,
+    onSignIn: (BridgeSaveSyncConfig) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -129,7 +130,7 @@ private fun S3KeyDialog(
         confirmButton = {
             TextButton(
                 enabled = accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty(),
-                onClick = { onSignIn(accessKeyId, secretAccessKey) },
+                onClick = { onSignIn(location.withKey(accessKeyId, secretAccessKey)) },
             ) {
                 Text(context.coreString("core.pending.action.sign_in"))
             }
