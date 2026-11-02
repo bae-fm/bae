@@ -1,4 +1,4 @@
-//! Release transfers and the paths bae writes a release's files at.
+//! Release transfers and the files of a release's output.
 //! Coven owns attached files, their storage locations and their cache.
-pub mod stored_name;
+pub mod output_file;
 pub mod transfer;

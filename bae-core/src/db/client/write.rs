@@ -125,7 +125,7 @@ pub(crate) fn insert_release_row(
     labels: &super::LabelWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     if let Some(folder) = &release.source_folder_name {
-        crate::storage::stored_name::folder_path(&release.id, folder)
+        crate::db::stored_name::folder_path(&release.id, folder)
             .map_err(|e| DbError::Message(e.to_string()))?;
     }
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
@@ -511,7 +511,7 @@ pub(crate) fn insert_release_file_row(
     file: &NewReleaseFile,
     coven_file: coven::FileId,
 ) -> Result<(), DbError> {
-    crate::storage::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
+    crate::db::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
         .map_err(|e| DbError::Message(e.to_string()))?;
     let source_audio_layout =
         file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {

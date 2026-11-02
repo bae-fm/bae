@@ -193,12 +193,9 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     let paths = files
         .iter()
         .map(|file| {
-            let path = crate::storage::stored_name::file_path(
-                &release.id,
-                &file.id,
-                &file.original_filename,
-            )
-            .unwrap();
+            let path =
+                crate::db::stored_name::file_path(&release.id, &file.id, &file.original_filename)
+                    .unwrap();
             (file.file, path)
         })
         .collect();

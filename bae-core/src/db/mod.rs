@@ -12,6 +12,7 @@ mod resolved_track_audio;
 pub(crate) use resolved_track_audio::TrackAudioMeta;
 pub use resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
 pub mod source_audio;
+pub mod stored_name;
 pub mod synced;
 pub(crate) mod watched_path;
 pub use watched_path::{RelativeFolder, WatchedPathError};

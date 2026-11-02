@@ -441,7 +441,7 @@ impl SaveService {
                 ExistingOutput::Replace => std::fs::File::create(&output_path)
                     .map_err(|e| format!("Failed to create track file: {e}"))?,
                 ExistingOutput::Refuse => {
-                    use crate::storage::stored_name::{create_new_file, CreateFileError};
+                    use crate::storage::output_file::{create_new_file, CreateFileError};
                     let name = Path::new(
                         output_path.file_name().expect("a track's output path names its file"),
                     );

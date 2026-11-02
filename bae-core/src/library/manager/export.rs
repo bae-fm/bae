@@ -34,13 +34,13 @@ impl LibraryManager {
 
     /// Copy one release file's verbatim bytes to the path its name in the
     /// release gives below `staging_dir`, each name written as coven writes it
-    /// (see [`crate::storage::stored_name`]). The name may name a subfolder
+    /// (see [`crate::db::stored_name`]). The name may name a subfolder
     /// (e.g. `CD1/CDImage.ape`), so its parent is created first. No per-file
     /// temp is needed: the whole staging directory is the atomic unit, renamed
     /// into place only once every file is written.
     ///
     /// The file is created new, never over one already there
-    /// ([`crate::storage::stored_name::create_new_file`]).
+    /// ([`crate::storage::output_file::create_new_file`]).
     ///
     /// The bytes stream a window at a time from coven's stream over the file
     /// (the user's own file, the local store, the cache, or the cloud), so a
@@ -51,12 +51,9 @@ impl LibraryManager {
         file: &DbFile,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let relative = crate::storage::stored_name::file_path(
-            &file.release_id,
-            &file.id,
-            &file.original_filename,
-        )?
-        .local_path();
+        let relative =
+            crate::db::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?
+                .local_path();
         let stream = self.database.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
 
@@ -67,7 +64,7 @@ impl LibraryManager {
                 if let Some(parent) = file_path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
-                use crate::storage::stored_name::{create_new_file, CreateFileError};
+                use crate::storage::output_file::{create_new_file, CreateFileError};
                 match create_new_file(&file_path, &relative, &format!("file {file_id}")) {
                     Ok(output) => Ok(output),
                     Err(clash @ CreateFileError::Clash { .. }) => {

@@ -19,7 +19,7 @@ pub struct ScannedFile {
     ///
     /// Always `/`-separated, on every platform: it is stored and synced, and
     /// whichever device exports the release or makes it local writes the file
-    /// under these names (see [`crate::storage::stored_name`]), so it cannot
+    /// under these names (see [`crate::db::stored_name`]), so it cannot
     /// carry the writing platform's separator.
     pub relative_path: String,
     /// File size in bytes

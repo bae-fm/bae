@@ -295,8 +295,8 @@ pub enum UploadReleasesOutcome {
 
 /// A stored name that names no file refuses the write it was for: the row it
 /// came from is unusable, and the copy does not run.
-impl From<crate::storage::stored_name::StoredNameError> for LibraryError {
-    fn from(error: crate::storage::stored_name::StoredNameError) -> Self {
+impl From<crate::db::stored_name::StoredNameError> for LibraryError {
+    fn from(error: crate::db::stored_name::StoredNameError) -> Self {
         LibraryError::Refused(error.to_string())
     }
 }

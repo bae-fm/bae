@@ -147,7 +147,7 @@ impl LibraryManager {
     /// `original_filename` is a synced column another device may have
     /// written, so each path is its names, split at `/`, and coven writes
     /// each name through the rule it uses for its own copies (see
-    /// [`crate::storage::stored_name`]): every name is one name inside the
+    /// [`crate::db::stored_name`]): every name is one name inside the
     /// person's folder. A release carrying a name that names no file makes
     /// no file local.
     async fn local_copy_paths(
@@ -158,11 +158,8 @@ impl LibraryManager {
         files
             .iter()
             .map(|f| {
-                let path = crate::storage::stored_name::file_path(
-                    release_id,
-                    &f.id,
-                    &f.original_filename,
-                )?;
+                let path =
+                    crate::db::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
                 Ok((f.file, path))
             })
             .collect()
