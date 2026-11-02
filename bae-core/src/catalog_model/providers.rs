@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::catalog_model::failure::Failure;
 use crate::catalog_model::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::CatalogError;
 use bae_catalogs::discogs::client::{
@@ -82,7 +82,7 @@ impl Providers {
     pub(crate) async fn fetch_payloads(
         &self,
         discogs: Option<&DiscogsClient>,
-        release: &MetadataRef,
+        release: &LookupRef,
         depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
@@ -231,7 +231,7 @@ impl CatalogSession {
 
     pub(crate) async fn fetch_payloads(
         &self,
-        release: &MetadataRef,
+        release: &LookupRef,
         depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {

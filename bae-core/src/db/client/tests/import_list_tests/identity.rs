@@ -15,7 +15,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     save_verdict(&db, &candidate, "mb-verdict").await;
     db.save_source_release(
         &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
+            crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-linked"),
             musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
             vec![crate::catalog_model::records::SourcePayload::new(
                 PayloadSource::MusicBrainzReleaseGroup,
@@ -40,8 +40,8 @@ async fn the_row_and_the_pane_name_the_same_records() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "mb-linked".to_string(),
                 ),
             }),
@@ -53,8 +53,8 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "mb-linked",
                 ),
                 partners: vec![],

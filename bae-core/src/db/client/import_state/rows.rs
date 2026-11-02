@@ -11,9 +11,9 @@ use super::verdict_rows::{
     identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
 };
 use super::*;
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::{LookupRef, MetadataRef};
 use crate::import::{AlbumLink, MetadataProvenance, PressingLink, ReleaseLink};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::str::FromStr;
 
 /// The provenance as its columns. Only an external release names a source and
@@ -115,11 +115,10 @@ impl StoredProvenance {
                     DbError::Message(format!("stored external metadata provenance names no {what}"))
                 };
                 Ok(MetadataProvenance::ExternalRelease {
-                    record: MetadataRef::new(
-                        Catalog::from_str(&self.source.ok_or_else(|| missing("catalog"))?)
-                            .map_err(DbError::Message)?,
+                    record: lookup_reference(
+                        self.source.ok_or_else(|| missing("catalog"))?,
                         self.release_id.ok_or_else(|| missing("release"))?,
-                    ),
+                    )?,
                 })
             }
             other => Err(unreadable("provenance kind", other)),
@@ -236,24 +235,29 @@ pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
 impl StoredReleaseLink {
     pub(crate) fn link(self) -> Result<ReleaseLink, DbError> {
         let Self { content_hash, kind, source, release_id, partners, albums } = self;
-        let references = |json: &str, what: &str| {
-            serde_json::from_str::<Vec<(String, String)>>(json)
-                .map_err(|error| {
-                    DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
-                })?
-                .into_iter()
-                .map(|(catalog, key)| reference(catalog, key))
-                .collect::<Result<Vec<_>, DbError>>()
+        let pairs = |json: &str, what: &str| {
+            serde_json::from_str::<Vec<(String, String)>>(json).map_err(|error| {
+                DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
+            })
         };
         match (kind.as_str(), source, release_id) {
             ("pressing", Some(source), Some(release_id)) => {
                 Ok(ReleaseLink::Pressing(PressingLink {
-                    record: reference(source, release_id)?,
-                    partners: references(&partners, "link partners")?,
+                    record: lookup_reference(source, release_id)?,
+                    partners: pairs(&partners, "link partners")?
+                        .into_iter()
+                        .map(|(catalog, key)| lookup_reference(catalog, key))
+                        .collect::<Result<_, DbError>>()?,
                 }))
             }
             ("album", None, None) => Ok(ReleaseLink::Album(
-                AlbumLink::new(references(&albums, "linked albums")?).ok_or_else(|| {
+                AlbumLink::new(
+                    pairs(&albums, "linked albums")?
+                        .into_iter()
+                        .map(|(catalog, key)| reference(catalog, key))
+                        .collect::<Result<Vec<_>, DbError>>()?,
+                )
+                .ok_or_else(|| {
                     DbError::Message(format!(
                         "{content_hash} is linked to an album no catalog names"
                     ))
@@ -266,6 +270,12 @@ impl StoredReleaseLink {
 
 fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
     Ok(MetadataRef::new(Catalog::from_str(&catalog).map_err(DbError::Message)?, key))
+}
+
+/// A stored release a pick names; a catalog bae does not fetch from names
+/// none.
+fn lookup_reference(catalog: String, key: String) -> Result<LookupRef, DbError> {
+    Ok(LookupRef::new(LookupCatalog::from_str(&catalog).map_err(DbError::Message)?, key))
 }
 
 /// A match's own columns joined as `found`, and its album's first year from

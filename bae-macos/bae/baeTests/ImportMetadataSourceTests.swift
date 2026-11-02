@@ -694,7 +694,7 @@ extension ImportMetadataCardLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: .externalRelease(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: .musicBrainz,
                         key: "release-mb"
                     )

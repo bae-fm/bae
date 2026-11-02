@@ -74,7 +74,7 @@ fn a_card_heading_prefers_a_stated_cover_to_an_unstated_address() {
         };
         release.media =
             match release.source {
-                Catalog::Discogs => bae_types::pressing::StatedMedia::Formats(vec![
+                LookupCatalog::Discogs => bae_types::pressing::StatedMedia::Formats(vec![
                     bae_types::pressing::StatedFormat { medium: Some(medium), quantity: 1 },
                 ]),
                 _ => bae_types::pressing::StatedMedia::PerMedium(vec![Some(medium)]),

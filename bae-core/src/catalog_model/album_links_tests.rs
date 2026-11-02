@@ -3,11 +3,11 @@ use super::*;
 const GROUP: &str = "mb-group";
 
 fn musicbrainz(release_id: &str) -> MetadataResult {
-    MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some(GROUP))
+    MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some(GROUP))
 }
 
 fn discogs_release(release_id: &str, master: &str) -> MetadataResult {
-    MetadataResult::for_test(Catalog::Discogs, release_id, Some(master))
+    MetadataResult::for_test(LookupCatalog::Discogs, release_id, Some(master))
 }
 
 fn names(master: &str) -> MetadataRef {
@@ -88,7 +88,8 @@ fn a_group_nothing_read_is_not_read() {
 fn a_group_s_links_go_onto_its_musicbrainz_records() {
     let groups = vec![GroupLinks { group: GROUP.to_string(), links: AlbumLinks::Unread }];
     let mut ours = musicbrainz("mb-1");
-    let mut other = MetadataResult::for_test(Catalog::MusicBrainz, "mb-9", Some("other-group"));
+    let mut other =
+        MetadataResult::for_test(LookupCatalog::MusicBrainz, "mb-9", Some("other-group"));
     let mut theirs = discogs_release("dg-1", GROUP);
     for result in [&mut ours, &mut other, &mut theirs] {
         apply(result, &groups);

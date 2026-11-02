@@ -32,7 +32,7 @@ fn pressing(release_id: &str, media: StatedMedia) -> Found {
         artist: Some("Artist One".to_string()),
         labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-100"))],
         media,
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-one"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-one"))
     }
 }
 

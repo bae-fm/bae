@@ -30,7 +30,7 @@
                 cover: .local(file: previewArtFile("Front.png")),
                 metadataProvenance: readFromRecord
                     ? .externalRelease(
-                        record: BridgeMetadataRef(
+                        record: BridgeLookupRef(
                             catalog: .musicBrainz,
                             key: "rel-paired"
                         )

@@ -16,7 +16,6 @@ use super::ledger_rows::{
 };
 use super::match_rows::{ordinal_column, store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
-use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::InternalFailure;
 use crate::identify::{
@@ -474,10 +473,9 @@ pub(super) fn outcome_of(
             match row.listing {
                 Listing::Offered(listed) => {
                     if let Some(note) = listed.named_note {
-                        findings.named_notes.push(NamedNote {
-                            release: MetadataRef::new(row.result.source, &row.result.release_id),
-                            note,
-                        });
+                        findings
+                            .named_notes
+                            .push(NamedNote { release: row.result.release(), note });
                     }
                     findings.matches.push(row.result);
                     findings.pressings.push(listed.pressing);

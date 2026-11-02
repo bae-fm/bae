@@ -40,6 +40,7 @@
         /// what core's own rows state where the other records add nothing.
         init(
             releases: [BridgeMetadataResult],
+            sources: [BridgeLookupCatalog],
             labels: [BridgeLabelLine] = [],
             documentFailure: BridgeLookupFailure? = nil,
             pick: BridgePressingLink
@@ -47,6 +48,7 @@
             let facts = releases.first?.facts ?? PreviewData.pressingFacts()
             self.init(
                 releases: releases,
+                sources: sources,
                 labels: labels,
                 documentFailure: documentFailure,
                 pick: pick,

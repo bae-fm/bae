@@ -1,4 +1,5 @@
 use super::*;
+use crate::catalog_model::records::LookupRef;
 use crate::db::Database;
 use crate::identify::IdentifyState;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
@@ -313,7 +314,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
 
     let (inner, _tmp) = setup_inner().await;
     let discogs = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "4242"),
+        LookupRef::new(LookupCatalog::Discogs, "4242"),
         serde_json::json!({
             "id": 4242,
             "title": "Album Title",
@@ -329,7 +330,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     inner.library_manager.save_source_release(&discogs).await.unwrap();
 
     let found = crate::catalog_model::search::MetadataResult::for_test(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         "mb-release",
         Some("mb-group"),
     );
@@ -360,7 +361,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         links: Vec::new(),
         album_links: AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
         stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
-            MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+            LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         )),
     };
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
@@ -378,7 +379,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
             reading,
             IdentifyEvent::ReleasesRead {
                 read: vec![ReleaseReading {
-                    release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+                    release: LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
                     document: Ok(document),
                 }],
             },
@@ -390,7 +391,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     drivers_ended(&inner).await;
     let stored = inner
         .library_manager
-        .load_source_release(&MetadataRef::new(Catalog::Discogs, "4242"))
+        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242"))
         .await
         .unwrap()
         .expect("the release was stored");

@@ -3,7 +3,7 @@ import BaeKit
 /// A failed release selection belongs to the provider result that was read,
 /// not to the candidate's metadata draft or to the search as a whole.
 struct ReleaseSelectionFailure: Equatable {
-    let release: BridgeMetadataRef
+    let release: BridgeLookupRef
     let error: DisplayError
 
     func matches(_ pressing: Pressing) -> Bool {

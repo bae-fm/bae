@@ -22,7 +22,7 @@ use crate::import::release_group::{
 };
 use crate::import::shared_album::SharedAlbum;
 use crate::signals::{ArtworkScan, DiscIdSignal};
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::catalog::LookupCatalog;
 
 /// One provider's lookup of one value: a cell of the ledger.
 #[derive(Debug, Clone, PartialEq)]
@@ -395,10 +395,7 @@ fn fold(
         pressing.releases.iter().find_map(|release| {
             named_notes
                 .iter()
-                .find(|named| {
-                    named.release.catalog == release.source
-                        && named.release.key == release.release_id
-                })
+                .find(|named| named.release == release.release())
                 .map(|named| named.note.clone())
         })
     };

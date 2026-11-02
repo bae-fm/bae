@@ -8,7 +8,6 @@ use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
     ScannedAudio, ScannedFile,
 };
-use bae_catalogs::catalog::Catalog;
 
 /// A watched folder of a [`LibraryFixture`] and what its last read found.
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -160,8 +159,8 @@ impl LibraryManager {
             }
             FixtureCandidateState::Identified => {
                 let release_id = self.ids.new_id().to_string();
-                let record = crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                let record = crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     &release_id,
                 );
                 let document = musicbrainz_release(candidate, &release_id);
@@ -317,7 +316,7 @@ fn fixture_release(
     release_id: String,
 ) -> crate::catalog_model::search::MetadataResult {
     crate::catalog_model::search::MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         release_id,
         title: candidate.name.clone(),
         artist: None,

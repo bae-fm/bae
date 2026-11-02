@@ -256,7 +256,7 @@ impl From<&crate::catalog_model::search::MetadataResult> for LibraryCheck {
     fn from(r: &crate::catalog_model::search::MetadataResult) -> Self {
         Self {
             release_id: r.release_id.clone(),
-            source: r.source,
+            source: r.source.catalog(),
             source_group_id: r.source_group_id.clone(),
         }
     }
@@ -269,7 +269,7 @@ impl LibraryCheck {
         release: &crate::catalog_model::source_release::SourceRelease,
     ) -> Self {
         Self {
-            source: release.release.catalog,
+            source: release.release.catalog.catalog(),
             release_id: release.release.key.clone(),
             source_group_id: release.source_group_id.clone(),
         }

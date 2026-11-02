@@ -118,7 +118,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     ]);
     musicbrainz.album_links = album.clone();
     let mut discogs = sample_match();
-    discogs.source = Catalog::Discogs;
+    discogs.source = LookupCatalog::Discogs;
     discogs.release_id = "42".to_string();
     discogs.source_group_id = Some("7".to_string());
     discogs.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
@@ -155,7 +155,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     unread.source_group_id = Some("group-2".to_string());
     unread.album_links = AlbumLinks::Unread;
     let mut linked = sample_match();
-    linked.source = Catalog::Discogs;
+    linked.source = LookupCatalog::Discogs;
     linked.release_id = "44".to_string();
     linked.source_group_id = Some("7".to_string());
     let matches = vec![musicbrainz, discogs, undescribed, unread, linked];
@@ -364,7 +364,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
 }
 
 /// `release` as one catalog's record of its own.
-fn release_on(source: bae_catalogs::catalog::Catalog, release_id: &str) -> MetadataResult {
+fn release_on(source: bae_catalogs::catalog::LookupCatalog, release_id: &str) -> MetadataResult {
     MetadataResult {
         source,
         release_id: release_id.to_string(),
@@ -413,14 +413,14 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
         NotAskedReason, ProviderCell, SearchStepView, SignalValueRow,
     };
     use crate::catalog_model::LookupFailure;
-    use bae_catalogs::catalog::Catalog;
+    
 
-    let offered = release_on(Catalog::MusicBrainz, "rel-offered");
-    let catalogued = release_on(Catalog::Discogs, "42");
-    let set_aside = release_on(Catalog::MusicBrainz, "rel-set-aside");
+    let offered = release_on(LookupCatalog::MusicBrainz, "rel-offered");
+    let catalogued = release_on(LookupCatalog::Discogs, "42");
+    let set_aside = release_on(LookupCatalog::MusicBrainz, "rel-set-aside");
     let ruled_out = MetadataResult {
         source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 9 }),
-        ..release_on(Catalog::MusicBrainz, "rel-ruled-out")
+        ..release_on(LookupCatalog::MusicBrainz, "rel-ruled-out")
     };
     let found = |releases: &[&MetadataResult]| {
         LookupView::answered(&releases.iter().map(|release| (*release).clone()).collect())
@@ -568,7 +568,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
     use crate::identify::{
         BarcodeStepView, CatalogStepView, IsrcStepView, ProviderCell, SearchStepView,
     };
-    use bae_catalogs::catalog::Catalog;
+    
 
     let quiet = IdentifyRunView {
         providers: vec![LookupCatalog::MusicBrainz],
@@ -581,7 +581,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
     let verdict = TerminalVerdict::ManualOnly { track_count: 11, ledger: Some(quiet.clone()) };
     assert_eq!(stored_and_read(&verdict).await.0, verdict);
 
-    let searched = release_on(Catalog::Discogs, "77");
+    let searched = release_on(LookupCatalog::Discogs, "77");
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches: vec![searched.clone()],

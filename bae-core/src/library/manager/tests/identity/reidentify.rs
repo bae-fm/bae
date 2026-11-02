@@ -8,12 +8,12 @@
 /// The stored release under one source release's own key.
 async fn stored_for(
     manager: &LibraryManager,
-    catalog: Catalog,
+    catalog: LookupCatalog,
     release_id: &str,
 ) -> Option<crate::catalog_model::source_release::SourceRelease> {
     manager
         .database
-        .load_source_release(&crate::catalog_model::records::MetadataRef::new(catalog, release_id))
+        .load_source_release(&crate::catalog_model::records::LookupRef::new(catalog, release_id))
         .await
         .unwrap()
 }
@@ -61,7 +61,7 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
 
 fn musicbrainz_link(release_id: &str) -> crate::import::PressingLink {
     crate::import::PressingLink {
-        record: crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, release_id),
+        record: crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id),
         partners: vec![],
     }
 }
@@ -190,7 +190,7 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
         .collect();
     assert_eq!(titles, ["Track 1", "Track 2", "Track 3"]);
     assert_eq!(
-        stored_for(&manager, Catalog::MusicBrainz, new_release_id).await,
+        stored_for(&manager, LookupCatalog::MusicBrainz, new_release_id).await,
         None,
         "nothing names the picked release, so nothing stores it"
     );
@@ -321,7 +321,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         &manager,
         &release.id,
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, discogs_release_id),
+            record: crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, discogs_release_id),
             partners: vec![],
         },
     )
@@ -580,7 +580,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::catalog_model::records::MetadataRef;
+    
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
@@ -647,8 +647,8 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         &manager,
         &release.id,
         crate::import::PressingLink {
-            record: MetadataRef::new(Catalog::MusicBrainz, mb_release_id),
-            partners: vec![MetadataRef::new(Catalog::Discogs, discogs_release_id)],
+            record: LookupRef::new(LookupCatalog::MusicBrainz, mb_release_id),
+            partners: vec![LookupRef::new(LookupCatalog::Discogs, discogs_release_id)],
         },
     )
     .await;
@@ -672,7 +672,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
 
     // No row names the applied releases, so neither is stored.
     for (catalog, release_id) in
-        [(Catalog::MusicBrainz, mb_release_id), (Catalog::Discogs, discogs_release_id)]
+        [(LookupCatalog::MusicBrainz, mb_release_id), (LookupCatalog::Discogs, discogs_release_id)]
     {
         assert_eq!(
             stored_for(&manager, catalog, release_id).await,

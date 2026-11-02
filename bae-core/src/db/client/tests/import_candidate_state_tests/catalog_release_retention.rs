@@ -2,11 +2,11 @@
 //! that writes the first such row, and deleted in the write that drops the
 //! last.
 
+use crate::catalog_model::records::LookupRef;
 use super::super::{exec, exec_batch};
 use super::*;
 use crate::identify::{IdentifyRunId, RunOutcome};
 use crate::catalog_model::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
-use crate::catalog_model::records::MetadataRef;
 
 /// Candidate `a` with a draft, and MusicBrainz releases `rel-1` and `rel-2`
 /// stored with a barcode each, which nothing names yet.
@@ -170,7 +170,7 @@ async fn a_release_two_candidates_name_stays_until_both_drop_it() {
 
 /// `release` as a fetch hands it over, unstored.
 fn release(key: &str) -> SourceRelease {
-    SourceRelease::for_test(MetadataRef::new(Catalog::MusicBrainz, key))
+    SourceRelease::for_test(LookupRef::new(LookupCatalog::MusicBrainz, key))
 }
 
 /// A verdict's write stores the releases its rows name from the ones it
@@ -187,8 +187,8 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
 
     row.releases = vec![release("rel-1"), release("rel-unnamed")];
     assert!(preparations.store_verdict(&row).await.unwrap());
-    let named = MetadataRef::new(Catalog::MusicBrainz, "rel-1");
-    let unnamed = MetadataRef::new(Catalog::MusicBrainz, "rel-unnamed");
+    let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
+    let unnamed = LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed");
     assert_eq!(
         db.load_source_release(&named).await.unwrap(),
         Some(release("rel-1")),
@@ -218,10 +218,10 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     )
     .await
     .unwrap();
-    let named = MetadataRef::new(Catalog::MusicBrainz, "rel-1");
+    let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
     assert!(db.load_source_release(&named).await.unwrap().is_some());
     assert_eq!(
-        db.load_source_release(&MetadataRef::new(Catalog::MusicBrainz, "rel-unnamed"))
+        db.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
             .await
             .unwrap(),
         None,
@@ -260,7 +260,7 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
             )
             .await
             .unwrap();
-            db.load_source_release(&MetadataRef::new(Catalog::MusicBrainz, "rel-1"))
+            db.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
                 .await
                 .unwrap()
                 .expect("the run's match names it")

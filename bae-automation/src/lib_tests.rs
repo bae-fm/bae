@@ -267,7 +267,6 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
 #[cfg(desktop)]
 mod identify_mirrors {
     use super::*;
-    use bae_catalogs::catalog::Catalog;
     use bae_core::catalog_model::search::MetadataResult;
     use bae_core::catalog_model::LookupFailure;
     use bae_core::db::LibraryStatus;
@@ -290,7 +289,7 @@ mod identify_mirrors {
             media: bae_types::pressing::StatedMedia::PerMedium(vec![Some(
                 bae_types::pressing::Medium::Cd,
             )]),
-            ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some(group_id))
+            ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some(group_id))
         }
     }
 
@@ -910,5 +909,33 @@ mod import_search_source {
                 "{linked} is not offered: {schema}"
             );
         }
+    }
+}
+
+/// A pick names the release a candidate's draft is read from, and only a
+/// catalog bae fetches releases from can be named as it.
+mod pick_record_catalog {
+    use super::import_queue::{automation_over, scan};
+    use super::*;
+
+    #[tokio::test]
+    async fn a_release_on_a_catalog_bae_does_not_fetch_is_refused() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+        let refused = fixture
+            .automation()
+            .call_tool(
+                AutomationTool::ImportCandidateReleaseSelect,
+                serde_json::json!({
+                    "candidate_key": key,
+                    "link": {
+                        "record": { "catalog": "spotify", "key": "4242424242424242424242" },
+                        "partners": [],
+                    },
+                }),
+            )
+            .await
+            .expect_err("a release bae cannot fetch cannot be picked");
+        assert_eq!(refused.kind(), "validation");
     }
 }

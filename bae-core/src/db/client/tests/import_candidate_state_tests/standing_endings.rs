@@ -107,7 +107,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
             run,
             bae_catalogs::catalog::LookupCatalog::Discogs,
             Ok(vec![crate::catalog_model::search::MetadataResult::for_test(
-                bae_catalogs::catalog::Catalog::Discogs,
+                bae_catalogs::catalog::LookupCatalog::Discogs,
                 "dg-1",
                 None,
             )]),

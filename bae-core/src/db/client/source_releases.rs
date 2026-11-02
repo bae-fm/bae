@@ -19,6 +19,7 @@ use crate::catalog_model::source_release::{
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
+use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
@@ -375,7 +376,7 @@ fn artist_at(
 /// when no row names it.
 fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
     let catalog = release.catalog.as_str();
     let key = release.key.as_str();
@@ -473,7 +474,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         },
     )?;
     let catalog_facts = match release.catalog {
-        Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
+        LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
             links: sql
                 .query(
                     "SELECT link_catalog, link_key FROM source_release_link \
@@ -507,7 +508,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                 other => return Err(unreadable("MusicBrainz release album links", other)),
             },
         },
-        Catalog::Discogs => CatalogFacts::Discogs {
+        LookupCatalog::Discogs => CatalogFacts::Discogs {
             media: {
                 let formats: Vec<StatedFormat> = sql.query(
                     "SELECT medium, quantity FROM source_release_format \
@@ -544,7 +545,6 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                 },
             )?,
         },
-        other => return Err(unreadable("catalog", other.as_str())),
     };
     // The record rows keep no order: they read in the order surfaces list
     // catalogs.
@@ -651,7 +651,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
 /// is, as its rows hold it.
 fn own_records_on<S: QueryRows>(
     sql: &S,
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
     sql.query(
         "SELECT record_catalog, kind, key, album_key FROM source_release_record \
@@ -702,7 +702,7 @@ fn with_joined_albums_on<S: QueryRows>(
 ) -> Result<SourceRelease, DbError> {
     let joined = super::album_link_rows::joined_albums_on(
         sql,
-        stored.release.catalog,
+        stored.release.catalog.catalog(),
         stored.source_group_id.as_deref(),
         &stored.other_records,
     )?;
@@ -726,7 +726,7 @@ fn with_joined_albums_on<S: QueryRows>(
 /// `None` when no row names it.
 pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
     load_source_release_rows_on(sql, release)?
         .map(|stored| with_joined_albums_on(sql, &stored))
@@ -792,7 +792,7 @@ pub(super) fn store_named_releases_on(
 /// nothing stored it.
 pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
     sql: &S,
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Option<Vec<ReleaseRecord>>, DbError> {
     let Some(source_group_id) = sql
         .query_row(
@@ -807,7 +807,7 @@ pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
     let own = own_records_on(sql, release)?;
     let joined = super::album_link_rows::joined_albums_on(
         sql,
-        release.catalog,
+        release.catalog.catalog(),
         source_group_id.as_deref(),
         &own,
     )?;
@@ -823,7 +823,7 @@ impl Database {
     /// `None` when no row names it.
     pub async fn load_source_release(
         &self,
-        release: &MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
     ) -> Result<Option<SourceRelease>, DbError> {
         let release = release.clone();
         self.read(move |sql| load_source_release_on(&sql, &release)).await
@@ -833,7 +833,7 @@ impl Database {
     /// import surfaces read it, or `None` when no row names it.
     pub(crate) async fn load_prepared_release(
         &self,
-        release: &MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
         self.read(move |sql| {

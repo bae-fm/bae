@@ -1,13 +1,13 @@
 //! A linked row as the list reads it: from the tables alone, whatever the
 //! folder's files are doing.
 
-use super::super::super::*;
 use super::super::{candidate_with, folder_below};
 use super::{musicbrainz_release, request, rows};
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
 };
 use crate::import::TriageTab;
+use bae_catalogs::catalog::LookupCatalog;
 use std::os::unix::fs::OpenOptionsExt;
 use std::time::Duration;
 
@@ -47,7 +47,8 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
     db.finish_folder_scan(&root, generation, None).await.unwrap();
-    let record = crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked");
+    let record =
+        crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked");
     db.save_source_release(
         &crate::catalog_model::payloads::ReleasePayloads::for_test(
             record.clone(),
@@ -85,8 +86,8 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     assert_eq!(
         rows(&projection)[0].release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-picked"
             ),
             partners: vec![],

@@ -197,17 +197,16 @@ impl ReleasePayloads {
         let mut links = AlbumClaims(HashMap::new());
         links.admit(self.anchor_parent()?);
         let musicbrainz = match self.release.catalog {
-            Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
-            Catalog::Discogs => self.musicbrainz_xref()?,
-            other => not_fetched(other),
+            LookupCatalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
+            LookupCatalog::Discogs => self.musicbrainz_xref()?,
         };
         // A MusicBrainz release's album on the other lookup catalog is what
         // its statements name, and nothing the walk below reaches.
         let walked = |claim: &MetadataRef| {
-            self.release.catalog != Catalog::MusicBrainz || !names_other_album(claim.catalog)
+            self.release.catalog != LookupCatalog::MusicBrainz || !names_other_album(claim.catalog)
         };
         match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 links.admit(self.album_statements()?.read().iter().cloned());
                 links.admit(
                     album_urls(&musicbrainz.as_ref().expect("selected MB release").relations)
@@ -215,13 +214,12 @@ impl ReleasePayloads {
                         .filter(walked),
                 );
             }
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 links.admit(self.counterpart_group()?);
                 if let Some(release) = &musicbrainz {
                     links.admit(album_urls(&release.relations));
                 }
             }
-            other => not_fetched(other),
         }
         let mut visited = HashSet::new();
         loop {

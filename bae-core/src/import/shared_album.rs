@@ -30,7 +30,7 @@ use bae_types::text_match;
 pub struct SharedAlbum {
     /// Each offered row's lead — the release picking the row reads — in the
     /// list's order, most agreed-with first.
-    pub leads: Vec<MetadataRef>,
+    pub leads: Vec<crate::catalog_model::records::LookupRef>,
     /// The album the rows are pressings of.
     pub link: AlbumLink,
 }
@@ -50,7 +50,7 @@ impl SharedAlbum {
             return None;
         }
         let mut albums = Vec::new();
-        for catalog in LookupCatalog::ALL.map(LookupCatalog::catalog) {
+        for catalog in LookupCatalog::ALL {
             let mut named = rows
                 .iter()
                 .flat_map(|row| &row.releases)
@@ -62,16 +62,10 @@ impl SharedAlbum {
             if named.any(|other| other != album) {
                 return None;
             }
-            albums.push(MetadataRef::new(catalog, album));
+            albums.push(MetadataRef::new(catalog.catalog(), album));
         }
         Some(Self {
-            leads: rows
-                .iter()
-                .map(|row| {
-                    let lead = row.lead();
-                    MetadataRef::new(lead.source, lead.release_id.clone())
-                })
-                .collect(),
+            leads: rows.iter().map(|row| row.lead().release()).collect(),
             link: AlbumLink::new(albums)?,
         })
     }

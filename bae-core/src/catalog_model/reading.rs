@@ -11,10 +11,10 @@
 use crate::catalog_model::medium_coverage::{candidate_sets, Fit, MediumCoverage, MediumShape};
 use crate::catalog_model::release_values::ReleaseValues;
 use crate::catalog_model::search::SourceTracks;
-use crate::catalog_model::source_release::{not_fetched, SourceRelease};
+use crate::catalog_model::source_release::SourceRelease;
 use crate::catalog_model::AudioOrigin;
 use crate::catalog_model::CatalogError;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use std::collections::BTreeSet;
 
 /// What each of the audio's tracks measures, in play order. Never empty: a
@@ -176,16 +176,15 @@ impl SourceRelease {
             .iter()
             .map(|medium| MediumShape {
                 counts: match self.release.catalog {
-                    Catalog::MusicBrainz if medium.entries.is_empty() => BTreeSet::new(),
-                    Catalog::MusicBrainz => BTreeSet::from([medium.entries.len()]),
+                    LookupCatalog::MusicBrainz if medium.entries.is_empty() => BTreeSet::new(),
+                    LookupCatalog::MusicBrainz => BTreeSet::from([medium.entries.len()]),
                     // A layout that gives no tracks covers nothing.
-                    Catalog::Discogs => {
+                    LookupCatalog::Discogs => {
                         crate::catalog_model::discogs_mapper::layout_counts(&medium.entries)
                             .into_iter()
                             .filter(|&count| count > 0)
                             .collect()
                     }
-                    other => not_fetched(other),
                 },
                 carrier: medium.medium,
                 holds_folder_disc: medium
@@ -205,19 +204,18 @@ impl SourceRelease {
         measured: &[u64],
     ) -> Option<Vec<Option<u64>>> {
         let stated: Vec<Option<u64>> = match self.release.catalog {
-            Catalog::MusicBrainz => self
+            LookupCatalog::MusicBrainz => self
                 .covered_mediums(coverage)
                 .flat_map(|medium| &medium.entries)
                 .map(|entry| entry.duration_ms)
                 .collect(),
-            Catalog::Discogs => crate::catalog_model::discogs_mapper::process_tracklist(
+            LookupCatalog::Discogs => crate::catalog_model::discogs_mapper::process_tracklist(
                 &self.covered_entries(coverage),
                 Some(measured),
             )
             .iter()
             .map(|track| track.duration_ms)
             .collect(),
-            other => not_fetched(other),
         };
         (stated.len() == measured.len()).then_some(stated)
     }
@@ -229,15 +227,14 @@ impl SourceRelease {
         audio: &ReadAudio,
     ) -> Result<ReleaseValues, CatalogError> {
         match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 crate::catalog_model::musicbrainz_mapper::values(self, coverage)
             }
-            Catalog::Discogs => crate::catalog_model::discogs_mapper::values(
+            LookupCatalog::Discogs => crate::catalog_model::discogs_mapper::values(
                 self,
                 coverage,
                 Some(audio.lengths.as_slice()),
             ),
-            other => not_fetched(other),
         }
     }
 
@@ -247,13 +244,12 @@ impl SourceRelease {
         self.mediums
             .iter()
             .map(|medium| match self.release.catalog {
-                Catalog::MusicBrainz => medium.entries.len(),
-                Catalog::Discogs => {
+                LookupCatalog::MusicBrainz => medium.entries.len(),
+                LookupCatalog::Discogs => {
                     *crate::catalog_model::discogs_mapper::layout_counts(&medium.entries)
                         .last()
                         .expect("every tracklist has a layout, if only of no tracks")
                 }
-                other => not_fetched(other),
             })
             .sum()
     }
@@ -266,9 +262,12 @@ impl SourceRelease {
     pub(crate) fn every_medium_values(&self) -> Result<ReleaseValues, CatalogError> {
         let every = MediumCoverage::all(self.mediums.len());
         match self.release.catalog {
-            Catalog::MusicBrainz => crate::catalog_model::musicbrainz_mapper::values(self, &every),
-            Catalog::Discogs => crate::catalog_model::discogs_mapper::values(self, &every, None),
-            other => not_fetched(other),
+            LookupCatalog::MusicBrainz => {
+                crate::catalog_model::musicbrainz_mapper::values(self, &every)
+            }
+            LookupCatalog::Discogs => {
+                crate::catalog_model::discogs_mapper::values(self, &every, None)
+            }
         }
     }
 }

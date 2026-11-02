@@ -1,11 +1,17 @@
 use super::*;
+use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::import::release_group::{group_results, unranked};
 use crate::import::{AudioFile, CandidateTrack, RawPressingEdit, RawTrackEdit};
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{MediaCount, Medium, PressingFacts};
 
-fn release(catalog: Catalog, release_id: &str, album: Option<&str>, year: i32) -> MetadataResult {
+fn release(
+    catalog: LookupCatalog,
+    release_id: &str,
+    album: Option<&str>,
+    year: i32,
+) -> MetadataResult {
     MetadataResult {
         source: catalog,
         release_id: release_id.to_string(),
@@ -38,16 +44,16 @@ fn cards(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
 #[test]
 fn several_pressings_of_one_album_name_it_in_each_catalog() {
     let shared = SharedAlbum::of(&cards(vec![
-        release(Catalog::MusicBrainz, "mb-1", Some("group-1"), 1990),
-        release(Catalog::MusicBrainz, "mb-2", Some("group-1"), 2001),
+        release(LookupCatalog::MusicBrainz, "mb-1", Some("group-1"), 1990),
+        release(LookupCatalog::MusicBrainz, "mb-2", Some("group-1"), 2001),
     ]))
     .expect("two pressings of one album");
     assert_eq!(shared.link.albums(), [MetadataRef::new(Catalog::MusicBrainz, "group-1")]);
     assert_eq!(
         shared.leads,
         vec![
-            MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
-            MetadataRef::new(Catalog::MusicBrainz, "mb-2"),
+            LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
+            LookupRef::new(LookupCatalog::MusicBrainz, "mb-2"),
         ],
         "the rows as the list orders them"
     );
@@ -56,7 +62,12 @@ fn several_pressings_of_one_album_name_it_in_each_catalog() {
 #[test]
 fn one_pressing_offers_no_album_to_be_unsure_about() {
     assert_eq!(
-        SharedAlbum::of(&cards(vec![release(Catalog::MusicBrainz, "mb-1", Some("group-1"), 1990)])),
+        SharedAlbum::of(&cards(vec![release(
+            LookupCatalog::MusicBrainz,
+            "mb-1",
+            Some("group-1"),
+            1990
+        )])),
         None
     );
 }
@@ -65,8 +76,8 @@ fn one_pressing_offers_no_album_to_be_unsure_about() {
 fn pressings_of_two_albums_share_none() {
     assert_eq!(
         SharedAlbum::of(&cards(vec![
-            release(Catalog::MusicBrainz, "mb-1", Some("group-1"), 1990),
-            release(Catalog::MusicBrainz, "mb-2", Some("group-2"), 2001),
+            release(LookupCatalog::MusicBrainz, "mb-1", Some("group-1"), 1990),
+            release(LookupCatalog::MusicBrainz, "mb-2", Some("group-2"), 2001),
         ])),
         None
     );
@@ -76,8 +87,8 @@ fn pressings_of_two_albums_share_none() {
 fn pressings_no_catalog_files_under_an_album_share_none() {
     assert_eq!(
         SharedAlbum::of(&cards(vec![
-            release(Catalog::Discogs, "dg-1", None, 1990),
-            release(Catalog::Discogs, "dg-2", None, 2001),
+            release(LookupCatalog::Discogs, "dg-1", None, 1990),
+            release(LookupCatalog::Discogs, "dg-2", None, 2001),
         ])),
         None
     );

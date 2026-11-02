@@ -190,7 +190,7 @@
                 isAdded: false
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
@@ -294,7 +294,7 @@
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: .musicBrainz,
                     key: "rel-paired"
                 )
@@ -312,7 +312,7 @@
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: .musicBrainz,
                     key: "rel-several"
                 )
@@ -326,7 +326,7 @@
             placement: .pending,
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
@@ -363,7 +363,7 @@
             placement: .pending,
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
@@ -435,7 +435,7 @@
                 )
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: .musicBrainz,
                     key: "rel-paired"
                 )
@@ -529,7 +529,7 @@
                 placement: .pending,
                 metadataSummary: nil,
                 metadataProvenance: .externalRelease(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     )

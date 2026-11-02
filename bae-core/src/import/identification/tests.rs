@@ -575,8 +575,8 @@ impl Fixture {
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
-            .load_source_release(&crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            .load_source_release(&crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id,
             ))
             .await
@@ -589,8 +589,8 @@ impl Fixture {
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
-            .load_source_release(&crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::Discogs,
+            .load_source_release(&crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::Discogs,
                 release_id,
             ))
             .await
@@ -708,7 +708,7 @@ impl Fixture {
         let verdict = TerminalVerdict::Found {
             findings: crate::identify::Findings {
                 matches: vec![MetadataResult {
-                    source: bae_catalogs::catalog::Catalog::MusicBrainz,
+                    source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id: release_id.to_string(),
                     title: "Album".to_string(),
                     artist: Some("Artist".to_string()),
@@ -759,8 +759,8 @@ impl Fixture {
                         ..settled_signals()
                     },
                     pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
-                        let record = crate::catalog_model::records::MetadataRef::new(
-                            bae_catalogs::catalog::Catalog::MusicBrainz,
+                        let record = crate::catalog_model::records::LookupRef::new(
+                            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             release_id.to_string(),
                         );
                         crate::db::VerdictPick {
@@ -804,8 +804,8 @@ fn stored_pressing(
     track_lengths: &[u64],
 ) -> crate::catalog_model::source_release::SourceRelease {
     crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::MetadataRef::new(
-            bae_catalogs::catalog::Catalog::MusicBrainz,
+        crate::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id,
         ),
         release_json(release_id, group_id, track_lengths),

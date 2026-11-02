@@ -1,4 +1,3 @@
-use crate::catalog_model::records::MetadataRef;
 use crate::diagnostics::TelemetryEvent;
 use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
@@ -622,7 +621,7 @@ fn spawn_root_scan(
 /// hold an `ImportServiceHandle`.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
-    release_ref: &MetadataRef,
+    release_ref: &crate::catalog_model::records::LookupRef,
     depth: crate::catalog_model::payloads::ReadDepth,
     priority: CallPriority,
 ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
@@ -641,7 +640,7 @@ pub(crate) async fn prepare_release(
 /// to `steps`.
 pub(crate) async fn prepare_applied_release(
     library_manager: &LibraryManager,
-    release_ref: &MetadataRef,
+    release_ref: &crate::catalog_model::records::LookupRef,
     steps: &crate::import::CatalogApplySteps,
 ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError> {
     let depth = crate::catalog_model::payloads::ReadDepth::Complete;
@@ -679,7 +678,7 @@ pub(crate) async fn prepare_disc_id_release(
 /// `steps` while it reads.
 async fn prepare(
     library_manager: &LibraryManager,
-    release_ref: &MetadataRef,
+    release_ref: &crate::catalog_model::records::LookupRef,
     depth: crate::catalog_model::payloads::ReadDepth,
     read: impl std::future::Future<
         Output = Result<
@@ -698,7 +697,10 @@ async fn prepare(
         }
     }
     let payloads = steps
-        .during(crate::import::CatalogApplyStep::ReadingRelease(release_ref.catalog), read)
+        .during(
+            crate::import::CatalogApplyStep::ReadingRelease(release_ref.catalog.catalog()),
+            read,
+        )
         .await?;
     Ok(library_manager.prepared_release(payloads.extract()?).await?)
 }
@@ -708,8 +710,8 @@ async fn prepare(
 /// catalog are refused rather than one chosen.
 pub(crate) async fn prepare_partners(
     library_manager: &LibraryManager,
-    primary: &MetadataRef,
-    partners: &[MetadataRef],
+    primary: &crate::catalog_model::records::LookupRef,
+    partners: &[crate::catalog_model::records::LookupRef],
     priority: CallPriority,
     steps: &crate::import::CatalogApplySteps,
 ) -> Result<Vec<crate::catalog_model::source_release::PreparedRelease>, crate::import::ImportError>

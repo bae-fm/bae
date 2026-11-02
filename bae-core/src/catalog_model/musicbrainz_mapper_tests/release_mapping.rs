@@ -1,5 +1,4 @@
 use super::*;
-use crate::catalog_model::records::MetadataRef;
 use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
@@ -12,7 +11,7 @@ fn map(
 ) -> Result<ReleaseValues, CatalogError> {
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
-            MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            LookupRef::new(LookupCatalog::MusicBrainz, &response.id),
             serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
             supporting,
         );
@@ -92,7 +91,7 @@ fn map_for_audio(
 ) -> Result<ReleaseValues, crate::import::ImportError> {
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
-            MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            LookupRef::new(LookupCatalog::MusicBrainz, &response.id),
             serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
             Vec::new(),
         );

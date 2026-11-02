@@ -4,7 +4,7 @@ use serde_json::json;
 
 fn selected(urls: &[&str]) -> ReleasePayloads {
     ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "selected-release"),
         json!({
             "id":"selected-release", "title":"Selected Album", "date":"2005",
             "artist-credit":[{"name":"Selected Artist","artist":{"id":"artist-id","name":"Selected Artist"}}],

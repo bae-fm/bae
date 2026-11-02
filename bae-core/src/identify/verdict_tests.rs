@@ -10,7 +10,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
 
 fn mk_result(release_id: &str) -> MetadataResult {
-    MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("group-1"))
+    MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("group-1"))
 }
 
 /// A bare context for `track_count` tracks.
@@ -117,8 +117,8 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
         settled,
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
-                release: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                release: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "rel-1",
                 ),
                 document: Err(crate::catalog_model::LookupFailure::Network),

@@ -1,4 +1,5 @@
 use super::*;
+use bae_catalogs::catalog::LookupCatalog;
 
 #[cfg(test)]
 mod metadata_provenance_tests {
@@ -7,8 +8,8 @@ mod metadata_provenance_tests {
     #[test]
     fn a_metadata_provenance_round_trips_without_an_identity_proxy() {
         let provenance = MetadataProvenance::ExternalRelease {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "release-a".to_string(),
             ),
         };

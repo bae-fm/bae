@@ -461,14 +461,14 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     ),
@@ -496,14 +496,14 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: discogsReleaseDetail.source,
                     key: discogsReleaseDetail.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: discogsReleaseDetail.source,
                         key: discogsReleaseDetail.releaseId
                     ),
@@ -524,19 +524,19 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     ),
                     partners: [
-                        BridgeMetadataRef(
+                        BridgeLookupRef(
                             catalog: discogsReleaseDetail.source,
                             key: discogsReleaseDetail.releaseId
                         )
@@ -600,14 +600,14 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     ),
@@ -635,14 +635,14 @@
                 isAdded: false
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: moreTracksReleaseDetail.source,
                     key: moreTracksReleaseDetail.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: moreTracksReleaseDetail.source,
                         key: moreTracksReleaseDetail.releaseId
                     ),
@@ -665,14 +665,14 @@
                 files: bridgeCandidateFiles
             ),
             metadataProvenance: .externalRelease(
-                record: BridgeMetadataRef(
+                record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
             ),
             releaseLink: .pressing(
                 link: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     ),

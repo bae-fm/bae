@@ -1,6 +1,6 @@
 use super::*;
 use crate::signals::TextOrigin;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 fn line(text: &str) -> TextLine {
     TextLine { text: text.to_string(), origin: TextOrigin::FolderName }
@@ -11,7 +11,7 @@ fn text(lines: &[&str]) -> CandidateText {
 }
 
 fn result() -> MetadataResult {
-    MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", None)
+    MetadataResult::for_test(LookupCatalog::MusicBrainz, "rel-1", None)
 }
 
 /// What `text` agrees with about `result`, as a list of that one record,

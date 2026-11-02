@@ -4272,7 +4272,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidates_list`, `import_candidate_get` | read the import list and a candidate |
 | `import_candidate_skip_set` | skip or restore a candidate |
 | `import_search` | search MusicBrainz or Discogs; its input names no other catalog |
-| `import_candidate_release_select` | link a candidate to a catalog release and read its draft from it |
+| `import_candidate_release_select` | link a candidate to a MusicBrainz or Discogs release and read its draft from it; its input names no other catalog |
 | `import_candidate_file_tags_read` | read a candidate's draft from its tags, keeping its link |
 | `import_candidate_edit_field_set` | type one album field |
 | `import_candidate_labels_set` | set its labels and catalog numbers |
@@ -4285,7 +4285,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `release_export` | queue an export of a release's files |
 | `release_storage_action` | move to the cloud, pin, unpin, make local, or cancel |
 | `output_status` | read the export queue |
-| `release_reidentify` | re-identify a release as a catalog release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
+| `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |
 | `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
 | `library_search` | search the library |

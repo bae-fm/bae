@@ -29,7 +29,7 @@
 //! `state::pressings`.
 
 use crate::catalog_model::album_links::AlbumLinks;
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::{LookupRef, MetadataRef};
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::catalog_model::LookupFailure;
 use bae_types::pressing::ReleaseLabel;
@@ -52,7 +52,7 @@ pub enum DocumentReading {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReleaseToRead {
     /// Its catalog's release lookup, unless storage holds it.
-    ReleaseLookup(MetadataRef),
+    ReleaseLookup(LookupRef),
     /// The Disc ID lookup's answer that returned it, unless storage holds
     /// it: a MusicBrainz release's own document is not asked for again.
     DiscIdAnswer(crate::catalog_model::payloads::DiscIdRelease),
@@ -60,7 +60,7 @@ pub enum ReleaseToRead {
 
 impl ReleaseToRead {
     /// The record read.
-    pub fn release(&self) -> &MetadataRef {
+    pub fn release(&self) -> &LookupRef {
         match self {
             Self::ReleaseLookup(release) => release,
             Self::DiscIdAnswer(answered) => answered.release(),
@@ -71,7 +71,7 @@ impl ReleaseToRead {
 /// One record's document, or why it could not be fetched.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ReleaseReading {
-    pub release: MetadataRef,
+    pub release: LookupRef,
     pub document: Result<ReleaseDocument, LookupFailure>,
 }
 
@@ -138,7 +138,7 @@ impl DocumentReading {
 
     /// What `release`'s documents state its album is: `Unread` where they
     /// could not be read, `None` where nothing read them.
-    pub(crate) fn album_statements(&self, release: &MetadataRef) -> Option<AlbumLinks> {
+    pub(crate) fn album_statements(&self, release: &LookupRef) -> Option<AlbumLinks> {
         self.read().iter().find(|reading| reading.release == *release).map(|reading| match &reading
             .document
         {
@@ -152,9 +152,7 @@ impl DocumentReading {
     /// keeps one barcode where a Discogs result lists every code the sleeve
     /// carries, so its barcode joins the result's rather than replacing them.
     pub(crate) fn apply(&self, result: &mut MetadataResult) {
-        let reading = self.read().iter().find(|reading| {
-            reading.release.catalog == result.source && reading.release.key == result.release_id
-        });
+        let reading = self.read().iter().find(|reading| reading.release == result.release());
         match reading.map(|reading| &reading.document) {
             Some(Ok(document)) => {
                 result.labels = document.labels.clone();

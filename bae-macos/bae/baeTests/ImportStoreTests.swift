@@ -122,7 +122,7 @@ func identifiedRow(
         importStatus: nil,
         upload: nil,
         metadataProvenance: .externalRelease(
-            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(path)")
+            record: BridgeLookupRef(catalog: .musicBrainz, key: "rel-\(path)")
         ),
         reading: metadataSummary == nil
             ? .unidentified

@@ -48,8 +48,8 @@ async fn a_pick_reads_back_as_the_same_answer() {
     assert_eq!(
         picked,
         crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-answer-1".to_string()
             ),
             partners: vec![],
@@ -139,8 +139,8 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                 .select_candidate_release(
                     key,
                     crate::import::PressingLink {
-                        record: crate::catalog_model::records::MetadataRef::new(
-                            bae_catalogs::catalog::Catalog::MusicBrainz,
+                        record: crate::catalog_model::records::LookupRef::new(
+                            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             "mb-picked-1".to_string(),
                         ),
                         partners: vec![],
@@ -178,8 +178,8 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     assert_eq!(
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-picked-1".to_string(),
             ),
             partners: vec![],
@@ -207,8 +207,8 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
 
     let pick = crate::import::PressingLink {
-        record: crate::catalog_model::records::MetadataRef::new(
-            bae_catalogs::catalog::Catalog::MusicBrainz,
+        record: crate::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             "mb-answer-1".to_string(),
         ),
         partners: vec![],
@@ -537,12 +537,12 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-stated-1".to_string(),
                 ),
-                partners: vec![crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                partners: vec![crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     "70000301",
                 )],
             },

@@ -50,7 +50,7 @@ fn sample_ledger() -> IdentifyRunView {
 
 fn sample_match() -> MetadataResult {
     MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: LookupCatalog::MusicBrainz,
         release_id: "rel-1".to_string(),
         title: "Album".to_string(),
         artist: Some("Artist".to_string()),
@@ -92,7 +92,7 @@ fn sample_findings() -> Findings {
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
         named_notes: vec![crate::identify::NamedNote {
-            release: crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
+            release: crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"),
             note: "Pressed By Plant Name".to_string(),
         }],
     }
@@ -180,7 +180,7 @@ async fn fetched(db: &Database, release_id: &str) {
 /// The catalog release [`fetched`] stores.
 fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::SourceRelease {
     crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
+        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, release_id),
         serde_json::json!({
             "id": release_id,
             "title": "Album",
@@ -197,8 +197,8 @@ fn fetched_release(release_id: &str) -> crate::catalog_model::source_release::So
 
 fn release_link(release_id: &str) -> crate::import::PressingLink {
     crate::import::PressingLink {
-        record: crate::catalog_model::records::MetadataRef::new(
-            bae_catalogs::catalog::Catalog::MusicBrainz,
+        record: crate::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),
         ),
         partners: vec![],
@@ -207,8 +207,8 @@ fn release_link(release_id: &str) -> crate::import::PressingLink {
 
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
-        record: crate::catalog_model::records::MetadataRef::new(
-            bae_catalogs::catalog::Catalog::MusicBrainz,
+        record: crate::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),
         ),
     }

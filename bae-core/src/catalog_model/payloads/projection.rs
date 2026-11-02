@@ -2,48 +2,47 @@ use super::*;
 use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
 
 impl ReleasePayloads {
-    pub(super) fn counterpart(&self) -> Result<Option<MetadataRef>, CatalogError> {
+    pub(super) fn counterpart(&self) -> Result<Option<LookupRef>, CatalogError> {
         match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 let keys = self.discogs_counterpart_keys()?;
                 Ok(match keys.as_slice() {
-                    [key] => Some(MetadataRef::new(Catalog::Discogs, key)),
+                    [key] => Some(LookupRef::new(LookupCatalog::Discogs, key)),
                     _ => None,
                 })
             }
-            Catalog::Discogs => self.musicbrainz_xref().map(|release| {
-                release.map(|release| MetadataRef::new(Catalog::MusicBrainz, release.id))
+            LookupCatalog::Discogs => self.musicbrainz_xref().map(|release| {
+                release.map(|release| LookupRef::new(LookupCatalog::MusicBrainz, release.id))
             }),
-            other => not_fetched(other),
         }
     }
 
     pub(super) fn anchor_parent(&self) -> Result<Option<MetadataRef>, CatalogError> {
         Ok(match self.release.catalog {
-            Catalog::MusicBrainz => self
+            LookupCatalog::MusicBrainz => self
                 .musicbrainz_anchor()?
                 .release_group
                 .map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id)),
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 self.discogs_anchor()?.master_id.map(|key| MetadataRef::new(Catalog::Discogs, key))
             }
-            other => not_fetched(other),
         })
     }
 
     /// Parents are projected in selected-provider order. Alias documents name
     /// the same entity as the canonical document and are read only once.
-    pub(super) fn album_documents(&self) -> Result<Vec<(Catalog, &str, &str)>, CatalogError> {
+    pub(super) fn album_documents(&self) -> Result<Vec<(LookupCatalog, &str, &str)>, CatalogError> {
         let parent = self.anchor_parent()?;
         let admitted = self.album_links()?;
         let mut documents = Vec::new();
         for document in self.supporting.iter() {
             let catalog = match document.source {
-                PayloadSource::MusicBrainzReleaseGroup => Catalog::MusicBrainz,
-                PayloadSource::DiscogsMaster => Catalog::Discogs,
+                PayloadSource::MusicBrainzReleaseGroup => LookupCatalog::MusicBrainz,
+                PayloadSource::DiscogsMaster => LookupCatalog::Discogs,
                 _ => continue,
             };
-            if !admitted.contains(&MetadataRef::new(catalog, &document.source_release_id)) {
+            if !admitted.contains(&MetadataRef::new(catalog.catalog(), &document.source_release_id))
+            {
                 continue;
             }
             documents.push((catalog, document.source_release_id.as_str(), document.json.as_str()));
@@ -51,7 +50,7 @@ impl ReleasePayloads {
         documents.sort_by_key(|(catalog, key, _)| {
             let is_parent = parent
                 .as_ref()
-                .is_some_and(|parent| parent.catalog == *catalog && parent.key == *key);
+                .is_some_and(|parent| parent.catalog == catalog.catalog() && parent.key == *key);
             (!is_parent, *catalog != self.release.catalog, *key)
         });
         Ok(documents)
@@ -59,22 +58,21 @@ impl ReleasePayloads {
 
     pub(super) fn projected_metadata(&self) -> Result<ReleaseMetadata, CatalogError> {
         let mut metadata = match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 crate::catalog_model::musicbrainz_mapper::metadata(&self.musicbrainz_anchor()?)?
             }
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 crate::catalog_model::discogs_mapper::metadata(&self.discogs_anchor()?)
             }
-            other => not_fetched(other),
         };
         let selected_pressing_year = metadata.pressing.year;
         // A release's own album date, when present, precedes parent documents.
         let selected_album_year = metadata.album.year;
         let counterpart = match self.release.catalog {
-            Catalog::MusicBrainz => self
+            LookupCatalog::MusicBrainz => self
                 .discogs_xref()?
                 .map(|release| crate::catalog_model::discogs_mapper::metadata(&release)),
-            Catalog::Discogs => self
+            LookupCatalog::Discogs => self
                 .musicbrainz_xref()?
                 .map(|mut release| {
                     release.artist_credit =
@@ -82,7 +80,6 @@ impl ReleasePayloads {
                     crate::catalog_model::musicbrainz_mapper::metadata(&release)
                 })
                 .transpose()?,
-            other => not_fetched(other),
         };
         let linked_album_year = counterpart.as_ref().and_then(|value| value.album.year);
         let linked_first_year = counterpart.as_ref().and_then(|value| value.album.first_year);
@@ -98,7 +95,7 @@ impl ReleasePayloads {
         metadata.album.year = selected_album_year;
         for (catalog, key, json) in self.album_documents()? {
             let album = match catalog {
-                Catalog::MusicBrainz => {
+                LookupCatalog::MusicBrainz => {
                     let group = bae_catalogs::musicbrainz::parse_release_group(json)
                         .map_err(|error| self.source_data(error.to_string()))?;
                     let credits = usable_supplemental_credits(group.artist_credit, key)?;
@@ -113,7 +110,7 @@ impl ReleasePayloads {
                         ),
                     }
                 }
-                Catalog::Discogs => {
+                LookupCatalog::Discogs => {
                     let master = bae_catalogs::discogs::documents::parse_discogs_master_json(json)?;
                     AlbumMetadata {
                         title: master.title.unwrap_or_default(),
@@ -124,7 +121,6 @@ impl ReleasePayloads {
                         first_year: master.year.map(|year| year as i32),
                     }
                 }
-                other => not_fetched(other),
             };
             metadata.album.fill_missing(album);
         }
@@ -140,23 +136,25 @@ impl ReleasePayloads {
 
     pub(super) fn projected_records(&self) -> Result<Vec<ReleaseRecord>, CatalogError> {
         let parent = self.anchor_parent()?;
-        let mut records = vec![ReleaseRecord::new(&self.release, parent.map(|parent| parent.key))];
+        let mut records =
+            vec![ReleaseRecord::new(&self.release.metadata_ref(), parent.map(|parent| parent.key))];
         if let Some(counterpart) = self.counterpart()? {
             let parent = match counterpart.catalog {
-                Catalog::Discogs => self.discogs_xref()?.and_then(|release| release.master_id),
-                Catalog::MusicBrainz => self
+                LookupCatalog::Discogs => {
+                    self.discogs_xref()?.and_then(|release| release.master_id)
+                }
+                LookupCatalog::MusicBrainz => self
                     .musicbrainz_xref()?
                     .and_then(|release| release.release_group.map(|group| group.id)),
-                other => not_fetched(other),
             };
-            merge_record(&mut records, ReleaseRecord::new(&counterpart, parent));
+            merge_record(&mut records, ReleaseRecord::new(&counterpart.metadata_ref(), parent));
         }
         for album in self.album_links()? {
             merge_record(&mut records, ReleaseRecord::album(&album));
         }
         // The release's own record first, the applied one; the rest in the
         // order surfaces list catalogs.
-        let own = self.release.catalog;
+        let own = self.release.catalog.catalog();
         records.sort_by_key(|record| {
             (
                 record.catalog() != own,

@@ -70,8 +70,8 @@ async fn pick_mb(
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id,
                 ),
                 partners: vec![],
@@ -245,8 +245,8 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let payloads = handle
         .library_manager
         .fetch_release_payloads(
-            &crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            &crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "edited-release",
             ),
             crate::catalog_model::payloads::ReadDepth::Complete,

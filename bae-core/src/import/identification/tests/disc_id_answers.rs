@@ -107,7 +107,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
     fixture.drain_automatic().await;
     assert_eq!(fixture.count_release_lookups("mb-disc-de"), 0);
     let release =
-        crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-disc-de");
+        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-disc-de");
 
     fixture
         .import

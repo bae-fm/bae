@@ -556,7 +556,7 @@ pub struct BridgeTriageMetadataSummary {
 pub enum BridgeMetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
-        record: crate::types::BridgeMetadataRef,
+        record: crate::types::BridgeLookupRef,
     },
     FileMetadata,
 }
@@ -596,20 +596,20 @@ impl BridgeReleaseLink {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePressingLink {
     /// The catalog's release the pick names first.
-    pub record: crate::types::BridgeMetadataRef,
+    pub record: crate::types::BridgeLookupRef,
     /// The same pressing in the other catalogs, which the pick also claims.
-    pub partners: Vec<crate::types::BridgeMetadataRef>,
+    pub partners: Vec<crate::types::BridgeLookupRef>,
 }
 
 #[cfg(feature = "desktop")]
 impl BridgePressingLink {
     pub(crate) fn from_core(link: bae_core::import::PressingLink) -> Self {
         Self {
-            record: crate::types::BridgeMetadataRef::from_core(link.record),
+            record: crate::types::BridgeLookupRef::from_core(link.record),
             partners: link
                 .partners
                 .into_iter()
-                .map(crate::types::BridgeMetadataRef::from_core)
+                .map(crate::types::BridgeLookupRef::from_core)
                 .collect(),
         }
     }
@@ -620,7 +620,7 @@ impl BridgePressingLink {
             partners: self
                 .partners
                 .into_iter()
-                .map(crate::types::BridgeMetadataRef::into_core)
+                .map(crate::types::BridgeLookupRef::into_core)
                 .collect(),
         }
     }
@@ -648,7 +648,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         ExternalRelease {
-            record: (crate::types::BridgeMetadataRef),
+            record: (crate::types::BridgeLookupRef),
         },
         FileMetadata,
     },

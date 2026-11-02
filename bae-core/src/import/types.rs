@@ -56,7 +56,7 @@ use std::{path::PathBuf, sync::Arc};
 pub enum MetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
-        record: MetadataRef,
+        record: crate::catalog_model::records::LookupRef,
     },
     FileMetadata,
 }
@@ -128,7 +128,7 @@ impl AlbumLink {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PressingLink {
     /// The catalog's release the pick names first.
-    pub record: MetadataRef,
+    pub record: crate::catalog_model::records::LookupRef,
     /// The other catalogs' releases the picked pressing paired with. Find
     /// online pairs a MusicBrainz release and a Discogs release into one
     /// pressing row when the evidence their records carry says they name one
@@ -138,12 +138,12 @@ pub struct PressingLink {
     /// This is what the person picked, not what one provider says about
     /// another — a cross-reference an editor linked stays inferred from the
     /// documents.
-    pub partners: Vec<MetadataRef>,
+    pub partners: Vec<crate::catalog_model::records::LookupRef>,
 }
 
 impl PressingLink {
     /// Every release the link claims, the primary first.
-    pub fn claimed(&self) -> impl Iterator<Item = &MetadataRef> {
+    pub fn claimed(&self) -> impl Iterator<Item = &crate::catalog_model::records::LookupRef> {
         std::iter::once(&self.record).chain(&self.partners)
     }
 }

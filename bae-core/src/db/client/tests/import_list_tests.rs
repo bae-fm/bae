@@ -38,7 +38,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
     TerminalVerdict::Found {
         findings: crate::identify::Findings {
             matches: vec![MetadataResult {
-                source: Catalog::MusicBrainz,
+                source: LookupCatalog::MusicBrainz,
                 release_id: release_id.to_string(),
                 title: "Verdict Album".to_string(),
                 artist: Some("Verdict Artist".to_string()),
@@ -186,7 +186,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
 
     db.save_source_release(
         &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked"),
             musicbrainz_release("mb-picked", "Picked Album").to_string(),
             Vec::new(),
         )
@@ -207,8 +207,8 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "mb-picked".to_string(),
                 ),
             }),
@@ -220,8 +220,8 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "mb-picked",
                 ),
                 partners: vec![],
@@ -261,8 +261,8 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
                     "mb-never-fetched".to_string(),
                 ),
             }),

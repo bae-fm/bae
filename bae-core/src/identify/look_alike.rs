@@ -25,11 +25,11 @@
 
 use super::agreements::Agreements;
 use crate::import::release_group::{Judgements, Pressing};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::pressing::{LabelLine, PressingFacts};
 use std::collections::{HashMap, HashSet};
 
-type ReleaseKey = (Catalog, String);
+type ReleaseKey = (LookupCatalog, String);
 
 /// `rows`, in their order, with each row that shows what an earlier one
 /// shows left out, the one of them kept being the one that stands best.
@@ -57,7 +57,7 @@ pub(crate) fn keep_one_of_each_look(
 struct Shown {
     /// The albums its records' catalogs file them under. A record filed
     /// under none shares a card with no other row.
-    albums: Vec<(Catalog, String)>,
+    albums: Vec<(LookupCatalog, String)>,
     year: Option<i32>,
     labels: Vec<LabelLine>,
     facts: PressingFacts,

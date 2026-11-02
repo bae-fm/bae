@@ -491,7 +491,10 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             destination: ImportDestination::Local,
             read_file_tags: false,
             pick: Some(bae_core::import::PressingLink {
-                record: bae_core::catalog_model::records::MetadataRef::new(Catalog::Discogs, discogs_key),
+                record: bae_core::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::Discogs,
+            discogs_key,
+        ),
                 partners: vec![],
             }),
             user_edit: None,

@@ -144,7 +144,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     };
     assert_eq!(
         matches.iter().map(|result| result.source).collect::<Vec<_>>(),
-        vec![bae_catalogs::catalog::Catalog::MusicBrainz],
+        vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
     assert_eq!(

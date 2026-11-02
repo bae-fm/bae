@@ -351,7 +351,7 @@ extension ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             application: .pick(
                 BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: MappingFixtures.source,
                         key: "another-pressing"
                     ),

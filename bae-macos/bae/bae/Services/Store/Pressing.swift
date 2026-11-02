@@ -18,6 +18,9 @@ struct Pressing: Equatable, Identifiable {
     let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
     let link: BridgePressingLink
+    /// Every source listing this pressing, in core's order — the names the
+    /// row's tags carry, whichever record the row is read from.
+    let sources: [BridgeLookupCatalog]
     /// Where it was released and what it is made of: "Japan · 2×CD".
     let summaryText: String
     /// What sets it apart beyond that: "Promo · Reissue".
@@ -29,17 +32,6 @@ struct Pressing: Equatable, Identifiable {
         lead.releaseId
     }
 
-    /// Every source listing this pressing, in the one order surfaces name
-    /// sources in — the names the row's tags carry. Which record the row is
-    /// read from decides what the row shows, never what order its names read
-    /// in, so a row and the card above it say the same thing.
-    var sources: [BridgeCatalog] {
-        bridgeCatalogs()
-            .filter { source in
-                releases.contains { $0.source == source }
-            }
-    }
-
     /// `nil` for a pressing carrying no releases, which core does not build:
     /// a pressing exists because at least one source listed it.
     init?(bridge: BridgePressing) {
@@ -49,6 +41,7 @@ struct Pressing: Equatable, Identifiable {
         labels = bridge.labels
         documentFailure = bridge.documentFailure
         link = bridge.pick
+        sources = bridge.sources
         summaryText = PressingText.line(bridge.summary)
         detailsText = PressingText.line(bridge.details)
     }

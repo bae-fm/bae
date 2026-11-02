@@ -4,11 +4,11 @@ use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, LookupAnswers};
 use crate::identify::medium::FolderAudio;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::pressing::{Packaging, ReleaseLabel};
 
 /// A 1959 pressing on Label One, LBL-100, as `catalog` lists it under `id`.
-fn pressing(catalog: Catalog, id: &str) -> MetadataResult {
+fn pressing(catalog: LookupCatalog, id: &str) -> MetadataResult {
     MetadataResult {
         year: Some(1959),
         labels: vec![ReleaseLabel::of(Some("Label One"), Some("LBL-100"))],
@@ -33,9 +33,9 @@ fn offered(results: Vec<MetadataResult>) -> Vec<String> {
 fn look_alike_rows_are_listed_once() {
     assert_eq!(
         offered(vec![
-            pressing(Catalog::Discogs, "300"),
-            pressing(Catalog::Discogs, "20"),
-            pressing(Catalog::Discogs, "1000"),
+            pressing(LookupCatalog::Discogs, "300"),
+            pressing(LookupCatalog::Discogs, "20"),
+            pressing(LookupCatalog::Discogs, "1000"),
         ]),
         vec!["20"]
     );
@@ -50,9 +50,9 @@ fn a_row_both_catalogs_list_is_kept_over_a_look_alike() {
         result
     };
     let kept = offered(vec![
-        pressing(Catalog::Discogs, "20"),
-        barcoded(pressing(Catalog::Discogs, "5000")),
-        barcoded(pressing(Catalog::MusicBrainz, "mb-1")),
+        pressing(LookupCatalog::Discogs, "20"),
+        barcoded(pressing(LookupCatalog::Discogs, "5000")),
+        barcoded(pressing(LookupCatalog::MusicBrainz, "mb-1")),
     ]);
     assert_eq!(kept.len(), 2, "{kept:?}");
     assert!(!kept.contains(&"20".to_string()), "{kept:?}");
@@ -63,7 +63,7 @@ fn a_row_both_catalogs_list_is_kept_over_a_look_alike() {
 #[test]
 fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
     let noted = |id: &str, note: &str| {
-        let mut result = pressing(Catalog::Discogs, id);
+        let mut result = pressing(LookupCatalog::Discogs, id);
         result.notes = vec![note.to_string()];
         result
     };
@@ -73,7 +73,7 @@ fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
 /// A row that shows something another does not is listed beside it.
 #[test]
 fn rows_that_show_different_details_are_both_listed() {
-    let mut boxed = pressing(Catalog::Discogs, "30");
+    let mut boxed = pressing(LookupCatalog::Discogs, "30");
     boxed.packaging = Some(Packaging::Box);
-    assert_eq!(offered(vec![pressing(Catalog::Discogs, "20"), boxed]), vec!["20", "30"]);
+    assert_eq!(offered(vec![pressing(LookupCatalog::Discogs, "20"), boxed]), vec!["20", "30"]);
 }

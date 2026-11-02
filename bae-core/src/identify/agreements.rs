@@ -4,7 +4,7 @@
 //! folder's own code printed on the record.
 
 use super::row_facts::FolderFacts;
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::signals::{SourcedValue, TextLine, TextOrigin};
 use bae_types::pressing::{ReleaseArea, ReleaseLabel};
@@ -118,15 +118,14 @@ pub(crate) fn agreements_of(
 /// releases the lookups of the folder's disc IDs returned.
 pub(crate) fn judged_results(
     matches: Vec<MetadataResult>,
-    by_disc_id: &HashSet<MetadataRef>,
+    by_disc_id: &HashSet<LookupRef>,
     text: &CandidateText,
     facts: &FolderFacts,
 ) -> Vec<crate::import::release_group::Judged> {
     matches
         .into_iter()
         .map(|result| {
-            let returned =
-                by_disc_id.contains(&MetadataRef::new(result.source, &result.release_id));
+            let returned = by_disc_id.contains(&result.release());
             let agreements = agreements_of(&result, text, facts, returned);
             (result, agreements)
         })

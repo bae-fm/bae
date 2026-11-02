@@ -244,6 +244,7 @@ extension ReleaseSelectionFailureTests {
             Pressing(
                 bridge: BridgePressing(
                     releases: offered.releases,
+                    sources: offered.sources,
                     labels: offered.labels,
                     documentFailure: .timeout,
                     pick: offered.link

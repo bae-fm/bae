@@ -443,7 +443,7 @@ pub struct AutomationPressing {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationMetadataResult {
-    pub source: AutomationCatalog,
+    pub source: AutomationLookupCatalog,
     pub release_id: String,
     pub title: String,
     pub artist: Option<String>,
@@ -617,10 +617,17 @@ pub struct CandidateSkipSetInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationPressingLink {
     /// The catalog's release the draft is read from.
-    pub record: AutomationMetadataRef,
+    pub record: AutomationLookupRef,
     /// The other catalogs' releases the picked pressing paired with, which
     /// the pick claims too.
-    pub partners: Vec<AutomationMetadataRef>,
+    pub partners: Vec<AutomationLookupRef>,
+}
+
+/// A release on a catalog that answers lookups: one bae can fetch and pick.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationLookupRef {
+    pub catalog: AutomationLookupCatalog,
+    pub key: String,
 }
 
 /// One catalog's key for an entity, whose kind is stated by its containing field.

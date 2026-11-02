@@ -8,12 +8,14 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
-use crate::catalog_model::records::{MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
+use crate::catalog_model::records::{
+    LookupRef, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload,
+};
 use crate::catalog_model::source_release::{
-    not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
+    ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
 use crate::catalog_model::CatalogError;
-use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage, LookupCatalog};
 use bae_catalogs::discogs::client::DiscogsClient;
 use bae_catalogs::discogs::DiscogsRelease;
 use bae_catalogs::musicbrainz::MbReleaseResponse;
@@ -51,18 +53,18 @@ pub(crate) enum ReadDepth {
 /// lookup to the read.
 #[derive(Clone, PartialEq, Eq)]
 pub struct DiscIdRelease {
-    release: MetadataRef,
+    release: LookupRef,
     json: std::sync::Arc<str>,
 }
 
 impl DiscIdRelease {
     /// MusicBrainz release `release_id`, as `json` states it.
     pub(crate) fn new(release_id: String, json: String) -> Self {
-        Self { release: MetadataRef::new(Catalog::MusicBrainz, release_id), json: json.into() }
+        Self { release: LookupRef::new(LookupCatalog::MusicBrainz, release_id), json: json.into() }
     }
 
     /// The release the answer states.
-    pub fn release(&self) -> &MetadataRef {
+    pub fn release(&self) -> &LookupRef {
         &self.release
     }
 
@@ -94,7 +96,7 @@ impl std::fmt::Debug for DiscIdRelease {
 /// validate the same bytes again.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleasePayloads {
-    release: MetadataRef,
+    release: LookupRef,
     /// The release's own document, as its source returned it.
     anchor: String,
     supporting: Vec<SourcePayload>,
@@ -107,7 +109,7 @@ impl ReleasePayloads {
     /// whatever supporting documents it names, each admitted as a fetch
     /// admits it.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
-    pub fn for_test(release: MetadataRef, anchor: String, supporting: Vec<SourcePayload>) -> Self {
+    pub fn for_test(release: LookupRef, anchor: String, supporting: Vec<SourcePayload>) -> Self {
         Self {
             release,
             anchor,
@@ -127,7 +129,7 @@ impl ReleasePayloads {
     }
 
     /// The release these documents describe.
-    pub fn release(&self) -> &MetadataRef {
+    pub fn release(&self) -> &LookupRef {
         &self.release
     }
 
@@ -139,7 +141,7 @@ impl ReleasePayloads {
     }
 
     fn source_data(&self, detail: String) -> CatalogError {
-        CatalogError::SourceData { catalog: self.release.catalog, detail }
+        CatalogError::SourceData { catalog: self.release.catalog.catalog(), detail }
     }
 
     /// The anchoring MusicBrainz release, parsed. Only called down the
@@ -190,7 +192,7 @@ impl ReleasePayloads {
     fn release_covers(&self) -> Result<Vec<RemoteCover>, CatalogError> {
         let mut covers = Vec::new();
         match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(
                     &self.musicbrainz_anchor()?,
                 ));
@@ -198,13 +200,12 @@ impl ReleasePayloads {
                     covers.extend(release.covers);
                 }
             }
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
                     covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(&release));
                 }
             }
-            other => not_fetched(other),
         }
         Ok(covers)
     }
@@ -218,9 +219,8 @@ impl ReleasePayloads {
     /// every release image.
     fn album_covers(&self) -> Result<Vec<RemoteCover>, CatalogError> {
         let musicbrainz = match self.release.catalog {
-            Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
-            Catalog::Discogs => self.musicbrainz_xref()?,
-            other => not_fetched(other),
+            LookupCatalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
+            LookupCatalog::Discogs => self.musicbrainz_xref()?,
         };
         let mut covers: Vec<RemoteCover> = musicbrainz
             .as_ref()
@@ -229,10 +229,11 @@ impl ReleasePayloads {
             .collect();
         for (catalog, key, json) in self.album_documents()? {
             match catalog {
-                Catalog::Discogs => covers
+                LookupCatalog::Discogs => covers
                     .extend(bae_catalogs::discogs::documents::parse_discogs_master_covers(json)?),
-                Catalog::MusicBrainz => covers.push(RemoteCover::musicbrainz_release_group(key)),
-                other => not_fetched(other),
+                LookupCatalog::MusicBrainz => {
+                    covers.push(RemoteCover::musicbrainz_release_group(key))
+                }
             }
         }
         Ok(covers)
@@ -244,25 +245,24 @@ impl ReleasePayloads {
     pub fn extract(&self) -> Result<SourceRelease, CatalogError> {
         let metadata = self.projected_metadata()?;
         let mut other_records = self.projected_records()?;
-        other_records.retain(|record| record.catalog() != self.release.catalog);
+        other_records.retain(|record| record.catalog() != self.release.catalog.catalog());
         let covers = ReleaseCovers { release: self.release_covers()?, album: self.album_covers()? };
         let archive_groups = self
             .album_documents()?
             .into_iter()
-            .filter(|(catalog, _, _)| *catalog == Catalog::MusicBrainz)
+            .filter(|(catalog, _, _)| *catalog == LookupCatalog::MusicBrainz)
             .map(|(_, key, _)| key.to_string())
             .collect();
         let archived_musicbrainz = match self.release.catalog {
-            Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
-            Catalog::Discogs => self.musicbrainz_xref()?,
-            other => not_fetched(other),
+            LookupCatalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
+            LookupCatalog::Discogs => self.musicbrainz_xref()?,
         };
         let archive_release = archived_musicbrainz.map(|release| ArchiveRelease {
             group_id: release.release_group.map(|group| group.id),
             release_id: release.id,
         });
         let (source_group_id, mediums, catalog, notes) = match self.release.catalog {
-            Catalog::MusicBrainz => {
+            LookupCatalog::MusicBrainz => {
                 let anchor = self.musicbrainz_anchor()?;
                 (
                     anchor.release_group.as_ref().map(|group| group.id.clone()),
@@ -274,7 +274,7 @@ impl ReleasePayloads {
                     crate::catalog_model::search::musicbrainz_release_notes(&anchor),
                 )
             }
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 let anchor = self.discogs_anchor()?;
                 let media = crate::catalog_model::discogs_mapper::pressing(&anchor).1;
                 (
@@ -287,7 +287,6 @@ impl ReleasePayloads {
                     crate::catalog_model::search::discogs_release_notes(&anchor),
                 )
             }
-            other => not_fetched(other),
         };
         Ok(SourceRelease {
             release: self.release.clone(),

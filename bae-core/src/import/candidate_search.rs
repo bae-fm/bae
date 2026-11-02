@@ -24,7 +24,7 @@ use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
 use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::release_group::{group_results, ReleaseGroup};
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::catalog::LookupCatalog;
 
 /// The run a stored search is on: what each catalog's answer names to land
 /// on it. A new search for a key is on a new run, and no run is used twice.
@@ -177,15 +177,15 @@ impl CandidateSearch {
     /// search.
     pub(crate) fn record_picked(
         &mut self,
-        release: &MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         links: AlbumLinks,
     ) -> Option<Vec<(String, Vec<MetadataRef>)>> {
-        if release.catalog != Catalog::MusicBrainz {
+        if release.catalog != LookupCatalog::MusicBrainz {
             return None;
         }
         let group = self
             .landed()
-            .find(|result| result.source == release.catalog && result.release_id == release.key)
+            .find(|result| result.release() == *release)
             .map(|result| result.source_group_id.clone())?;
         let read = PickedResult { release_id: release.key.clone(), links };
         match self.picked.iter_mut().find(|picked| picked.release_id == release.key) {
@@ -285,6 +285,7 @@ impl CandidateSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bae_catalogs::catalog::Catalog;
 
     /// A library that asks every source.
     fn all_on() -> Vec<CatalogAvailability> {
@@ -310,7 +311,7 @@ mod tests {
         SearchQuery::General { artist: "Artist Name".to_string(), album: "Album Title".to_string() }
     }
 
-    fn result(source: impl Into<Catalog>, release_id: &str, group_id: &str) -> MetadataResult {
+    fn result(source: LookupCatalog, release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
@@ -360,7 +361,7 @@ mod tests {
     /// other found: the gap is what a person has to know about.
     #[test]
     fn a_failed_source_heads_the_search_even_beside_matches() {
-        let found = vec![result(Catalog::MusicBrainz, "mb-1", "group-x")];
+        let found = vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")];
         assert_eq!(
             search(done(found.clone()), SourceSearch::Searching).status(),
             SearchStatus::Searching
@@ -371,13 +372,14 @@ mod tests {
             SearchStatus::Failed
         );
         assert_eq!(
-            search(done(found), done(vec![result(Catalog::Discogs, "dg-1", "master-7")])).status(),
+            search(done(found), done(vec![result(LookupCatalog::Discogs, "dg-1", "master-7")]))
+                .status(),
             SearchStatus::Found
         );
     }
 
-    fn musicbrainz(release_id: &str) -> crate::catalog_model::records::MetadataRef {
-        crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, release_id)
+    fn musicbrainz(release_id: &str) -> crate::catalog_model::records::LookupRef {
+        crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id)
     }
 
     /// A typed search reads nothing up front: its cards show each catalog's
@@ -385,21 +387,21 @@ mod tests {
     /// release's documents state joins them.
     #[test]
     fn a_typed_search_s_cards_join_after_a_result_is_picked_and_not_before() {
-        let unpaired = |source: Catalog, release_id: &str, group_id: &str| {
+        let unpaired = |source: LookupCatalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
             done(vec![found])
         };
         let mut search = search(
-            unpaired(Catalog::MusicBrainz, "mb-1", "group-x"),
-            unpaired(Catalog::Discogs, "dg-1", "master-7"),
+            unpaired(LookupCatalog::MusicBrainz, "mb-1", "group-x"),
+            unpaired(LookupCatalog::Discogs, "dg-1", "master-7"),
         );
         assert_eq!(search.groups.len(), 2, "nothing joins before a pick");
 
         let link = crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7");
         assert_eq!(
             search.record_picked(
-                &crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-1"),
+                &crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, "dg-1"),
                 AlbumLinks::Read(vec![link.clone()]),
             ),
             None,
@@ -423,7 +425,7 @@ mod tests {
     /// same numbers join nothing.
     #[test]
     fn a_picked_result_no_document_links_is_joined_by_what_the_list_prints() {
-        let numbered = |source: Catalog, release_id: &str, group_id: &str| {
+        let numbered = |source: LookupCatalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
             found.labels =
@@ -431,8 +433,8 @@ mod tests {
             done(vec![found])
         };
         let mut search = search(
-            numbered(Catalog::MusicBrainz, "mb-1", "group-x"),
-            numbered(Catalog::Discogs, "dg-1", "master-7"),
+            numbered(LookupCatalog::MusicBrainz, "mb-1", "group-x"),
+            numbered(LookupCatalog::Discogs, "dg-1", "master-7"),
         );
         assert_eq!(search.groups.len(), 2);
 
@@ -451,7 +453,7 @@ mod tests {
     /// did when the pick landed.
     #[test]
     fn a_search_read_with_its_picked_results_joins_their_cards() {
-        let unpaired = |source: Catalog, release_id: &str, group_id: &str| {
+        let unpaired = |source: LookupCatalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
             done(vec![found])
@@ -459,8 +461,11 @@ mod tests {
         let read = CandidateSearch::of(
             query(),
             vec![
-                (LookupCatalog::MusicBrainz, unpaired(Catalog::MusicBrainz, "mb-1", "group-x")),
-                (LookupCatalog::Discogs, unpaired(Catalog::Discogs, "dg-1", "master-7")),
+                (
+                    LookupCatalog::MusicBrainz,
+                    unpaired(LookupCatalog::MusicBrainz, "mb-1", "group-x"),
+                ),
+                (LookupCatalog::Discogs, unpaired(LookupCatalog::Discogs, "dg-1", "master-7")),
             ],
             vec![PickedResult {
                 release_id: "mb-1".to_string(),
@@ -499,7 +504,7 @@ mod tests {
         assert!(!started.is_settled(), "MusicBrainz is still looking");
 
         let answered = search(
-            done(vec![result(Catalog::MusicBrainz, "mb-1", "group-x")]),
+            done(vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
             SourceSearch::NotConfigured,
         );
         assert!(answered.is_settled());
@@ -552,7 +557,7 @@ mod tests {
     #[test]
     fn the_first_source_to_land_draws_while_the_other_looks() {
         let search = search(
-            done(vec![result(Catalog::MusicBrainz, "mb-1", "group-x")]),
+            done(vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
             SourceSearch::Searching,
         );
         assert!(!search.is_settled());
@@ -565,8 +570,8 @@ mod tests {
     #[test]
     fn a_later_source_merges_into_the_groups_already_drawn() {
         let search = search(
-            done(vec![result(Catalog::MusicBrainz, "mb-1", "group-x")]),
-            done(vec![result(Catalog::Discogs, "dg-1", "master-7")]),
+            done(vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
+            done(vec![result(LookupCatalog::Discogs, "dg-1", "master-7")]),
         );
         assert!(search.is_settled());
         assert_eq!(search.groups.len(), 1);
@@ -584,7 +589,7 @@ mod tests {
     #[test]
     fn a_failed_source_keeps_the_other_source_s_groups() {
         let search = search(
-            done(vec![result(Catalog::MusicBrainz, "mb-1", "group-x")]),
+            done(vec![result(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
             failed(crate::catalog_model::LookupFailure::Network),
         );
         assert!(search.is_settled());

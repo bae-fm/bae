@@ -21,7 +21,7 @@ async fn a_master_backlink_is_followed() {
     let fetched = providers
         .fetch_payloads(
             Some(&client),
-            &MetadataRef::new(Catalog::Discogs, "7811"),
+            &LookupRef::new(LookupCatalog::Discogs, "7811"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -50,7 +50,7 @@ async fn a_master_backlink_is_followed() {
 #[test]
 fn the_pressing_is_the_selected_record_s_alone() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![
             SourcePayload::new(
@@ -100,7 +100,7 @@ fn the_pressing_is_the_selected_record_s_alone() {
 #[test]
 fn the_album_page_states_the_first_year_before_the_linked_release() {
     let with_master = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![
             SourcePayload::new(
@@ -117,7 +117,7 @@ fn the_album_page_states_the_first_year_before_the_linked_release() {
     assert_eq!(with_master.metadata.album.first_year, Some(1980));
 
     let without_master = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
@@ -137,7 +137,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     anchor["artists"] = json!([]);
     anchor["year"] = json!(0);
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         anchor.to_string(),
         vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master())],
     );
@@ -151,7 +151,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
 #[test]
 fn linked_release_album_date_survives_an_unavailable_parent_document() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
@@ -170,7 +170,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     anchor["artists"] =
         json!([{ "id":7833, "name":"Selected Artist" }, { "id":7834, "name":"Second Artist" }]);
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         anchor.to_string(),
         vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,

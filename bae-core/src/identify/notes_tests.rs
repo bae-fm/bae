@@ -5,7 +5,7 @@
 use super::*;
 use crate::catalog_model::search::musicbrainz_release_notes;
 use crate::signals::{TextLine, TextOrigin};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
@@ -23,7 +23,7 @@ fn discogs(document: serde_json::Value) -> MetadataResult {
         id => id.to_string(),
     };
     let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, id),
+        crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, id),
         document.to_string(),
         Vec::<crate::catalog_model::records::SourcePayload>::new(),
     )
@@ -39,7 +39,7 @@ fn musicbrainz(release_id: &str, document: serde_json::Value) -> MetadataResult 
         serde_json::from_value(document).expect("the release document parses");
     MetadataResult {
         notes: musicbrainz_release_notes(&release),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, None)
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, None)
     }
 }
 

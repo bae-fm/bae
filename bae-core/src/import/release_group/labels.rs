@@ -50,10 +50,15 @@ impl Pressing {
 mod tests {
     use super::*;
     use crate::catalog_model::search::MetadataResult;
-    use bae_catalogs::catalog::Catalog;
+
+    use bae_catalogs::catalog::LookupCatalog;
     use bae_types::pressing::ReleaseLabel;
 
-    fn record(source: Catalog, id: &str, labels: &[(&str, &str)]) -> MetadataResult {
+    fn record(
+        source: bae_catalogs::catalog::LookupCatalog,
+        id: &str,
+        labels: &[(&str, &str)],
+    ) -> MetadataResult {
         MetadataResult {
             labels: labels
                 .iter()
@@ -76,7 +81,7 @@ mod tests {
     fn a_name_is_shown_once_with_every_number_under_it() {
         let pressing = Pressing {
             releases: vec![record(
-                Catalog::Discogs,
+                LookupCatalog::Discogs,
                 "dg-1",
                 &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("label one", "EF-300")],
             )],
@@ -95,12 +100,12 @@ mod tests {
         let pressing = Pressing {
             releases: vec![
                 record(
-                    Catalog::MusicBrainz,
+                    LookupCatalog::MusicBrainz,
                     "mb-1",
                     &[("Label One", "EF-300"), ("Label One", "AB-100")],
                 ),
                 record(
-                    Catalog::Discogs,
+                    LookupCatalog::Discogs,
                     "dg-1",
                     &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("Label One", "EF 300")],
                 ),
@@ -119,8 +124,8 @@ mod tests {
     fn a_label_written_two_ways_is_listed_once() {
         let pressing = Pressing {
             releases: vec![
-                record(Catalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
-                record(Catalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
+                record(LookupCatalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
+                record(LookupCatalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
             ],
         };
         let paired = crate::import::pressing_evidence::PressingEvidence::between(

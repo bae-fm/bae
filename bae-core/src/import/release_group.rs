@@ -32,7 +32,7 @@
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::Agreements;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::RemoteCover;
 use pressing_sets::{formed_pressings, gather_pressings};
 
@@ -155,10 +155,7 @@ impl Pressing {
         let named: Vec<bool> = releases
             .iter()
             .map(|release| {
-                let reference = crate::catalog_model::records::MetadataRef::new(
-                    release.source,
-                    release.release_id.clone(),
-                );
+                let reference = MetadataRef::from(release.release());
                 releases.iter().any(|other| other.links.contains(&reference))
             })
             .collect();
@@ -169,7 +166,7 @@ impl Pressing {
                 judged.tracklist_rank(release),
                 std::cmp::Reverse(judged.of_release(release).count()),
                 !states_tracklist(release),
-                source_rank(release.source),
+                release.source.catalog().rank(),
                 !named[at],
             )
         });
@@ -180,6 +177,15 @@ impl Pressing {
                 .map(|at| releases[at].take().expect("each record is placed once"))
                 .collect(),
         }
+    }
+
+    /// Every catalog listing this pressing, in the order surfaces list
+    /// catalogs: the row's tags, whichever record the row is read from.
+    pub fn sources(&self) -> Vec<LookupCatalog> {
+        LookupCatalog::ALL
+            .into_iter()
+            .filter(|catalog| self.releases.iter().any(|release| release.source == *catalog))
+            .collect()
     }
 
     /// The release a row picks when the person picks the row itself.
@@ -199,16 +205,11 @@ impl Pressing {
     /// macOS, Windows, Linux and the sweep picking the same thing.
     pub(crate) fn claims(
         &self,
-    ) -> (crate::catalog_model::records::MetadataRef, Vec<crate::catalog_model::records::MetadataRef>)
+    ) -> (crate::catalog_model::records::LookupRef, Vec<crate::catalog_model::records::LookupRef>)
     {
-        let mut releases = self.releases.iter().map(|release| {
-            crate::catalog_model::records::MetadataRef::new(
-                release.source,
-                release.release_id.clone(),
-            )
-        });
+        let mut releases = self.releases.iter().map(MetadataResult::release);
         let primary = releases.next().expect("a pressing is built from at least one release");
-        let mut partners: Vec<crate::catalog_model::records::MetadataRef> = Vec::new();
+        let mut partners: Vec<crate::catalog_model::records::LookupRef> = Vec::new();
         for release in releases {
             let claimed = release.catalog == primary.catalog
                 || partners.iter().any(|partner| partner.catalog == release.catalog);
@@ -248,7 +249,7 @@ impl Pressing {
 /// agrees with is what its records agree with.
 #[derive(Debug, Clone, Default)]
 pub struct Judgements {
-    agreements: std::collections::HashMap<(Catalog, String), Agreements>,
+    agreements: std::collections::HashMap<(LookupCatalog, String), Agreements>,
     /// `None` where no folder is being identified: a typed search, one
     /// lookup's own answer.
     folder_track_count: Option<u32>,
@@ -350,7 +351,7 @@ pub fn row_count(rows: &[u32]) -> usize {
 /// because that list alone does not hold what the run decided them against.
 #[cfg(test)]
 pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
-    let mut grouped: std::collections::HashMap<(Catalog, String), usize> =
+    let mut grouped: std::collections::HashMap<(LookupCatalog, String), usize> =
         std::collections::HashMap::new();
     for (row, pressing) in group_results(unranked(results.to_vec()), None)
         .iter()
@@ -493,7 +494,7 @@ fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
     use std::collections::HashMap;
 
     let mut buckets: Vec<Bucket> = Vec::new();
-    let mut index: HashMap<(Catalog, String), usize> = HashMap::new();
+    let mut index: HashMap<(LookupCatalog, String), usize> = HashMap::new();
     for (at, release) in releases.iter().enumerate() {
         match release.source_group_id.clone() {
             Some(group_id) => {
@@ -503,7 +504,7 @@ fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
                     None => {
                         index.insert(key, buckets.len());
                         buckets.push(Bucket {
-                            source: release.source,
+                            source: release.source.catalog(),
                             source_group_id: Some(group_id),
                             members: vec![at],
                         });
@@ -511,7 +512,7 @@ fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
                 }
             }
             None => buckets.push(Bucket {
-                source: release.source,
+                source: release.source.catalog(),
                 source_group_id: None,
                 members: vec![at],
             }),
@@ -525,7 +526,7 @@ fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
 /// on one card. Which buckets those are depends on nothing but the links, so
 /// it is the same whatever order the results arrived in, and it may put more
 /// than one of a source's buckets on a card. A card sits at its earliest
-/// bucket's position, and its buckets are ordered by [`source_rank`] and then
+/// bucket's position, and its buckets are ordered by [`Catalog::rank`] and then
 /// first-seen — the order the card's title, label and cover are read in, and
 /// the order it names its sources in.
 fn merge_buckets(
@@ -576,7 +577,7 @@ fn merge_buckets(
                 .into_iter()
                 .map(|bucket| buckets[bucket].take().expect("a bucket joins one card"))
                 .collect();
-            card.sort_by_key(|bucket| (source_rank(bucket.source), bucket.members[0]));
+            card.sort_by_key(|bucket| (bucket.source.rank(), bucket.members[0]));
             card
         })
         .collect()
@@ -620,7 +621,7 @@ fn build_group(
             });
         }
     }
-    sources.sort_by_key(|source| source_rank(source.source));
+    sources.sort_by_key(|source| source.source.rank());
     let lead = read(*members.first().expect("a card is built from at least one release"));
     let id = card
         .iter()
@@ -770,17 +771,6 @@ struct Row {
 /// nothing, have neither.
 fn states_tracklist(release: &MetadataResult) -> bool {
     matches!(release.source_tracks, Some(crate::catalog_model::search::SourceTracks::Listed { .. }))
-}
-
-/// Where a source sits in the one order surfaces list sources in. The last
-/// tie-break between records and between buckets, where nothing the folder says
-/// tells them apart, and what puts a card's sources in that order: the buckets
-/// a card is built from are sorted by it, and its sources are read off them.
-fn source_rank(source: Catalog) -> usize {
-    Catalog::ALL
-        .iter()
-        .position(|listed| *listed == source)
-        .expect("every source is one of Catalog::ALL")
 }
 
 /// Order the rows: most agreed with first, and among rows the candidate's text

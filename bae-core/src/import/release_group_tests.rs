@@ -10,7 +10,7 @@ pub(super) fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
 
 pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
     MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: LookupCatalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -41,7 +41,7 @@ pub(super) fn discogs(
     group_id: Option<&str>,
     year: Option<i32>,
 ) -> MetadataResult {
-    MetadataResult { source: Catalog::Discogs, ..mb(release_id, group_id, year) }
+    MetadataResult { source: LookupCatalog::Discogs, ..mb(release_id, group_id, year) }
 }
 
 /// `release` as its catalog states it: its album is `master` on Discogs.

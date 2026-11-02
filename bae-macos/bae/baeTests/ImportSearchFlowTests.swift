@@ -300,7 +300,7 @@ extension ImportSearchFlowMetadataApplicationTests {
                 key: MappingFixtures.candidateKey,
                 application: .pick(
                     BridgePressingLink(
-                        record: BridgeMetadataRef(
+                        record: BridgeLookupRef(
                             catalog: .musicBrainz,
                             key: release
                         ),
@@ -379,7 +379,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
             MetadataApplication.fileTags,
             .pick(
                 BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: .musicBrainz,
                         key: "release-mb"
                     ),
@@ -388,7 +388,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
             ),
             .pick(
                 BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: .discogs,
                         key: "release-discogs"
                     ),
@@ -681,8 +681,9 @@ struct ImportSearchFlowLibraryStatusTests {
                                                 sourceGroupId: "group-live"
                                             )
                                         ],
+                                        sources: [.musicBrainz],
                                         pick: BridgePressingLink(
-                                            record: BridgeMetadataRef(
+                                            record: BridgeLookupRef(
                                                 catalog: .musicBrainz,
                                                 key: "rel-live"
                                             ),

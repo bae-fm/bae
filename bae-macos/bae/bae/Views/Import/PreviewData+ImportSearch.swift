@@ -24,6 +24,7 @@
                         sourceGroupId: "group-preview"
                     )
                 ],
+                sources: [.musicBrainz],
                 labels: [
                     BridgeLabelLine(
                         names: ["Label Name"],
@@ -31,7 +32,7 @@
                     )
                 ],
                 pick: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: .musicBrainz,
                         key: "rel-123"
                     ),
@@ -65,6 +66,7 @@
                         sourceGroupId: "master-6"
                     ),
                 ],
+                sources: [.musicBrainz, .discogs],
                 labels: [
                     BridgeLabelLine(
                         names: ["Label Name"],
@@ -72,12 +74,12 @@
                     )
                 ],
                 pick: BridgePressingLink(
-                    record: BridgeMetadataRef(
+                    record: BridgeLookupRef(
                         catalog: .musicBrainz,
                         key: "rel-456"
                     ),
                     partners: [
-                        BridgeMetadataRef(
+                        BridgeLookupRef(
                             catalog: .discogs,
                             key: "rel-456-d"
                         )
@@ -192,6 +194,7 @@
                                         sourceGroupId: "grp-1"
                                     )
                                 ],
+                                sources: [.musicBrainz],
                                 labels: [
                                     BridgeLabelLine(
                                         names: ["Label Name"],
@@ -199,7 +202,7 @@
                                     )
                                 ],
                                 pick: BridgePressingLink(
-                                    record: BridgeMetadataRef(
+                                    record: BridgeLookupRef(
                                         catalog: .musicBrainz,
                                         key: "rel-aaa"
                                     ),
@@ -220,6 +223,7 @@
                                         sourceGroupId: "grp-1"
                                     )
                                 ],
+                                sources: [.musicBrainz],
                                 labels: [
                                     BridgeLabelLine(
                                         names: ["Another Label"],
@@ -227,7 +231,7 @@
                                     )
                                 ],
                                 pick: BridgePressingLink(
-                                    record: BridgeMetadataRef(
+                                    record: BridgeLookupRef(
                                         catalog: .musicBrainz,
                                         key: "rel-bbb"
                                     ),
@@ -292,6 +296,7 @@
                                         sourceGroupId: "master-7"
                                     ),
                                 ],
+                                sources: [.musicBrainz, .discogs],
                                 labels: [
                                     BridgeLabelLine(
                                         names: ["Reissue Records"],
@@ -299,12 +304,12 @@
                                     )
                                 ],
                                 pick: BridgePressingLink(
-                                    record: BridgeMetadataRef(
+                                    record: BridgeLookupRef(
                                         catalog: .musicBrainz,
                                         key: "rel-ccc"
                                     ),
                                     partners: [
-                                        BridgeMetadataRef(
+                                        BridgeLookupRef(
                                             catalog: .discogs,
                                             key: "rel-ddd"
                                         )
@@ -356,6 +361,7 @@
                                     sourceGroupId: "group-disc"
                                 )
                             ],
+                            sources: [.musicBrainz],
                             labels: [
                                 BridgeLabelLine(
                                     names: ["Label A"],
@@ -363,7 +369,7 @@
                                 )
                             ],
                             pick: BridgePressingLink(
-                                record: BridgeMetadataRef(
+                                record: BridgeLookupRef(
                                     catalog: .musicBrainz,
                                     key: "rel-disc-1"
                                 ),
@@ -409,6 +415,7 @@
                                     sourceGroupId: "group-bar"
                                 )
                             ],
+                            sources: [.musicBrainz],
                             labels: [
                                 BridgeLabelLine(
                                     names: ["Label B"],
@@ -416,7 +423,7 @@
                                 )
                             ],
                             pick: BridgePressingLink(
-                                record: BridgeMetadataRef(
+                                record: BridgeLookupRef(
                                     catalog: .musicBrainz,
                                     key: "rel-bar-1"
                                 ),

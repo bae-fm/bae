@@ -17,7 +17,6 @@ use super::{
     combined, BarcodeProgress, CatalogProgress, DocumentReading, Effect, LookupState,
     SignalsContext,
 };
-use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
@@ -42,16 +41,14 @@ pub(super) fn next_round(
         catalog = catalog.searching(&number, artist, &providers, &mut effects);
     }
     let read = |record: &MetadataResult| {
-        context.documents.read().iter().any(|reading| {
-            reading.release.catalog == record.source && reading.release.key == record.release_id
-        })
+        context.documents.read().iter().any(|reading| reading.release == record.release())
     };
     let unread: Vec<ReleaseToRead> = rows
         .iter()
         .flatten()
         .filter(|record| !read(record))
         .map(|record| {
-            let release = MetadataRef::new(record.source, record.release_id.clone());
+            let release = record.release();
             match context.disc.document_of(&release) {
                 Some(answered) => ReleaseToRead::DiscIdAnswer(answered.clone()),
                 None => ReleaseToRead::ReleaseLookup(release),
@@ -69,9 +66,9 @@ pub(super) fn next_round(
                 .chain(&pressings)
                 .any(|lookup| lookup.source == source && lookup.key == key);
             let answered = match &key {
-                PressingKey::Link { release } => pool.all().any(|result| {
-                    result.source == release.catalog && result.release_id == release.key
-                }),
+                PressingKey::Link { release } => {
+                    pool.all().any(|result| result.release() == *release)
+                }
                 PressingKey::Barcode { barcode: code } => barcode.lookups().iter().any(|lookup| {
                     same_barcode(&lookup.value, code) && asked_of(&lookup.providers, source)
                 }),

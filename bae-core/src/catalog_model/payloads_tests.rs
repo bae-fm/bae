@@ -7,7 +7,7 @@ use crate::catalog_model::test_documents::{
 #[test]
 fn discogs_cover_choices_keep_every_image() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "123"),
+        LookupRef::new(LookupCatalog::Discogs, "123"),
         serde_json::json!({
             "id": 123,
             "title": "Album Title",
@@ -59,18 +59,21 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
     );
     for (source, anchor, supporting) in [
         (
-            Catalog::Discogs,
+            LookupCatalog::Discogs,
             discogs.clone(),
             SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "123", musicbrainz.clone()),
         ),
         (
-            Catalog::MusicBrainz,
+            LookupCatalog::MusicBrainz,
             musicbrainz,
             SourcePayload::new(PayloadSource::Discogs, "123", discogs),
         ),
     ] {
         let covers = ReleasePayloads::for_test(
-            MetadataRef::new(source, if source == Catalog::Discogs { "123" } else { "mb-release" }),
+            LookupRef::new(
+                source,
+                if source == LookupCatalog::Discogs { "123" } else { "mb-release" },
+            ),
             anchor,
             vec![supporting, master.clone()],
         )
@@ -125,12 +128,12 @@ fn illustrated_discogs_release() -> String {
 #[test]
 fn a_picks_covers_are_the_images_its_documents_state() {
     let primary = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         unillustrated_musicbrainz_release(serde_json::json!([])),
         Vec::new(),
     );
     let partner = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "123"),
+        LookupRef::new(LookupCatalog::Discogs, "123"),
         illustrated_discogs_release(),
         Vec::new(),
     );
@@ -155,14 +158,14 @@ fn a_picks_covers_are_the_images_its_documents_state() {
 #[test]
 fn a_release_reachable_twice_offers_its_images_once() {
     let primary = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         unillustrated_musicbrainz_release(
             serde_json::json!([{ "url": { "resource": "https://www.discogs.com/release/123" } }]),
         ),
         vec![SourcePayload::new(PayloadSource::Discogs, "123", illustrated_discogs_release())],
     );
     let partner = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "123"),
+        LookupRef::new(LookupCatalog::Discogs, "123"),
         illustrated_discogs_release(),
         Vec::new(),
     );
@@ -180,7 +183,7 @@ fn a_release_reachable_twice_offers_its_images_once() {
 #[test]
 fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -265,7 +268,7 @@ fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
     let mut anchor = musicbrainz_release_with_relations("mb-release", "mb-group", &[]);
     anchor["release-group"] = serde_json::Value::Null;
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         anchor.to_string(),
         Vec::new(),
     );
@@ -280,7 +283,7 @@ fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
 #[test]
 fn a_group_link_does_not_invent_a_pressings_parent() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -305,7 +308,7 @@ fn a_group_link_does_not_invent_a_pressings_parent() {
 #[test]
 fn the_archived_cross_reference_names_the_discogs_master() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -337,7 +340,7 @@ fn the_archived_cross_reference_names_the_discogs_master() {
 #[test]
 fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -404,7 +407,7 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
 #[test]
 fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -436,7 +439,7 @@ fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
 #[test]
 fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
     let primary = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
@@ -446,7 +449,7 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
         Vec::new(),
     );
     let partner = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "2222"),
+        LookupRef::new(LookupCatalog::Discogs, "2222"),
         serde_json::json!({
             "id": 2222, "title": "Album Title", "master_id": 909090
         })
@@ -494,7 +497,7 @@ fn discogs_release(id: u64, master_id: u64, year: u32) -> serde_json::Value {
 #[test]
 fn a_discogs_release_reaches_its_master_through_the_anchor() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "12345"),
+        LookupRef::new(LookupCatalog::Discogs, "12345"),
         discogs_release(12345, 99, 1985).to_string(),
         vec![SourcePayload::new(
             PayloadSource::DiscogsMaster,
@@ -528,7 +531,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
     let payloads = providers
         .fetch_payloads(
             None,
-            &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -577,7 +580,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
     let payloads = providers
         .fetch_payloads(
             None,
-            &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -609,7 +612,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
 #[test]
 fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressing() {
     let mut payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7711"),
+        LookupRef::new(LookupCatalog::Discogs, "7711"),
         serde_json::json!({
             "id": 7711, "master_id": 7722, "title": "Album Title",
             "artists": [{"id": 7733, "name": "Artist Name"}],

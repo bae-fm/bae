@@ -17,7 +17,7 @@ fn search_query() -> crate::catalog_model::search::SearchQuery {
     }
 }
 
-fn search_result(source: impl Into<Catalog>, release_id: &str) -> crate::catalog_model::search::MetadataResult {
+fn search_result(source: LookupCatalog, release_id: &str) -> crate::catalog_model::search::MetadataResult {
     crate::catalog_model::search::MetadataResult {
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -71,14 +71,14 @@ async fn two_landings_on_one_run_both_stand() {
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![
-                search_result(Catalog::MusicBrainz, "mb-1"),
-                search_result(Catalog::MusicBrainz, "mb-2"),
+                search_result(LookupCatalog::MusicBrainz, "mb-1"),
+                search_result(LookupCatalog::MusicBrainz, "mb-2"),
             ]),
         )
         .await
     );
     assert!(
-        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-1")]),)
+        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),)
             .await
     );
 
@@ -113,7 +113,7 @@ async fn a_replaced_search_cannot_land() {
             &runtime,
             first,
             LookupCatalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
+            Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await
     );
@@ -157,7 +157,7 @@ async fn a_retry_re_asks_only_the_failed_sources() {
             &runtime,
             run,
             LookupCatalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
+            Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await
     );
@@ -184,7 +184,7 @@ async fn a_retry_re_asks_only_the_failed_sources() {
             &runtime,
             retried,
             LookupCatalog::Discogs,
-            Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
+            Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
         )
         .await
     );
@@ -228,7 +228,7 @@ async fn a_retry_leaves_a_source_still_searching_to_its_answer() {
             &runtime,
             run,
             LookupCatalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
+            Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await,
         "MusicBrainz's answer was out before the retry and lands after it"
@@ -254,11 +254,11 @@ async fn only_a_part_still_searching_takes_an_answer() {
         .unwrap();
 
     assert!(
-        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-1")]),)
+        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),)
             .await
     );
     assert!(
-        !land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-2")]),)
+        !land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-2")]),)
             .await,
         "a part that answered takes no second answer"
     );
@@ -267,7 +267,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
             &runtime,
             run,
             LookupCatalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
+            Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await,
         "the search never asked MusicBrainz"
@@ -332,7 +332,7 @@ async fn a_landing_for_a_switched_off_source_goes_nowhere() {
             &runtime,
             run,
             LookupCatalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
+            Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await
     );
@@ -358,7 +358,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     scanned_key(&runtime, key).await;
     let run = started_search(&runtime, key).await;
     let grouped =
-        |source: Catalog, release_id: &str, group: &str| crate::catalog_model::search::MetadataResult {
+        |source: LookupCatalog, release_id: &str, group: &str| crate::catalog_model::search::MetadataResult {
             source_group_id: Some(group.to_string()),
             ..search_result(source, release_id)
         };
@@ -367,7 +367,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
             &runtime,
             run,
             LookupCatalog::MusicBrainz,
-            Ok(vec![grouped(Catalog::MusicBrainz, "mb-1", "group-x")]),
+            Ok(vec![grouped(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
         )
         .await
     );
@@ -376,7 +376,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
             &runtime,
             run,
             LookupCatalog::Discogs,
-            Ok(vec![grouped(Catalog::Discogs, "dg-1", "master-7")]),
+            Ok(vec![grouped(LookupCatalog::Discogs, "dg-1", "master-7")]),
         )
         .await
     );
@@ -387,7 +387,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let off_the_list = runtime
         .land_picked(
             key,
-            &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-partner"),
+            &crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-partner"),
             links.clone(),
         )
         .await
@@ -398,7 +398,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let kept = runtime
         .land_picked(
             key,
-            &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
+            &crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
             links.clone(),
         )
         .await

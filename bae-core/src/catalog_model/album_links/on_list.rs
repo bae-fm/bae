@@ -16,7 +16,7 @@
 use super::{names_other_album, Found};
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_types::text_match::{album_title_words, catalog_key, LabelName};
 
 /// What a release prints that can say which album it is, read into the form
@@ -78,12 +78,12 @@ pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<MetadataRef> 
     let mut ours: Vec<(&MetadataResult, Printed)> = Vec::new();
     let mut theirs: Vec<(&MetadataResult, Printed)> = Vec::new();
     for &result in list {
-        let side = if result.source == Catalog::MusicBrainz {
+        let side = if result.source == LookupCatalog::MusicBrainz {
             if result.source_group_id.as_deref() != Some(group) {
                 continue;
             }
             &mut ours
-        } else if result.source_group_id.is_some() && names_other_album(result.source) {
+        } else if result.source_group_id.is_some() && names_other_album(result.source.catalog()) {
             &mut theirs
         } else {
             continue;
@@ -118,7 +118,7 @@ fn pairs(
                 continue;
             };
             if shares(our_print, their_print) && our_print.shares_title_word(their_print) {
-                found.push(MetadataRef::new(their.source, album.clone()));
+                found.push(MetadataRef::new(their.source.catalog(), album.clone()));
             }
         }
     }

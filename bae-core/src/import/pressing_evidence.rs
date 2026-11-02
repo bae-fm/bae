@@ -12,7 +12,6 @@
 
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
-use bae_catalogs::catalog::Catalog;
 use bae_types::barcode::comparison_key;
 use bae_types::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use bae_types::text_match::{catalog_key, LabelName};
@@ -47,7 +46,7 @@ pub(crate) struct ComparedPressing<'a> {
 impl<'a> ComparedPressing<'a> {
     pub(crate) fn of(release: &'a MetadataResult) -> Self {
         Self {
-            record: MetadataRef::new(release.source, release.release_id.clone()),
+            record: release.release().into(),
             links: &release.links,
             barcodes: release
                 .barcodes
@@ -76,7 +75,11 @@ impl<'a> ComparedPressing<'a> {
 /// The key a stated barcode is compared by (see [`comparison_key`]), or
 /// `None` when the value is not usable as one — which is logged, since a
 /// catalog's barcode field holding something else is worth seeing.
-fn barcode_key(source: Catalog, release_id: &str, stated: &str) -> Option<String> {
+fn barcode_key(
+    source: bae_catalogs::catalog::LookupCatalog,
+    release_id: &str,
+    stated: &str,
+) -> Option<String> {
     comparison_key(stated)
         .inspect_err(|unusable| {
             debug!(

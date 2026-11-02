@@ -5,7 +5,7 @@
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::catalog_model::parse_year;
 use crate::catalog_model::providers::CatalogSession;
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::{LookupRef, MetadataRef};
 use crate::catalog_model::CatalogError;
 use crate::catalog_model::{Failure, InternalFailure, LookupFailure};
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage, LookupCatalog};
@@ -29,7 +29,7 @@ use tracing::warn;
 /// row each, read back unchanged.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MetadataResult {
-    pub source: Catalog,
+    pub source: LookupCatalog,
     pub release_id: String,
     pub title: String,
     pub artist: Option<String>,
@@ -100,6 +100,11 @@ pub struct MetadataResult {
 
 impl MetadataResult {
     /// What the record says the pressing is, as a surface shows it.
+    /// The release this result names.
+    pub fn release(&self) -> LookupRef {
+        LookupRef::new(self.source, self.release_id.clone())
+    }
+
     pub fn facts(&self) -> PressingFacts {
         PressingFacts {
             area: self.area,
@@ -185,12 +190,12 @@ impl MetadataResult {
     /// other field is the empty value, so a test that cares about one of them
     /// sets it with struct-update syntax.
     pub fn for_test(
-        source: impl Into<Catalog>,
+        source: LookupCatalog,
         release_id: &str,
         source_group_id: Option<&str>,
     ) -> Self {
         Self {
-            source: source.into(),
+            source,
             release_id: release_id.to_string(),
             title: "Album".to_string(),
             artist: None,
@@ -241,7 +246,7 @@ pub enum SourceTracks {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportSearchReleaseDetail {
     pub release_id: String,
-    pub source: Catalog,
+    pub source: LookupCatalog,
     pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,
@@ -290,7 +295,7 @@ pub fn discogs_search_result_to_metadata(
         .and_then(|name| crate::catalog_model::discogs_mapper::area(&release_id, name));
     let source_group_id = r.master_id.map(|id| id.to_string());
     MetadataResult {
-        source: Catalog::Discogs,
+        source: LookupCatalog::Discogs,
         release_id,
         title: album,
         artist,
@@ -394,7 +399,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let links = release_links_of(&r.relations);
     let cover_art = bae_catalogs::remote_image::musicbrainz_release_cover(&r);
     Some(MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: LookupCatalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
@@ -464,7 +469,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
             media: r.media.iter().map(|medium| medium.format.as_deref()),
         });
     MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: LookupCatalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),

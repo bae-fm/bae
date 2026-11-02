@@ -142,7 +142,7 @@ impl ImportServiceHandle {
     pub(super) async fn land_picked(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<(), crate::library::LibraryError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
@@ -327,7 +327,7 @@ impl ImportServiceHandle {
     pub(super) async fn release_for_pick(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
     {
@@ -355,7 +355,7 @@ impl ImportServiceHandle {
     async fn is_settled_lead(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);

@@ -24,7 +24,7 @@ fn pressing(release_id: &str, year: Option<i32>) -> MetadataResult {
         year,
         album_first_year: Some(1963),
         source_tracks: Some(SourceTracks::Listed { count: 10 }),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-album-one"))
     }
 }
 

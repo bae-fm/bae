@@ -6,10 +6,10 @@ use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSig
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-    mk_result_from(Catalog::MusicBrainz, release_id, group_id)
+    mk_result_from(LookupCatalog::MusicBrainz, release_id, group_id)
 }
 
-fn mk_result_from(source: impl Into<Catalog>, release_id: &str, group_id: Option<&str>) -> MetadataResult {
+fn mk_result_from(source: LookupCatalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
     MetadataResult::for_test(source, release_id, group_id)
 }
 
@@ -19,7 +19,7 @@ fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
 
 /// A Discogs result, for runs where both providers answer.
 fn discogs_pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-    mk_result_from(Catalog::Discogs, release_id, group_id)
+    mk_result_from(LookupCatalog::Discogs, release_id, group_id)
 }
 
 const MB: LookupCatalog = LookupCatalog::MusicBrainz;

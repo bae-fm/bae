@@ -1,6 +1,7 @@
 use super::*;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
-fn release(source: Catalog, release_id: &str) -> MetadataResult {
+fn release(source: LookupCatalog, release_id: &str) -> MetadataResult {
     MetadataResult::for_test(source, release_id, None)
 }
 
@@ -12,9 +13,9 @@ fn evidence(a: &MetadataResult, b: &MetadataResult) -> PressingEvidence {
 /// with no barcode to compare rather than a fabricated one.
 #[test]
 fn an_unusable_barcode_leaves_the_comparison_unknown() {
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
     a.barcodes = vec!["none".to_string()];
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     b.barcodes = vec!["012345678905".to_string()];
     assert_eq!(evidence(&a, &b).barcode, Comparison::Unknown);
 
@@ -28,8 +29,8 @@ fn an_unusable_barcode_leaves_the_comparison_unknown() {
 #[test]
 fn countries_and_regions_compare_by_what_they_name() {
     use bae_types::pressing::{area, Region, ReleaseArea};
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.area = Some(area("JP"));
     b.area = ReleaseArea::discogs("Japan");
     assert_eq!(evidence(&a, &b).country, Comparison::Same);
@@ -57,8 +58,8 @@ fn countries_and_regions_compare_by_what_they_name() {
 /// inconclusive, never a different label.
 #[test]
 fn labels_agree_by_name_and_never_disagree() {
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
     b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
@@ -73,8 +74,8 @@ fn labels_agree_by_name_and_never_disagree() {
 /// A catalog number is compared as its letters and digits.
 #[test]
 fn catalog_numbers_compare_squashed_and_never_disagree() {
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
     b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
@@ -87,8 +88,8 @@ fn catalog_numbers_compare_squashed_and_never_disagree() {
 #[test]
 fn a_number_or_a_name_on_any_label_is_shared() {
     use bae_types::pressing::ReleaseLabel;
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.labels = vec![
         ReleaseLabel::of(Some("Label A"), Some("AB 100")),
         ReleaseLabel::of(Some("Label B"), Some("CL 719")),
@@ -123,9 +124,9 @@ fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
 /// What a MusicBrainz record stating `a` and a Discogs record stating `b`
 /// say about the pressing's media.
 fn media(a: StatedMedia, b: StatedMedia) -> Comparison {
-    let mut one = release(Catalog::MusicBrainz, "mb-1");
+    let mut one = release(LookupCatalog::MusicBrainz, "mb-1");
     one.media = a;
-    let mut other = release(Catalog::Discogs, "dg-1");
+    let mut other = release(LookupCatalog::Discogs, "dg-1");
     other.media = b;
     evidence(&one, &other).medium
 }
@@ -225,8 +226,8 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
 /// inferred candidate but not a linked one.
 #[test]
 fn support_needs_identity_evidence_and_no_contradiction() {
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     a.year = Some(1992);
@@ -249,8 +250,8 @@ fn support_needs_identity_evidence_and_no_contradiction() {
 /// facts do not read, such as a matrix or a pressing plant.
 #[test]
 fn two_records_of_one_catalog_are_never_one_pressing() {
-    let mut a = release(Catalog::Discogs, "dg-1");
-    let mut b = release(Catalog::Discogs, "dg-2");
+    let mut a = release(LookupCatalog::Discogs, "dg-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-2");
     a.barcodes = vec!["012345678905".to_string()];
     b.barcodes = vec!["012345678905".to_string()];
     a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
@@ -265,8 +266,8 @@ fn two_records_of_one_catalog_are_never_one_pressing() {
 #[test]
 fn barcode_label_and_year_outweigh_a_different_country() {
     use bae_types::pressing::{area, ReleaseLabel};
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
+    let mut a = release(LookupCatalog::MusicBrainz, "mb-1");
+    let mut b = release(LookupCatalog::Discogs, "dg-1");
     a.barcodes = vec!["4012345678901".to_string()];
     b.barcodes = vec!["4012345678901".to_string()];
     a.labels = vec![ReleaseLabel::of(Some("Door Records"), None)];

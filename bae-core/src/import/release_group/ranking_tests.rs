@@ -206,12 +206,12 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            partners: vec![crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-1"
             )],
         }

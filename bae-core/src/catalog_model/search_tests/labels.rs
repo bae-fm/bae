@@ -13,7 +13,7 @@ fn a_catalog_number_lookup_keeps_only_its_number() {
             .map(|number| ReleaseLabel::of(Some("Label A"), Some(number)))
             .into_iter()
             .collect(),
-        ..MetadataResult::for_test(Catalog::Discogs, release_id, None)
+        ..MetadataResult::for_test(LookupCatalog::Discogs, release_id, None)
     };
     let mut results = vec![
         numbered("exact", Some("LBL 719")),
@@ -39,11 +39,11 @@ fn a_catalog_number_lookup_keeps_a_release_by_its_second_labels_number() {
                 ReleaseLabel::of(Some("Label A"), Some("AB 100")),
                 ReleaseLabel::of(Some("Label B"), Some("CL 719")),
             ],
-            ..MetadataResult::for_test(Catalog::MusicBrainz, "two-labels", None)
+            ..MetadataResult::for_test(LookupCatalog::MusicBrainz, "two-labels", None)
         },
         MetadataResult {
             labels: vec![ReleaseLabel::of(Some("Label B"), Some("CL 7190"))],
-            ..MetadataResult::for_test(Catalog::MusicBrainz, "longer", None)
+            ..MetadataResult::for_test(LookupCatalog::MusicBrainz, "longer", None)
         },
     ];
     SearchQuery::CatalogNumber { catalog_number: "CL-719".to_string() }.keep_answers(&mut results);
@@ -91,11 +91,11 @@ fn a_narrowed_catalog_number_search_keeps_only_its_number() {
     let mut results = vec![
         MetadataResult {
             labels: vec![ReleaseLabel::of(Some("Label A"), Some("ab-100"))],
-            ..MetadataResult::for_test(Catalog::Discogs, "exact", None)
+            ..MetadataResult::for_test(LookupCatalog::Discogs, "exact", None)
         },
         MetadataResult {
             labels: vec![ReleaseLabel::of(Some("Label A"), Some("AB 1100"))],
-            ..MetadataResult::for_test(Catalog::Discogs, "longer", None)
+            ..MetadataResult::for_test(LookupCatalog::Discogs, "longer", None)
         },
     ];
     CatalogNumberSearch {

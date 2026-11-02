@@ -1,6 +1,6 @@
 use super::*;
 use crate::signals::{TextLine, TextOrigin};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 fn text(lines: &[&str]) -> CandidateText {
     CandidateText::of(
@@ -20,7 +20,7 @@ fn record(year: Option<i32>, first: Option<i32>, area: Option<&str>) -> Metadata
         year,
         album_first_year: first,
         area: area.map(bae_types::pressing::area),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", Some("rg-1"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, "rel-1", Some("rg-1"))
     }
 }
 
@@ -134,7 +134,7 @@ fn an_album_s_first_year_is_every_pressing_s() {
 fn listing(titles: &[&str]) -> MetadataResult {
     MetadataResult {
         track_titles: titles.iter().map(|title| title.to_string()).collect(),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", Some("rg-1"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, "rel-1", Some("rg-1"))
     }
 }
 
@@ -207,7 +207,7 @@ fn read(lines: &[(TextOrigin, &str)]) -> CandidateText {
 fn released_in(release_id: &str, area: &str) -> MetadataResult {
     MetadataResult {
         area: Some(bae_types::pressing::area(area)),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-1"))
     }
 }
 
@@ -267,7 +267,7 @@ fn a_country_only_the_artwork_names_counts() {
 fn a_country_no_row_has_disagrees_with_every_row() {
     let canada = released_in("rel-ca", "CA");
     let us = released_in("rel-us", "US");
-    let unplaced = MetadataResult::for_test(Catalog::MusicBrainz, "rel-none", Some("rg-1"));
+    let unplaced = MetadataResult::for_test(LookupCatalog::MusicBrainz, "rel-none", Some("rg-1"));
     let facts = FolderFacts::of(
         &read(&[(TextOrigin::FolderName, "Album (Japan)")]),
         [&canada, &us, &unplaced],
@@ -284,7 +284,7 @@ fn numbered(release_id: &str, numbers: &[&str]) -> MetadataResult {
             .iter()
             .map(|number| bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some(number)))
             .collect(),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-1"))
     }
 }
 
@@ -379,7 +379,7 @@ fn an_undated_pick_s_year_is_the_folder_s_not_its_partner_s() {
     assert_eq!(folder_pressing_year(&folder, std::slice::from_ref(&undated)), Some(1986));
     let partner = MetadataResult {
         year: Some(1987),
-        ..MetadataResult::for_test(Catalog::Discogs, "dg-1", Some("m-1"))
+        ..MetadataResult::for_test(LookupCatalog::Discogs, "dg-1", Some("m-1"))
     };
     assert_eq!(folder_pressing_year(&folder, &[undated.clone(), partner]), Some(1986));
     assert_eq!(folder_pressing_year(&text(&["Album"]), &[undated]), None);

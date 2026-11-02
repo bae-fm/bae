@@ -130,7 +130,7 @@ pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<()
 
 /// The match rows a ledger's releases are, by release: each one's position
 /// and the copy the row holds.
-pub(super) type MatchPositions<'a> = HashMap<(Catalog, &'a str), (usize, &'a MetadataResult)>;
+pub(super) type MatchPositions<'a> = HashMap<(LookupCatalog, &'a str), (usize, &'a MetadataResult)>;
 
 /// Write `ledger`'s rows under `owner`'s verdict row, whose step columns are
 /// written and whose previous ledger rows are gone. Each release a cell lists

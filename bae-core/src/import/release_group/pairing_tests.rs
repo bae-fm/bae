@@ -48,12 +48,12 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            partners: vec![crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-1"
             )],
         }
@@ -79,12 +79,12 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            partners: vec![crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-linked"
             )],
         },
@@ -316,12 +316,12 @@ fn a_paired_row_is_picked_with_its_partner() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-1".to_string()
             ),
-            partners: vec![crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            partners: vec![crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-1"
             )],
         }
@@ -335,8 +335,8 @@ fn a_lone_row_is_picked_with_no_partner() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-1".to_string()
             ),
             partners: vec![],
@@ -525,4 +525,17 @@ fn a_pressing_of_two_media_pairs_only_with_a_record_of_both() {
             "the record naming both media is the same object"
         );
     }
+}
+
+/// Which record a row is read from decides what the row shows, not the
+/// order its catalogs are named in: a row led by its Discogs record still
+/// names MusicBrainz first, and a row one catalog lists names that one alone.
+#[test]
+fn a_row_names_its_catalogs_in_the_order_surfaces_list_them() {
+    let discogs_led = Pressing {
+        releases: vec![discogs("dg-1", Some("7"), Some(1992)), mb("mb-1", Some("g"), Some(1992))],
+    };
+    assert_eq!(discogs_led.sources(), [LookupCatalog::MusicBrainz, LookupCatalog::Discogs]);
+    let unpaired = Pressing { releases: vec![mb("mb-1", Some("g"), Some(1992))] };
+    assert_eq!(unpaired.sources(), [LookupCatalog::MusicBrainz]);
 }

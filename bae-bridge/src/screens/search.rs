@@ -180,7 +180,7 @@ impl ArtistSearchSubscription {
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryCheck {
-    pub source: crate::types::BridgeCatalog,
+    pub source: crate::types::BridgeLookupCatalog,
     pub release_id: String,
     pub source_group_id: Option<String>,
 }
@@ -214,7 +214,7 @@ impl LibraryStatusSubscription {
         self.inner
             .set_checks(checks.into_iter().map(|check| bae_core::db::LibraryCheck {
                 release_id: check.release_id,
-                source: check.source.into_core(),
+                source: check.source.into_core().catalog(),
                 source_group_id: check.source_group_id,
             }))
             .map_err(status_error)

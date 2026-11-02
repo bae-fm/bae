@@ -78,7 +78,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             matches: release_ids
                 .iter()
                 .map(|release_id| MetadataResult {
-                    source: bae_catalogs::catalog::Catalog::MusicBrainz,
+                    source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id: release_id.to_string(),
                     title: "Album".to_string(),
                     artist: Some("Artist".to_string()),

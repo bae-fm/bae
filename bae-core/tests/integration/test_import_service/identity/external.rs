@@ -326,7 +326,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
             &import_id,
             album_dir,
             support::DraftSource::Pick(bae_core::import::PressingLink {
-                record: bae_core::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
+                record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             }),
         ))
@@ -385,9 +385,9 @@ async fn a_pick_with_a_partner_writes_both_records() {
             &import_id,
             album_dir,
             support::DraftSource::Pick(bae_core::import::PressingLink {
-                record: bae_core::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
-                partners: vec![bae_core::catalog_model::records::MetadataRef::new(
-                    Catalog::Discogs,
+                record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                partners: vec![bae_core::catalog_model::records::LookupRef::new(
+                    LookupCatalog::Discogs,
                     discogs_id.clone(),
                 )],
             }),
@@ -448,9 +448,9 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
             &import_id,
             album_dir,
             support::DraftSource::Pick(bae_core::import::PressingLink {
-                record: bae_core::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
-                partners: vec![bae_core::catalog_model::records::MetadataRef::new(
-                    Catalog::Discogs,
+                record: bae_core::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                partners: vec![bae_core::catalog_model::records::LookupRef::new(
+                    LookupCatalog::Discogs,
                     picked_id.clone(),
                 )],
             }),

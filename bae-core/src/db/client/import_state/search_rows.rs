@@ -24,7 +24,7 @@ use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::import::candidates::CandidateFiles;
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::catalog::LookupCatalog;
 use std::str::FromStr;
 
 /// A query as its row's columns: the mode, and the values that mode asks.
@@ -194,7 +194,7 @@ fn load_on(
     for (run, key, query) in searches {
         let query = query?;
         let mut picked: Vec<PickedResult> = Vec::new();
-        let mut by_catalog: HashMap<Catalog, Vec<MetadataResult>> = HashMap::new();
+        let mut by_catalog: HashMap<LookupCatalog, Vec<MetadataResult>> = HashMap::new();
         for row in releases.remove(&run).unwrap_or_default() {
             let Listing::Returned { picked: was_picked } = row.listing else {
                 return Err(DbError::Message(format!(
@@ -216,7 +216,7 @@ fn load_on(
             .into_iter()
             .map(|part| {
                 let catalog = LookupCatalog::from_str(&part.catalog).map_err(DbError::Message)?;
-                let results = by_catalog.remove(&catalog.catalog()).unwrap_or_default();
+                let results = by_catalog.remove(&catalog).unwrap_or_default();
                 Ok((catalog, part.part(results)?))
             })
             .collect::<Result<Vec<_>, DbError>>()?;
@@ -364,7 +364,7 @@ fn land_on(
     let next = usize::try_from(next)
         .map_err(|error| DbError::Message(format!("a search's next position {next}: {error}")))?;
     for (offset, result) in results.iter().enumerate() {
-        if result.source != catalog.catalog() {
+        if result.source != catalog {
             return Err(DbError::Message(format!(
                 "{} answered a search with a {} release",
                 catalog.as_str(),
@@ -496,7 +496,7 @@ impl Database {
     pub(crate) async fn land_candidate_search_pick(
         &self,
         key: &CandidateKey,
-        release: &MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         links: AlbumLinks,
     ) -> Result<Vec<(String, Vec<MetadataRef>)>, DbError> {
         let key = key.clone();

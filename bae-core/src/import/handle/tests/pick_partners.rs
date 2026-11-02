@@ -18,8 +18,8 @@ async fn linked_cover_gallery_can_be_empty() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),
                 ),
                 partners: vec![],
@@ -58,8 +58,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
     seed_mb_release(handle.library_manager.providers(), mb_release_id, "partner-mb-group-1");
-    let partner = crate::catalog_model::records::MetadataRef::new(
-        bae_catalogs::catalog::Catalog::MusicBrainz,
+    let partner = crate::catalog_model::records::LookupRef::new(
+        bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         mb_release_id.to_string(),
     );
 
@@ -67,8 +67,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     discogs_release_id.to_string(),
                 ),
                 partners: vec![partner.clone()],
@@ -87,8 +87,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     assert_eq!(
         stored.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::Discogs,
+            record: crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::Discogs,
                 discogs_release_id.to_string()
             ),
             partners: vec![partner.clone()],
@@ -137,12 +137,12 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     mb_release_id.to_string(),
                 ),
-                partners: vec![crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                partners: vec![crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     "70000002",
                 )],
             },
@@ -187,12 +187,12 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     mb_release_id.to_string(),
                 ),
-                partners: vec![crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                partners: vec![crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "repeat-mb-rel-2",
                 )],
             },
@@ -219,10 +219,13 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 /// address links to a MusicBrainz release, seeded into the caches a read asks.
 fn seed_linked_discogs_release(
     providers: &crate::catalog_model::providers::Providers,
-) -> crate::catalog_model::records::MetadataRef {
+) -> crate::catalog_model::records::LookupRef {
     seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
     seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
-    crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "70000007")
+    crate::catalog_model::records::LookupRef::new(
+        bae_catalogs::catalog::LookupCatalog::Discogs,
+        "70000007",
+    )
 }
 
 /// An identify run reads a release only as far as ranking it needs. Picking
@@ -443,8 +446,8 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id,
                 ),
                 partners: vec![],
@@ -516,12 +519,12 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     primary,
                 ),
-                partners: vec![crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                partners: vec![crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     partner,
                 )],
             },
@@ -536,8 +539,8 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .library_manager
         .save_source_release(
             &crate::catalog_model::payloads::ReleasePayloads::for_test(
-                crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     partner,
                 ),
                 mb_release_json(partner, group),
@@ -596,7 +599,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .await;
 
     let picked =
-        crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "70000012");
+        crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::Discogs, "70000012");
     handle
         .select_candidate_release(
             key.clone(),
@@ -652,12 +655,12 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
         .select_candidate_release(
             key,
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
                     discogs_release_id.to_string(),
                 ),
-                partners: vec![crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                partners: vec![crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     mb_release_id.to_string(),
                 )],
             },
@@ -697,8 +700,8 @@ async fn a_pick_of_a_held_release_tells_no_read() {
     let mb_release_id = "steps-held-mb-rel-1";
     seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-held-mb-group-1");
     let link = crate::import::PressingLink {
-        record: crate::catalog_model::records::MetadataRef::new(
-            bae_catalogs::catalog::Catalog::MusicBrainz,
+        record: crate::catalog_model::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             mb_release_id.to_string(),
         ),
         partners: vec![],

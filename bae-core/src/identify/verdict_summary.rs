@@ -13,7 +13,6 @@ use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
-use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 
 /// A check of the found release against the folder that did not pass,
@@ -59,7 +58,7 @@ pub enum VerdictKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeadMatch {
     pub release_id: String,
-    pub source: Catalog,
+    pub source: bae_catalogs::catalog::LookupCatalog,
     pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,

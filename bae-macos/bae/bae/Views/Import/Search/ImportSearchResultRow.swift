@@ -275,7 +275,7 @@ struct ImportSearchResultRow: View {
                         .themeText(.detail)
                         .foregroundStyle(.quaternary)
                 }
-                Text(bridgeCatalogName(catalog: source))
+                Text(bridgeLookupCatalogName(catalog: source))
                     .themeText(.detail)
                     .foregroundStyle(.tertiary)
             }

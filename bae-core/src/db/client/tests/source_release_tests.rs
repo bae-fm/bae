@@ -3,6 +3,7 @@
 
 use super::empty_db;
 use crate::catalog_model::payloads::ReleasePayloads;
+use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::records::{MetadataRef, PayloadSource, SourcePayload};
 use crate::catalog_model::test_documents::{
     linked_discogs_master, linked_discogs_release, linked_musicbrainz_release,
@@ -10,6 +11,7 @@ use crate::catalog_model::test_documents::{
     wikidata_linked_release_group,
 };
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
 /// medium and a CD medium, a credit that names no artist, composer
@@ -101,7 +103,7 @@ fn musicbrainz_documents() -> ReleasePayloads {
         "cover-art-archive": { "front": true, "darkened": false }
     });
     ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         anchor.to_string(),
         vec![SourcePayload::new(
             PayloadSource::MusicBrainzReleaseGroup,
@@ -167,7 +169,7 @@ fn discogs_documents() -> ReleasePayloads {
         ]
     });
     ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "4242"),
+        LookupRef::new(LookupCatalog::Discogs, "4242"),
         anchor.to_string(),
         Vec::new(),
     )
@@ -283,7 +285,7 @@ async fn saving_a_release_again_replaces_its_rows() {
     db.save_source_release(&earlier).await.unwrap();
 
     let later = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         serde_json::json!({
             "id": "mb-release",
             "title": "Album Title Later",
@@ -322,7 +324,7 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
                 serde_json::json!({ "id": "mb-group", "first-release-date": year });
         }
         ReleasePayloads::for_test(
-            MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+            LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
             anchor.to_string(),
             Vec::new(),
         )
@@ -348,7 +350,7 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
             })
             .unwrap_or_default();
         ReleasePayloads::for_test(
-            MetadataRef::new(Catalog::Discogs, "4242"),
+            LookupRef::new(LookupCatalog::Discogs, "4242"),
             anchor.to_string(),
             documents,
         )
@@ -411,7 +413,7 @@ async fn a_release_whose_derived_facts_disagree_is_not_stored() {
 async fn an_unfetched_release_reads_as_nothing() {
     let (db, _tmp) = empty_db().await;
     assert_eq!(
-        db.load_source_release(&MetadataRef::new(Catalog::Discogs, "4242")).await.unwrap(),
+        db.load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
         None
     );
 }
@@ -466,7 +468,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
     let (db, _tmp) = empty_db().await;
     let fetched = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![
             SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master()),
@@ -486,27 +488,26 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
 #[test]
 fn library_check_matches_detail_keys_with_and_without_source_groups() {
     for group in [None, Some(789)] {
-        for source in [Catalog::Discogs, Catalog::MusicBrainz] {
+        for source in [LookupCatalog::Discogs, LookupCatalog::MusicBrainz] {
             let anchor = match source {
-                Catalog::Discogs => serde_json::json!({
+                LookupCatalog::Discogs => serde_json::json!({
                     "id": 123, "title": "Album Title", "master_id": group
                 }),
-                Catalog::MusicBrainz => serde_json::json!({
+                LookupCatalog::MusicBrainz => serde_json::json!({
                     "id": "123", "title": "Album Title", "artist-credit": [],
                     "label-info": [], "media": [], "relations": [],
                     "cover-art-archive": { "front": false, "darkened": false },
                     "release-group": group.map(|id| serde_json::json!({ "id": id.to_string() }))
                 }),
-                other => unreachable!("nothing fetches documents from {}", other.as_str()),
             };
             let payloads = ReleasePayloads::for_test(
-                MetadataRef::new(source, "123"),
+                LookupRef::new(source, "123"),
                 anchor.to_string(),
                 Vec::new(),
             );
             let check = crate::db::LibraryCheck::of_release(&payloads.extract().unwrap());
             let detail = payloads.extract().unwrap().detail(&[]);
-            assert_eq!(check.source, detail.source);
+            assert_eq!(check.source, detail.source.catalog());
             assert_eq!(check.release_id, detail.release_id);
             assert_eq!(check.source_group_id, detail.source_group_id);
             assert_eq!(check.source_group_id, group.map(|id| id.to_string()));
@@ -521,7 +522,7 @@ fn library_check_matches_detail_keys_with_and_without_source_groups() {
 async fn an_items_records_are_stored_with_the_release() {
     let (database, _dir) = empty_db().await;
     let fetched = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "offline-mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "offline-mb-release"),
         musicbrainz_release_with_relations("offline-mb-release", "offline-mb-group", &[])
             .to_string(),
         vec![
@@ -562,7 +563,7 @@ async fn an_items_records_are_stored_with_the_release() {
 async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     let (db, _temp) = empty_db().await;
     let with_alias = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
@@ -572,7 +573,7 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     );
     db.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
     assert!(db
-        .load_source_release(&MetadataRef::new(Catalog::Discogs, "7811"))
+        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
         .unwrap()
@@ -580,13 +581,13 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
     let without_alias = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         Vec::new(),
     );
     db.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
     assert!(!db
-        .load_source_release(&MetadataRef::new(Catalog::Discogs, "7811"))
+        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
         .unwrap()
@@ -601,13 +602,13 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
 async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetch() {
     let (db, _temp) = empty_db().await;
     let earlier = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master())],
     );
     db.save_source_release(&earlier.extract().unwrap()).await.unwrap();
     let later = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         Vec::new(),
     )

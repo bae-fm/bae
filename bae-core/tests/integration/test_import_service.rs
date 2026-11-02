@@ -3,6 +3,7 @@
 //! Tests the real ImportService through its public handle API:
 //! scan → import. All through real infrastructure.
 
+use bae_catalogs::catalog::LookupCatalog;
 use bae_test_support as support;
 
 use bae_catalogs::catalog::Catalog;

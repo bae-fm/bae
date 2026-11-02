@@ -108,6 +108,25 @@ pub struct BridgeMetadataRef {
     pub key: String,
 }
 
+/// A release on a catalog that answers lookups: one bae can fetch and pick.
+/// Mirrors `bae_core::catalog_model::records::LookupRef`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLookupRef {
+    pub catalog: BridgeLookupCatalog,
+    pub key: String,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeLookupRef {
+    pub(crate) fn from_core(release: bae_core::catalog_model::records::LookupRef) -> Self {
+        Self { catalog: BridgeLookupCatalog::from_core(release.catalog), key: release.key }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::catalog_model::records::LookupRef {
+        bae_core::catalog_model::records::LookupRef::new(self.catalog.into_core(), self.key)
+    }
+}
+
 /// A catalog link displayed by the native UI. Core resolves whether its page
 /// names a pressing or an album before projecting the URL.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -127,10 +146,6 @@ impl BridgeReleaseRecord {
 impl BridgeMetadataRef {
     pub(crate) fn from_core(release_ref: bae_core::catalog_model::records::MetadataRef) -> Self {
         Self { catalog: BridgeCatalog::from_core(release_ref.catalog), key: release_ref.key }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::catalog_model::records::MetadataRef {
-        bae_core::catalog_model::records::MetadataRef::new(self.catalog.into_core(), self.key)
     }
 }
 

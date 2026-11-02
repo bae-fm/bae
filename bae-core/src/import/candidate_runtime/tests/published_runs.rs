@@ -76,7 +76,7 @@ async fn a_release_run_that_ends_goes_alone() {
 /// with a release while the other is still looking.
 fn barcode_half_answered() -> crate::identify::IdentifyState {
     use crate::identify::{LookupState, ProviderLookup, ValueLookup};
-    use bae_catalogs::catalog::Catalog;
+    
     let mut context = signals_context(9);
     context.providers = vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs];
     context.artwork = crate::signals::ArtworkScan::Reading {
@@ -99,7 +99,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                         source: LookupCatalog::MusicBrainz,
                         state: LookupState::Done {
                             results: vec![crate::catalog_model::search::MetadataResult::for_test(
-                                Catalog::MusicBrainz,
+                                LookupCatalog::MusicBrainz,
                                 "mb-release",
                                 Some("mb-group"),
                             )],

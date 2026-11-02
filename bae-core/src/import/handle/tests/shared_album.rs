@@ -1,6 +1,7 @@
 //! Linking a folder to the album its lookup's pressings are of, when the
 //! person cannot tell which of them their copy is.
 
+use crate::catalog_model::records::LookupRef;
 use super::*;
 use crate::import::{AlbumLink, PendingStanding, ReleaseLink};
 use crate::catalog_model::records::{MetadataRef};
@@ -10,7 +11,7 @@ const ALBUM: &str = "album-group-1";
 /// One MusicBrainz pressing of the album, as the lookup offered it.
 fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::MetadataResult {
     crate::catalog_model::search::MetadataResult {
-        source: bae_catalogs::catalog::Catalog::MusicBrainz,
+        source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -189,7 +190,7 @@ async fn a_pick_replaces_the_album_link() {
     assert_eq!(
         link(&handle, &hash).await,
         Some(ReleaseLink::Pressing(crate::import::PressingLink {
-            record: MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-pressing-2"),
+            record: LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-pressing-2"),
             partners: Vec::new(),
         }))
     );

@@ -29,7 +29,7 @@ fn pressing(release_id: &str, notes: &[&str]) -> MetadataResult {
             "rel-gamma" => bae_types::pressing::Packaging::GatefoldCover,
             _ => bae_types::pressing::Packaging::CardboardSleeve,
         }),
-        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
+        ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-album-one"))
     }
 }
 

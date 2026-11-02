@@ -22,7 +22,7 @@ use bae_types::text_match::{catalog_key, same_label_name};
 pub enum PressingKey {
     /// The release the row's page names as the same release on that
     /// catalog, read directly.
-    Link { release: MetadataRef },
+    Link { release: crate::catalog_model::records::LookupRef },
     /// A barcode the row prints.
     Barcode { barcode: String },
     /// A catalog number the row prints under `label`; only a release printing
@@ -100,13 +100,14 @@ pub(super) fn keys_of(
     LookupCatalog::ALL
         .into_iter()
         .filter(|catalog| providers.contains(catalog))
-        .filter(|catalog| !row.iter().any(|record| record.source == catalog.catalog()))
+        .filter(|catalog| !row.iter().any(|record| record.source == *catalog))
         .filter_map(|catalog| {
             let link = row
                 .iter()
                 .flat_map(|record| &record.links)
-                .find(|release| release.catalog == catalog.catalog())
-                .map(|release| PressingKey::Link { release: release.clone() });
+                .filter_map(MetadataRef::lookup)
+                .find(|release| release.catalog == catalog)
+                .map(|release| PressingKey::Link { release });
             let barcode = || {
                 row.iter()
                     .flat_map(|record| &record.barcodes)

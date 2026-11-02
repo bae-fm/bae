@@ -1,7 +1,6 @@
 //! Builds the run's ledger, one step at a time.
 
 use super::*;
-use crate::catalog_model::records::MetadataRef;
 use std::collections::HashSet;
 
 /// Whether any identifier has found a release yet.
@@ -323,15 +322,11 @@ impl IdentifyRunView {
     /// Every release a lookup of the folder's disc IDs found: what the Disc
     /// ID agreement is read from, since no record states the disc IDs it
     /// carries.
-    pub(crate) fn disc_id_releases(&self) -> HashSet<MetadataRef> {
+    pub(crate) fn disc_id_releases(&self) -> HashSet<crate::catalog_model::records::LookupRef> {
         let DiscIdStepView::Read { discs } = &self.disc_id else {
             return HashSet::new();
         };
-        discs
-            .iter()
-            .flat_map(|disc| disc.lookup.releases())
-            .map(|release| MetadataRef::new(release.source, &release.release_id))
-            .collect()
+        discs.iter().flat_map(|disc| disc.lookup.releases()).map(MetadataResult::release).collect()
     }
 
     /// Every lookup's cell, clue by clue, row by row and cell by cell.
@@ -389,7 +384,7 @@ impl IdentifyRunView {
     /// shows what the rows show, and a stored verdict, which keeps each
     /// release once, lays the ledger out as it was recorded.
     pub(crate) fn read_as(mut self, answers: &LookupAnswers) -> Self {
-        let mut reads: std::collections::HashMap<(Catalog, &str), &MetadataResult> =
+        let mut reads: std::collections::HashMap<(LookupCatalog, &str), &MetadataResult> =
             std::collections::HashMap::new();
         for result in answers.all() {
             reads.entry((result.source, result.release_id.as_str())).or_insert(result);

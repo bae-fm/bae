@@ -6,7 +6,7 @@
     /// spread over the candidate's link, its row and its cover.
     struct PreviewPickedRelease {
         var releaseId: String
-        var source: BridgeCatalog
+        var source: BridgeLookupCatalog
         var title: String
         var defaultCover: BridgeCoverChoice?
     }

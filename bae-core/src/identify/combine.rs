@@ -14,7 +14,7 @@ use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
 use crate::catalog_model::search::MetadataResult;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use std::collections::{HashMap, HashSet};
 
 /// What a run's lookups found once combined: the offered rows and the rows
@@ -44,7 +44,7 @@ pub struct Findings {
 /// A note of an offered release the folder's text names its row by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedNote {
-    pub release: crate::catalog_model::records::MetadataRef,
+    pub release: crate::catalog_model::records::LookupRef,
     pub note: String,
 }
 
@@ -77,7 +77,7 @@ impl NarrowedOut {
 }
 
 type Results = Vec<MetadataResult>;
-type ReleaseKey = (Catalog, String);
+type ReleaseKey = (LookupCatalog, String);
 
 /// What each kind of a run's keys returned.
 #[derive(Debug, Clone, Default)]
@@ -186,13 +186,9 @@ pub fn combine_results(
     let named_notes = combined
         .iter()
         .filter_map(|result| {
-            notes.get(&(result.source, result.release_id.clone())).map(|note| NamedNote {
-                release: crate::catalog_model::records::MetadataRef::new(
-                    result.source,
-                    &result.release_id,
-                ),
-                note: note.clone(),
-            })
+            notes
+                .get(&(result.source, result.release_id.clone()))
+                .map(|note| NamedNote { release: result.release(), note: note.clone() })
         })
         .collect();
     let (left_out, narrowed_out_pressings) = records(set_aside);

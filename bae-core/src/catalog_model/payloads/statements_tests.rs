@@ -22,7 +22,7 @@ fn release(
         group["relations"] = urls.iter().map(|resource| url(resource)).collect();
     }
     ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         json!({
             "id":"mb-release", "title":"Album Title",
             "artist-credit":[{"name":"Artist Name","artist":{"id":"artist-id","name":"Artist Name"}}],

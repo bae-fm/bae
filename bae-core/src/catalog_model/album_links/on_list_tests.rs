@@ -1,4 +1,5 @@
 use super::*;
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::ReleaseLabel;
 
 const GROUP: &str = "mb-group";
@@ -6,7 +7,7 @@ const GROUP: &str = "mb-group";
 /// A release titled `title` printing `barcodes` and `labels`, filed under
 /// `album`.
 fn printing(
-    source: Catalog,
+    source: LookupCatalog,
     id: &str,
     album: &str,
     title: &str,
@@ -23,7 +24,7 @@ fn printing(
 
 /// The group's release on the list.
 fn ours(title: &str, barcodes: &[&str], labels: &[(&str, &str)]) -> MetadataResult {
-    printing(Catalog::MusicBrainz, "mb-1", GROUP, title, barcodes, labels)
+    printing(LookupCatalog::MusicBrainz, "mb-1", GROUP, title, barcodes, labels)
 }
 
 fn theirs(
@@ -33,7 +34,7 @@ fn theirs(
     barcodes: &[&str],
     labels: &[(&str, &str)],
 ) -> MetadataResult {
-    printing(Catalog::Discogs, id, master, title, barcodes, labels)
+    printing(LookupCatalog::Discogs, id, master, title, barcodes, labels)
 }
 
 /// What the list says the group is.

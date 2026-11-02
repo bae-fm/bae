@@ -193,7 +193,7 @@ fn lookups_state<'a>(lookups: impl IntoIterator<Item = &'a LookupView>) -> Optio
     if lookups.iter().any(|lookup| matches!(lookup, LookupView::Queued | LookupView::LookingUp)) {
         return Some(SignalState::LookingUp);
     }
-    let found: std::collections::HashSet<(bae_catalogs::catalog::Catalog, &str)> = lookups
+    let found: std::collections::HashSet<(bae_catalogs::catalog::LookupCatalog, &str)> = lookups
         .iter()
         .flat_map(|lookup| lookup.releases())
         .map(|release| (release.source, release.release_id.as_str()))

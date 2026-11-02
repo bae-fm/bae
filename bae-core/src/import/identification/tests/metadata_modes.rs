@@ -94,8 +94,8 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::catalog_model::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                record: crate::catalog_model::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-chosen".to_string(),
                 ),
                 partners: Vec::new(),
@@ -129,8 +129,8 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
     assert_eq!(
         fixture.stored_for(&dir).await.expect("the candidate is still stored").release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-chosen".to_string()
             ),
             partners: Vec::new(),

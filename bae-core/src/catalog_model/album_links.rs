@@ -106,7 +106,7 @@ pub(crate) fn read_groups(
     stated: impl Fn(&str) -> Option<AlbumLinks>,
 ) -> Vec<GroupLinks> {
     let mut groups: Vec<(&str, Vec<&str>)> = Vec::new();
-    for result in list.iter().filter(|result| result.source == Catalog::MusicBrainz) {
+    for result in list.iter().filter(|result| result.source == LookupCatalog::MusicBrainz) {
         let Some(group) = result.source_group_id.as_deref() else {
             continue;
         };
@@ -149,7 +149,7 @@ pub(crate) fn read_groups(
 /// Put what each group was read to be onto the MusicBrainz records of it. A
 /// record of a group nothing was read about keeps what it had.
 pub(crate) fn apply(result: &mut MetadataResult, groups: &[GroupLinks]) {
-    if result.source != Catalog::MusicBrainz {
+    if result.source != LookupCatalog::MusicBrainz {
         return;
     }
     let Some(group) = &result.source_group_id else {
@@ -170,9 +170,9 @@ pub(crate) fn to_keep(
     groups: &[GroupLinks],
     list: &[&MetadataResult],
 ) -> Vec<(String, Vec<MetadataRef>)> {
-    let compared = list
-        .iter()
-        .any(|result| names_other_album(result.source) && result.source_group_id.is_some());
+    let compared = list.iter().any(|result| {
+        names_other_album(result.source.catalog()) && result.source_group_id.is_some()
+    });
     groups
         .iter()
         .filter_map(|read| match &read.links {

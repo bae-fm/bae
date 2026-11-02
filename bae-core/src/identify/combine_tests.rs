@@ -1,4 +1,5 @@
 use super::*;
+use bae_catalogs::catalog::Catalog;
 
 // Most of these are about how the sets intersect, with a candidate that states
 // nothing, so the order is the one the signals gave.
@@ -15,14 +16,14 @@ fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
 }
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-    MetadataResult::for_test(Catalog::MusicBrainz, release_id, group_id)
+    MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, group_id)
 }
 
 fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result(release_id, group_id)
 }
 
-fn pair_src(source: Catalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
+fn pair_src(source: LookupCatalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
     let mut result = mk_result(release_id, group_id);
     result.source = source;
     result
@@ -107,7 +108,7 @@ fn how_many_searches_returned_a_row_adds_no_weight() {
 /// table of contents.
 #[test]
 fn a_discogs_row_stating_the_pressing_beats_one_backed_only_by_the_disc_id() {
-    let mut discogs = pair_src(Catalog::Discogs, "dg-1", None);
+    let mut discogs = pair_src(LookupCatalog::Discogs, "dg-1", None);
     discogs.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("AB 12345-2"))];
     discogs.barcodes = vec![FOLDER_BARCODE.to_string()];
     let (matches, _) = found(combine_results(
@@ -184,8 +185,8 @@ fn a_signal_that_found_nothing_does_not_empty_the_set() {
 /// providers is two releases and never intersects by accident.
 #[test]
 fn the_same_id_on_two_providers_is_two_releases() {
-    let discid = vec![pair_src(Catalog::MusicBrainz, "rel-a", None)];
-    let barcode = vec![pair_src(Catalog::Discogs, "rel-a", None)];
+    let discid = vec![pair_src(LookupCatalog::MusicBrainz, "rel-a", None)];
+    let barcode = vec![pair_src(LookupCatalog::Discogs, "rel-a", None)];
     let outcome = combine(discid, barcode, vec![]);
     let (matches, _) = found(outcome.clone());
     // Two releases, never folded into one by their shared id.
@@ -464,7 +465,7 @@ fn the_ranking_s_leftovers_and_the_folder_s_are_one_list() {
 /// returned.
 fn rows(
     matches: &[MetadataResult],
-    by_disc_id: &HashSet<crate::catalog_model::records::MetadataRef>,
+    by_disc_id: &HashSet<crate::catalog_model::records::LookupRef>,
     pressings: &[u32],
     text: &CandidateText,
 ) -> Vec<(Pressing, crate::identify::agreements::Agreements)> {
@@ -518,7 +519,7 @@ fn album_two_musicbrainz() -> MetadataResult {
 /// One of the Discogs records of that catalog number the barcode returned.
 fn album_two_discogs(release_id: &str, year: Option<i32>) -> MetadataResult {
     MetadataResult {
-        source: Catalog::Discogs,
+        source: LookupCatalog::Discogs,
         title: "Album Two".to_string(),
         artist: Some("Artist Two".to_string()),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("L2-2031"))],
@@ -555,8 +556,8 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         &text,
         FolderAudio::UNPROVEN,
     );
-    let disc_id_returned = HashSet::from([crate::catalog_model::records::MetadataRef::new(
-        Catalog::MusicBrainz,
+    let disc_id_returned = HashSet::from([crate::catalog_model::records::LookupRef::new(
+        LookupCatalog::MusicBrainz,
         "mb-album-two",
     )]);
     let (matches, pressings) = found(outcome.clone());
@@ -571,12 +572,12 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     assert_eq!(
         offered[0].0.pick(),
         crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-album-two".to_string()
             ),
-            partners: vec![crate::catalog_model::records::MetadataRef::new(
-                Catalog::Discogs,
+            partners: vec![crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::Discogs,
                 "dg-1988"
             )],
         },
@@ -704,8 +705,8 @@ fn a_pressing_lookup_s_release_sits_on_the_row_it_was_asked_for() {
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![named]],
-            barcode: vec![pair_src(Catalog::Discogs, "dg-barcode", Some("master-1"))],
-            pressing: vec![pair_src(Catalog::Discogs, "dg-linked", Some("master-1"))],
+            barcode: vec![pair_src(LookupCatalog::Discogs, "dg-barcode", Some("master-1"))],
+            pressing: vec![pair_src(LookupCatalog::Discogs, "dg-linked", Some("master-1"))],
             ..LookupAnswers::default()
         },
         &CandidateText::default(),

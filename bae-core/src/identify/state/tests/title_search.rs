@@ -125,7 +125,7 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
                 })]
             );
             assert_eq!(matches.len(), 1, "Discogs's match still stands");
-            assert_eq!(matches[0].source, DG.catalog());
+            assert_eq!(matches[0].source, DG);
         }
         other => panic!("expected Failed with the surviving match, got {other:?}"),
     }

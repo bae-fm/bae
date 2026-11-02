@@ -84,8 +84,8 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 
 #[tokio::test]
 async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
-    use crate::catalog_model::records::MetadataRef;
-    use bae_catalogs::catalog::Catalog;
+    
+    
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let persisted_ids = manager
@@ -111,7 +111,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
         .apply_release_edit_catalog(
             &session,
             &crate::import::PressingLink {
-                record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
+                record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
             &crate::import::CatalogApplySteps::unread(),
@@ -128,7 +128,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
 /// waits on, and that the read ended.
 #[tokio::test]
 async fn an_applied_catalog_tells_its_catalog_read() {
-    use crate::catalog_model::records::MetadataRef;
+    
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
@@ -152,7 +152,7 @@ async fn an_applied_catalog_tells_its_catalog_read() {
         .apply_release_edit_catalog(
             &session,
             &crate::import::PressingLink {
-                record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
+                record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
             &steps,

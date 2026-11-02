@@ -7,12 +7,12 @@ use crate::identify::state::{
 use crate::identify::{Findings, IdentifyFailure, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::signals::SourcedValue;
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::catalog::LookupCatalog;
 
 pub(super) const MB: LookupCatalog = LookupCatalog::MusicBrainz;
 const DG: LookupCatalog = LookupCatalog::Discogs;
 
-fn result(source: impl Into<Catalog>, release_id: &str) -> MetadataResult {
+fn result(source: LookupCatalog, release_id: &str) -> MetadataResult {
     MetadataResult::for_test(source, release_id, Some("g"))
 }
 
@@ -382,7 +382,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         settled,
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
-                release: crate::catalog_model::records::MetadataRef::new(MB.catalog(), "mb-1"),
+                release: crate::catalog_model::records::LookupRef::new(MB, "mb-1"),
                 document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },

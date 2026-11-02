@@ -5,10 +5,11 @@ use super::*;
 use crate::catalog_model::search::SourceTracks;
 use crate::identify::{Findings, NarrowedOut};
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
     MetadataResult {
-        source: Catalog::MusicBrainz,
+        source: LookupCatalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album".to_string(),
         artist: None,
@@ -88,7 +89,7 @@ fn barcoded(mut result: MetadataResult, barcode: &str) -> MetadataResult {
 /// MusicBrainz row. A Discogs search result never carries a tracklist.
 fn discogs(release_id: &str, barcode: &str) -> MetadataResult {
     MetadataResult {
-        source: Catalog::Discogs,
+        source: LookupCatalog::Discogs,
         source_group_id: None,
         ..barcoded(result(release_id, None), barcode)
     }

@@ -34,7 +34,7 @@ impl BridgeMetadataResult {
             album_links: _,
         } = r;
         BridgeMetadataResult {
-            source: BridgeCatalog::from_core(source),
+            source: BridgeLookupCatalog::from_core(source),
             release_id,
             year,
             facts,
@@ -329,6 +329,7 @@ impl BridgePressing {
                 .map(BridgeLookupFailure::from_core),
             labels: pressing.label_lines().into_iter().map(BridgeLabelLine::from_core).collect(),
             pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
+            sources: pressing.sources().into_iter().map(BridgeLookupCatalog::from_core).collect(),
             summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
             releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),

@@ -13,7 +13,7 @@ use super::super::*;
 /// commit it or watch its library membership.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMetadataResult {
-    pub source: BridgeCatalog,
+    pub source: BridgeLookupCatalog,
     pub release_id: String,
     pub year: Option<i32>,
     /// What the record says the pressing is: where it was released, its
@@ -152,6 +152,9 @@ pub struct BridgeReleaseGroupSource {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
+    /// Every catalog listing the pressing, in the order surfaces list
+    /// catalogs: the row's tags.
+    pub sources: Vec<BridgeLookupCatalog>,
     /// Every label the records state, in the order of the record the row
     /// leads with, each name once with its catalog numbers after it.
     pub labels: Vec<BridgeLabelLine>,

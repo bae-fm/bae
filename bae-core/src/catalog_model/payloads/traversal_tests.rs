@@ -142,7 +142,7 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         .providers
         .fetch_payloads(
             Some(&discogs),
-            &MetadataRef::new(Catalog::MusicBrainz, "selected"),
+            &LookupRef::new(LookupCatalog::MusicBrainz, "selected"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -204,7 +204,7 @@ const BOTH_ADDRESSES: &str =
 async fn cyclic_release_and_album_links_fetch_each_document_once() {
     let server = ProviderServer::start(linked_pair_answers()).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
-    let selected = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
+    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
         std::time::Duration::from_secs(15),
         server.providers.fetch_payloads(
@@ -255,7 +255,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
 async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let server = ProviderServer::start(linked_pair_answers()).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
-    let namer = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
+    let namer = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     server
         .providers
         .fetch_payloads(Some(&discogs), &namer, ReadDepth::Complete, CallPriority::Interactive)
@@ -263,7 +263,7 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
         .unwrap();
     let asked = server.requests();
 
-    let named = MetadataRef::new(Catalog::Discogs, "920001");
+    let named = LookupRef::new(LookupCatalog::Discogs, "920001");
     let twin = server
         .providers
         .fetch_payloads(Some(&discogs), &named, ReadDepth::Complete, CallPriority::Interactive)
@@ -295,7 +295,7 @@ async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once(
         .providers
         .fetch_payloads(
             Some(&discogs),
-            &MetadataRef::new(Catalog::Discogs, "920001"),
+            &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -360,7 +360,7 @@ async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
         .providers
         .fetch_payloads(
             Some(&discogs),
-            &MetadataRef::new(Catalog::Discogs, "920001"),
+            &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -401,7 +401,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
         .providers
         .fetch_payloads(
             Some(&discogs),
-            &MetadataRef::new(Catalog::Discogs, "920001"),
+            &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -445,7 +445,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
 async fn an_identification_read_of_a_discogs_release_asks_musicbrainz_nothing() {
     let server = ProviderServer::start(linked_pair_answers()).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
-    let selected = MetadataRef::new(Catalog::Discogs, "920001");
+    let selected = LookupRef::new(LookupCatalog::Discogs, "920001");
     let payloads = server
         .providers
         .fetch_payloads(
@@ -523,7 +523,7 @@ fn statement_answers() -> HashMap<String, (u16, String)> {
 /// finds.
 #[tokio::test]
 async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statements_read() {
-    let selected = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
+    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     let server = ProviderServer::start(statement_answers()).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let identification = server
@@ -696,7 +696,7 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         .discogs()
         .seed_master_cache("930002", serde_json::json!({"id":930002}).to_string());
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
-    let selected = MetadataRef::new(Catalog::Discogs, "930001");
+    let selected = LookupRef::new(LookupCatalog::Discogs, "930001");
     let payloads = server
         .providers
         .fetch_payloads(Some(&discogs), &selected, ReadDepth::Complete, CallPriority::Interactive)
@@ -723,7 +723,7 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
 
 #[tokio::test]
 async fn a_malformed_optional_group_is_skipped() {
-    let selected = MetadataRef::new(Catalog::MusicBrainz, "optional-shape-release");
+    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "optional-shape-release");
     let anchor = release_json(&selected.key, Some("optional-shape-group"), &[]);
     let server = ProviderServer::start(HashMap::from([
         ("/ws/2/release/optional-shape-release".into(), (200, anchor.clone())),
@@ -773,7 +773,7 @@ async fn a_malformed_reverse_alias_is_skipped() {
         .providers
         .fetch_payloads(
             Some(&discogs),
-            &MetadataRef::new(Catalog::Discogs, "940001"),
+            &LookupRef::new(LookupCatalog::Discogs, "940001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
         )
@@ -789,7 +789,7 @@ async fn a_malformed_reverse_alias_is_skipped() {
 /// with. A catalog answering that there is none is not missing anything.
 #[tokio::test]
 async fn documents_a_fetch_could_not_get_are_named() {
-    let selected = MetadataRef::new(Catalog::MusicBrainz, "missing-parts-release");
+    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "missing-parts-release");
     let server = ProviderServer::start(HashMap::from([
         (
             "/ws/2/release/missing-parts-release".into(),
@@ -848,7 +848,7 @@ async fn documents_a_fetch_could_not_get_are_named() {
 
 #[tokio::test]
 async fn a_malformed_required_anchor_is_rejected() {
-    let selected = MetadataRef::new(Catalog::MusicBrainz, "required-shape-release");
+    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "required-shape-release");
     let server = ProviderServer::start(HashMap::from([(
         "/ws/2/release/required-shape-release".into(),
         (200, "{}".into()),

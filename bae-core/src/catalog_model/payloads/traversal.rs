@@ -148,7 +148,7 @@ struct DocumentTraversal {
 }
 
 impl DocumentTraversal {
-    fn new(release: &MetadataRef, anchor: String, depth: ReadDepth) -> Result<Self, CatalogError> {
+    fn new(release: &LookupRef, anchor: String, depth: ReadDepth) -> Result<Self, CatalogError> {
         let source = PayloadSource::release_of(release.catalog);
         let edges = related_documents(source, &release.key, &anchor)?;
         let payloads = ReleasePayloads {
@@ -157,11 +157,12 @@ impl DocumentTraversal {
             supporting: Vec::new(),
             unfetched: Vec::new(),
         };
-        let album = payloads.anchor_parent()?.map(|album| match album.catalog {
-            Catalog::MusicBrainz => (PayloadSource::MusicBrainzReleaseGroup, album.key),
-            Catalog::Discogs => (PayloadSource::DiscogsMaster, album.key),
-            other => not_fetched(other),
-        });
+        // The release's own album page is on its own catalog.
+        let album_page = match release.catalog {
+            LookupCatalog::MusicBrainz => PayloadSource::MusicBrainzReleaseGroup,
+            LookupCatalog::Discogs => PayloadSource::DiscogsMaster,
+        };
+        let album = payloads.anchor_parent()?.map(|album| (album_page, album.key));
         let mut traversal = Self {
             payloads,
             depth,
@@ -187,7 +188,7 @@ impl DocumentTraversal {
         match self.depth {
             ReadDepth::Complete => true,
             ReadDepth::Identification => {
-                let musicbrainz = self.payloads.release.catalog == Catalog::MusicBrainz;
+                let musicbrainz = self.payloads.release.catalog == LookupCatalog::MusicBrainz;
                 match from {
                     None => {
                         self.album.as_ref() == Some(to)
@@ -469,7 +470,7 @@ pub(crate) async fn fetch_documents(
     musicbrainz: &bae_catalogs::musicbrainz::MusicBrainz,
     wikidata: &bae_catalogs::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
-    release: &MetadataRef,
+    release: &LookupRef,
     depth: ReadDepth,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, CatalogError> {

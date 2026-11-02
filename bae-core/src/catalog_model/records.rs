@@ -1,7 +1,7 @@
 //! The catalogs' keys for releases and albums, and the documents a lookup
 //! returned.
 
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use serde::{Deserialize, Serialize};
 
 /// One catalog's key for one entity. Whether this points at a release vs. a
@@ -16,6 +16,37 @@ pub struct MetadataRef {
 impl MetadataRef {
     pub fn new(catalog: Catalog, key: impl Into<String>) -> Self {
         Self { catalog, key: key.into() }
+    }
+
+    /// This key, when its catalog answers lookups and so is one bae fetches
+    /// from.
+    pub fn lookup(&self) -> Option<LookupRef> {
+        Some(LookupRef::new(self.catalog.lookup()?, self.key.clone()))
+    }
+}
+
+/// A release on a catalog that answers lookups: one bae can fetch, read and
+/// pick. A record naming any other catalog is a [`MetadataRef`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct LookupRef {
+    pub catalog: LookupCatalog,
+    pub key: String,
+}
+
+impl LookupRef {
+    pub fn new(catalog: LookupCatalog, key: impl Into<String>) -> Self {
+        Self { catalog, key: key.into() }
+    }
+
+    /// The same key as a reference any catalog's record can hold.
+    pub fn metadata_ref(&self) -> MetadataRef {
+        MetadataRef::new(self.catalog.catalog(), self.key.clone())
+    }
+}
+
+impl From<LookupRef> for MetadataRef {
+    fn from(release: LookupRef) -> Self {
+        Self { catalog: release.catalog.catalog(), key: release.key }
     }
 }
 
@@ -125,11 +156,10 @@ impl PayloadSource {
 
     /// The payload holding a release's own editorial metadata on `source` — the
     /// anchor of everything else identification fetched alongside it.
-    pub fn release_of(catalog: Catalog) -> Self {
+    pub fn release_of(catalog: LookupCatalog) -> Self {
         match catalog {
-            Catalog::MusicBrainz => Self::MusicBrainz,
-            Catalog::Discogs => Self::Discogs,
-            other => unreachable!("nothing fetches documents from {}", other.as_str()),
+            LookupCatalog::MusicBrainz => Self::MusicBrainz,
+            LookupCatalog::Discogs => Self::Discogs,
         }
     }
 }

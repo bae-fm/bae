@@ -1,6 +1,6 @@
 use super::*;
 use crate::catalog_model::credits::ArtistCredit;
-use crate::catalog_model::records::MetadataRef;
+use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::catalog_model::source_release::{
     CatalogFacts, EntryKind, ReleaseCovers, SourceMedium, TracklistEntry,
@@ -34,9 +34,9 @@ fn medium(carrier: Option<Medium>, entries: Vec<TracklistEntry>) -> SourceMedium
 
 /// An imaginary release of `catalog` holding `mediums`, credited to one
 /// album artist.
-fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
+fn release(catalog: LookupCatalog, mediums: Vec<SourceMedium>) -> SourceRelease {
     SourceRelease {
-        release: MetadataRef::new(catalog, "release-1"),
+        release: LookupRef::new(catalog, "release-1"),
         source_group_id: None,
         metadata: ReleaseMetadata {
             album: AlbumMetadata {
@@ -55,14 +55,13 @@ fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
         archive_groups: Vec::new(),
         mediums,
         catalog: match catalog {
-            Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
+            LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
                 links: Vec::new(),
                 album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
             },
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
             }
-            other => unreachable!("no release is fetched from {}", other.as_str()),
         },
         notes: Vec::new(),
         unfetched: Vec::new(),
@@ -120,7 +119,7 @@ fn mixed_box_musicbrainz() -> SourceRelease {
     let mut lp2 = run("C", "LP Side C", 5, None);
     lp2.extend(run("D", "LP Side D", 5, None));
     release(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         vec![
             medium(Some(Medium::Vinyl), lp1),
             medium(Some(Medium::Vinyl), lp2),
@@ -147,7 +146,7 @@ fn mixed_box_discogs() -> SourceRelease {
     let mut lp2 = run("C", "LP Side C", 5, None);
     lp2.extend(run("D", "LP Side D", 5, None));
     release(
-        Catalog::Discogs,
+        LookupCatalog::Discogs,
         vec![
             medium(Some(Medium::Vinyl), with_heading("Records", lp1)),
             medium(Some(Medium::Vinyl), lp2),
@@ -229,7 +228,7 @@ fn tied_discs_that_read_differently_are_refused_naming_them() {
 fn identical_layers_of_a_hybrid_disc_are_one_answer() {
     let layer = || run("", "Movement", 4, Some(400_000));
     let release = release(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         vec![medium(Some(Medium::Sacd), layer()), medium(Some(Medium::Sacd), layer())],
     );
     let reading = release.read(&audio(vec![400_200; 4], proven_cd_rip(), &[]));
@@ -243,7 +242,7 @@ fn a_disc_id_decides_over_lengths() {
     let mut second = medium(Some(Medium::Cd), run("", "Second Disc", 3, Some(500_000)));
     second.disc_ids = vec!["disc-id-two".to_string()];
     let release = release(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         vec![medium(Some(Medium::Cd), run("", "First Disc", 3, Some(200_000))), second],
     );
     let reading = release.read(&audio(vec![200_000; 3], proven_cd_rip(), &["disc-id-two"]));
@@ -255,7 +254,7 @@ fn a_disc_id_decides_over_lengths() {
 #[test]
 fn an_empty_medium_is_never_covered() {
     let release = release(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         vec![
             medium(Some(Medium::Cd), Vec::new()),
             medium(Some(Medium::Cd), run("", "Song", 2, None)),
@@ -270,7 +269,7 @@ fn an_empty_medium_is_never_covered() {
 #[test]
 fn audio_no_set_of_mediums_holds_is_refused_with_both_counts() {
     let release = release(
-        Catalog::MusicBrainz,
+        LookupCatalog::MusicBrainz,
         vec![
             medium(Some(Medium::Cd), run("", "Song", 3, None)),
             medium(Some(Medium::Cd), run("", "Other", 4, None)),
@@ -288,7 +287,7 @@ fn audio_no_set_of_mediums_holds_is_refused_with_both_counts() {
 fn an_untitled_track_in_a_covered_medium_is_unreadable() {
     let mut rows = run("", "Song", 2, None);
     rows[1].title = None;
-    let release = release(Catalog::MusicBrainz, vec![medium(Some(Medium::Cd), rows)]);
+    let release = release(LookupCatalog::MusicBrainz, vec![medium(Some(Medium::Cd), rows)]);
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
     assert!(matches!(reading, Err(ReadingRefusal::Unreadable { .. })), "{reading:?}");
@@ -298,7 +297,7 @@ fn an_untitled_track_in_a_covered_medium_is_unreadable() {
 /// A release that lists no tracks reads as its album alone.
 #[test]
 fn a_release_listing_no_tracks_reads_its_album_alone() {
-    let release = release(Catalog::MusicBrainz, Vec::new());
+    let release = release(LookupCatalog::MusicBrainz, Vec::new());
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
     let values = reading.as_ref().expect("an album alone reads");
@@ -326,7 +325,7 @@ fn a_collapsed_suite_reads_its_own_disc() {
     let mut disc_one = run("1-", "First", 9, Some(200_000));
     disc_one.push(suite);
     let release = release(
-        Catalog::Discogs,
+        LookupCatalog::Discogs,
         vec![medium(None, disc_one), medium(None, run("2-", "Second", 10, Some(250_000)))],
     );
     let mut rip = vec![200_000; 9];

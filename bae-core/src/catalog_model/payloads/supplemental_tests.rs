@@ -10,7 +10,7 @@ fn parse(
 
 fn selected_release() -> ReleasePayloads {
     ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::Discogs, "7811"),
+        LookupRef::new(LookupCatalog::Discogs, "7811"),
         json!({
             "id":7811, "master_id":7822, "title":"Selected Album", "year":0,
             "artists":[{"id":7833,"name":"Selected Artist"}],
@@ -94,7 +94,7 @@ fn malformed_linked_release_credit_keeps_its_valid_credit_and_fills_no_pressing_
 #[test]
 fn malformed_selected_release_credit_is_still_rejected() {
     let payloads = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
+        LookupRef::new(LookupCatalog::MusicBrainz, "selected-release"),
         json!({"id":"selected-release","title":"Selected Album",
             "artist-credit":supplemental_credits(),
             "media":[{"format":"CD","tracks":[{"number":"1","title":"First Track"}]}],

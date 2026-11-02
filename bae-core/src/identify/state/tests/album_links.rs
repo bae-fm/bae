@@ -16,8 +16,8 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
         links: Vec::new(),
         album_links: AlbumLinks::NotAsked,
         stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
-            crate::catalog_model::records::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
+            crate::catalog_model::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "release-1",
             ),
         )),
@@ -36,7 +36,7 @@ fn linking_document(linked: &str, master: &str) -> ReleaseDocument {
 
 /// A release on `group` in `packaging`.
 fn packed_in(
-    source: impl Into<Catalog>,
+    source: LookupCatalog,
     release_id: &str,
     group: &str,
     packaging: bae_types::pressing::Packaging,
@@ -48,7 +48,7 @@ fn packed_in(
 /// records, and each lookup of an offered row's pressing.
 #[derive(Debug, Default)]
 struct Asked {
-    reads: Vec<Vec<MetadataRef>>,
+    reads: Vec<Vec<LookupRef>>,
     pressings: Vec<(LookupCatalog, PressingKey)>,
 }
 
@@ -58,7 +58,7 @@ struct Asked {
 /// for past these, and what it asked.
 fn answer_rounds(
     (mut state, mut effects): (IdentifyState, Vec<Effect>),
-    document: impl Fn(&MetadataRef) -> ReleaseDocument,
+    document: impl Fn(&LookupRef) -> ReleaseDocument,
     pressing: impl Fn(LookupCatalog, &PressingKey) -> Vec<MetadataResult>,
 ) -> (IdentifyState, Vec<Effect>, Asked) {
     let mut asked = Asked::default();
@@ -174,20 +174,20 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
 
     assert_eq!(
         asked.reads[0],
-        vec![MetadataRef::new(MB.catalog(), "mb-1"), MetadataRef::new(MB.catalog(), "mb-2")],
+        vec![LookupRef::new(MB, "mb-1"), LookupRef::new(MB, "mb-2")],
         "the offered records are read first"
     );
     assert_eq!(
         asked.pressings,
         vec![
-            (DG, PressingKey::Link { release: MetadataRef::new(DG.catalog(), "dg-1") }),
-            (DG, PressingKey::Link { release: MetadataRef::new(DG.catalog(), "dg-2") }),
+            (DG, PressingKey::Link { release: LookupRef::new(DG, "dg-1") }),
+            (DG, PressingKey::Link { release: LookupRef::new(DG, "dg-2") }),
         ],
         "then each row by the release its page names"
     );
     assert_eq!(
         asked.reads[1..],
-        [vec![MetadataRef::new(DG.catalog(), "dg-1"), MetadataRef::new(DG.catalog(), "dg-2")]],
+        [vec![LookupRef::new(DG, "dg-1"), LookupRef::new(DG, "dg-2")]],
         "then the releases found, now on the offered rows"
     );
 
@@ -254,7 +254,7 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     assert_eq!(
         findings.named_notes,
         vec![crate::identify::NamedNote {
-            release: MetadataRef::new(DG.catalog(), "dg-2"),
+            release: LookupRef::new(DG, "dg-2"),
             note: "Pressed by Plantname".to_string(),
         }]
     );
@@ -288,7 +288,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         |release| ReleaseDocument {
             labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
             album_links: match release.catalog {
-                Catalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
+                LookupCatalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
                 _ => AlbumLinks::NotAsked,
             },
             ..plain_document(&[])

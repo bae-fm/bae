@@ -2,14 +2,14 @@
 // and `album_links.rs`.
 
 /// A release of `source` by "Artist Name" printing `number` under `label`.
-fn labelled(source: impl Into<Catalog>, release_id: &str, label: &str, number: &str) -> MetadataResult {
+fn labelled(source: LookupCatalog, release_id: &str, label: &str, number: &str) -> MetadataResult {
     credited(source, release_id, "Artist Name", label, number)
 }
 
 /// A release of `source` credited to `artist`, printing `number` under
 /// `label`.
 fn credited(
-    source: impl Into<Catalog>,
+    source: LookupCatalog,
     release_id: &str,
     artist: &str,
     label: &str,
@@ -224,7 +224,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
         |release| ReleaseDocument {
             labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("XY-100"))],
             album_links: match release.catalog {
-                Catalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
+                LookupCatalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
                 _ => AlbumLinks::NotAsked,
             },
             ..plain_document(&[])
@@ -564,7 +564,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
             outcome: Ok(DiscIdAnswer::for_test(vec![labelled(MB, "mb-1", "Label", "AB-100")])),
         },
     );
-    let other_tracks = |_: &MetadataRef| ReleaseDocument {
+    let other_tracks = |_: &LookupRef| ReleaseDocument {
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label"), Some("AB-100"))],
         source_tracks: crate::catalog_model::search::SourceTracks::Listed { count: 9 },
         ..plain_document(&[])
@@ -648,8 +648,7 @@ fn a_release_the_disc_id_answered_is_read_from_its_answer() {
         releases,
         vec![
             crate::identify::documents::ReleaseToRead::DiscIdAnswer(answered),
-            crate::identify::documents::ReleaseToRead::ReleaseLookup(MetadataRef::new(
-                MB.catalog(), "mb-other"
+            crate::identify::documents::ReleaseToRead::ReleaseLookup(LookupRef::new(MB, "mb-other"
             )),
         ]
     );

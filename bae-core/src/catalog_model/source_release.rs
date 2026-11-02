@@ -11,26 +11,20 @@
 
 use crate::catalog_model::credits::ArtistCredit;
 use crate::catalog_model::medium_coverage::MediumCoverage;
-use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
+use crate::catalog_model::records::{LookupRef, MetadataRef, ReleaseRecord};
 use crate::catalog_model::release_metadata::ReleaseMetadata;
 use crate::catalog_model::search::ImportSearchReleaseDetail;
 use crate::catalog_model::CatalogError;
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::RemoteCover;
 use bae_types::pressing::Pressing;
 use bae_types::pressing::{Medium, StatedMedia};
-
-/// The catalogs bae fetches releases from are exactly the ones it asks, so a
-/// source release cannot exist for any other.
-pub(crate) fn not_fetched(catalog: Catalog) -> ! {
-    unreachable!("nothing fetches releases from {}", catalog.as_str())
-}
 
 /// One fetched release: its facts with every supporting document's
 /// contribution already resolved into them, and its full tracklist.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SourceRelease {
-    pub(crate) release: MetadataRef,
+    pub(crate) release: LookupRef,
     /// The album the release's own catalog files it under: its MusicBrainz
     /// release group or its Discogs master.
     pub(crate) source_group_id: Option<String>,
@@ -302,16 +296,15 @@ pub(crate) enum PartDirection {
 impl SourceRelease {
     /// An imaginary release `release` names, titled and credited with
     /// nothing else stated.
-    pub(crate) fn for_test(release: MetadataRef) -> Self {
+    pub(crate) fn for_test(release: LookupRef) -> Self {
         let catalog = match release.catalog {
-            Catalog::MusicBrainz => CatalogFacts::MusicBrainz {
+            LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
                 links: Vec::new(),
                 album_links: crate::catalog_model::album_links::AlbumLinks::Read(Vec::new()),
             },
-            Catalog::Discogs => {
+            LookupCatalog::Discogs => {
                 CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
             }
-            other => unreachable!("no release is fetched from {}", other.as_str()),
         };
         Self {
             release,
@@ -339,7 +332,7 @@ impl SourceRelease {
 
 impl SourceRelease {
     /// The release these facts describe.
-    pub fn release(&self) -> &MetadataRef {
+    pub fn release(&self) -> &LookupRef {
         &self.release
     }
 
@@ -415,12 +408,11 @@ impl SourceRelease {
             )
             .await?;
             match self.release.catalog {
-                Catalog::MusicBrainz => {
+                LookupCatalog::MusicBrainz => {
                     gallery.extend(covers);
                     covers = gallery;
                 }
-                Catalog::Discogs => covers.extend(gallery),
-                other => not_fetched(other),
+                LookupCatalog::Discogs => covers.extend(gallery),
             }
         }
         let covered_group =
@@ -548,12 +540,12 @@ pub(crate) async fn pick_gallery_covers(
 /// record first, then `others`, what the other catalogs say, in catalog
 /// order.
 pub(crate) fn release_records(
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
     source_group_id: Option<String>,
     mut others: Vec<ReleaseRecord>,
 ) -> Vec<ReleaseRecord> {
     others.sort_by_key(|record| catalog_rank(record.catalog()));
-    let mut records = vec![ReleaseRecord::new(release, source_group_id)];
+    let mut records = vec![ReleaseRecord::new(&release.metadata_ref(), source_group_id)];
     records.extend(others);
     records
 }

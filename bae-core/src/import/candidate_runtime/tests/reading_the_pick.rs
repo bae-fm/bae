@@ -7,7 +7,7 @@ fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
         .map(|index| crate::catalog_model::search::MetadataResult {
             source_tracks: Some(crate::catalog_model::search::SourceTracks::Listed { count: 2 }),
             ..crate::catalog_model::search::MetadataResult::for_test(
-                Catalog::MusicBrainz,
+                LookupCatalog::MusicBrainz,
                 &format!("mb-{index}"),
                 Some("rg-1"),
             )

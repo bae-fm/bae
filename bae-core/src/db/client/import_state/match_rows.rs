@@ -8,12 +8,16 @@ use super::*;
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
-use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
-fn source_of(stored: &str) -> Result<Catalog, DbError> {
+fn source_of(stored: &str) -> Result<LookupCatalog, DbError> {
+    LookupCatalog::from_str(stored).map_err(DbError::Message)
+}
+
+fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
 }
 
@@ -309,7 +313,7 @@ fn store_album_link_rows(
 pub(super) fn store_picked(
     sql: &CovenWrite<'_>,
     search_run: i64,
-    release: &MetadataRef,
+    release: &crate::catalog_model::records::LookupRef,
     links: &AlbumLinks,
 ) -> Result<(), DbError> {
     let positions = sql.query(
@@ -509,7 +513,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     }
     result.links = links
         .into_iter()
-        .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
+        .map(|(catalog, key)| Ok(MetadataRef::new(catalog_of(&catalog)?, key)))
         .collect::<Result<_, DbError>>()?;
     result.album_links = match album_links_kind.as_str() {
         ALBUM_LINKS_READ => AlbumLinks::Read(
@@ -568,7 +572,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         (Some(url), Some(source)) => Some(RemoteCover {
             image: RemoteImageSet::original(url),
             label: row.get("cover_label")?,
-            source: source_of(&source)?,
+            source: catalog_of(&source)?,
             standing: standing_of(&row.get::<_, String>("cover_standing")?)?,
         }),
         // The table sets and clears the four cover columns together.

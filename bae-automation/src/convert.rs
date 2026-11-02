@@ -174,9 +174,18 @@ mirror_enum! {
 mirror_struct! {
     AutomationMetadataRef = MetadataRef,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: {
         catalog: (into),
+        key,
+    },
+}
+
+mirror_struct! {
+    AutomationLookupRef = bae_core::catalog_model::records::LookupRef,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        catalog: (AutomationLookupCatalog),
         key,
     },
 }
@@ -203,15 +212,15 @@ impl AutomationReleaseRecord {
 impl AutomationPressingLink {
     pub(crate) fn from_core(link: PressingLink) -> Self {
         Self {
-            record: AutomationMetadataRef::from_core(link.record),
-            partners: link.partners.into_iter().map(AutomationMetadataRef::from_core).collect(),
+            record: AutomationLookupRef::from_core(link.record),
+            partners: link.partners.into_iter().map(AutomationLookupRef::from_core).collect(),
         }
     }
 
     pub(crate) fn into_core(self) -> PressingLink {
         PressingLink {
             record: self.record.into_core(),
-            partners: self.partners.into_iter().map(AutomationMetadataRef::into_core).collect(),
+            partners: self.partners.into_iter().map(AutomationLookupRef::into_core).collect(),
         }
     }
 }
@@ -321,7 +330,7 @@ impl AutomationMetadataResult {
     pub(crate) fn from_core(result: MetadataResult) -> Self {
         let facts = result.facts();
         Self {
-            source: result.source.into(),
+            source: AutomationLookupCatalog::from_core(result.source),
             release_id: result.release_id,
             title: result.title,
             artist: result.artist,

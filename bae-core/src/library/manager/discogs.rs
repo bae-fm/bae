@@ -118,7 +118,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn fetch_release_payloads(
         &self,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         depth: crate::catalog_model::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
@@ -166,11 +166,11 @@ impl LibraryManager {
     #[cfg(desktop)]
     async fn release_read_session(
         &self,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
     ) -> Result<CatalogSession, crate::import::ImportError> {
         match self.catalog_session().await {
             Ok(session) => Ok(session),
-            Err(error) if release.catalog == bae_catalogs::catalog::Catalog::MusicBrainz => {
+            Err(error) if release.catalog == bae_catalogs::catalog::LookupCatalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"

@@ -9,7 +9,7 @@ use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 /// The release a MusicBrainz document extracts to, read by itself.
 fn mb_release(response: &MbReleaseResponse) -> crate::catalog_model::source_release::SourceRelease {
     crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, &response.id),
+        crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     )
@@ -27,7 +27,7 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
     crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, &release.id),
+        crate::catalog_model::records::LookupRef::new(LookupCatalog::Discogs, &release.id),
         json.to_string(),
         Vec::new(),
     )
@@ -437,7 +437,7 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     assert_eq!(result.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
     assert_eq!(
         document.release(),
-        &MetadataRef::new(Catalog::MusicBrainz, "mb-release-2"),
+        &LookupRef::new(LookupCatalog::MusicBrainz, "mb-release-2"),
         "the release kept is paired with its own document"
     );
 }

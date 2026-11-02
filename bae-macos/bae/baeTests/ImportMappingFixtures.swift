@@ -13,13 +13,13 @@ import Foundation
 enum MappingFixtures {
     static let candidateKey = Data("/Music/Downloads/Walkthrough".utf8)
     static let releaseId = "rel-walkthrough"
-    static let source: BridgeCatalog = .musicBrainz
+    static let source: BridgeLookupCatalog = .musicBrainz
     static let provenance: BridgeMetadataProvenance = .externalRelease(
-        record: BridgeMetadataRef(catalog: source, key: releaseId)
+        record: BridgeLookupRef(catalog: source, key: releaseId)
     )
     /// The pick of the fixture's release, and the link it leaves.
     static let link = BridgePressingLink(
-        record: BridgeMetadataRef(catalog: source, key: releaseId),
+        record: BridgeLookupRef(catalog: source, key: releaseId),
         partners: []
     )
     static let releaseLink = BridgeReleaseLink.pressing(link: link)

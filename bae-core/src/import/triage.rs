@@ -158,6 +158,7 @@ mod tests {
     use crate::catalog_model::search::SourceTracks;
     use crate::identify::LeadMatch;
     use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::catalog::LookupCatalog;
 
     /// The pane states the found release's failed check while identification's
     /// pick or nobody's draft stands; a person's or the tags' valid draft is
@@ -170,7 +171,7 @@ mod tests {
             pressing_count: 1,
             lead: Some(LeadMatch {
                 release_id: "mb-1".to_string(),
-                source: Catalog::MusicBrainz,
+                source: LookupCatalog::MusicBrainz,
                 source_group_id: None,
                 title: "Album".to_string(),
                 artist: None,
@@ -246,8 +247,8 @@ mod tests {
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
         let pick = ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::catalog_model::records::MetadataRef::new(
-                Catalog::MusicBrainz,
+            record: crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
                 "mb-1".to_string(),
             ),
             partners: Vec::new(),

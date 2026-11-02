@@ -20,7 +20,7 @@ use crate::import::LookupChoices;
 use crate::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::catalog::LookupCatalog;
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]
@@ -80,7 +80,10 @@ impl DiscIdEvidence {
     }
 
     /// The document a lookup answered `release` with, where one did.
-    pub(super) fn document_of(&self, release: &MetadataRef) -> Option<&DiscIdRelease> {
+    pub(super) fn document_of(
+        &self,
+        release: &crate::catalog_model::records::LookupRef,
+    ) -> Option<&DiscIdRelease> {
         self.documents.iter().find(|document| document.release() == release)
     }
 
@@ -548,7 +551,10 @@ impl SignalsContext {
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
         let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::read_groups(&list, |release| {
-            self.documents.album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
+            self.documents.album_statements(&crate::catalog_model::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                release,
+            ))
         })
     }
 

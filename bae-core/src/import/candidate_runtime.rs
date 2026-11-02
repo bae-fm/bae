@@ -302,7 +302,7 @@ impl CandidateRuntime {
     pub(super) async fn land_picked(
         &self,
         key: &CandidateKey,
-        release: &crate::catalog_model::records::MetadataRef,
+        release: &crate::catalog_model::records::LookupRef,
         links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>, DbError> {
         self.database.land_candidate_search_pick(key, release, links).await
