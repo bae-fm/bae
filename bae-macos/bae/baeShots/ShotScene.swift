@@ -87,6 +87,37 @@ struct ShotScene {
                 )
             },
             ShotScene(
+                id: "release-storage-sheet",
+                size: CGSize(width: 640, height: 600)
+            ) {
+                let release = PreviewData.storageBridgeRelease(
+                    storageState: .remote,
+                    pinned: true,
+                    storageActions: [.unpin, .detachAudio],
+                    playability: .playable
+                )
+                return AnyView(
+                    ReleaseStorageSheet(
+                        release: ReleaseDetail(bridge: release),
+                        onAction: { _ in },
+                        onExport: {},
+                        onSaveAs: {},
+                        onDone: {}
+                    )
+                    .background(Theme.background)
+                    .environment(
+                        Library(
+                            releaseDetail: { .fixed { _ in release } },
+                            releaseFiles: {
+                                .fixed(PreviewData.previewReleaseFiles)
+                            }
+                        )
+                    )
+                    .environment(OutboxStore(uploadsPaused: false))
+                    .environment(DownloadStore())
+                )
+            },
+            ShotScene(
                 id: "album-detail-mixed-columns",
                 size: CGSize(width: 1100, height: 800)
             ) {

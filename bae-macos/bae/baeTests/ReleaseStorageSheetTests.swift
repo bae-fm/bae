@@ -9,19 +9,31 @@ import Testing
 struct ReleaseStorageSheetTests {
     /// The sheet follows the release's live read, so a storage action's
     /// result shows in its status band while it stays open: here the
-    /// release it opened on as Cloud is read again as Pinned.
+    /// release it opened on at rest on this Mac is read again uploading, and
+    /// the band draws the upload's native bar. The band's words for each
+    /// state are the `release-storage-sheet` shot's.
     @Test("The Storage sheet shows the release as its read gives it now")
     func theSheetFollowsTheReleasesRead() async throws {
         let album = try #require(PreviewData.albumDetails["a-01"])
-        var cloud = try #require(
+        var resting = try #require(
             album.releases.first { $0.id == album.album.primaryReleaseId }
         )
-        cloud.storageState = .remote
-        cloud.pinned = false
-        cloud.storageActions = [.pin]
-        var pinned = cloud
-        pinned.pinned = true
-        pinned.storageActions = [.unpin]
+        resting.storageState = .local
+        resting.pinned = false
+        resting.storageActions = [.upload]
+        resting.upload = nil
+        resting.transitioning = false
+        var uploading = resting
+        uploading.storageActions = []
+        uploading.transitioning = true
+        uploading.upload = BridgeReleaseUpload(
+            progress: BridgeUploadProgress(
+                queued: 0,
+                uploading: 1,
+                activity: .uploading
+            ),
+            summary: []
+        )
         let (reads, deliver) = AsyncStream.makeStream(of: BridgeRelease.self)
         let delivered = Delivered(reads)
         let library = Library(
@@ -36,7 +48,7 @@ struct ReleaseStorageSheetTests {
         let size = NSSize(width: 640, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseStorageSheet(
-                release: ReleaseDetail(bridge: cloud),
+                release: ReleaseDetail(bridge: resting),
                 onAction: { _ in },
                 onExport: {},
                 onSaveAs: {},
@@ -48,33 +60,21 @@ struct ReleaseStorageSheetTests {
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
-            try await waitUntilShown("Cloud", in: host, size: size)
-            deliver.yield(pinned)
-            try await waitUntilShown("Pinned", in: host, size: size)
+            try await SnapshotTestSupport.settle(host)
+            #expect(uploadBars(in: host) == 0)
+            deliver.yield(uploading)
+            try await Wait.until {
+                try await SnapshotTestSupport.settle(host)
+                return uploadBars(in: host) == 1
+            }
         }
     }
 
-    /// Wait for a line holding `word` to be drawn, saying what the sheet drew
-    /// instead when it never is.
-    private func waitUntilShown(_ word: String, in host: NSView, size: NSSize)
-        async throws
-    {
-        var drawn: [String] = []
-        do {
-            try await Wait.until {
-                let png = try await SnapshotTestSupport.capturePNG(
-                    host,
-                    size: size
-                )
-                drawn = try await SnapshotTestSupport.recognizedText(in: png)
-                    .map(\.text)
-                return drawn.contains { $0.contains(word) }
-            }
-        }
-        catch {
-            Issue.record("waiting for \(word), the sheet drew \(drawn)")
-            throw error
-        }
+    /// The native bars the band draws for a transfer.
+    private func uploadBars(in host: NSView) -> Int {
+        SnapshotTestSupport.descendants(of: host)
+            .filter { $0 is StreamBarNSView }
+            .count
     }
 
     /// The releases a test hands its read, one per delivery.
