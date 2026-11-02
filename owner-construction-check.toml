@@ -1,0 +1,247 @@
+# bae's policy for coven's structural checker (owner-construction-check),
+# which scripts/owner-dependency-boundary.sh installs at a pinned coven
+# revision and runs on this workspace.
+
+# Today bae holds itself to one rule group: an owner never hands out what it
+# holds. The construction rules follow once the owners built outside the
+# composition root are moved into it.
+rules = ["owner-dependencies"]
+
+# These are retained state and service capabilities, not values passed between
+# operations. The checker also follows fields containing them, so an owner made
+# from another owner is covered. Receivers, records, and configuration values
+# are omitted.
+capability_types = [
+    "AbortHandle",
+    "AirPlaySink",
+    "AirPlayStreamControl",
+    "AppServices",
+    "ArtworkAnalyzer",
+    "ArtworkAnalyzerCallback",
+    "AtomicBool",
+    "AtomicU64",
+    "AtomicUsize",
+    "AudioDataReader",
+    # An AudioOutputDevice opens a new output for each player that asks. The
+    # system device owns what its outputs share: on a Mac, the formats bae's
+    # streams set the output devices to, which only one owner of both players'
+    # outputs can put back.
+    "AudioOutput",
+    "AudioStream",
+    "CancellationToken",
+    "CandidateRuntime",
+    "CastController",
+    "CoverUrlProvider",
+    "CovenHandle",
+    "Database",
+    "Diagnostics",
+    "DiagnosticsTransport",
+    "DiscogsClient",
+    "DiscogsValidationObserver",
+    "DiskImageCache",
+    "ExtractionService",
+    "ExtractionServiceHandle",
+    "FetchArbiter",
+    "FileStream",
+    "FolderWatcher",
+    "Handle",
+    "IdSource",
+    "IdSourceRef",
+    "IdentifyServiceHandle",
+    "ImportService",
+    "ImportServiceHandle",
+    "JoinHandle",
+    "LibraryManager",
+    "LocalSessionManager",
+    "LruCache",
+    "McpServerController",
+    "McpTokenProvider",
+    "MediaUrlProvider",
+    "MonotonicClock",
+    "Mutex",
+    "Notify",
+    "OnceLock",
+    "PcmSource",
+    "PlaybackQueue",
+    "PlaybackService",
+    "RemoteImageCache",
+    "Renderer",
+    "RendererChannel",
+    "RootRemovalBackend",
+    "RtspConnection",
+    "Runtime",
+    "SaveService",
+    "Sender",
+    "ServiceDaemon",
+    "SessionCache",
+    "SparseStreamingBuffer",
+    "SrpClient",
+    "StoreDir",
+    "SubsonicPasswordProvider",
+    "SubsonicServerController",
+    "SyncController",
+    "TrackStream",
+    "TransferService",
+    "UploadThroughput",
+    "WatchBackend",
+    "Write",
+    "WriteAvioContext",
+    "WriteSeek",
+]
+
+# Capability types that bae's dependencies declare: std and tokio's locks,
+# atomics, channels, tasks and runtimes, coven's handle and store files, and
+# the libraries' own services.
+external_types = [
+    "AbortHandle",
+    "AtomicBool",
+    "AtomicU64",
+    "AtomicUsize",
+    "CancellationToken",
+    "CovenHandle",
+    "FileStream",
+    "Handle",
+    "IdSource",
+    "IdSourceRef",
+    "JoinHandle",
+    "LocalSessionManager",
+    "LruCache",
+    "Mutex",
+    "Notify",
+    "OnceLock",
+    "Runtime",
+    "Sender",
+    "ServiceDaemon",
+    "StoreDir",
+    "Write",
+]
+
+# Values an owner makes for its caller's one operation, view or read and
+# that are dropped when it ends, so an owner may return a new one. Those that
+# are capability types stay listed there too, so retained fields and getters
+# are still checked.
+task_types = [
+    # One read of a file's audio, one output stream, and the stream's control.
+    "AudioDataReader",
+    "AudioOutput",
+    "AudioStream",
+    "AirPlayStreamControl",
+    # One open file's bytes from coven.
+    "FileStream",
+    # A client asking Discogs with the library's stored key, for one call.
+    "DiscogsClient",
+    # The handles a started service gives its caller for that service's work.
+    "ExtractionServiceHandle",
+    "IdentifyServiceHandle",
+    "ImportServiceHandle",
+    # A screen's live read of the library, for as long as the screen shows it,
+    # and the bridge's subscription the app holds over each one.
+    "LiveAlbumBrowse",
+    "LiveArtistBrowse",
+    "LiveComposerBrowse",
+    "LiveDownloadBrowse",
+    "LiveAlbumSelection",
+    "LiveArtistSearch",
+    "LiveLibrarySearch",
+    "LiveLibraryStatus",
+    "LiveImportList",
+    "LiveQueueUpcoming",
+    "LiveReleaseFiles",
+    "LiveStorageBrowse",
+    "LiveDetail",
+    "LiveValues",
+    "CancellableLiveQuery",
+    "AlbumSelectionSubscription",
+    "ArtistSearchSubscription",
+    "DownloadBrowseSubscription",
+    "ImportListSubscription",
+    "LibrarySearchSubscription",
+    "LibraryStatusSubscription",
+    "QueueUpcomingSubscription",
+    "ReleaseFilesSubscription",
+    "StorageBrowseSubscription",
+    # One fast-changing value feed a screen pulls from while it is open.
+    "KeyedValueStream",
+    # One open, close or setup call's progress steps, written while it runs.
+    "ClosingSteps",
+    "SetupSteps",
+    # One subscriber's watch on the outbox's transfers.
+    "OutboxTransfersWatch",
+    "OutboxTotalTransferWatch",
+    # One editor's session on one release.
+    "ReleaseEdit",
+    # One operation's view of the catalogs.
+    "CatalogSession",
+    # One request a rate limiter let through.
+    "Admitted",
+    # One reader of a sparse buffer, one file stream's shared buffer, and the
+    # fetch that fills one read.
+    "BufferReader",
+    "SharedSparseBuffer",
+    "FillTask",
+    "FetchProgress",
+    # One track's decode for a caller outside the library.
+    "TrackDecode",
+    # One output's lease on the device format, and one stream's format.
+    "FormatLease",
+    "StreamFormat",
+    # One background task or thread a caller started, reporting its failure.
+    "ReportedTask",
+    "ReportedThread",
+    # One running pin of a release, and one release's make-local progress.
+    "RunningOp",
+    "MakeLocalReport",
+    # One detached operation's registration, cancelled with the library.
+    "DetachRegistration",
+    # One scan pass's file reads, and what one finished removal leaves to
+    # announce.
+    "FileReads",
+    "RemovalOutcome",
+    # One image a test's remote image host holds back.
+    "ImageHold",
+]
+
+# Where the app opens: the bootstrap builds the runtime, the clock, the ids,
+# the HTTP client and the library's owners once, and starts the services that
+# run while the library is open. The bridge's opening calls are where the
+# platform apps start that bootstrap and receive the handle on what it built.
+# Task starts are listed with them: each starts a service's long-lived work,
+# which the handle it returns stops.
+[composition_roots]
+"bae-core/src/app.rs" = [
+    "bootstrap",
+    "bootstrap_prepared",
+    "bootstrap_on_fixture",
+    "bootstrap_opening",
+    "bootstrap_inner",
+]
+"bae-bridge/src/host.rs" = ["BridgeHost::open_prepared", "BridgeHost::create_library"]
+# Restoring, joining and resetting a device open the library they leave.
+"bae-bridge/src/host/bootstrap.rs" = [
+    "BridgeHost::restore_from_code",
+    "BridgeHost::restore_replacing_device",
+    "BridgeHost::restore_from_saved_code",
+    "BridgeHost::join_with_invite",
+    "BridgeHost::resume_join",
+    "BridgeHost::prepare_device_reset",
+    "BridgeDeviceReset::confirm",
+]
+# Opening the app, and the operation runtime the host builds as it starts.
+"bae-bridge/src/init.rs" = [
+    "BridgeDiagnostics::open_app",
+    "BridgeDiagnostics::open_app_on_fixture",
+    "BridgeDiagnostics::open_prepared",
+    "BridgeDiagnostics::operations",
+]
+# A library just set up opens.
+"bae-bridge/src/setup.rs" = ["OpenedLibrary::open"]
+# Starts the playback service's task; its handle stops it.
+"bae-core/src/playback/service/runtime.rs" = [
+    "PlaybackService::start",
+    "PlaybackService::start_with_audio_device",
+    "PlaybackService::start_inner",
+]
+# Starts the identification queue's task; its handle stops it.
+"bae-core/src/import/handle/identification.rs" = [
+    "ImportServiceHandle::start_identification_queue",
+]
