@@ -96,9 +96,9 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     let root = host_root("/music");
     let search = crate::import::CandidateSearch::started(
         crate::import::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
-        &[crate::import::CatalogAvailability {
+        &[crate::config::CatalogAvailability {
             catalog: bae_catalogs::catalog::Catalog::Discogs,
-            state: crate::import::SourceAvailability::On,
+            state: crate::config::SourceAvailability::On,
         }],
     );
     let run = db.start_candidate_search(&key, &search).await.unwrap();

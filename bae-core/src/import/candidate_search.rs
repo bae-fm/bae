@@ -18,10 +18,11 @@
 //! its cards derived from the parts that have landed. The driver that runs
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
+use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::album_links::{self, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
-use crate::import::types::{CatalogAvailability, MetadataRef, SourceAvailability};
+use crate::import::types::MetadataRef;
 use crate::signals::Failure;
 use bae_catalogs::catalog::Catalog;
 

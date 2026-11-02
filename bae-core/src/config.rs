@@ -3,6 +3,7 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
 
 mod app_dir;
+mod catalog_availability;
 mod identification;
 mod import_storage;
 mod keyring;
@@ -11,6 +12,9 @@ mod save;
 mod server;
 
 pub use app_dir::AppDir;
+pub use catalog_availability::{
+    asked_sources, is_the_only_asked_source, CatalogAvailability, SourceAvailability,
+};
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
@@ -193,17 +197,17 @@ impl Preferences {
     /// A fact about the stored preferences and nothing else, which is why it
     /// lives here: the bridge builds the list a surface renders out of the
     /// same value it reads every other setting off.
-    pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
+    pub fn metadata_sources(&self) -> Vec<CatalogAvailability> {
         bae_catalogs::catalog::Catalog::LOOKUP
             .into_iter()
-            .map(|catalog| crate::import::CatalogAvailability {
+            .map(|catalog| CatalogAvailability {
                 catalog,
                 state: if !self.source_is_configured(catalog) {
-                    crate::import::SourceAvailability::NotConfigured
+                    SourceAvailability::NotConfigured
                 } else if !self.identification.catalogs.enabled(catalog) {
-                    crate::import::SourceAvailability::Off
+                    SourceAvailability::Off
                 } else {
-                    crate::import::SourceAvailability::On
+                    SourceAvailability::On
                 },
             })
             .collect()

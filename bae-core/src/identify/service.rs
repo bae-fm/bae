@@ -36,7 +36,7 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 async fn run_providers(
     library_manager: &LibraryManager,
 ) -> Result<Vec<Catalog>, crate::db::DbError> {
-    Ok(crate::import::asked_sources(&library_manager.metadata_sources().await?))
+    Ok(crate::config::asked_sources(&library_manager.metadata_sources().await?))
 }
 
 /// What one provider's lookup came to: the provider's answer, or how bae

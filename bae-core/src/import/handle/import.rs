@@ -336,12 +336,14 @@ impl ImportServiceHandle {
             source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
-            destination: self
-                .library_manager
-                .preferences()
-                .await
-                .map_err(crate::library::LibraryError::from)?
-                .import_destination(self.library_manager.is_sync_configured().await?),
+            destination: crate::import::ImportDestination::of(
+                self.library_manager
+                    .preferences()
+                    .await
+                    .map_err(crate::library::LibraryError::from)?
+                    .import_storage,
+                self.library_manager.is_sync_configured().await?,
+            ),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,
             #[cfg(any(test, feature = "test-utils"))]

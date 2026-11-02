@@ -1,5 +1,5 @@
 use super::Preferences;
-use crate::import::{CatalogAvailability, SourceAvailability};
+use super::{is_the_only_asked_source, CatalogAvailability, SourceAvailability};
 
 /// A catalog choice and whether changing it would leave a usable source.
 pub struct LookupCatalogSetting {
@@ -15,7 +15,7 @@ impl Preferences {
             .map(|entry| LookupCatalogSetting {
                 availability: *entry,
                 can_change: entry.state != SourceAvailability::NotConfigured
-                    && !crate::import::is_the_only_asked_source(&catalogs, entry.catalog),
+                    && !is_the_only_asked_source(&catalogs, entry.catalog),
             })
             .collect()
     }

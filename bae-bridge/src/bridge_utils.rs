@@ -8,7 +8,7 @@ use crate::types::{
 };
 
 mirror_enum! {
-    BridgeSourceAvailability = bae_core::import::SourceAvailability,
+    BridgeSourceAvailability = bae_core::config::SourceAvailability,
     from_core: pub(crate) fn,
     variants: { On, Off, NotConfigured },
 }
@@ -16,7 +16,7 @@ mirror_enum! {
 impl BridgeLookupCatalogSetting {
     pub(crate) fn from_core(entry: bae_core::config::LookupCatalogSetting) -> Self {
         let bae_core::config::LookupCatalogSetting { availability, can_change } = entry;
-        let bae_core::import::CatalogAvailability { catalog, state } = availability;
+        let bae_core::config::CatalogAvailability { catalog, state } = availability;
         Self {
             catalog: BridgeCatalog::from_core(catalog),
             availability: BridgeSourceAvailability::from_core(state),

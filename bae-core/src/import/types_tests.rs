@@ -305,3 +305,22 @@ mod edit_shaping_tests {
         assert_eq!(raw.shape().expect("re-shapes"), original);
     }
 }
+
+/// An import goes where the stored choice says, pinned as it says, and to the
+/// cloud only when there is a home to go to.
+#[cfg(desktop)]
+#[test]
+fn an_import_s_destination_is_the_stored_choice() {
+    use crate::config::ImportStoragePreferences;
+    let mut storage = ImportStoragePreferences::default();
+    assert_eq!(
+        ImportDestination::of(storage, false),
+        ImportDestination::Local,
+        "without storage, imports stay local"
+    );
+    assert_eq!(ImportDestination::of(storage, true), ImportDestination::Remote { pin: true });
+    storage.pinned = false;
+    assert_eq!(ImportDestination::of(storage, true), ImportDestination::Remote { pin: false });
+    storage.cloud = false;
+    assert_eq!(ImportDestination::of(storage, true), ImportDestination::Local);
+}

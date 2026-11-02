@@ -17,17 +17,3 @@ impl Default for ImportStoragePreferences {
         Self { cloud: true, pinned: true }
     }
 }
-
-impl super::Preferences {
-    /// Where an import goes: to the cloud, pinned as chosen, when the choice is
-    /// the cloud and the library has a cloud home; locally otherwise.
-    #[cfg(desktop)]
-    pub fn import_destination(&self, storage_configured: bool) -> crate::import::ImportDestination {
-        let storage = self.import_storage;
-        if storage.cloud && storage_configured {
-            crate::import::ImportDestination::Remote { pin: storage.pinned }
-        } else {
-            crate::import::ImportDestination::Local
-        }
-    }
-}

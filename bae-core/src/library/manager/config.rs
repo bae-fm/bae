@@ -164,7 +164,7 @@ impl LibraryManager {
     /// current ones.
     pub async fn metadata_sources(
         &self,
-    ) -> Result<Vec<crate::import::CatalogAvailability>, crate::db::DbError> {
+    ) -> Result<Vec<crate::config::CatalogAvailability>, crate::db::DbError> {
         Ok(self.preferences().await?.metadata_sources())
     }
 
@@ -187,7 +187,7 @@ impl LibraryManager {
     ) -> Result<(), crate::config::ConfigError> {
         self.update_preferences(move |prefs| {
             if !enabled
-                && crate::import::is_the_only_asked_source(&prefs.metadata_sources(), source)
+                && crate::config::is_the_only_asked_source(&prefs.metadata_sources(), source)
             {
                 return Err(crate::config::ConfigError::Config(format!(
                     "{} is the only source left to search",

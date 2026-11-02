@@ -109,7 +109,7 @@ pub struct BridgeImportStorage {
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors
-/// `bae_core::import::SourceAvailability`.
+/// `bae_core::config::SourceAvailability`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceAvailability {
     /// Asked. Its switch is on.

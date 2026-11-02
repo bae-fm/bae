@@ -346,15 +346,14 @@ pub use triage::{
 #[cfg(desktop)]
 pub use types::ImportCommand;
 pub use types::{
-    artists_standing, asked_sources, credited_line, is_the_only_asked_source, AlbumLink,
-    ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft,
-    CandidateEditField, CandidateTrack, CatalogAvailability, CreditResolution, Credited,
-    CreditedRole, DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist,
-    GraphWork, LibraryDraft, LibraryTrack, MetadataProvenance, MetadataRef, PressingFactEdit,
-    PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft,
-    ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit, ResolvedCredit,
-    SourceAvailability, SourceCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
-    WorkGraph, WorkPart,
+    artists_standing, credited_line, AlbumLink, ArtistAssignment, ArtistCredit, ArtistStanding,
+    ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
+    CreditResolution, Credited, CreditedRole, DraftAlbum, DraftFieldEdit, DraftTrack,
+    EditValidationError, ExistingArtist, GraphWork, LibraryDraft, LibraryTrack, MetadataProvenance,
+    MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
+    ResolvedCredit, SourceCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit, WorkGraph,
+    WorkPart,
 };
 #[cfg(desktop)]
 pub use types::{

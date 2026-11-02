@@ -39,24 +39,6 @@ fn a_new_library_imports_nothing_on_its_own() {
     assert!(!prefs.import_when_identified);
 }
 
-/// An import goes where the stored choice says, pinned as it says, and to the
-/// cloud only when there is a home to go to.
-#[test]
-fn an_import_s_destination_is_the_stored_choice() {
-    use crate::import::ImportDestination;
-    let mut prefs = Preferences::default();
-    assert_eq!(
-        prefs.import_destination(false),
-        ImportDestination::Local,
-        "without storage, imports stay local"
-    );
-    assert_eq!(prefs.import_destination(true), ImportDestination::Remote { pin: true });
-    prefs.import_storage.pinned = false;
-    assert_eq!(prefs.import_destination(true), ImportDestination::Remote { pin: false });
-    prefs.import_storage.cloud = false;
-    assert_eq!(prefs.import_destination(true), ImportDestination::Local);
-}
-
 #[test]
 fn subsonic_config_rejects_port_zero() {
     let config = SubsonicConfig {
@@ -131,7 +113,7 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 /// which of the two to fix while the person's switch waits underneath it.
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
-    use crate::import::SourceAvailability;
+    use crate::config::SourceAvailability;
     use bae_catalogs::catalog::Catalog;
 
     let mut prefs = Preferences::default();
@@ -168,7 +150,7 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 /// off the only source still being asked would leave nothing to ask.
 #[test]
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
-    use crate::import::is_the_only_asked_source;
+    use crate::config::is_the_only_asked_source;
     use bae_catalogs::catalog::Catalog;
 
     let mut prefs = Preferences::default();

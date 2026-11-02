@@ -17,6 +17,19 @@ pub enum ImportDestination {
     },
 }
 
+#[cfg(desktop)]
+impl ImportDestination {
+    /// Where an import goes: to the cloud, pinned as chosen, when the stored
+    /// choice is the cloud and the library has a cloud home; locally otherwise.
+    pub fn of(storage: crate::config::ImportStoragePreferences, storage_configured: bool) -> Self {
+        if storage.cloud && storage_configured {
+            Self::Remote { pin: storage.pinned }
+        } else {
+            Self::Local
+        }
+    }
+}
+
 /// User's cover art selection for an import.
 #[cfg(desktop)]
 #[derive(Clone, Debug, PartialEq, Eq)]

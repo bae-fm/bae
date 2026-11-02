@@ -1,13 +1,12 @@
 use super::*;
+use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::candidates::ImportInFlight;
 use crate::import::candidates::{
     Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
 };
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
-use crate::import::types::{
-    CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
-};
+use crate::import::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::import::ImportStep;
 use bae_catalogs::catalog::Catalog;
 use std::path::PathBuf;
