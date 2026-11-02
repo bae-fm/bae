@@ -315,6 +315,25 @@ impl ImportError {
     }
 }
 
+#[cfg(desktop)]
+impl ImportError {
+    /// The failure a catalog answered with, which is a lookup that failed, or
+    /// `None` for an error bae met on its own side — a request it could not
+    /// build, an answer it could not parse, a store read.
+    pub(crate) fn provider_failure(&self) -> Option<crate::catalog_model::LookupFailure> {
+        match self {
+            Self::Catalog(error) => crate::catalog_model::search::provider_failure(error),
+            _ => None,
+        }
+    }
+
+    /// Why a step that asked a catalog did not answer: what a provider
+    /// answered with, or what bae met on its own side, logged as it is named.
+    pub(crate) fn failure(&self, what: &str) -> crate::catalog_model::Failure {
+        crate::catalog_model::search::lookup_or_internal(self.provider_failure(), what, self)
+    }
+}
+
 /// A library error that is an import error is that import error again, so
 /// the two never wrap each other.
 #[cfg(desktop)]
@@ -511,8 +530,7 @@ mod tests {
             bae_catalogs::discogs::client::DiscogsError::Transport(request_error),
         );
         assert!(error.to_string().contains("relative URL without a base"), "{error}");
-        let crate::catalog_model::Failure::Internal(failure) =
-            crate::catalog_model::search::failure_of(&error, "asking Discogs")
+        let crate::catalog_model::Failure::Internal(failure) = error.failure("asking Discogs")
         else {
             panic!("a request bae could not build is its own failure");
         };
@@ -555,14 +573,11 @@ mod tests {
     #[test]
     fn only_a_provider_s_error_is_a_failed_lookup() {
         let refused: ImportError = bae_catalogs::musicbrainz::MusicBrainzError::Timeout.into();
-        assert_eq!(
-            crate::catalog_model::search::provider_failure(&refused),
-            Some(crate::catalog_model::LookupFailure::Timeout)
-        );
+        assert_eq!(refused.provider_failure(), Some(crate::catalog_model::LookupFailure::Timeout));
         let local = ImportError::Internal {
             detail: "the release was stored and did not read back".to_string(),
         };
-        assert_eq!(crate::catalog_model::search::provider_failure(&local), None);
+        assert_eq!(local.provider_failure(), None);
     }
 
     /// A lookup that never reached MusicBrainz names what failed underneath — the

@@ -10,7 +10,7 @@ fn transport(error: reqwest::Error) -> RemoteImageError {
 }
 
 fn category(error: RemoteImageError) -> UiErrorCategory {
-    ImportError::from(error).category()
+    crate::import::ImportError::from(error).category()
 }
 
 #[test]

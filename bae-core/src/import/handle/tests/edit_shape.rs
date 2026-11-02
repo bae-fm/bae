@@ -3,10 +3,10 @@ fn validation_folds_validate_token_outcomes() {
     use crate::config::DiscogsValidation;
     use bae_catalogs::discogs::client::DiscogsError;
 
-    assert_eq!(DiscogsCheck::of(Ok(())).validation(), DiscogsValidation::Valid);
+    assert_eq!(DiscogsValidation::of(&DiscogsCheck::of(Ok(()))), DiscogsValidation::Valid);
     // A 401 is the one outcome that rejects the stored key.
     assert_eq!(
-        DiscogsCheck::of(Err(DiscogsError::InvalidApiKey)).validation(),
+        DiscogsValidation::of(&DiscogsCheck::of(Err(DiscogsError::InvalidApiKey))),
         DiscogsValidation::Rejected
     );
     // Anything that merely fails to confirm the key leaves it unvalidated
@@ -21,7 +21,7 @@ fn validation_folds_validate_token_outcomes() {
     ] {
         let reason = couldnt_confirm.to_string();
         let check = DiscogsCheck::of(Err(couldnt_confirm));
-        assert_eq!(check.validation(), DiscogsValidation::Unvalidated);
+        assert_eq!(DiscogsValidation::of(&check), DiscogsValidation::Unvalidated);
         let DiscogsCheck::Unchecked(kept) = check else {
             panic!("a check Discogs could not answer keeps its failure");
         };

@@ -4,9 +4,9 @@
 
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::catalog_model::parse_year;
+use crate::catalog_model::providers::CatalogSession;
 use crate::catalog_model::CatalogError;
 use crate::catalog_model::{Failure, InternalFailure, LookupFailure};
-use crate::import::ImportError;
 use crate::import::MetadataRef;
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
@@ -567,16 +567,10 @@ fn mb_failure(e: &musicbrainz::MusicBrainzError, what: &str) -> Failure {
     lookup_or_internal(mb_provider_failure(e), what, e)
 }
 
-/// Why a step that asked a catalog did not answer: what a provider answered
-/// with, or what bae met on its own side, logged as it is named.
-pub(crate) fn failure_of(error: &ImportError, what: &str) -> Failure {
-    lookup_or_internal(provider_failure(error), what, error)
-}
-
 /// A provider's failure, warned with the error that carried it — the typed
 /// failure a surface renders keeps no cause, so this is where the DNS, TLS or
 /// status behind it is recorded — or bae's own, logged as an internal one.
-fn lookup_or_internal(
+pub(crate) fn lookup_or_internal(
     failure: Option<LookupFailure>,
     what: &str,
     error: &dyn std::fmt::Display,
@@ -590,19 +584,9 @@ fn lookup_or_internal(
     }
 }
 
-/// The failure a provider answered with, which is a lookup that failed, or
-/// `None` for an error bae met on its own side — a request it could not
-/// build, an answer it could not parse, a store read.
-pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
-    match error {
-        ImportError::Catalog(error) => catalog_provider_failure(error),
-        _ => None,
-    }
-}
-
 /// The failure a catalog answered with, or `None` for an error bae met on its
 /// own side: a request it could not build, an answer it could not parse.
-pub(crate) fn catalog_provider_failure(error: &CatalogError) -> Option<LookupFailure> {
+pub(crate) fn provider_failure(error: &CatalogError) -> Option<LookupFailure> {
     match error {
         CatalogError::MusicBrainz(error) => mb_provider_failure(error),
         CatalogError::RemoteImage(error) => remote_image_failure(error),
@@ -789,18 +773,16 @@ fn barcode_query(barcode: &str) -> String {
 /// Ask one provider a typed query, in the provider's own error type — for a
 /// caller that reports the provider's error as it is.
 pub async fn search_provider(
-    library_manager: &crate::library::LibraryManager,
+    session: &CatalogSession,
     source: Catalog,
     query: &impl ProviderQuery,
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, ImportError> {
+) -> Result<Vec<MetadataResult>, CatalogError> {
     let mut results = match source {
         Catalog::MusicBrainz => {
-            library_manager.search_musicbrainz(query.musicbrainz_params(), priority).await?
+            session.search_musicbrainz(query.musicbrainz_params(), priority).await?
         }
-        Catalog::Discogs => {
-            library_manager.search_discogs(query.discogs_params(), priority).await?
-        }
+        Catalog::Discogs => session.search_discogs(query.discogs_params(), priority).await?,
         other => unreachable!("{} answers no searches", other.as_str()),
     };
     query.keep_answers(&mut results);
@@ -810,13 +792,17 @@ pub async fn search_provider(
 /// Ask one provider a typed query, in the typed failure a surface renders —
 /// the per-source primitive a candidate's manual search is built from.
 pub async fn search_source(
-    library_manager: &crate::library::LibraryManager,
+    session: &CatalogSession,
     source: Catalog,
     query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> SourceLookup {
-    search_provider(library_manager, source, query, priority).await.map_err(|error| {
-        failure_of(&error, &format!("asking {} a search for {query:?}", source.as_str()))
+    search_provider(session, source, query, priority).await.map_err(|error| {
+        lookup_or_internal(
+            provider_failure(&error),
+            &format!("asking {} a search for {query:?}", source.as_str()),
+            &error,
+        )
     })
 }
 

@@ -410,15 +410,6 @@ impl LibraryManager {
     }
 
     #[cfg(desktop)]
-    pub(crate) async fn search_musicbrainz(
-        &self,
-        params: bae_catalogs::musicbrainz::ReleaseSearchParams,
-        priority: bae_catalogs::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::import::ImportError> {
-        Ok(self.providers.search_musicbrainz(params, priority).await?)
-    }
-
-    #[cfg(desktop)]
     pub(crate) async fn lookup_musicbrainz_discid(
         &self,
         discid: &str,

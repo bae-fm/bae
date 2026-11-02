@@ -240,6 +240,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
     let typed = fixture
         .manager
+        .providers()
         .search_musicbrainz(
             bae_catalogs::musicbrainz::ReleaseSearchParams {
                 artist: Some("Artist".to_string()),

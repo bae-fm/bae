@@ -432,7 +432,7 @@ impl ImportServiceHandle {
         let check = DiscogsCheck::of(
             self.library_manager.try_discogs_key(token, CallPriority::Interactive).await,
         );
-        let validation = check.validation();
+        let validation = crate::config::DiscogsValidation::of(&check);
         match check {
             DiscogsCheck::Valid => {
                 self.persist_discogs_key(token, validation).await?;

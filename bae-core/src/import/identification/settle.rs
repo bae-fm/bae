@@ -377,7 +377,7 @@ async fn settle_lead(
     let (release, prepared_partners) = match prepared {
         Ok(prepared) => prepared,
         Err(error) => {
-            let Some(failure) = crate::catalog_model::search::provider_failure(&error) else {
+            let Some(failure) = error.provider_failure() else {
                 return Err(Settled::Unwritable {
                     error: format!("could not settle {}: {error}", primary.key),
                 });

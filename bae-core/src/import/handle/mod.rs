@@ -1,9 +1,9 @@
+use crate::catalog_model::providers::DiscogsCheck;
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
-use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;
 use bae_catalogs::catalog::Catalog;
 use bae_util::worker_thread::WorkerThread;

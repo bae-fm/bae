@@ -88,6 +88,20 @@ pub enum DiscogsValidation {
     Rejected,
 }
 
+#[cfg(desktop)]
+impl DiscogsValidation {
+    /// The validation a key is stored under once Discogs was asked about it:
+    /// a check Discogs could not answer leaves it unvalidated.
+    pub fn of(check: &crate::catalog_model::providers::DiscogsCheck) -> Self {
+        use crate::catalog_model::providers::DiscogsCheck;
+        match check {
+            DiscogsCheck::Valid => Self::Valid,
+            DiscogsCheck::Rejected => Self::Rejected,
+            DiscogsCheck::Unchecked(_) => Self::Unvalidated,
+        }
+    }
+}
+
 /// How loudness normalization is applied at playback.
 ///
 /// - `Off` — no normalization; tracks play at their stored level (unity gain).

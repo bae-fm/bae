@@ -14,12 +14,15 @@ use crate::catalog_model::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::CatalogError;
 use crate::import::MetadataRef;
-use bae_catalogs::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
+use bae_catalogs::discogs::client::{
+    Discogs, DiscogsClient, DiscogsError, DiscogsSearchParams, DiscogsValidationObserver,
+};
 use bae_catalogs::musicbrainz::{MusicBrainz, ReleaseSearchParams};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::remote_image::{RemoteCover, RemoteImageError};
 use bae_catalogs::wikidata::Wikidata;
 use bae_util::http::Http;
+use tracing::warn;
 
 #[derive(Clone)]
 pub struct Providers {
@@ -185,6 +188,141 @@ mod test_access {
 
         pub fn wikidata(&self) -> &Wikidata {
             &self.wikidata
+        }
+    }
+}
+
+/// One operation's view of the catalogs: the client for the library's stored
+/// Discogs key, when there is one Discogs may be asked with, and the other
+/// providers a release fetch follows links into.
+pub struct CatalogSession {
+    client: Option<Arc<DiscogsClient>>,
+    providers: crate::catalog_model::providers::Providers,
+}
+
+impl CatalogSession {
+    pub fn new(client: Option<Arc<DiscogsClient>>, providers: Providers) -> Self {
+        Self { client, providers }
+    }
+
+    /// Whether Discogs may be asked: this library holds a key it was not told
+    /// is rejected.
+    pub fn asks_discogs(&self) -> bool {
+        self.client.is_some()
+    }
+
+    /// Ask one provider for releases matching `params`.
+    pub(crate) async fn search_musicbrainz(
+        &self,
+        params: ReleaseSearchParams,
+        priority: CallPriority,
+    ) -> Result<Vec<MetadataResult>, CatalogError> {
+        self.providers.search_musicbrainz(params, priority).await
+    }
+
+    pub(crate) async fn search_discogs(
+        &self,
+        params: DiscogsSearchParams,
+        priority: CallPriority,
+    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, CatalogError> {
+        let client = self.client.as_ref().ok_or(CatalogError::DiscogsNotConfigured)?;
+        Ok(crate::catalog_model::search::search_discogs(client, params, priority).await?)
+    }
+
+    pub(crate) async fn fetch_payloads(
+        &self,
+        release: &MetadataRef,
+        depth: ReadDepth,
+        priority: CallPriority,
+    ) -> Result<ReleasePayloads, CatalogError> {
+        self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
+    }
+
+    pub(crate) async fn read_disc_id_release(
+        &self,
+        answered: &DiscIdRelease,
+        priority: CallPriority,
+    ) -> Result<ReleasePayloads, CatalogError> {
+        self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
+    }
+
+    pub(crate) async fn release_covers(
+        &self,
+        release_id: &str,
+        priority: CallPriority,
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, CatalogError> {
+        let Some(client) = self.client.as_ref() else {
+            return Err(CatalogError::DiscogsNotConfigured);
+        };
+        let (release, _) = client.get_release(release_id, priority).await?;
+        let mut covers = release.covers;
+        if let Some(master_id) = release.master_id {
+            let (_, json) = client.get_master(&master_id, priority).await?;
+            for cover in bae_catalogs::discogs::documents::parse_discogs_master_covers(&json)? {
+                bae_catalogs::remote_image::push_unique_cover(&mut covers, cover);
+            }
+        }
+        Ok(covers)
+    }
+
+    pub(crate) async fn master_covers(
+        &self,
+        master_id: &str,
+        priority: CallPriority,
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, CatalogError> {
+        let client = self.client.as_ref().ok_or(CatalogError::DiscogsNotConfigured)?;
+        let (master, _) = client.get_master(master_id, priority).await?;
+        Ok(master.covers)
+    }
+
+    pub(crate) async fn artist_image_url(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<String>, CatalogError> {
+        let Some(client) = self.client.as_ref() else {
+            warn!(
+                discogs_artist_id = %artist_id,
+                "Discogs has no usable key to ask for this artist's picture, so the artist gets none"
+            );
+            return Ok(None);
+        };
+        Ok(client.get_artist_image(artist_id, CallPriority::Interactive).await?)
+    }
+
+    /// What Discogs says of the stored key, or `None` without one to ask
+    /// with.
+    pub(crate) async fn validate(&self) -> Option<DiscogsCheck> {
+        let client = self.client.as_ref()?;
+        Some(DiscogsCheck::of(client.validate_token(CallPriority::Interactive).await))
+    }
+}
+
+/// What a token-validation request proves about a key: Discogs accepted it,
+/// rejected it, or could not be asked — a failure that says nothing about the
+/// key, kept so the person is told why the key went unchecked.
+#[derive(Debug)]
+pub enum DiscogsCheck {
+    Valid,
+    Rejected,
+    Unchecked(DiscogsError),
+}
+
+impl DiscogsCheck {
+    /// Read a token-validation request's outcome. A failure that leaves the
+    /// key unchecked is warned with its cause.
+    pub fn of(result: Result<(), DiscogsError>) -> Self {
+        match result {
+            Ok(()) => Self::Valid,
+            Err(DiscogsError::InvalidApiKey) => Self::Rejected,
+            Err(
+                error @ (DiscogsError::Transport(_)
+                | DiscogsError::Provider { .. }
+                | DiscogsError::NotFound
+                | DiscogsError::Serialization(_)),
+            ) => {
+                warn!("Discogs couldn't check the key, which stays unvalidated: {error}");
+                Self::Unchecked(error)
+            }
         }
     }
 }

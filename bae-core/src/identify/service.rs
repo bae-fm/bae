@@ -7,7 +7,7 @@ use super::documents::ReleaseToRead;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
-use crate::catalog_model::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
+use crate::catalog_model::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_runtime::RunSubject;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus, LookupChoices};
@@ -627,7 +627,19 @@ fn dispatch_effect(
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let query = SearchQuery::Barcode { barcode: barcode.clone() };
-                let lookup = search_source(&library_manager, source, &query, priority).await;
+                let lookup = async {
+                    let session =
+                        library_manager.search_session(source).await.map_err(|error| {
+                            crate::import::ImportError::from(error).failure(&format!(
+                                "asking {} a search for {:?}",
+                                source.as_str(),
+                                &query
+                            ))
+                        })?;
+                    crate::catalog_model::search::search_source(&session, source, &query, priority)
+                        .await
+                }
+                .await;
                 let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::BarcodeLookupAnswered {
                     source,
@@ -647,7 +659,19 @@ fn dispatch_effect(
                     artist: query.artist.clone(),
                     album: query.album.clone(),
                 };
-                let lookup = search_source(&library_manager, source, &search, priority).await;
+                let lookup = async {
+                    let session =
+                        library_manager.search_session(source).await.map_err(|error| {
+                            crate::import::ImportError::from(error).failure(&format!(
+                                "asking {} a search for {:?}",
+                                source.as_str(),
+                                &search
+                            ))
+                        })?;
+                    crate::catalog_model::search::search_source(&session, source, &search, priority)
+                        .await
+                }
+                .await;
                 let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
                     source,
@@ -706,7 +730,21 @@ fn dispatch_effect(
                     }
                     PressingKey::Barcode { barcode } => {
                         let query = SearchQuery::Barcode { barcode: barcode.clone() };
-                        search_source(&library_manager, source, &query, priority).await
+                        async {
+                            let session =
+                                library_manager.search_session(source).await.map_err(|error| {
+                                    crate::import::ImportError::from(error).failure(&format!(
+                                        "asking {} a search for {:?}",
+                                        source.as_str(),
+                                        &query
+                                    ))
+                                })?;
+                            crate::catalog_model::search::search_source(
+                                &session, source, &query, priority,
+                            )
+                            .await
+                        }
+                        .await
                     }
                     PressingKey::CatalogNumber { number, label, artist } => {
                         let query = CatalogNumberSearch {
@@ -714,7 +752,21 @@ fn dispatch_effect(
                             artist: artist.clone(),
                             label: Some(label.clone()),
                         };
-                        search_source(&library_manager, source, &query, priority).await
+                        async {
+                            let session =
+                                library_manager.search_session(source).await.map_err(|error| {
+                                    crate::import::ImportError::from(error).failure(&format!(
+                                        "asking {} a search for {:?}",
+                                        source.as_str(),
+                                        &query
+                                    ))
+                                })?;
+                            crate::catalog_model::search::search_source(
+                                &session, source, &query, priority,
+                            )
+                            .await
+                        }
+                        .await
                     }
                 };
                 let answer = outcome_of(lookup);
@@ -755,7 +807,19 @@ fn dispatch_effect(
                     artist: artist.clone(),
                     label: None,
                 };
-                let lookup = search_source(&library_manager, source, &query, priority).await;
+                let lookup = async {
+                    let session =
+                        library_manager.search_session(source).await.map_err(|error| {
+                            crate::import::ImportError::from(error).failure(&format!(
+                                "asking {} a search for {:?}",
+                                source.as_str(),
+                                &query
+                            ))
+                        })?;
+                    crate::catalog_model::search::search_source(&session, source, &query, priority)
+                        .await
+                }
+                .await;
                 let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::CatalogLookupAnswered {
                     source,
@@ -802,10 +866,7 @@ async fn read_release(
         Err(error) => error,
     };
     let release = read.release();
-    match crate::catalog_model::search::failure_of(
-        &error,
-        &format!("reading {} release {}", release.catalog.as_str(), release.key),
-    ) {
+    match error.failure(&format!("reading {} release {}", release.catalog.as_str(), release.key)) {
         Failure::Lookup(failure) => Some(Err(failure)),
         Failure::Internal(failure) => {
             emit_step(event_tx, IdentifyEvent::Broke { failure });

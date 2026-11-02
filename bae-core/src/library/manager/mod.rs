@@ -115,8 +115,6 @@ use crate::diagnostics::{
 };
 mod track;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use discogs::DiscogsCheck;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 pub use sync_status::{pending_action, PendingAction, SyncRetryOutcome};
 

@@ -1,123 +1,18 @@
 //! Discogs operations owned by [`LibraryManager`].
 //!
-//! The client for the stored key and its validation callback stay inside a
-//! [`DiscogsSession`]. Callers ask the manager for search results, payloads,
-//! covers, or images; no caller receives the client or the database the
-//! callback writes to.
+//! The client for the stored key, with its validation callback, is built here
+//! and handed out inside a catalog session; no caller receives the database
+//! the callback writes to.
 
 use super::*;
+#[cfg(desktop)]
+use crate::catalog_model::providers::CatalogSession;
 use crate::config::DiscogsValidation;
 #[cfg(desktop)]
-use bae_catalogs::discogs::client::{
-    DiscogsClient, DiscogsError, DiscogsKeySignal, DiscogsSearchParams,
-};
+use bae_catalogs::discogs::client::{DiscogsError, DiscogsKeySignal};
 #[cfg(desktop)]
 use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
-
-/// One operation's view of Discogs: the client for the stored key, when there
-/// is one Discogs may be asked with, and the other providers a release fetch
-/// follows links into.
-#[cfg(desktop)]
-struct DiscogsSession {
-    client: Option<Arc<DiscogsClient>>,
-    providers: crate::catalog_model::providers::Providers,
-}
-
-#[cfg(desktop)]
-impl DiscogsSession {
-    #[cfg(desktop)]
-    async fn search(
-        &self,
-        params: DiscogsSearchParams,
-        priority: CallPriority,
-    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::catalog_model::CatalogError>
-    {
-        let client =
-            self.client.as_ref().ok_or(crate::catalog_model::CatalogError::DiscogsNotConfigured)?;
-        Ok(crate::catalog_model::search::search_discogs(client, params, priority).await?)
-    }
-
-    #[cfg(desktop)]
-    async fn fetch_payloads(
-        &self,
-        release: &crate::import::MetadataRef,
-        depth: crate::catalog_model::payloads::ReadDepth,
-        priority: CallPriority,
-    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::catalog_model::CatalogError>
-    {
-        self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
-    }
-
-    #[cfg(desktop)]
-    async fn read_disc_id_release(
-        &self,
-        answered: &crate::catalog_model::payloads::DiscIdRelease,
-        priority: CallPriority,
-    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::catalog_model::CatalogError>
-    {
-        self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
-    }
-
-    #[cfg(desktop)]
-    async fn release_covers(
-        &self,
-        release_id: &str,
-        priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::catalog_model::CatalogError>
-    {
-        let Some(client) = self.client.as_ref() else {
-            return Err(crate::catalog_model::CatalogError::DiscogsNotConfigured);
-        };
-        let (release, _) = client.get_release(release_id, priority).await?;
-        let mut covers = release.covers;
-        if let Some(master_id) = release.master_id {
-            let (_, json) = client.get_master(&master_id, priority).await?;
-            for cover in bae_catalogs::discogs::documents::parse_discogs_master_covers(&json)? {
-                bae_catalogs::remote_image::push_unique_cover(&mut covers, cover);
-            }
-        }
-        Ok(covers)
-    }
-
-    #[cfg(desktop)]
-    async fn master_covers(
-        &self,
-        master_id: &str,
-        priority: CallPriority,
-    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::catalog_model::CatalogError>
-    {
-        let client =
-            self.client.as_ref().ok_or(crate::catalog_model::CatalogError::DiscogsNotConfigured)?;
-        let (master, _) = client.get_master(master_id, priority).await?;
-        Ok(master.covers)
-    }
-
-    #[cfg(desktop)]
-    async fn artist_image_url(
-        &self,
-        artist_id: &str,
-    ) -> Result<Option<String>, crate::catalog_model::CatalogError> {
-        let Some(client) = self.client.as_ref() else {
-            warn!(
-                discogs_artist_id = %artist_id,
-                "Discogs has no usable key to ask for this artist's picture, so the artist gets none"
-            );
-            return Ok(None);
-        };
-        Ok(client.get_artist_image(artist_id, CallPriority::Interactive).await?)
-    }
-
-    #[cfg(desktop)]
-    async fn validate(&self) -> Result<DiscogsCheck, LibraryError> {
-        let client = self.client.as_ref().ok_or_else(|| {
-            LibraryError::Internal(
-                "config says a Discogs key is stored but the keyring has none".to_string(),
-            )
-        })?;
-        Ok(DiscogsCheck::of(client.validate_token(CallPriority::Interactive).await))
-    }
-}
 
 /// Fold one Discogs call's outcome into the stored key's validation: a 401
 /// rejects it, and a success confirms a key nothing had confirmed yet.
@@ -145,47 +40,6 @@ async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKe
         .await;
     if let Err(error) = recorded {
         warn!("failed to record the Discogs key's validation: {error}");
-    }
-}
-
-/// What a token-validation request proves about a key: Discogs accepted it,
-/// rejected it, or could not be asked — a failure that says nothing about the
-/// key, kept so the person is told why the key went unchecked.
-#[cfg(desktop)]
-#[derive(Debug)]
-pub(crate) enum DiscogsCheck {
-    Valid,
-    Rejected,
-    Unchecked(DiscogsError),
-}
-
-#[cfg(desktop)]
-impl DiscogsCheck {
-    /// Read a token-validation request's outcome. A failure that leaves the
-    /// key unchecked is warned with its cause.
-    pub(crate) fn of(result: Result<(), DiscogsError>) -> Self {
-        match result {
-            Ok(()) => Self::Valid,
-            Err(DiscogsError::InvalidApiKey) => Self::Rejected,
-            Err(
-                error @ (DiscogsError::Transport(_)
-                | DiscogsError::Provider { .. }
-                | DiscogsError::NotFound
-                | DiscogsError::Serialization(_)),
-            ) => {
-                warn!("Discogs couldn't check the key, which stays unvalidated: {error}");
-                Self::Unchecked(error)
-            }
-        }
-    }
-
-    /// The validation the key is stored under.
-    pub(crate) fn validation(&self) -> DiscogsValidation {
-        match self {
-            Self::Valid => DiscogsValidation::Valid,
-            Self::Rejected => DiscogsValidation::Rejected,
-            Self::Unchecked(_) => DiscogsValidation::Unvalidated,
-        }
     }
 }
 
@@ -262,15 +116,6 @@ impl LibraryManager {
     }
 
     #[cfg(desktop)]
-    pub(crate) async fn search_discogs(
-        &self,
-        params: DiscogsSearchParams,
-        priority: CallPriority,
-    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::import::ImportError> {
-        Ok(self.discogs_session().await?.search(params, priority).await?)
-    }
-
-    #[cfg(desktop)]
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
@@ -299,6 +144,20 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The session a search of `catalog` asks with, holding only what that
+    /// catalog needs: MusicBrainz needs no key, so its session reads neither
+    /// the preferences nor the keyring.
+    #[cfg(desktop)]
+    pub(crate) async fn search_session(
+        &self,
+        catalog: bae_catalogs::catalog::Catalog,
+    ) -> Result<CatalogSession, LibraryError> {
+        match catalog {
+            bae_catalogs::catalog::Catalog::Discogs => self.catalog_session().await,
+            _ => Ok(CatalogSession::new(None, self.providers.clone())),
+        }
+    }
+
     /// The Discogs session a read of `release` asks with. A MusicBrainz
     /// release whose session cannot be had is read without its Discogs
     /// cross-reference, as it is without a key.
@@ -306,15 +165,15 @@ impl LibraryManager {
     async fn release_read_session(
         &self,
         release: &crate::import::MetadataRef,
-    ) -> Result<DiscogsSession, crate::import::ImportError> {
-        match self.discogs_session().await {
+    ) -> Result<CatalogSession, crate::import::ImportError> {
+        match self.catalog_session().await {
             Ok(session) => Ok(session),
             Err(error) if release.catalog == bae_catalogs::catalog::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                Ok(DiscogsSession { client: None, providers: self.providers.clone() })
+                Ok(CatalogSession::new(None, self.providers.clone()))
             }
             Err(error) => Err(error.into()),
         }
@@ -340,7 +199,7 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        Ok(self.discogs_session().await?.release_covers(release_id, priority).await?)
+        Ok(self.catalog_session().await?.release_covers(release_id, priority).await?)
     }
 
     #[cfg(desktop)]
@@ -349,7 +208,7 @@ impl LibraryManager {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        Ok(self.discogs_session().await?.master_covers(master_id, priority).await?)
+        Ok(self.catalog_session().await?.master_covers(master_id, priority).await?)
     }
 
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
@@ -364,7 +223,7 @@ impl LibraryManager {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let session = self.discogs_session().await?;
+        let session = self.catalog_session().await?;
         let mut answers = Vec::with_capacity(ids.len());
         for discogs_artist_id in ids {
             let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
@@ -435,11 +294,18 @@ impl LibraryManager {
         {
             return Ok(());
         }
-        let check = self.discogs_session().await?.validate().await?;
-        self.set_discogs_validation(check.validation()).await.map_err(LibraryError::from)?;
+        let check = self.catalog_session().await?.validate().await.ok_or_else(|| {
+            LibraryError::Internal(
+                "config says a Discogs key is stored but the keyring has none".to_string(),
+            )
+        })?;
+        self.set_discogs_validation(DiscogsValidation::of(&check))
+            .await
+            .map_err(LibraryError::from)?;
         match check {
-            DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
-            DiscogsCheck::Unchecked(error) => {
+            crate::catalog_model::providers::DiscogsCheck::Valid
+            | crate::catalog_model::providers::DiscogsCheck::Rejected => Ok(()),
+            crate::catalog_model::providers::DiscogsCheck::Unchecked(error) => {
                 Err(crate::catalog_model::CatalogError::from(error).into())
             }
         }
@@ -447,7 +313,7 @@ impl LibraryManager {
 
     #[cfg(all(test, desktop))]
     pub(super) async fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
-        Ok(self.discogs_session().await?.client.is_some())
+        Ok(self.catalog_session().await?.asks_discogs())
     }
 
     #[cfg(all(test, desktop))]
@@ -470,21 +336,21 @@ impl LibraryManager {
         match catalog {
             bae_catalogs::catalog::Catalog::MusicBrainz => Ok(true),
             bae_catalogs::catalog::Catalog::Discogs => {
-                Ok(self.discogs_session().await?.client.is_some())
+                Ok(self.catalog_session().await?.asks_discogs())
             }
             other => unreachable!("nothing fetches releases from {}", other.as_str()),
         }
     }
 
     #[cfg(desktop)]
-    async fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
+    pub(crate) async fn catalog_session(&self) -> Result<CatalogSession, LibraryError> {
         let providers = self.providers.clone();
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
         let mut cached = self.discogs_client.lock().await;
         let validation = self.preferences().await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
-            return Ok(DiscogsSession { client: None, providers });
+            return Ok(CatalogSession::new(None, providers));
         }
         if cached.is_none() {
             let database = self.database.clone();
@@ -513,7 +379,7 @@ impl LibraryManager {
                 .host_secret(crate::keys::DISCOGS_API_KEY)?
                 .map(|key| Arc::new(providers.discogs_client(key, Some(observer))));
         }
-        Ok(DiscogsSession { client: cached.clone(), providers })
+        Ok(CatalogSession::new(cached.clone(), providers))
     }
 
     /// Ask Discogs whether it accepts `key`, which this library does not

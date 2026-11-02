@@ -1,5 +1,5 @@
 use super::*;
-use crate::catalog_model::search::{search_source, SearchQuery};
+use crate::catalog_model::search::SearchQuery;
 use crate::import::candidate_search::{CandidateSearch, SearchRun};
 use crate::import::cover_art::RemoteCoverGallery;
 use bae_catalogs::rate_limiter::CallPriority;
@@ -100,10 +100,23 @@ impl ImportServiceHandle {
             async move {
                 // A lookup that panics lands as failed, so its source stops
                 // showing a search under way.
-                let found = match bae_util::task_failure::caught(
-                    "ask one source a search",
-                    search_source(&library_manager, source, &query, CallPriority::Interactive),
-                )
+                let found = match bae_util::task_failure::caught("ask one source a search", async {
+                    let session =
+                        library_manager.search_session(source).await.map_err(|error| {
+                            crate::import::ImportError::from(error).failure(&format!(
+                                "asking {} a search for {:?}",
+                                source.as_str(),
+                                &query
+                            ))
+                        })?;
+                    crate::catalog_model::search::search_source(
+                        &session,
+                        source,
+                        &query,
+                        CallPriority::Interactive,
+                    )
+                    .await
+                })
                 .await
                 {
                     Ok(found) => found,
@@ -150,7 +163,7 @@ impl ImportServiceHandle {
         use crate::db::LibraryCheck;
 
         let results = crate::catalog_model::search::search_provider(
-            &self.library_manager,
+            &self.library_manager.search_session(source).await?,
             source,
             &query,
             CallPriority::Interactive,
