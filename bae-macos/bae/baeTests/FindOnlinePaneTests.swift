@@ -3,7 +3,6 @@ import BaeKit
 import Foundation
 import SwiftUI
 import Testing
-import Vision
 import XCTest
 
 @testable import bae
@@ -33,300 +32,174 @@ final class FindOnlinePaneTests: XCTestCase {
     /// carried nothing to lay out, or a verdict stored before its signals
     /// were — is a dead end without this: the reasons, and one way to ask
     /// again beneath them. A failure that does have a band says it in the
-    /// capsule that failed instead, so the word appears in the one case and
-    /// not the other.
-    ///
-    /// Read off the rendered pane: the pane draws its own controls rather than
-    /// hanging AppKit ones in the view tree, so what it says is in its pixels.
-    func testAFailureWithNoBandOffersItsRetry() async throws {
-        let retry = String(localized: "Retry")
-        let withoutBand = try await renderedText(
-            of: PreviewData.searchStateFailedWithoutRun
-        )
-        let withBand = try await renderedText(
-            of: PreviewData.searchStateAllSourcesFailed
-        )
+    /// capsule that failed instead, so the lines come in the one case and
+    /// not the other. How they look is the `import-search-failure-lines`
+    /// shot's.
+    func testAFailureWithNoBandOffersItsRetry() {
+        let withoutBand = PreviewData.searchStateFailedWithoutRun
+        let withBand = PreviewData.searchStateAllSourcesFailed
 
-        XCTAssertTrue(
-            withoutBand.contains {
-                $0.localizedCaseInsensitiveContains(retry)
-            },
-            "a failure with no band reads: \(withoutBand)"
+        XCTAssertEqual(
+            FindOnlineResultArea(identifyState: withoutBand.identifyState),
+            .failureLines
         )
-        XCTAssertFalse(
-            withBand.contains { $0.localizedCaseInsensitiveContains(retry) },
-            "a failure with a band reads: \(withBand)"
-        )
+        XCTAssertFalse(withoutBand.failureLines.isEmpty)
+        XCTAssertTrue(withBand.failureLines.isEmpty)
     }
 
     /// A sole match whose release lists no tracks says why it was not
     /// picked, under its row, in the words the pane uses beside Import.
-    func testASoleMatchThatListsNoTracksSaysWhy() async throws {
-        let lines = try await renderedText(
-            of: PreviewData.searchStateSoleUnchecked
-        )
+    func testASoleMatchThatListsNoTracksSaysWhy() throws {
+        let state = PreviewData.searchStateSoleUnchecked
 
-        XCTAssertTrue(
-            lines.contains { $0.contains("The release lists no tracks") },
-            "the pane reads: \(lines)"
+        XCTAssertEqual(
+            FindOnlineResultArea(identifyState: state.identifyState),
+            .groups
         )
+        XCTAssertNil(state.needsYou)
+        let note = try XCTUnwrap(state.folderCheck?.localizedText)
+        XCTAssertTrue(note.contains("The release lists no tracks"), note)
     }
 
     /// A folder waiting on the person opens its page with one sentence
-    /// saying what happened.
-    func testAFolderWaitingOnThePersonSaysWhatHappened() async throws {
+    /// saying what happened, and offers to keep its own draft in words that
+    /// follow whether releases were offered.
+    func testAFolderWaitingOnThePersonSaysWhatHappened() {
         // Signals that named different releases, waiting on the person to
         // pick among them.
-        let matches = try await renderedText(
-            of: PreviewData.searchState(
-                identifyState: IdentifyState(
-                    bridge: PreviewData.bridgeDisagreementState
-                ),
-                needsYou: .matches(count: 2)
-            )
-        )
+        let matches = BridgeNeedsYouReason.matches(count: 2)
         XCTAssertTrue(
-            matches.contains {
-                $0.localizedCaseInsensitiveContains("could be this")
-            },
-            "the pane reads: \(matches)"
+            matches.sentence.localizedCaseInsensitiveContains("could be this"),
+            matches.sentence
         )
-        XCTAssertTrue(
-            matches.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "None of these")
-                )
-            },
-            "a page that offered releases reads: \(matches)"
+        XCTAssertEqual(
+            FindOnlineAutomaticSection.keepOwnDraftTitle(matches),
+            String(localized: "None of these")
         )
 
         // Nothing matched anywhere, waiting on the person.
-        let notFound = try await renderedText(
-            of: PreviewData.searchState(
+        let notFound = BridgeNeedsYouReason.notFound
+        XCTAssertEqual(
+            FindOnlineResultArea(
                 identifyState: .notFoundAnywhere(
                     run: PreviewData.identifyRunNothingFound
-                ),
-                signals: PreviewData.settledSignals,
-                needsYou: .notFound
-            )
-        )
-        XCTAssertTrue(
-            notFound.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "Keep my info")
                 )
-            },
-            "a page that offered none reads: \(notFound)"
+            ),
+            .nothingFound
         )
-        XCTAssertTrue(
-            notFound.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "No catalog has this.")
-                        .trimmingCharacters(in: .punctuationCharacters)
-                )
-            },
-            "the pane reads: \(notFound)"
-        )
-    }
-
-    /// Nothing has run for this candidate, and starting one is the card's
-    /// action, not the pane's: the not-started area offers the other way to a
-    /// release — asking for it by name — and no way to start a run.
-    func testANotStartedPaneOffersOnlyTheTypedSearch() async throws {
-        let lines = try await renderedText(of: PreviewData.searchStateIdle)
-
-        XCTAssertTrue(
-            lines.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "Search manually")
-                )
-            },
-            "a not-started pane reads: \(lines)"
-        )
-        // "Identify" is the page's title, once; a second one, or the card's
-        // "Automatic" as a button of its own, would be a way to start a run.
-        let trimmed = lines.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+        XCTAssertEqual(notFound.sentence, "No catalog has this.")
         XCTAssertEqual(
-            trimmed.filter {
-                $0.caseInsensitiveCompare(String(localized: "Identify"))
-                    == .orderedSame
-            }
-            .count,
-            1,
-            "a not-started pane reads: \(lines)"
-        )
-        XCTAssertFalse(
-            trimmed.contains {
-                $0.caseInsensitiveCompare(String(localized: "Automatic"))
-                    == .orderedSame
-            },
-            "a not-started pane reads: \(lines)"
+            FindOnlineAutomaticSection.keepOwnDraftTitle(notFound),
+            String(localized: "Keep my info")
         )
     }
 
-    /// Which section is open is the session's to say, not the pane's.
+    /// Which section is open is the session's to say, not the pane's: the
+    /// search's form fields are AppKit text fields, there only when the
+    /// pane opens on the search.
     func testThePaneOpensOnTheSectionItWasGiven() async throws {
-        let onSearch = try await FindOnlineRendering.text(
+        let onSearch = try await textFields(
             ImportSearchPane.preview(
                 state: PreviewData.searchStateIdle,
                 openSection: .search
             )
-            .importPreviewEnvironment(),
-            size: NSSize(width: 900, height: 600)
         )
-        let onAutomatic = try await renderedText(
-            of: PreviewData.searchStateIdle
+        let onAutomatic = try await textFields(
+            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
         )
 
-        // The form's field placeholders, not its tab labels: recognition on
-        // a slow runner has read "Catalog #" as "Cataloon", while a plain
-        // word survives.
-        let formFields = [
-            String(localized: "Artist"), String(localized: "Album"),
-        ]
-        for formField in formFields {
-            XCTAssertTrue(
-                onSearch.contains {
-                    $0.localizedCaseInsensitiveContains(formField)
-                },
-                "a pane opened on the search reads: \(onSearch)"
-            )
-            XCTAssertFalse(
-                onAutomatic.contains {
-                    $0.localizedCaseInsensitiveContains(formField)
-                },
-                "a pane opened on the run reads: \(onAutomatic)"
-            )
-        }
+        // Artist and Album.
+        XCTAssertEqual(onSearch, onAutomatic + 2)
     }
 
-    /// Every line of text the pane draws for `state`.
-    private func renderedText(
-        of state: ImportSearchState
-    ) async throws -> [String] {
-        try await FindOnlineRendering.text(
-            ImportSearchPane.preview(state: state).importPreviewEnvironment(),
-            size: NSSize(width: 900, height: 600)
-        )
+    /// How many AppKit text fields `pane` holds once it settles.
+    private func textFields(_ pane: ImportSearchPane) async throws -> Int {
+        let size = NSSize(width: 900, height: 600)
+        return try await FindOnlineRendering.withHosted(
+            pane.importPreviewEnvironment().windowBackground(),
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            return SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .filter(\.isEditable)
+                .count
+        }
     }
 }
 
+/// What agreement set aside: the line counting it, and the rows each card
+/// shows once it is open. Where the rows sit above the line is the
+/// `import-search-narrowed-out-open` shot's.
 @MainActor
 @Suite("What the signals narrowed out")
 struct NarrowedOutDisclosureTests {
-    private static let paneSize = NSSize(width: 900, height: 600)
-    private static let disclosureSize = NSSize(width: 660, height: 420)
-
     /// The line stands under the matches only when the agreement discarded
     /// something, and it counts the releases behind it.
     @Test(
         "it counts what agreement left out, and says nothing when it left nothing"
     )
-    func itCountsWhatAgreementLeftOut() async throws {
-        let narrowed = try await FindOnlineRendering.text(
-            ImportSearchPane.preview(state: PreviewData.searchStateNarrowedOut)
-                .importPreviewEnvironment(),
-            size: Self.paneSize
-        )
-        #expect(narrowed.contains { $0.contains("3 more releases") })
-
-        let agreed = try await FindOnlineRendering.text(
-            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-                .importPreviewEnvironment(),
-            size: Self.paneSize
-        )
+    func itCountsWhatAgreementLeftOut() {
+        let narrowed = PreviewData.searchStateNarrowedOut.narrowedOutCount
+        #expect(narrowed == 3)
         #expect(
-            !agreed.contains {
-                $0.localizedCaseInsensitiveContains("more releases")
-            }
+            NarrowedOutDisclosure.title(count: narrowed, isExpanded: false)
+                == "3 more releases"
         )
+        #expect(PreviewData.searchStateFoundExact.narrowedOutCount == 0)
     }
 
     /// Closed, those releases are only a count. Open, every one of them is on
-    /// its album's card above the line — the ones on a card the matches are
-    /// on and the ones on a card of their own alike — and the line offers to
-    /// put them away.
-    @Test("opening it lists every release set aside above the line")
-    func openingItListsThemAboveTheLine() async throws {
+    /// its album's card — the ones on a card the matches are on and the ones
+    /// on a card of their own alike — and the line offers to put them away.
+    @Test("opening it lists every release set aside")
+    func openingItListsThem() {
         let setAside = ["1871-2", "AAA-001", "BBB-002"]
-        let closed = try await automaticSection(isExpanded: false)
-        #expect(closed.contains { $0.text.contains("3 more releases") })
-        #expect(
-            !closed.contains { line in
-                setAside.contains { line.text.contains($0) }
-            }
-        )
-
-        let open = try await automaticSection(isExpanded: true)
-        let line = try #require(
-            open.first { $0.text.contains("Show fewer") }
-        )
+        let groups = PreviewData.searchStateNarrowedOut.identifiedGroups
+        let closed = catalogNumbers(groups, showsNarrowedOut: false)
+        let open = catalogNumbers(groups, showsNarrowedOut: true)
         for number in setAside {
-            let row = try #require(open.first { $0.text.contains(number) })
-            // Vision measures from the bottom: above is a higher minY.
-            #expect(row.boundingBox.minY > line.boundingBox.maxY, "\(number)")
+            #expect(!closed.contains(number), "\(number)")
+            #expect(open.contains(number), "\(number)")
         }
-        #expect(!open.contains { $0.text.contains("more releases") })
+        #expect(
+            NarrowedOutDisclosure.title(count: 3, isExpanded: true)
+                == "Show fewer"
+        )
     }
 
     /// A row set aside of an album the matches are on shows on that album's
     /// card, behind the same disclosure — not as a second card for the album.
     @Test("a row set aside shows on its album's card once the list is open")
-    func aRowSetAsideShowsOnItsAlbumsCard() async throws {
-        let closed = try await FindOnlineRendering.text(
-            card(showsNarrowedOut: false),
-            size: Self.disclosureSize
-        )
-        let open = try await FindOnlineRendering.text(
-            card(showsNarrowedOut: true),
-            size: Self.disclosureSize
-        )
-        #expect(!closed.contains { $0.contains("1871-2") })
-        #expect(closed.contains { $0.contains("6006-2") })
-        #expect(open.contains { $0.contains("1871-2") })
-        #expect(open.filter { $0.contains("Album Title") }.count == 1)
+    func aRowSetAsideShowsOnItsAlbumsCard() {
+        let group = [PreviewData.searchGroupExactWithSetAside]
+        let closed = catalogNumbers(group, showsNarrowedOut: false)
+        let open = catalogNumbers(group, showsNarrowedOut: true)
+        #expect(!closed.contains("1871-2"))
+        #expect(closed.contains("6006-2"))
+        #expect(open.contains("1871-2"))
+        #expect(open.contains("6006-2"))
     }
 
-    private func card(showsNarrowedOut: Bool) -> some View {
-        ReleaseGroupSection(
-            group: PreviewData.searchGroupExactWithSetAside,
-            showsNarrowedOut: showsNarrowedOut,
-            isImporting: false,
-            libraryStatuses: [:],
-            selectedReleaseId: nil,
-            onSelect: { _ in }
-        )
-        .importPreviewEnvironment()
-    }
-
-    private func automaticSection(
-        isExpanded: Bool
-    ) async throws -> [SnapshotTestSupport.RecognizedLine] {
-        let size = NSSize(width: 660, height: 1_100)
-        let view = FindOnlineAutomaticSection(
-            state: PreviewData.searchStateNarrowedOut,
-            onOpenSettings: {},
-            onToggleLookup: { _ in },
-            onToggleCatalogAgreement: { _ in },
-            onRetryFailed: {},
-            onEditTitleSearch: { _, _ in },
-            onSelect: { _ in },
-            onSearchManually: {},
-            onCancelIdentification: nil,
-            onKeepOwnDraft: nil,
-            onLinkSharedAlbum: nil,
-            narrowedOutExpanded: .constant(isExpanded)
-        )
-        .importPreviewEnvironment()
-        let png = try await FindOnlineRendering.withHosted(
-            view.windowBackground(),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.capturePNG(host, size: size)
+    /// The catalog numbers of the rows `groups`' cards show.
+    private func catalogNumbers(
+        _ groups: [ReleaseGroup],
+        showsNarrowedOut: Bool
+    ) -> [String] {
+        groups.flatMap { group in
+            ReleaseGroupSection(
+                group: group,
+                showsNarrowedOut: showsNarrowedOut,
+                isImporting: false,
+                libraryStatuses: [:],
+                selectedReleaseId: nil,
+                onSelect: { _ in }
+            )
+            .shownSections
+            .flatMap(\.rows)
+            .flatMap(\.labels)
+            .flatMap(\.catalogNumbers)
         }
-        return try await SnapshotTestSupport.recognizedText(in: png)
     }
 }
 

@@ -17,12 +17,7 @@ struct NarrowedOutDisclosure: View {
                 Image(systemName: "chevron.right")
                     .themeIcon(.small)
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                if isExpanded {
-                    Text("Show fewer")
-                }
-                else {
-                    Text("\(Int(count)) more releases")
-                }
+                Text(verbatim: Self.title(count: count, isExpanded: isExpanded))
             }
             .themeText(.body)
             .foregroundStyle(.secondary)
@@ -30,5 +25,13 @@ struct NarrowedOutDisclosure: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The line's words: how many rows were set aside while they are put
+    /// away, and the way to put them away while they show.
+    static func title(count: UInt32, isExpanded: Bool) -> String {
+        isExpanded
+            ? String(localized: "Show fewer")
+            : String(localized: "\(Int(count)) more releases")
     }
 }

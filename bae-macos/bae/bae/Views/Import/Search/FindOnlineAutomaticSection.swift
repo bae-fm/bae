@@ -209,9 +209,7 @@ struct FindOnlineAutomaticSection: View {
     private var keepOwnDraft: some View {
         if let needsYou = state.needsYou, let onKeepOwnDraft {
             PaneAnswerAction(
-                title: needsYou.offeredReleases
-                    ? String(localized: "None of these")
-                    : String(localized: "Keep my info"),
+                title: Self.keepOwnDraftTitle(needsYou),
                 subtitle: String(
                     localized: "Keep my info; it's not in the catalogs"
                 ),
@@ -219,6 +217,14 @@ struct FindOnlineAutomaticSection: View {
             )
             .disabled(state.isImporting)
         }
+    }
+
+    /// The words of the way to keep the folder's own draft: none of these
+    /// where the page offered releases, keep mine where it offered none.
+    static func keepOwnDraftTitle(_ needsYou: BridgeNeedsYouReason) -> String {
+        needsYou.offeredReleases
+            ? String(localized: "None of these")
+            : String(localized: "Keep my info")
     }
 
     /// The way to answer a folder whose copy is one of several pressings of

@@ -141,8 +141,7 @@ struct ReleaseGroupSection: View {
 
     /// Each section's rows as shown: the offered ones, then the ones set
     /// aside while those show.
-    private var shownSections: [(album: BridgeAlbumHeading?, rows: [Pressing])]
-    {
+    var shownSections: [(album: BridgeAlbumHeading?, rows: [Pressing])] {
         group.sections.map { section in
             (
                 section.album,
