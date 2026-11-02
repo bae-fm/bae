@@ -45,7 +45,7 @@ async fn found(db: &Database, query: &str) -> [Vec<String>; 5] {
 
 #[tokio::test]
 async fn search_library_ignores_case_outside_ascii() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
 
     let ids = |id: &str| vec![id.to_string()];
@@ -63,7 +63,7 @@ async fn search_library_ignores_case_outside_ascii() {
 
 #[tokio::test]
 async fn search_library_reads_wildcards_as_themselves() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
     exec_searched(
         &db,
@@ -79,7 +79,7 @@ async fn search_library_reads_wildcards_as_themselves() {
 
 #[tokio::test]
 async fn search_library_follows_names_as_they_change() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
 
     exec_searched(

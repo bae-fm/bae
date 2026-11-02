@@ -1,11 +1,11 @@
 use super::super::*;
-use crate::library::views::*;
 
-const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
-const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
+pub(crate) const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
+
+pub(crate) const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
 
 /// Two releases on albums titled to sort apart.
-const LIBRARY: &str = "
+pub(crate) const LIBRARY: &str = "
     INSERT INTO albums (id, title, is_compilation, created_at) VALUES
         ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z'),
         ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-01T00:00:00Z');
@@ -16,7 +16,7 @@ const LIBRARY: &str = "
 
 /// Seed the release file `id` of `release`, named `name`, staged on this
 /// device only from an original of `size` zero bytes written under `dir`.
-async fn insert_file(
+pub(crate) async fn insert_file(
     db: &Database,
     dir: &std::path::Path,
     (id, release, name, size): (&str, &str, &str, u64),
@@ -37,114 +37,12 @@ async fn insert_file(
     .unwrap();
 }
 
-async fn exec(db: &Database, sql: &'static str) {
+pub(crate) async fn exec(db: &Database, sql: &'static str) {
     db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
-/// The Storage Manager list's release ids in `field` order, ascending.
-async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
-    crate::library::views::LibraryViews::new(db.clone())
-        .get_storage_page(
-            &StorageSortCriterion { field, direction: SortDirection::Ascending },
-            StorageFilter::All,
-            0,
-            50,
-        )
-        .await
-        .unwrap()
-        .rows
-        .into_iter()
-        .map(|row| row.release.id)
-        .collect()
-}
-
-#[tokio::test]
-async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
-    let (db, tmp) = super::temp_db().await;
-    exec(&db, LIBRARY).await;
-    // The first release has two files, of 10 and 20 bytes; the second none.
-    for file in [
-        ("d3edb846-9b0b-4a64-b0f6-3f117b686bc0", RELEASE_EARLY, "cover.jpg", 10),
-        ("161dd6f3-3bdd-4312-b5d3-8b9d83b53694", RELEASE_EARLY, "back.jpg", 20),
-    ] {
-        insert_file(&db, tmp.path(), file).await;
-    }
-    let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
-
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_count(StorageFilter::All)
-            .await
-            .unwrap(),
-        2
-    );
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_count(StorageFilter::Local)
-            .await
-            .unwrap(),
-        2
-    );
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_count(StorageFilter::Remote)
-            .await
-            .unwrap(),
-        0
-    );
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_total_size(StorageFilter::All)
-            .await
-            .unwrap(),
-        30
-    );
-    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
-
-    exec(&db, "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';").await;
-    for file in [
-        ("f5008044-8ffe-4227-bdc3-238f85a6a4a6", RELEASE_LATE, "one.jpg", 1),
-        ("cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3", RELEASE_LATE, "two.jpg", 2),
-    ] {
-        insert_file(&db, tmp.path(), file).await;
-    }
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_total_size(StorageFilter::All)
-            .await
-            .unwrap(),
-        13
-    );
-    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_EARLY, RELEASE_LATE]));
-    assert_eq!(page(&db, StorageSortField::TotalSize).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
-
-    // Retitling the first album sorts its release after the second.
-    exec(
-        &db,
-        "UPDATE albums SET title = 'Album Title C' WHERE id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d';",
-    )
-    .await;
-    assert_eq!(page(&db, StorageSortField::AlbumTitle).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
-
-    exec(&db, "DELETE FROM releases WHERE id = 'd439555e-9883-4037-a580-48ea33c2c57b';").await;
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_count(StorageFilter::All)
-            .await
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        crate::library::views::LibraryViews::new(db.clone())
-            .get_storage_total_size(StorageFilter::All)
-            .await
-            .unwrap(),
-        3
-    );
-}
-
 /// The plan SQLite chooses for `statement`, one detail line per step.
-async fn plan(db: &Database, statement: String) -> Vec<String> {
+pub(crate) async fn plan(db: &Database, statement: String) -> Vec<String> {
     db.read(move |sql| {
         sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
             .map_err(DbError::from)
@@ -170,39 +68,6 @@ async fn the_uploading_releases_read_the_listing_in_queue_order() {
         .await,
         vec!["SEARCH uploading USING COVERING INDEX idx_release_listing_uploading (first_queued_position>?)".to_string()]
     );
-}
-
-/// Sorting by storage reads a window from an index of the listing in either
-/// direction, under every filter: SQLite never sorts the list itself.
-#[tokio::test]
-async fn the_storage_sort_reads_a_window_from_an_index() {
-    let (db, _tmp) = super::temp_db().await;
-    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
-        for direction in [SortDirection::Ascending, SortDirection::Descending] {
-            let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
-            let order = crate::library::views::storage::storage_order(&sort);
-            let steps = plan(
-                &db,
-                crate::library::views::storage::storage_window_query(
-                    &order,
-                    filter,
-                    crate::library::views::storage::StorageRows::Listed,
-                    &order.everything(),
-                )
-                .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
-            )
-            .await;
-            assert!(
-                steps.iter().any(|step| step.contains("USING INDEX idx_release_listing_")
-                    && step.contains("storage")),
-                "{filter:?} {direction:?}: {steps:?}"
-            );
-            assert!(
-                !steps.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
-                "{filter:?} {direction:?}: {steps:?}"
-            );
-        }
-    }
 }
 
 /// A bare library connection that records every release whose listing row
@@ -246,8 +111,9 @@ fn write(conn: &mut rusqlite::Connection, sql: &str) {
     write.commit().unwrap();
 }
 
-const ALBUM_A: &str = "4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d";
-const ALBUM_B: &str = "dab6efe2-9b5c-4034-b95e-73cf49f54b9a";
+pub(crate) const ALBUM_A: &str = "4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d";
+
+pub(crate) const ALBUM_B: &str = "dab6efe2-9b5c-4034-b95e-73cf49f54b9a";
 
 /// A release arriving writes its listing row with one refresh, in the write
 /// that adds it: as a snapshot installs it, after its album, which lists that

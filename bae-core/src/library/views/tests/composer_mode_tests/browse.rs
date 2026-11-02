@@ -40,7 +40,7 @@ async fn search_library_matches_composer_and_work_sort_names() {
 
 #[tokio::test]
 async fn search_library_treats_like_metacharacters_as_literals() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -135,7 +135,7 @@ async fn work_detail_release_rows_carry_album_release_display_fields() {
 
 #[tokio::test]
 async fn composer_page_uses_id_tiebreaker() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -182,7 +182,7 @@ async fn composer_page_uses_id_tiebreaker() {
 /// fall through to the tail's `composer.name ASC` and order them the other way.
 #[tokio::test]
 async fn composer_page_applies_secondary_criterion() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "

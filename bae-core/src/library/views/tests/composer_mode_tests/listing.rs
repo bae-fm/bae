@@ -47,7 +47,7 @@ async fn listed_composers(db: &Database) -> Vec<(String, i64, i64, i64)> {
 
 #[tokio::test]
 async fn composer_list_counts_a_merged_composer_under_its_survivor() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_listed(&db, LISTED_RELEASES).await;
     exec_listed(
         &db,
@@ -104,7 +104,7 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
 
 #[tokio::test]
 async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_listed(&db, LISTED_RELEASES).await;
     exec_listed(
         &db,
@@ -159,7 +159,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
 
 #[tokio::test]
 async fn composer_page_sorts_names_descending_with_ids_ascending() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     exec_listed(
         &db,
         "

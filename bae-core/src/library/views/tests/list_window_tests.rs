@@ -2,9 +2,12 @@
 //! every sort an index search, and a live list read from its last read's rows
 //! only while none of them has moved.
 
-use super::super::list_windows::OrderKey;
-use super::super::*;
+use crate::db::client::list_windows::OrderKey;
+
 use crate::db::client::list_windows::{Keyed, ListOrder, Seek};
+
+use crate::db::client::tests::*;
+
 use crate::db::{LibraryPageWindow, LibraryPageWindows};
 use crate::library::views::album::album_browse_order;
 use crate::library::views::*;
@@ -80,7 +83,7 @@ async fn assert_seeks_search_sorting(
 /// A library of 300 albums, each with an artist, a release, files and a
 /// work, every release queued to download and every track in the lane.
 async fn library() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = temp_db().await;
     super::window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
     (db, tmp)
 }
@@ -694,37 +697,6 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
     }
 }
 
-#[tokio::test]
-async fn the_download_queue_seeks_its_windows_through_its_key() {
-    let (db, _tmp) = library().await;
-    let order = crate::library::queued_releases::tables::queue_order();
-    let key = key_at(
-        &db,
-        &order,
-        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
-        150,
-    )
-    .await;
-    assert_seeks_search(
-        &db,
-        "downloads",
-        &order,
-        key,
-        |seek| {
-            crate::library::queued_releases::tables::queue_rows_sql::<()>(
-                Some(&order),
-                &format!(
-                    "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",
-                    order.condition(seek),
-                    order.ordering(seek)
-                ),
-            )
-        },
-        Vec::new(),
-    )
-    .await;
-}
-
 /// The album list's ids at `window`, as a read by offset finds them.
 async fn albums_at(db: &Database, window: &LibraryPageWindow) -> Vec<String> {
     crate::library::views::LibraryViews::new(db.clone())
@@ -799,4 +771,35 @@ async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
             "at {offset} after the write"
         );
     }
+}
+
+#[tokio::test]
+async fn the_download_queue_seeks_its_windows_through_its_key() {
+    let (db, _tmp) = library().await;
+    let order = crate::library::queued_releases::tables::queue_order();
+    let key = key_at(
+        &db,
+        &order,
+        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
+        150,
+    )
+    .await;
+    assert_seeks_search(
+        &db,
+        "downloads",
+        &order,
+        key,
+        |seek| {
+            crate::library::queued_releases::tables::queue_rows_sql::<()>(
+                Some(&order),
+                &format!(
+                    "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",
+                    order.condition(seek),
+                    order.ordering(seek)
+                ),
+            )
+        },
+        Vec::new(),
+    )
+    .await;
 }

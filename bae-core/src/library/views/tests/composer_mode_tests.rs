@@ -1,11 +1,21 @@
-use super::super::*;
-use super::*;
+use crate::db::client::tests::*;
 use crate::library::views::*;
+
+const ALBUM_PERCENT: &str = "7e9948c4-f2d0-4a73-8e5c-a885eda086ff";
+const ALBUM_UNDERSCORE: &str = "2dd55a3f-3208-4faf-8737-453f474074cb";
+const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
+const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
+const COMPOSER_C: &str = "80cd3a5e-7fb7-4766-8ec3-d8e86575743b";
+const COMPOSER_SOLO: &str = "4d93d615-4549-45d9-81d9-644f079d59bf";
+const TRACK_PERCENT: &str = "4dc8cde9-15fb-470d-802c-b7e5f1ccc63d";
+const TRACK_UNDERSCORE: &str = "b2930937-dae6-4719-8150-aa61422eeeac";
+const WORK_CHILD_A: &str = "f63d8e66-6a81-4a67-8005-1fbe870f27eb";
+const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271";
 
 /// The library the composer tests read: an album artist and a composer
 /// credited on one track's work and its parent.
 async fn seeded_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "

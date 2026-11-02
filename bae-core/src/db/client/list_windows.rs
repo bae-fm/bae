@@ -154,7 +154,7 @@ impl Seek {
 
     /// How many of the order's leading terms the seek holds equal.
     #[cfg(test)]
-    pub(super) fn held_equal(&self) -> usize {
+    pub(crate) fn held_equal(&self) -> usize {
         self.equal
     }
 
