@@ -38,6 +38,7 @@ jobs:
       uses: ./.github/actions/setup-rust
 
     - name: Install cargo-nextest
+      id: nextest
       uses: taiki-e/install-action@nextest
 
     - name: Check Rust formatting
@@ -110,44 +111,56 @@ jobs:
           exit 1
         fi
 
+    # Each test step below runs once nextest is in, whatever failed before it,
+    # and runs every test and command in it, failing at the end if any did: a
+    # run that stopped at its first failure hid every failure after it.
     - name: Run util, audio, types, catalogs, localization, theme and bridge tests
+      if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
-        cargo nextest run -p bae-util
-        cargo nextest run -p bae-audio
-        cargo nextest run -p bae-types
-        cargo nextest run -p bae-catalogs
-        cargo nextest run -p bae-loc
-        cargo nextest run -p bae-theme
+        status=0
+        cargo nextest run --no-fail-fast -p bae-util || status=1
+        cargo nextest run --no-fail-fast -p bae-audio || status=1
+        cargo nextest run --no-fail-fast -p bae-types || status=1
+        cargo nextest run --no-fail-fast -p bae-catalogs || status=1
+        cargo nextest run --no-fail-fast -p bae-loc || status=1
+        cargo nextest run --no-fail-fast -p bae-theme || status=1
         # Both editions: default features are baeium's, `desktop` the full build's,
         # with the debug Mac app's dev reset, so its tests run too.
-        cargo nextest run -p bae-bridge --lib
-        cargo nextest run -p bae-bridge --lib --features desktop,dev-reset
-        cargo nextest run -p bae-automation
-        cargo nextest run -p bae-subsonic
-        cargo nextest run -p bae-cast
-        cargo nextest run -p bae-desktop
+        cargo nextest run --no-fail-fast -p bae-bridge --lib || status=1
+        cargo nextest run --no-fail-fast -p bae-bridge --lib --features desktop,dev-reset || status=1
+        cargo nextest run --no-fail-fast -p bae-automation || status=1
+        cargo nextest run --no-fail-fast -p bae-subsonic || status=1
+        cargo nextest run --no-fail-fast -p bae-cast || status=1
+        cargo nextest run --no-fail-fast -p bae-desktop || status=1
         # Chrome strings no code references; core.* keys are covered by the bridge
         # test above.
-        python3 scripts/loc-chrome-orphans.py
+        python3 scripts/loc-chrome-orphans.py || status=1
         # Translations still carrying the English, glued morphology, or mismatched
         # placeholders, in all three catalogs.
-        python3 scripts/loc-english-skeleton.py
+        python3 scripts/loc-english-skeleton.py || status=1
+        exit $status
 
     - name: Check Rust documentation
       # Broken intra-doc links and invalid rustdoc syntax fail the build.
+      if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
-        RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-        cargo test --doc --workspace --features bae-core/test-utils
-        cargo test --doc -p bae-bridge --features desktop
+        status=0
+        RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps || status=1
+        cargo test --doc --no-fail-fast --workspace --features bae-core/test-utils || status=1
+        cargo test --doc --no-fail-fast -p bae-bridge --features desktop || status=1
+        exit $status
 
     - name: Run bae-core tests
+      if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
+        status=0
         # The CPU test reads process-wide getrusage, so it runs alone, in release: it
         # measures the playback that ships.
-        cargo nextest run -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
+        cargo nextest run --no-fail-fast -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu || status=1
         # The runner's disk can't hold the debug and release trees at once.
         rm -rf target/debug
-        cargo nextest run -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1
+        cargo nextest run --no-fail-fast -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1 || status=1
+        exit $status
 
   avalonia:
     # The Avalonia skeleton on Linux, in its own job for the disk.
