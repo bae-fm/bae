@@ -1,7 +1,7 @@
 use super::*;
 
 /// What one analyzer pass over an image read. Mirrors
-/// `bae_core::signals::ArtworkAnalysis`.
+/// `bae_core::import::extraction::ArtworkAnalysis`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtworkAnalysis {
     /// The payloads of the barcodes the detector found.

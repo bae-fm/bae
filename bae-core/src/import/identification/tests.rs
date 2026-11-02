@@ -8,9 +8,9 @@ use crate::db::{
 };
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::{FolderCheck, VerdictSummary};
+use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

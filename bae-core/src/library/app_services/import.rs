@@ -50,7 +50,7 @@ impl AppServices {
     /// barcodes and text off a candidate's images with.
     pub fn extraction_register_analyzer(
         &self,
-        analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>,
+        analyzer: std::sync::Arc<dyn crate::import::extraction::ArtworkAnalyzer>,
     ) {
         self.inner.import.register_artwork_analyzer(analyzer);
     }
@@ -132,7 +132,7 @@ impl AppServices {
             .start_identification(
                 run,
                 candidate_key.clone(),
-                crate::signals::ExtractionSource::Release { release_id },
+                crate::import::extraction::ExtractionSource::Release { release_id },
                 bae_catalogs::rate_limiter::CallPriority::Interactive,
                 choices,
                 title_search,

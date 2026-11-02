@@ -35,8 +35,6 @@ pub mod people;
 pub mod playback;
 pub mod queue;
 pub mod renderer;
-#[cfg(desktop)]
-pub mod signals;
 pub mod storage;
 pub mod sync;
 #[cfg(test)]

@@ -1,4 +1,5 @@
-//! Signal extraction: one pass over a candidate's files that reads the
+//! Signal extraction, an import stage: one pass over a candidate's files, or
+//! a library release's, that reads the
 //! [`crate::identify::signals::Signals`] identification looks up and narrows
 //! by.
 

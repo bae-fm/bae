@@ -1,7 +1,7 @@
 use super::*;
 use crate::identify::signals::{ArtworkScan, TextOrigin};
+use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::import::ScanEvent;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
@@ -76,7 +76,7 @@ async fn collect_signals(rx: &mut UnboundedReceiver<ImportEvent>, expected: usiz
 }
 
 /// Wait until the run behind `watch` has ended, which drops its end.
-async fn run_ended(watch: &mut crate::signals::ExtractionWatch) {
+async fn run_ended(watch: &mut crate::import::extraction::ExtractionWatch) {
     tokio::time::timeout(Duration::from_secs(30), async { while watch.changed().await.is_ok() {} })
         .await
         .expect("the extraction ends");
@@ -166,7 +166,7 @@ async fn start_signals(
 ) -> (
     ExtractionServiceHandle,
     UnboundedReceiver<ImportEvent>,
-    crate::signals::ExtractionWatch,
+    crate::import::extraction::ExtractionWatch,
     TempDir,
 ) {
     let (handle, _tx, rx, lib_tmp) = make_service().await;

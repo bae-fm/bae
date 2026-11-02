@@ -26,6 +26,8 @@ mod discid_hash;
 /// A Discogs tracklist split into the mediums its positions name.
 mod error;
 #[cfg(desktop)]
+pub mod extraction;
+#[cfg(desktop)]
 mod file_evidence;
 #[cfg(desktop)]
 mod file_identity;

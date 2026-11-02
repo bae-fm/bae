@@ -341,7 +341,7 @@ pub struct ImportServiceHandle {
     /// the commands that decide a candidate end its identification as part of
     /// their own write.
     identify: crate::import::IdentifyServiceHandle,
-    extraction: crate::signals::ExtractionServiceHandle,
+    extraction: crate::import::extraction::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
     import_cancels: crate::import::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
@@ -478,7 +478,7 @@ impl ImportServiceHandle {
             runtime.clone(),
             diagnostics.clone(),
         );
-        let extraction = crate::signals::ExtractionService::start(
+        let extraction = crate::import::extraction::ExtractionService::start(
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),

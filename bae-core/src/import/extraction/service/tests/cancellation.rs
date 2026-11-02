@@ -5,7 +5,10 @@ use super::*;
 
 /// Start an extraction over `folder` as `"cand-1"` and return the watch its
 /// run holds open until it ends.
-fn start(handle: &ExtractionServiceHandle, folder: PathBuf) -> crate::signals::ExtractionWatch {
+fn start(
+    handle: &ExtractionServiceHandle,
+    folder: PathBuf,
+) -> crate::import::extraction::ExtractionWatch {
     handle.start(
         IdentifyRunId::for_test(1),
         crate::import::CandidateKey::test("cand-1"),

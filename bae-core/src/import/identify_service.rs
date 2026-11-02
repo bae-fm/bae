@@ -10,9 +10,9 @@ use crate::identify::state::{
 };
 use crate::identify::LookupChoices;
 use crate::import::candidate_runtime::RunSubject;
+use crate::import::extraction::{ExtractionWatch, SignalsSnapshot};
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
-use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::Arc;

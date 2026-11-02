@@ -1,6 +1,6 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
-    use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource};
+    use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource};
     use crate::identify::signals::TextSignal;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -36,7 +36,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     let release_folder = root.join("Artist Name - Album Title");
     std::fs::create_dir_all(&release_folder).unwrap();
     std::fs::write(release_folder.join("01 - Track.flac"), fixture_flac()).unwrap();
-    for n in 1..=crate::signals::service::IMAGES_IN_FLIGHT + 2 {
+    for n in 1..=crate::import::extraction::service::IMAGES_IN_FLIGHT + 2 {
         std::fs::write(release_folder.join(format!("p{n}.jpg")), minimal_jpeg()).unwrap();
     }
 
@@ -116,7 +116,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         }
     }
     assert!(
-        analyzer.calls.load(Ordering::SeqCst) <= crate::signals::service::IMAGES_IN_FLIGHT,
+        analyzer.calls.load(Ordering::SeqCst) <= crate::import::extraction::service::IMAGES_IN_FLIGHT,
         "removing the folder must stop the OCR pass before the images not yet started",
     );
 }

@@ -32,18 +32,18 @@ impl ImportServiceHandle {
         &self,
         run: crate::import::IdentifyRunId,
         key: crate::import::CandidateKey,
-        source: crate::signals::ExtractionSource,
+        source: crate::import::extraction::ExtractionSource,
         priority: bae_catalogs::rate_limiter::CallPriority,
         choices: crate::identify::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
     ) -> Result<bool, crate::library::LibraryError> {
         let subject = match &source {
-            crate::signals::ExtractionSource::Candidate { candidate } => {
+            crate::import::extraction::ExtractionSource::Candidate { candidate } => {
                 crate::import::candidate_runtime::RunSubject::Candidate(
                     crate::import::CandidateFiles::of(candidate),
                 )
             }
-            crate::signals::ExtractionSource::Release { .. } => {
+            crate::import::extraction::ExtractionSource::Release { .. } => {
                 crate::import::candidate_runtime::RunSubject::Release
             }
         };
@@ -127,7 +127,7 @@ impl ImportServiceHandle {
     /// on the platforms that ship one.
     pub(crate) fn register_artwork_analyzer(
         &self,
-        analyzer: Arc<dyn crate::signals::ArtworkAnalyzer>,
+        analyzer: Arc<dyn crate::import::extraction::ArtworkAnalyzer>,
     ) {
         self.extraction.register_analyzer(analyzer);
     }
