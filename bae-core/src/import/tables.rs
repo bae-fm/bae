@@ -5,8 +5,10 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod candidate_state_rows;
 mod downscaled_copies;
 mod folder_scans;
+mod import_content_hash;
 mod import_list;
 pub(crate) mod import_state;
 mod release_groupings;

@@ -69,8 +69,6 @@ mod sync_start_failure;
 mod sync_status;
 pub(crate) use pending::PendingRow;
 use sync_status::cloud_home_on;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
 pub(crate) mod files;
@@ -81,8 +79,6 @@ pub(crate) use records::RecordsChange;
 mod admin_operations;
 mod collections;
 mod history;
-#[cfg(desktop)]
-mod import_content_hash;
 mod membership;
 mod people;
 mod playback;

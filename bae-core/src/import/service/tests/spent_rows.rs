@@ -180,7 +180,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     drop(blocked);
 
     assert!(
-        !test.manager.is_content_hash_imported(&content_hash).await.unwrap(),
+        test.service.tables.release_imported_from(&content_hash).await.unwrap().is_none(),
         "the import failed"
     );
     assert_eq!(spent_row_counts(&test, &content_hash).await, before);
@@ -266,7 +266,8 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
     assert_eq!(drafts().await, 0, "a scan seeds no draft for files imported here");
 
     let release_id = test
-        .database
+        .service
+        .tables
         .release_imported_from(&content_hash)
         .await
         .unwrap()

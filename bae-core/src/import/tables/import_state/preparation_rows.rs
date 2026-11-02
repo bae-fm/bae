@@ -289,9 +289,11 @@ pub(super) fn save_preparation_on(
         }
         if stored.metadata.cover != prep.metadata.cover {
             match &prep.metadata.cover {
-                Some(cover) => {
-                    crate::db::client::candidate_state_rows::save_cover(sql, content_hash, cover)?
-                }
+                Some(cover) => crate::import::tables::candidate_state_rows::save_cover(
+                    sql,
+                    content_hash,
+                    cover,
+                )?,
                 None => pane_rows::delete_cover(sql, content_hash)?,
             }
         }
@@ -304,7 +306,7 @@ pub(super) fn save_preparation_on(
             super::rows::insert_provenance(sql, content_hash, provenance)?;
         }
         if let Some(cover) = &prep.metadata.cover {
-            crate::db::client::candidate_state_rows::save_cover(sql, content_hash, cover)?;
+            crate::import::tables::candidate_state_rows::save_cover(sql, content_hash, cover)?;
         }
     }
     if stored.metadata.assets != prep.metadata.assets {

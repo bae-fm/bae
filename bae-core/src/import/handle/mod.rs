@@ -838,7 +838,7 @@ impl ImportServiceHandle {
         Ok(crate::import::CandidateStanding {
             skipped: self.tables.is_release_candidate_skipped(candidate).await?,
             imported: self
-                .database
+                .tables
                 .release_imported_from(&candidate.files.content_hash())
                 .await?
                 .is_some(),

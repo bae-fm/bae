@@ -68,11 +68,13 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "a failed import writes no album"
     );
     assert!(
-        !test
-            .manager
-            .is_content_hash_imported(&candidate.content_hash)
+        test
+            .service
+            .tables
+            .release_imported_from(&candidate.content_hash)
             .await
-            .unwrap(),
+            .unwrap()
+            .is_none(),
         "a failed import writes no release of its files"
     );
 

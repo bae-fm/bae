@@ -59,22 +59,6 @@ impl LibraryManager {
         Ok(self.database.find_release_by_id(release_id).await?)
     }
 
-    /// Whether this device imported a release from files whose folder hash is
-    /// `hash`. The import watcher stamps each scanned candidate with this, so
-    /// a folder imported here is Done after a restart, and after a move or a
-    /// rename: it matches by file structure, not by path.
-    #[cfg(desktop)]
-    pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
-        Ok(self.release_imported_from(hash).await?.is_some())
-    }
-
-    /// The release this device imported from files whose folder hash is
-    /// `hash`, if it imported one.
-    #[cfg(desktop)]
-    pub async fn release_imported_from(&self, hash: &str) -> Result<Option<String>, LibraryError> {
-        Ok(self.database.release_imported_from(hash).await?)
-    }
-
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,

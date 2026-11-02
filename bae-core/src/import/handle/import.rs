@@ -228,7 +228,7 @@ impl ImportServiceHandle {
         // already imported its files, and one folder hash is one release here.
         self.candidate_standing(candidate_key, &candidate).await?.editable()?;
         if let Some(release_id) =
-            self.database.release_imported_from(&candidate.files.content_hash()).await?
+            self.tables.release_imported_from(&candidate.files.content_hash()).await?
         {
             return Err(crate::import::ImportError::FilesAlreadyImported { release_id });
         }
