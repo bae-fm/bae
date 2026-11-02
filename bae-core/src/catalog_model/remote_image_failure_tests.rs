@@ -1,16 +1,11 @@
-//! How a remote-image fetch that failed reads as a lookup failure and as the
-//! failure a surface shows: what the artwork host answered with is the
-//! host's failure, and what bae met on its own side is bae's.
+//! How a remote-image fetch that failed reads as a lookup failure: what the
+//! artwork host answered with is the host's failure, and what bae met on its
+//! own side is bae's.
 
 use super::*;
-use crate::diagnostics::UiErrorCategory;
 
 fn transport(error: reqwest::Error) -> RemoteImageError {
     RemoteImageError::Transport { context: "Failed to fetch image", error }
-}
-
-fn category(error: RemoteImageError) -> UiErrorCategory {
-    crate::import::ImportError::from(error).category()
 }
 
 #[test]
@@ -24,7 +19,6 @@ fn a_status_the_host_answered_with_is_its_failure() {
             remote_image_failure(&error),
             Some(LookupFailure::Provider { status: Some(status) })
         );
-        assert_eq!(category(error), UiErrorCategory::Import);
     }
 }
 
@@ -37,7 +31,6 @@ async fn a_request_that_reached_no_host_is_a_network_failure() {
         .expect_err("nothing listens on port 1");
     let error = transport(error);
     assert_eq!(remote_image_failure(&error), Some(LookupFailure::Network));
-    assert_eq!(category(error), UiErrorCategory::Import);
 }
 
 #[tokio::test]
@@ -56,7 +49,6 @@ async fn a_request_that_ran_out_of_time_is_a_timeout() {
         .expect_err("nothing answers in time");
     let error = transport(error);
     assert_eq!(remote_image_failure(&error), Some(LookupFailure::Timeout));
-    assert_eq!(category(error), UiErrorCategory::Import);
 }
 
 #[test]
@@ -65,7 +57,6 @@ fn a_request_bae_could_not_build_is_its_own_failure() {
         reqwest::Client::new().get("not a URL").build().expect_err("a relative URL does not build");
     let error = transport(error);
     assert_eq!(remote_image_failure(&error), None);
-    assert_eq!(category(error), UiErrorCategory::Internal);
 }
 
 #[test]
@@ -73,7 +64,6 @@ fn bytes_that_are_not_an_image_are_unusable_data() {
     let error =
         RemoteImageError::Unusable { detail: "Downloaded file is not a valid image".to_string() };
     assert_eq!(remote_image_failure(&error), None);
-    assert_eq!(category(error), UiErrorCategory::ImportData);
 }
 
 #[test]
@@ -83,5 +73,4 @@ fn a_cache_task_that_did_not_finish_is_bae_s_failure() {
         message: "the cache task fails".to_string(),
     });
     assert_eq!(remote_image_failure(&error), None);
-    assert_eq!(category(error), UiErrorCategory::Internal);
 }

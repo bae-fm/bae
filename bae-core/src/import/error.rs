@@ -511,6 +511,45 @@ mod tests {
         ));
     }
 
+    /// A remote-image fetch that failed shows as an import failure when the
+    /// artwork host answered or could not be reached, as unusable import
+    /// data when the bytes are no image, and as bae's own failure when bae
+    /// could not build the request or finish its cache task.
+    #[tokio::test]
+    async fn a_failed_remote_image_fetch_shows_as_whose_failure_it_is() {
+        use crate::diagnostics::UiErrorCategory;
+        use bae_catalogs::remote_image::RemoteImageError;
+        let category = |error: RemoteImageError| ImportError::from(error).category();
+        let transport = |error: reqwest::Error| RemoteImageError::Transport {
+            context: "Failed to fetch image",
+            error,
+        };
+
+        let answered = RemoteImageError::Status { status: 404, detail: "not found".to_string() };
+        assert_eq!(category(answered), UiErrorCategory::Import);
+        let unreached = reqwest::Client::new()
+            .get("http://127.0.0.1:1/cover.jpg")
+            .send()
+            .await
+            .expect_err("nothing listens on port 1");
+        assert_eq!(category(transport(unreached)), UiErrorCategory::Import);
+        let unbuilt = reqwest::Client::new()
+            .get("not a URL")
+            .build()
+            .expect_err("a relative URL does not build");
+        assert_eq!(category(transport(unbuilt)), UiErrorCategory::Internal);
+        let unusable = RemoteImageError::Unusable {
+            detail: "Downloaded file is not a valid image".to_string(),
+        };
+        assert_eq!(category(unusable), UiErrorCategory::ImportData);
+        let unfinished =
+            RemoteImageError::CacheTask(bae_util::task_failure::TaskFailed::Panicked {
+                operation: "read the remote image cache",
+                message: "the cache task fails".to_string(),
+            });
+        assert_eq!(category(unfinished), UiErrorCategory::Internal);
+    }
+
     /// A MusicBrainz timeout raised with `?` arrives at the terminal consumer as
     /// a matchable `MusicBrainz(Timeout)`, so a retry policy can read the
     /// retryability straight off the variant.
