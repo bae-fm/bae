@@ -7,9 +7,13 @@ file states what it calls things.
 
 ## The library and where it lives
 
-- **Library.** The shared library: one catalog and its files, which everyone
-  in it syncs. Say "the library", never "the cloud library" or "your local
-  library": there is one library, and it is the same on every device.
+- **Library.** One catalog and its files. A synced library is kept in the
+  cloud and is the same on every device that has it; a library not synced yet
+  lives only on the Mac that made it. Say "the library", never "the cloud
+  library" or "your local library": there is one library, wherever its copies
+  are.
+- **Synced / not synced.** Whether the library is kept in the cloud. A library
+  starts not synced and becomes synced when sync is set up for it.
 - **The cloud.** Where the library is stored: the Dropbox or OneDrive folder,
   the iCloud container, or the S3-compatible bucket it syncs through. "The
   library will remain in the cloud and on your other devices."
