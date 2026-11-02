@@ -7,26 +7,15 @@ import Testing
 
 @MainActor
 struct DocumentViewerTests {
-    @Test("A file row opens an opaque document panel")
-    func fileRowDocumentPanel() async throws {
+    /// The panel is the window's size; that it is opaque over what it
+    /// covers is the `document-viewer` shot's.
+    @Test("A file row opens a document panel, and closing it dismisses it")
+    func fileRowDocumentPanel() throws {
         let store = UiStore()
         store.presentDocument(name: "rip.log", text: "Extraction log")
         let builder = try #require(store.modalBuilder)
-        let renderer = ImageRenderer(
-            content: builder()
-                .preferredColorScheme(.dark)
-                .background(Color.green)
-        )
-        let bitmap = NSBitmapImageRep(cgImage: try #require(renderer.cgImage))
-        let pixel = try #require(
-            bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)?
-                .usingColorSpace(.deviceRGB)
-        )
-        #expect(abs(pixel.greenComponent - pixel.redComponent) < 0.05)
-        #expect(abs(pixel.blueComponent - pixel.redComponent) < 0.05)
-        #expect(pixel.alphaComponent == 1)
-        #expect(bitmap.pixelsWide == 750)
-        #expect(bitmap.pixelsHigh == 600)
+        let panel = NSHostingView(rootView: builder())
+        #expect(panel.fittingSize == NSSize(width: 750, height: 600))
         store.dismissModal()
         #expect(store.modalBuilder == nil)
     }

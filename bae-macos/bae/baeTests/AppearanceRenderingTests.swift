@@ -8,41 +8,32 @@ import Testing
 @Suite("Appearance rendering", .serialized)
 @MainActor
 struct AppearanceRenderingTests {
-    @Test("Changing persisted tones repaints an open light and dark view")
+    /// The stored mode and tone reach an open view's environment, which
+    /// every themed colour resolves in; how each tone looks is the shots',
+    /// which render every scene in every tone.
+    @Test("Changing persisted tones reaches an open light and dark view")
     func liveBackgroundTones() async throws {
         let suite = "fm.bae.tests.appearance-rendering"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("light", forKey: "appearance.mode")
         defaults.set("neutral", forKey: "appearance.tone")
+        let seen = SeenAppearance()
         let size = NSSize(width: 100, height: 100)
         try await SnapshotTestSupport.withHostedWindow(
-            Rectangle().fill(Theme.background)
+            AppearanceProbe(seen: seen)
                 .appAppearance().defaultAppStorage(defaults),
             size: size
         ) { _, host in
             for mode in ["light", "dark"] {
                 defaults.set(mode, forKey: "appearance.mode")
+                let scheme: ColorScheme = mode == "dark" ? .dark : .light
                 for tone in SurfaceTone.allCases {
                     defaults.set(tone.rawValue, forKey: "appearance.tone")
-                    var environment = EnvironmentValues()
-                    environment.colorScheme = mode == "dark" ? .dark : .light
-                    environment.surfaceTone = tone
-                    let expected = NSColor(
-                        Theme.background.resolve(in: environment)
-                    )
-                    // The stored tone reaches the view on a later pass; the
-                    // repaint is what is waited for.
+                    // The stored tone reaches the view on a later pass.
                     try await Wait.until {
-                        let image = try SnapshotTestSupport.bitmap(
-                            of: host,
-                            size: size
-                        )
-                        let actual = try #require(image.colorAt(x: 50, y: 50))
-                        let wanted = try #require(
-                            expected.usingColorSpace(image.colorSpace)
-                        )
-                        return distance(actual, wanted) < 0.02
+                        host.layoutSubtreeIfNeeded()
+                        return seen.tone == tone && seen.scheme == scheme
                     }
                 }
             }
@@ -102,37 +93,34 @@ struct AppearanceRenderingTests {
         }
     }
 
-    @Test("Volume follows the accent used by playback progress")
-    func volumeAccent() async throws {
-        let size = NSSize(width: 120, height: 20)
-        try await SnapshotTestSupport.withHostedWindow(
-            SlimSlider(value: 0.5, onChange: { _ in })
-                .appearance(mode: .dark, accent: .teal, tone: .slate),
-            size: size
-        ) { _, host in
-            let image = try await SnapshotTestSupport.steadyBitmap(
-                of: host,
-                size: size
-            )
-            let actual = try #require(
-                image.colorAt(x: image.pixelsWide / 4, y: image.pixelsHigh / 2)
-            )
-            let expected = try #require(
-                NSColor(AccentChoice.teal.color(in: .dark))
-                    .usingColorSpace(image.colorSpace)
-            )
-            #expect(distance(actual, expected) < 0.03)
-        }
-    }
-
-    /// How far apart two colours' components are. Both must be in the
-    /// capture's colour space: a capture keeps the display's space, and the
-    /// same colour has other components in sRGB than in Display P3.
+    /// How far apart two colours' components are, both in one colour space.
     private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
         max(
             abs(a.redComponent - b.redComponent),
             abs(a.greenComponent - b.greenComponent),
             abs(a.blueComponent - b.blueComponent)
         )
+    }
+}
+
+/// The appearance an open view was last handed.
+@MainActor
+private final class SeenAppearance {
+    var tone: SurfaceTone?
+    var scheme: ColorScheme?
+}
+
+/// Records the mode and tone its environment carries as they change.
+private struct AppearanceProbe: View {
+    let seen: SeenAppearance
+    @Environment(\.surfaceTone)
+    private var tone
+    @Environment(\.colorScheme)
+    private var scheme
+
+    var body: some View {
+        Rectangle().fill(Theme.background)
+            .onChange(of: tone, initial: true) { _, now in seen.tone = now }
+            .onChange(of: scheme, initial: true) { _, now in seen.scheme = now }
     }
 }

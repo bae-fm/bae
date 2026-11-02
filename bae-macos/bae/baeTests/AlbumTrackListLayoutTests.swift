@@ -8,22 +8,21 @@ import Testing
 @Suite("Album track list layout")
 @MainActor
 struct AlbumTrackListLayoutTests {
-    /// Every row in a release's track list is laid out over the same column
-    /// width, whatever the shape of the side it belongs to. A row fills the
-    /// width it is proposed — its duration sits at the trailing edge of its
-    /// column — so a side short enough to stay one column has to be proposed
-    /// a column's width, not the whole pane's, or its durations land hundreds
-    /// of points right of the split side's above it.
-    @Test("A short side's durations end where a split side's first column does")
-    func shortSideEndsWhereTheSplitSideDoes() async throws {
+    /// A side over eight tracks splits across two columns and a shorter one
+    /// stays in the first, each row's play button marking where its row
+    /// starts. That every row is a column wide, so a short side's durations
+    /// end where the split side's first column does, is the
+    /// `album-detail-mixed-columns` shot's; that a position as wide as "A10"
+    /// stays on one line is the `album-track-list-wide-positions` shot's.
+    @Test(
+        "A side over eight tracks splits into two columns; a shorter one does not"
+    )
+    func sidesSplitIntoColumns() async throws {
         let release = PreviewData.releaseDetail(albumId: "a-23")
         #expect(release.trackGroups.map(\.tracks.count) == [9, 8])
 
         let size = NSSize(width: 800, height: 900)
-        try await withHostedTrackList(release: release, size: size) {
-            window,
-            host in
-            window.appearance = NSAppearance(named: .darkAqua)
+        try await withHostedTrackList(release: release, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
 
             // Nine tracks split five over four; the eight-track side stays whole.
@@ -38,67 +37,10 @@ struct AlbumTrackListLayoutTests {
                 .sorted { $0.top < $1.top }
             #expect(firstColumn.count == 13)
             #expect(secondColumn.count == 4)
-
-            let pane = try await Pane.capture(
-                host,
-                size: size,
-                secondColumn: secondColumn,
-                secondColumnX: secondColumnX
-            )
-            let splitSideEnd = try pane.columnEnd(of: firstColumn.prefix(5))
-            let shortSideEnd = try pane.columnEnd(of: firstColumn.dropFirst(5))
-            #expect(
-                abs(shortSideEnd - splitSideEnd) < 2,
-                "short side ends at \(shortSideEnd), split side at \(splitSideEnd)"
-            )
-            // The pin on the two-column case: its second column still runs to the
-            // pane's trailing edge, so nothing passes by narrowing every row.
-            let secondColumnEnd = try pane.columnEnd(of: secondColumn)
-            #expect(
-                secondColumnEnd > size.width - 20,
-                "second column ends at \(secondColumnEnd)"
-            )
         }
     }
 
-    /// A side's position labels run as wide as its widest, "A10": the number
-    /// column takes that width, so the label stays on one line instead of
-    /// breaking into "A1" over "0".
-    @Test("A position wider than a digit stays on one line")
-    func widePositionStaysOnOneLine() async throws {
-        var release = PreviewData.releaseDetail(albumId: "a-22")
-        let firstSide = release.trackGroups[0].tracks.count
-        #expect(firstSide == 10)
-        for index in release.trackGroups[0].tracks.indices {
-            release.trackGroups[0].tracks[index].positionText = "A\(index + 1)"
-        }
-        for index in release.tracks.indices.prefix(firstSide) {
-            release.tracks[index].positionText = "A\(index + 1)"
-        }
-
-        let size = NSSize(width: 800, height: 900)
-        try await withHostedTrackList(release: release, size: size) {
-            window,
-            host in
-            window.appearance = NSAppearance(named: .darkAqua)
-            try await SnapshotTestSupport.settle(host)
-
-            let bands = rowBands(in: host, release: release)
-            let pane = try await Pane.capture(
-                host,
-                size: size,
-                secondColumn: [],
-                secondColumnX: size.width
-            )
-            for band in bands {
-                let height = try pane.labelInkHeight(of: band)
-                #expect(height < 14, "a label's ink is \(height) points tall")
-            }
-        }
-    }
-
-    /// The track list over the pane's background, with nothing playing, in
-    /// a window the capture can read pixels back from.
+    /// The track list over the pane's background, with nothing playing.
     private func withHostedTrackList<Value>(
         release: ReleaseDetail,
         size: NSSize,
@@ -166,137 +108,5 @@ struct AlbumTrackListLayoutTests {
         let width: CGFloat
         let top: CGFloat
         let bottom: CGFloat
-    }
-
-    /// The rendered track list read back as pixels: where a column's durations
-    /// end is a question about the ink standing over the background.
-    private struct Pane {
-        let image: NSBitmapImageRep
-        let background: NSColor
-        let width: CGFloat
-        /// The two-column groups' second column, which bounds how far right a
-        /// row beside one may be scanned.
-        let secondColumn: [RowBand]
-        let secondColumnX: CGFloat
-
-        @MainActor
-        static func capture(
-            _ host: NSView,
-            size: NSSize,
-            secondColumn: [RowBand],
-            secondColumnX: CGFloat
-        ) async throws -> Pane {
-            let image = try await SnapshotTestSupport.steadyBitmap(
-                of: host,
-                size: size
-            )
-            // Past the list's last row, so it carries the pane's own colour.
-            let background = try #require(
-                image.colorAt(x: image.pixelsWide - 4, y: image.pixelsHigh - 4)
-            )
-            return Pane(
-                image: image,
-                background: background,
-                width: size.width,
-                secondColumn: secondColumn,
-                secondColumnX: secondColumnX
-            )
-        }
-
-        /// Where a column's durations end: the rightmost of its rows' last
-        /// glyphs, since a glyph's own right sidebearing puts each row's ink
-        /// up to a point short of the column's edge.
-        func columnEnd(of bands: some Collection<RowBand>) throws -> CGFloat {
-            try #require(bands.map(durationEnd).max())
-        }
-
-        /// How tall the ink of a row's position label stands, scanned
-        /// around where the label is laid out and across the row's 40
-        /// points.
-        func labelInkHeight(of band: RowBand) throws -> CGFloat {
-            let scale = CGFloat(image.pixelsWide) / image.size.width
-            let center = (band.top + band.bottom) / 2
-            let middle = band.x + band.width / 2
-            let firstRow = max(Int((center - 18) * scale), 0)
-            let lastRow = min(Int((center + 18) * scale), image.pixelsHigh - 1)
-            let firstColumn = max(Int((middle - 20) * scale), 0)
-            let lastColumn = min(
-                Int((middle + 20) * scale),
-                image.pixelsWide - 1
-            )
-            var inked: [Int] = []
-            for y in firstRow...lastRow {
-                for x in firstColumn...lastColumn {
-                    guard let pixel = image.colorAt(x: x, y: y) else {
-                        continue
-                    }
-                    if distance(pixel, background) > Self.inkThreshold {
-                        inked.append(y)
-                        break
-                    }
-                }
-            }
-            let top = try #require(inked.min())
-            let bottom = try #require(inked.max())
-            return CGFloat(bottom - top + 1) / scale
-        }
-
-        /// A row beside a second column may only be scanned as far as that
-        /// column's leading edge, so its neighbour's ink is never mistaken for
-        /// its own duration.
-        private func durationEnd(of band: RowBand) throws -> CGFloat {
-            let hasNeighbour = secondColumn.contains {
-                $0.x > band.x + 20 && $0.top < band.bottom
-                    && band.top < $0.bottom
-            }
-            return try rightmostInk(
-                band: band,
-                toX: hasNeighbour ? secondColumnX : width
-            )
-        }
-
-        /// A pixel counts as ink when it differs from the background by more
-        /// than this. Glyphs stand far above it; a row's hover fill does not:
-        /// that fill is `Color.primary` at 5% opacity, bleeding 10pt past the
-        /// column edge, and on a CI runner whose cursor rests over the window
-        /// one row is always hovered. Measuring it as ink put that row's end
-        /// 10pt right of its neighbours'.
-        private static let inkThreshold: CGFloat = 0.2
-
-        /// The x of the rightmost glyph pixel across the row's vertical
-        /// middle, from the row's own leading edge to `toX`.
-        private func rightmostInk(band: RowBand, toX: CGFloat) throws
-            -> CGFloat
-        {
-            let scale = CGFloat(image.pixelsWide) / image.size.width
-            let center = (band.top + band.bottom) / 2
-            let firstRow = max(Int((center - 6) * scale), 0)
-            let lastRow = min(Int((center + 6) * scale), image.pixelsHigh - 1)
-            let firstColumn = max(Int(band.x * scale), 0)
-            let lastColumn = min(Int(toX * scale) - 1, image.pixelsWide - 1)
-            var rightmost: Int?
-            for y in firstRow...lastRow {
-                for x in stride(from: lastColumn, through: firstColumn, by: -1)
-                {
-                    if x <= (rightmost ?? Int.min) { break }
-                    guard let pixel = image.colorAt(x: x, y: y) else {
-                        continue
-                    }
-                    if distance(pixel, background) > Self.inkThreshold {
-                        rightmost = x
-                        break
-                    }
-                }
-            }
-            return CGFloat(try #require(rightmost)) / scale
-        }
-
-        private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
-            max(
-                abs(a.redComponent - b.redComponent),
-                abs(a.greenComponent - b.greenComponent),
-                abs(a.blueComponent - b.blueComponent)
-            )
-        }
     }
 }
