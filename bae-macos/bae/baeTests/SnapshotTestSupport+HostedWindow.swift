@@ -4,23 +4,16 @@ import Testing
 
 extension SnapshotTestSupport {
     /// Host `view` (sized to `size`) in a borderless window past the edge of
-    /// every display for the length of `body`, which uses the host to
-    /// capture pixels or send events through the window. When `body`
+    /// every display for the length of `body`, which uses the host to read
+    /// its view tree or send events through the window. When `body`
     /// returns or throws, the window is closed and it and the view tree it
     /// held are let go.
     ///
     /// The window never becomes key. Whether a window is key follows whether
     /// the test host is the active app, which is whatever the person at the
-    /// machine last clicked: a prominent button drew its accent in one
-    /// capture and grey in the next, and two captures a test compared pixel
-    /// for pixel differed there. A window that is never key draws the same
+    /// machine last clicked; a window that is never key lays out the same
     /// controls every time. First responders and sent events do not need a
     /// key window.
-    ///
-    /// The tree's layers are set to draw at `captureScale` as soon as they
-    /// exist, so the redraw that a display at another scale needs happens
-    /// while the caller settles the view, not between two captures a test
-    /// compares pixel for pixel.
     @MainActor
     static func withHostedWindow<V: View, Value>(
         _ view: V,
@@ -85,9 +78,6 @@ extension SnapshotTestSupport {
         window.contentView = host
         window.orderFront(nil)
         host.layoutSubtreeIfNeeded()
-        if let layer = host.layer {
-            rescale(layer)
-        }
         if Test.current != nil {
             takePlacementNotice(for: window)
         }
@@ -134,7 +124,7 @@ extension SnapshotTestSupport {
 
     /// A window origin past the right edge of every display, so a hosted
     /// view is never on the screen of the person running the suite: nothing
-    /// flashes while it runs, and their pointer never hovers a captured row.
+    /// flashes while it runs, and their pointer never hovers a hosted row.
     @MainActor
     private static var offscreenOrigin: NSPoint {
         let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
@@ -146,8 +136,7 @@ private final class SnapshotTestWindow: NSWindow {
     /// A sheet — a confirmation dialog, an alert — brings the window it is
     /// on onto a display, sliding it in from past the edge, and shows
     /// itself there. Both stay transparent to the eye and to the pointer:
-    /// the test presses the sheet's buttons itself, and a capture draws the
-    /// views, not the window.
+    /// the test presses the sheet's buttons itself.
     override func beginSheet(
         _ sheetWindow: NSWindow,
         completionHandler handler: ((NSApplication.ModalResponse) -> Void)? =

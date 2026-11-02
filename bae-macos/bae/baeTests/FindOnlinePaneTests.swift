@@ -632,7 +632,7 @@ struct PickedRowTests {
 /// Hosts without making the window key. Key status is process-wide: a window
 /// taking it ends the field editing in whatever window had it, and these tests
 /// run alongside ones that type into a field and expect it to still be
-/// focused. Capture needs layout and `cacheDisplay`, not focus.
+/// focused. Reading the view tree needs layout, not focus.
 @MainActor
 enum FindOnlineRendering {
     /// `view` framed to `size` and hosted for the length of `body`.
